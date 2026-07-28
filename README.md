@@ -24,7 +24,7 @@ Abra [http://localhost:3000](http://localhost:3000).
 Veja `.env.example`:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
 ## Estrutura
 
