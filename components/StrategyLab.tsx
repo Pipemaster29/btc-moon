@@ -9,6 +9,7 @@ import {
   monteCarloNull,
   returnsByLunarDay,
   runBacktest,
+  type Direction,
   type MonteCarloResult,
   type StrategyParams,
 } from "@/lib/backtest";
@@ -28,7 +29,7 @@ const PHASE_OPTIONS: MoonPhaseName[] = ["full", "new", "first-quarter", "last-qu
  * não se repetiram — comparar qualquer estratégia contra um "segurar desde
  * 2011" infla a referência de um jeito que não representa o mercado atual.
  */
-const START_YEARS = [2011, 2016, 2018, 2019, 2020, 2022] as const;
+const START_YEARS = [2011, 2015, 2016, 2018, 2019, 2020, 2022] as const;
 
 function Metric({
   label,
@@ -190,6 +191,7 @@ export default function StrategyLab({ candles: allCandles }: { candles: Candle[]
     entryOffsetDays: 0,
     holdingDays: 14,
     stopLossPct: 0.08,
+    direction: "long",
   });
 
   const candles = useMemo(() => {
@@ -223,7 +225,8 @@ export default function StrategyLab({ candles: allCandles }: { candles: Candle[]
     mcRun.params.phase === params.phase &&
     mcRun.params.entryOffsetDays === params.entryOffsetDays &&
     mcRun.params.holdingDays === params.holdingDays &&
-    mcRun.params.stopLossPct === params.stopLossPct;
+    mcRun.params.stopLossPct === params.stopLossPct &&
+    mcRun.params.direction === params.direction;
   const mc = sameParams ? mcRun.mc : null;
 
   function runMonteCarlo() {
@@ -270,8 +273,31 @@ export default function StrategyLab({ candles: allCandles }: { candles: Candle[]
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-black/60 dark:text-white/60">Direção</span>
+            <div className="flex gap-1">
+              {(["long", "short"] as Direction[]).map((dir) => (
+                <button
+                  key={dir}
+                  onClick={() => setParams((p) => ({ ...p, direction: dir }))}
+                  className={`flex-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    (params.direction ?? "long") === dir
+                      ? dir === "long"
+                        ? "bg-[#0ECB81] text-black font-medium"
+                        : "bg-[#F6465D] text-white font-medium"
+                      : "border border-black/15 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10"
+                  }`}
+                >
+                  {dir === "long" ? "Comprado" : "Vendido"}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-black/60 dark:text-white/60">Comprar na…</span>
+            <span className="text-xs text-black/60 dark:text-white/60">
+              {(params.direction ?? "long") === "long" ? "Comprar na…" : "Vender na…"}
+            </span>
             <select
               value={params.phase}
               onChange={(e) =>
@@ -333,7 +359,7 @@ export default function StrategyLab({ candles: allCandles }: { candles: Candle[]
             hint={`segurar: ${pct(bh.maxDrawdown)}`}
           />
           <Metric label="Operações" value={String(result.tradeCount)} />
-          <Metric label="Tempo comprado" value={pct(result.timeInMarket)} />
+          <Metric label="Tempo posicionado" value={pct(result.timeInMarket)} />
           <Metric label="Sharpe" value={result.sharpe.toFixed(2)} hint={`segurar: ${bh.sharpe.toFixed(2)}`} />
           <Metric label="Retorno médio/op" value={pct(result.meanTradeReturn)} />
         </div>

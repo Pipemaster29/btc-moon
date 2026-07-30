@@ -32,20 +32,29 @@ const GRID: Grid = {
   entryOffsets: [-7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7],
   holdingDays: [1, 2, 3, 5, 7, 10, 12, 14, 17, 20, 25, 29],
   stopLosses: [0, 0.02, 0.03, 0.05, 0.08, 0.1, 0.15, 0.2],
+  directions: ["long", "short"],
 };
 
 const COMBOS =
-  GRID.phases.length * GRID.entryOffsets.length * GRID.holdingDays.length * GRID.stopLosses.length;
+  GRID.phases.length *
+  GRID.entryOffsets.length *
+  GRID.holdingDays.length *
+  GRID.stopLosses.length *
+  (GRID.directions?.length ?? 1);
 
-/** A ideia original: comprar na lua cheia, segurar duas semanas, stop de 8%. */
+/** A ideia original: entrar na lua cheia, segurar duas semanas, stop de 8%. */
 const USER_IDEA: StrategyParams = {
   phase: "full",
   entryOffsetDays: 0,
   holdingDays: 14,
   stopLossPct: 0.08,
+  direction: "long",
 };
 
-const START_YEARS = [2011, 2016, 2018, 2019, 2020];
+/** A mesma regra, invertida: vender a descoberto na lua cheia. */
+const USER_IDEA_SHORT: StrategyParams = { ...USER_IDEA, direction: "short" };
+
+const START_YEARS = [2011, 2015, 2016, 2018, 2019, 2020];
 const TRIALS = 300;
 
 const allCandles = await getCandles("1d");
@@ -61,6 +70,10 @@ interface PeriodReport {
   ideaCagr: number;
   ideaTrades: number;
   ideaPValue: number;
+  shortReturn: number;
+  shortCagr: number;
+  shortPValue: number;
+  bestDirection: string;
   bestReturn: number;
   bestLabel: string;
   bestCagr: number;
@@ -85,10 +98,15 @@ function analyzePeriod(startYear: number, candles: Candle[]): PeriodReport {
 
   const bh = buyAndHold(candles);
   const idea = runBacktest(candles, phases, USER_IDEA);
-
   const ideaMc = locateInNull(
     idea.totalReturn,
     monteCarloNull(candles, USER_IDEA, idea.tradeCount, 3000),
+  );
+
+  const short = runBacktest(candles, phases, USER_IDEA_SHORT);
+  const shortMc = locateInNull(
+    short.totalReturn,
+    monteCarloNull(candles, USER_IDEA_SHORT, short.tradeCount, 3000),
   );
 
   const ranked = gridSearch(candles, phases, GRID);
@@ -110,6 +128,10 @@ function analyzePeriod(startYear: number, candles: Candle[]): PeriodReport {
     ideaCagr: idea.cagr,
     ideaTrades: idea.tradeCount,
     ideaPValue: ideaMc.pValue,
+    shortReturn: short.totalReturn,
+    shortCagr: short.cagr,
+    shortPValue: shortMc.pValue,
+    bestDirection: best.params.direction === "short" ? "vendido" : "comprado",
     bestReturn: best.result.totalReturn,
     bestLabel: describe(best.params),
     bestCagr: best.result.cagr,
@@ -156,6 +178,21 @@ for (const r of reports) {
 }
 
 console.log(`\n${"=".repeat(88)}`);
+console.log("A MESMA REGRA INVERTIDA — VENDER na lua cheia, segurar 14 dias, stop 8%");
+console.log("=".repeat(88));
+console.log("\n  Se a lua tivesse sinal, apostar contra ele deveria perder de forma");
+console.log("  sistemática. Perder 'na medida certa' é tão informativo quanto ganhar.\n");
+console.log("  período       comprado      vendido      p(vend.)   soma das duas pontas");
+for (const r of reports) {
+  // Comprado e vendido cobrem movimentos opostos: se a lua marcasse o rumo,
+  // uma ponta ganharia consistentemente enquanto a outra afundaria.
+  const combined = (1 + r.ideaReturn) * (1 + r.shortReturn);
+  console.log(
+    `  ${r.label.padEnd(11)} ${mult(r.ideaReturn).padStart(11)} ${mult(r.shortReturn).padStart(12)} ${r.shortPValue.toFixed(3).padStart(11)}   ${combined.toFixed(2)}x`,
+  );
+}
+
+console.log(`\n${"=".repeat(88)}`);
 console.log(`TESTE DECISIVO — melhor de ${COMBOS.toLocaleString("pt-BR")} combinações vs. calendários lunares falsos`);
 console.log("=".repeat(88));
 console.log(`\n  ${TRIALS} luas falsas por período. A pergunta: a lua real produz uma campeã melhor?\n`);
@@ -169,6 +206,6 @@ for (const r of reports) {
 
 console.log("\n  melhor combinação de cada período:");
 for (const r of reports) {
-  console.log(`    ${r.label.padEnd(11)} ${r.bestLabel} → ${mult(r.bestReturn)} (CAGR ${pct(r.bestCagr)})`);
+  console.log(`    ${r.label.padEnd(11)} ${r.bestDirection.padEnd(9)} ${r.bestLabel} → ${mult(r.bestReturn)} (CAGR ${pct(r.bestCagr)})`);
 }
 console.log("");

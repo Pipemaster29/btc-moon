@@ -19,15 +19,37 @@ const DAY = 86400;
 /** Duração média do mês sinódico, em dias. */
 export const SYNODIC_MONTH = 29.530588861;
 
+/** Comprada (aposta na alta) ou vendida a descoberto (aposta na queda). */
+export type Direction = "long" | "short";
+
 export interface StrategyParams {
   /** Fase que dispara a entrada. */
   phase: MoonPhaseName;
-  /** Dias de deslocamento em relação à fase; negativo antecipa a compra. */
+  /** Dias de deslocamento em relação à fase; negativo antecipa a entrada. */
   entryOffsetDays: number;
   /** Dias de permanência na posição. */
   holdingDays: number;
   /** Stop loss em fração do preço de entrada; 0 desliga. */
   stopLossPct: number;
+  /** Direção da aposta. Ausente equivale a comprada. */
+  direction?: Direction;
+}
+
+/**
+ * Retorno de uma posição entre dois preços.
+ *
+ * Na venda a descoberto o lucro é o espelho: ganha-se o quanto o preço caiu.
+ * A assimetria importa — comprado o prejuízo para em −100%, vendido ele não
+ * tem teto, porque o preço pode subir sem limite.
+ */
+function positionReturn(
+  entryPrice: number,
+  exitPrice: number,
+  direction: Direction,
+): number {
+  return direction === "long"
+    ? exitPrice / entryPrice - 1
+    : 1 - exitPrice / entryPrice;
 }
 
 export interface Trade {
@@ -38,6 +60,7 @@ export interface Trade {
   /** Retorno fracionário da operação. */
   return: number;
   stopped: boolean;
+  direction: Direction;
 }
 
 export interface BacktestResult {
@@ -87,9 +110,11 @@ function findCandleAtOrAfter(
  * Simula uma operação: entra no fechamento do candle `entryIdx` e sai após
  * `holdingDays`, ou antes se o stop for tocado.
  *
- * O stop é avaliado contra a mínima do candle e assume execução no preço
- * exato do stop. Em um gap de abertura abaixo dele a saída real seria pior,
- * então esta é a hipótese otimista — vale lembrar disso ao ler os números.
+ * O stop é avaliado contra a extremidade adversa do candle — mínima quando
+ * comprado, máxima quando vendido — e assume execução no preço exato do stop.
+ * Num gap além dele a saída real seria pior, então esta é a hipótese otimista.
+ * Também não há custo de aluguel nem funding, que na venda a descoberto são
+ * cobrados continuamente e corroem o resultado.
  */
 function simulateTrade(
   candles: Candle[],
@@ -99,24 +124,51 @@ function simulateTrade(
   const entry = candles[entryIdx];
   if (!entry) return null;
 
+  const direction = params.direction ?? "long";
   const entryPrice = entry.close;
-  const stopPrice =
-    params.stopLossPct > 0 ? entryPrice * (1 - params.stopLossPct) : 0;
+
+  // Comprado o stop fica abaixo e é acionado pela mínima; vendido fica acima
+  // e é acionado pela máxima.
+  const hasStop = params.stopLossPct > 0;
+  const stopPrice = hasStop
+    ? direction === "long"
+      ? entryPrice * (1 - params.stopLossPct)
+      : entryPrice * (1 + params.stopLossPct)
+    : 0;
 
   const lastIdx = Math.min(entryIdx + params.holdingDays, candles.length - 1);
   if (lastIdx <= entryIdx) return null;
 
   for (let i = entryIdx + 1; i <= lastIdx; i++) {
     const candle = candles[i];
+    const hit =
+      hasStop &&
+      (direction === "long" ? candle.low <= stopPrice : candle.high >= stopPrice);
 
-    if (stopPrice > 0 && candle.low <= stopPrice) {
+    if (hit) {
       return {
         entryTime: entry.time,
         exitTime: candle.time,
         entryPrice,
         exitPrice: stopPrice,
-        return: stopPrice / entryPrice - 1,
+        return: positionReturn(entryPrice, stopPrice, direction),
         stopped: true,
+        direction,
+      };
+    }
+
+    // Sem stop, uma venda a descoberto pode ser liquidada: se o preço dobra, a
+    // perda chega a 100% e a posição acaba. Ignorar isso permitiria "recuperar"
+    // de uma bancada já zerada.
+    if (!hasStop && direction === "short" && candle.high >= entryPrice * 2) {
+      return {
+        entryTime: entry.time,
+        exitTime: candle.time,
+        entryPrice,
+        exitPrice: entryPrice * 2,
+        return: -1,
+        stopped: true,
+        direction,
       };
     }
   }
@@ -127,8 +179,9 @@ function simulateTrade(
     exitTime: exit.time,
     entryPrice,
     exitPrice: exit.close,
-    return: exit.close / entryPrice - 1,
+    return: positionReturn(entryPrice, exit.close, direction),
     stopped: false,
+    direction,
   };
 }
 
@@ -155,10 +208,12 @@ function equityCurve(candles: Candle[], trades: Trade[]): number[] {
 
     for (let i = entryIdx + 1; i <= exitIdx; i++) {
       const price = i === exitIdx ? trade.exitPrice : candles[i].close;
-      curve[i] = equity * (price / trade.entryPrice);
+      // Uma venda a descoberto zerada não volta: o capital para em zero.
+      const marked = 1 + positionReturn(trade.entryPrice, price, trade.direction);
+      curve[i] = equity * Math.max(marked, 0);
     }
 
-    equity *= 1 + trade.return;
+    equity *= Math.max(1 + trade.return, 0);
     cursor = exitIdx + 1;
   }
 
@@ -283,6 +338,7 @@ export function buyAndHold(candles: Candle[]): BacktestResult {
       exitPrice: last.close,
       return: last.close / first.close - 1,
       stopped: false,
+      direction: "long",
     },
   ]);
 }
@@ -420,7 +476,7 @@ export function monteCarloNull(
       if (entryIdx <= lastExitIdx) continue;
       const trade = simulateTrade(candles, entryIdx, params);
       if (!trade) continue;
-      equity *= 1 + trade.return;
+      equity *= Math.max(1 + trade.return, 0);
       lastExitIdx = entryIdx + params.holdingDays;
     }
 
@@ -464,6 +520,8 @@ export interface Grid {
   entryOffsets: number[];
   holdingDays: number[];
   stopLosses: number[];
+  /** Direções varridas. Ausente equivale a só comprada. */
+  directions?: Direction[];
 }
 
 /** Varre o espaço de parâmetros e devolve tudo ordenado por retorno. */
@@ -473,13 +531,22 @@ export function gridSearch(
   grid: Grid,
 ): GridResult[] {
   const results: GridResult[] = [];
+  const directions = grid.directions ?? ["long"];
 
-  for (const phase of grid.phases) {
-    for (const entryOffsetDays of grid.entryOffsets) {
-      for (const holdingDays of grid.holdingDays) {
-        for (const stopLossPct of grid.stopLosses) {
-          const params = { phase, entryOffsetDays, holdingDays, stopLossPct };
-          results.push({ params, result: runBacktest(candles, phases, params) });
+  for (const direction of directions) {
+    for (const phase of grid.phases) {
+      for (const entryOffsetDays of grid.entryOffsets) {
+        for (const holdingDays of grid.holdingDays) {
+          for (const stopLossPct of grid.stopLosses) {
+            const params = {
+              phase,
+              entryOffsetDays,
+              holdingDays,
+              stopLossPct,
+              direction,
+            };
+            results.push({ params, result: runBacktest(candles, phases, params) });
+          }
         }
       }
     }
@@ -501,36 +568,45 @@ function bestGridReturn(
   grid: Grid,
 ): number {
   let best = -Infinity;
+  const directions = grid.directions ?? ["long"];
 
-  for (const phase of grid.phases) {
-    const phaseDates = phases
-      .filter((p) => p.phase === phase)
-      .map((p) => Math.floor(p.date.getTime() / 1000 / DAY));
+  for (const direction of directions) {
+    for (const phase of grid.phases) {
+      const phaseDates = phases
+        .filter((p) => p.phase === phase)
+        .map((p) => Math.floor(p.date.getTime() / 1000 / DAY));
 
-    for (const entryOffsetDays of grid.entryOffsets) {
-      for (const holdingDays of grid.holdingDays) {
-        for (const stopLossPct of grid.stopLosses) {
-          const params = { phase, entryOffsetDays, holdingDays, stopLossPct };
-          let equity = 1;
-          let lastExitTime = 0;
+      for (const entryOffsetDays of grid.entryOffsets) {
+        for (const holdingDays of grid.holdingDays) {
+          for (const stopLossPct of grid.stopLosses) {
+            const params = {
+              phase,
+              entryOffsetDays,
+              holdingDays,
+              stopLossPct,
+              direction,
+            };
+            let equity = 1;
+            let lastExitTime = 0;
 
-          for (const phaseDay of phaseDates) {
-            const entryIdx = findCandleAtOrAfter(
-              candles,
-              dayIndex,
-              phaseDay + entryOffsetDays,
-            );
-            if (entryIdx === null) continue;
-            if (candles[entryIdx].time < lastExitTime) continue;
+            for (const phaseDay of phaseDates) {
+              const entryIdx = findCandleAtOrAfter(
+                candles,
+                dayIndex,
+                phaseDay + entryOffsetDays,
+              );
+              if (entryIdx === null) continue;
+              if (candles[entryIdx].time < lastExitTime) continue;
 
-            const trade = simulateTrade(candles, entryIdx, params);
-            if (!trade) continue;
+              const trade = simulateTrade(candles, entryIdx, params);
+              if (!trade) continue;
 
-            equity *= 1 + trade.return;
-            lastExitTime = trade.exitTime;
+              equity *= Math.max(1 + trade.return, 0);
+              lastExitTime = trade.exitTime;
+            }
+
+            if (equity - 1 > best) best = equity - 1;
           }
-
-          if (equity - 1 > best) best = equity - 1;
         }
       }
     }

@@ -16,13 +16,13 @@ volatilidade, RSI) e as fases da lua sobrepostas ao preço.
 
 Em `/analise` o app testa a hipótese a sério, e a resposta é negativa.
 
-Varrendo **5.760 combinações** de fase, antecedência, permanência e stop loss
-sobre 15 anos de preço, a melhor rende **88.776x** contra 5.869x de comprar e
-segurar. O número impressiona — e é enganoso.
+Varrendo **11.520 combinações** de fase, antecedência, permanência, stop loss e
+direção (comprado ou vendido) sobre 15 anos de preço, a melhor rende **89.172x**
+contra 5.896x de comprar e segurar. O número impressiona — e é enganoso.
 
 Repetindo a busca inteira sobre **calendários lunares deslocados no tempo**
-(luas falsas), a melhor combinação rende na mediana **60.748x** e chega a
-**129.535x**. De 300 calendários inventados, **49 superaram a lua real**:
+(luas falsas), a melhor combinação rende na mediana **61.019x** e chega a
+**130.113x**. De 300 calendários inventados, **49 superaram a lua real**:
 **p = 0,17**, sem significância.
 
 E isso não depende do recorte. Comparar contra "segurar desde 2011" seria uma
@@ -32,18 +32,26 @@ a lua fica:**
 
 | Entrada | Segurar até hoje | CAGR | Melhor c/ lua real | Melhor c/ lua falsa | Falsas que ganharam | p |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2011 | 5.891x (+589.025%) | 78,7% | 89.100x | 60.970x | 49/300 | 0,166 |
-| 2016 | 148x (+14.702%) | 60,4% | 376x | **497x** | 237/300 | 0,791 |
-| 2018 | 4,8x (+378%) | 20,0% | 25,4x | **27,5x** | 219/300 | 0,731 |
-| 2019 | 16,8x (+1.580%) | 45,1% | 37,6x | **38,9x** | 199/300 | 0,664 |
-| 2020 | 8,9x (+795%) | 39,5% | 18,3x | 18,2x | 142/300 | 0,475 |
+| 2011 | 5.896x (+589.600%) | 78,7% | 89.172x | 61.019x | 49/300 | 0,166 |
+| 2015 | 205x (+20.380%) | 58,4% | 687x | **972x** | 219/300 | 0,731 |
+| 2016 | 148x (+14.714%) | 60,4% | 377x | **497x** | 237/300 | 0,791 |
+| 2018 | 4,8x (+378%) | 20,0% | 25,5x | **27,5x** | 219/300 | 0,731 |
+| 2019 | 16,8x (+1.581%) | 45,1% | 37,6x | **38,9x** | 199/300 | 0,664 |
+| 2020 | 9,0x (+795%) | 39,6% | 18,3x | 18,2x | 142/300 | 0,475 |
 
-De 2016 em diante a lua **falsa** rende mais que a verdadeira. E a fase vencedora
-troca a cada recorte — nova em 2011, minguante em 2016/2018/2020, cheia em 2019.
-Se houvesse efeito real, a mesma fase venceria sempre.
+De 2015 em diante a lua **falsa** rende mais que a verdadeira. E a fase vencedora
+troca a cada recorte — nova em 2011 e 2015, minguante em 2016/2018/2020, cheia em
+2019. Se houvesse efeito real, a mesma fase venceria sempre.
 
-A ideia de comprar na lua cheia e segurar 14 dias com stop de 8% perde para
-comprar e segurar em **todos** os períodos, sem exceção.
+### Comprado vs. vendido
+
+A varredura cobre as duas direções (11.520 combinações). Vender a descoberto na
+lua cheia perde em todos os períodos — de 1,0x a 0,5x — mas isso não é sinal
+lunar: vender um ativo que subiu perde com qualquer calendário. O único p abaixo
+de 0,05 aparece em 2011 (0,037) e não replica em nenhum dos outros cinco
+recortes; com doze testes, um acerto desses é o esperado por acaso.
+
+A melhor combinação de **todos** os períodos é comprada, nunca vendida.
 
 Reproduza com `npm run analyze` (período completo) e `npm run periods`
 (comparação por ano de entrada).
