@@ -1,4 +1,6 @@
+import PriceChart from "@/components/PriceChart";
 import { getBitcoinAnalysis } from "@/lib/bitcoin";
+import { MOON_PHASE_LABEL, MOON_PHASE_SYMBOL, moonPhasesBetween } from "@/lib/moon";
 
 function formatUsd(value: number): string {
   return value.toLocaleString("en-US", {
@@ -18,8 +20,16 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
   );
 }
 
+/** Próxima mudança de fase a partir de agora. */
+function nextMoonPhase() {
+  const now = new Date();
+  const horizon = new Date(now.getTime() + 40 * 86400 * 1000);
+  return moonPhasesBetween(now, horizon)[0];
+}
+
 export default async function Home() {
   const analysis = await getBitcoinAnalysis();
+  const nextPhase = nextMoonPhase();
 
   const rsiSignal =
     analysis.rsi14 >= 70 ? "Sobrecomprado" : analysis.rsi14 <= 30 ? "Sobrevendido" : "Neutro";
@@ -27,13 +37,16 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-16 flex flex-col gap-8">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-12 flex flex-col gap-8">
         <header>
           <h1 className="text-3xl font-bold">BTC Moon 🌙</h1>
           <p className="text-black/60 dark:text-white/60 mt-1">
-            Análise de Bitcoin com dados públicos (CoinGecko) e indicadores matemáticos.
+            Análise de Bitcoin com dados públicos e indicadores matemáticos, com as
+            fases da lua sobrepostas ao gráfico.
           </p>
         </header>
+
+        <PriceChart />
 
         <section className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <StatCard label="Preço atual" value={formatUsd(analysis.currentPrice)} />
@@ -47,13 +60,35 @@ export default async function Home() {
           <StatCard label="RSI 14d" value={analysis.rsi14.toFixed(1)} hint={rsiSignal} />
         </section>
 
-        <section className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-          <p className="text-sm text-black/60 dark:text-white/60">Tendência (SMA7 vs SMA30)</p>
-          <p className="text-xl font-semibold mt-1">{trendSignal}</p>
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+            <p className="text-sm text-black/60 dark:text-white/60">
+              Tendência (SMA7 vs SMA30)
+            </p>
+            <p className="text-xl font-semibold mt-1">{trendSignal}</p>
+          </div>
+
+          {nextPhase && (
+            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+              <p className="text-sm text-black/60 dark:text-white/60">Próxima fase da lua</p>
+              <p className="text-xl font-semibold mt-1">
+                {MOON_PHASE_SYMBOL[nextPhase.phase]} {MOON_PHASE_LABEL[nextPhase.phase]}
+              </p>
+              <p className="text-xs text-black/40 dark:text-white/40 mt-1">
+                {nextPhase.date.toLocaleString("pt-BR", {
+                  dateStyle: "long",
+                  timeStyle: "short",
+                  timeZone: "UTC",
+                })}{" "}
+                UTC
+              </p>
+            </div>
+          )}
         </section>
 
         <footer className="text-xs text-black/40 dark:text-white/40">
-          Dados via CoinGecko API pública. Não é recomendação de investimento.
+          Preços via API pública da Bitstamp (histórico desde 2011). Fases da lua
+          calculadas pelo algoritmo de Jean Meeus. Não é recomendação de investimento.
         </footer>
       </main>
     </div>

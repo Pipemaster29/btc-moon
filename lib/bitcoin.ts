@@ -1,32 +1,12 @@
-export interface PricePoint {
-  timestamp: number;
-  price: number;
-}
+import { getCandles } from "./bitstamp";
 
 export interface BitcoinAnalysis {
-  prices: PricePoint[];
   currentPrice: number;
   sma7: number;
   sma30: number;
   ema12: number;
   volatility: number;
   rsi14: number;
-}
-
-const COINGECKO_MARKET_CHART_URL =
-  "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=90&interval=daily";
-
-export async function fetchBitcoinPrices(): Promise<PricePoint[]> {
-  const res = await fetch(COINGECKO_MARKET_CHART_URL, {
-    next: { revalidate: 300 },
-  });
-
-  if (!res.ok) {
-    throw new Error(`CoinGecko request failed: ${res.status}`);
-  }
-
-  const data: { prices: [number, number][] } = await res.json();
-  return data.prices.map(([timestamp, price]) => ({ timestamp, price }));
 }
 
 export function simpleMovingAverage(prices: number[], window: number): number {
@@ -36,9 +16,18 @@ export function simpleMovingAverage(prices: number[], window: number): number {
 
 export function exponentialMovingAverage(prices: number[], window: number): number {
   const k = 2 / (window + 1);
-  return prices.slice(-window * 3).reduce((ema, price, i) => (i === 0 ? price : price * k + ema * (1 - k)), prices[0]);
+  // Semente com a média simples do período inicial, depois suavização recursiva.
+  const seedLength = Math.min(window, prices.length);
+  let ema = simpleMovingAverage(prices.slice(0, seedLength), seedLength);
+
+  for (const price of prices.slice(seedLength)) {
+    ema = price * k + ema * (1 - k);
+  }
+
+  return ema;
 }
 
+/** Desvio padrão dos retornos logarítmicos, anualizado e em pontos percentuais. */
 export function volatility(prices: number[]): number {
   const returns = prices.slice(1).map((p, i) => Math.log(p / prices[i]));
   const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
@@ -47,30 +36,42 @@ export function volatility(prices: number[]): number {
   return Math.sqrt(variance) * Math.sqrt(365) * 100;
 }
 
+/** RSI de Wilder, com suavização exponencial dos ganhos e perdas. */
 export function relativeStrengthIndex(prices: number[], window = 14): number {
-  const changes = prices.slice(-(window + 1)).slice(1).map((p, i) => p - prices.slice(-(window + 1))[i]);
-  const gains = changes.filter((c) => c > 0);
-  const losses = changes.filter((c) => c < 0).map((c) => Math.abs(c));
+  if (prices.length < window + 1) return 50;
 
-  const avgGain = gains.reduce((s, g) => s + g, 0) / window;
-  const avgLoss = losses.reduce((s, l) => s + l, 0) / window;
+  const changes = prices.slice(1).map((p, i) => p - prices[i]);
+  const initial = changes.slice(0, window);
+
+  let avgGain =
+    initial.filter((c) => c > 0).reduce((s, c) => s + c, 0) / window;
+  let avgLoss =
+    initial.filter((c) => c < 0).reduce((s, c) => s + Math.abs(c), 0) / window;
+
+  for (const change of changes.slice(window)) {
+    const gain = change > 0 ? change : 0;
+    const loss = change < 0 ? Math.abs(change) : 0;
+    avgGain = (avgGain * (window - 1) + gain) / window;
+    avgLoss = (avgLoss * (window - 1) + loss) / window;
+  }
 
   if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return 100 - 100 / (1 + rs);
+  return 100 - 100 / (1 + avgGain / avgLoss);
 }
 
 export async function getBitcoinAnalysis(): Promise<BitcoinAnalysis> {
-  const prices = await fetchBitcoinPrices();
-  const values = prices.map((p) => p.price);
+  const candles = await getCandles("1d");
+  const closes = candles.map((c) => c.close);
+  // A volatilidade usa só o último ano; a série inteira desde 2011 diluiria
+  // o regime atual no de anos muito mais voláteis.
+  const recentCloses = closes.slice(-365);
 
   return {
-    prices,
-    currentPrice: values[values.length - 1],
-    sma7: simpleMovingAverage(values, 7),
-    sma30: simpleMovingAverage(values, 30),
-    ema12: exponentialMovingAverage(values, 12),
-    volatility: volatility(values),
-    rsi14: relativeStrengthIndex(values, 14),
+    currentPrice: closes[closes.length - 1],
+    sma7: simpleMovingAverage(closes, 7),
+    sma30: simpleMovingAverage(closes, 30),
+    ema12: exponentialMovingAverage(closes, 12),
+    volatility: volatility(recentCloses),
+    rsi14: relativeStrengthIndex(closes, 14),
   };
 }
