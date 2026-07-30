@@ -23,6 +23,13 @@ const mult = (v: number) => {
 
 const PHASE_OPTIONS: MoonPhaseName[] = ["full", "new", "first-quarter", "last-quarter"];
 
+/**
+ * Ano de entrada. O Bitcoin de 2011 era ilíquido e minúsculo, e seus retornos
+ * não se repetiram — comparar qualquer estratégia contra um "segurar desde
+ * 2011" infla a referência de um jeito que não representa o mercado atual.
+ */
+const START_YEARS = [2011, 2016, 2018, 2019, 2020, 2022] as const;
+
 function Metric({
   label,
   value,
@@ -176,13 +183,19 @@ function NullHistogram({ mc, strategyReturn }: { mc: MonteCarloResult; strategyR
   );
 }
 
-export default function StrategyLab({ candles }: { candles: Candle[] }) {
+export default function StrategyLab({ candles: allCandles }: { candles: Candle[] }) {
+  const [startYear, setStartYear] = useState<number>(2018);
   const [params, setParams] = useState<StrategyParams>({
     phase: "full",
     entryOffsetDays: 0,
     holdingDays: 14,
     stopLossPct: 0.08,
   });
+
+  const candles = useMemo(() => {
+    const cutoff = Date.UTC(startYear, 0, 1) / 1000;
+    return allCandles.filter((c) => c.time >= cutoff);
+  }, [allCandles, startYear]);
   // O resultado guarda os parâmetros que o geraram: assim ele se invalida
   // sozinho quando os controles mudam, sem precisar limpá-lo num efeito.
   const [mcRun, setMcRun] = useState<{
@@ -234,7 +247,27 @@ export default function StrategyLab({ candles }: { candles: Candle[] }) {
       </section>
 
       <section className="rounded-xl border border-black/10 dark:border-white/10 p-4 flex flex-col gap-4">
-        <h2 className="font-semibold">Testar uma estratégia</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-semibold">Testar uma estratégia</h2>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-xs text-black/50 dark:text-white/50 mr-1">
+              começando em
+            </span>
+            {START_YEARS.map((year) => (
+              <button
+                key={year}
+                onClick={() => setStartYear(year)}
+                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                  startYear === year
+                    ? "bg-[#F0B90B] text-black font-medium"
+                    : "hover:bg-black/5 dark:hover:bg-white/10"
+                }`}
+              >
+                {year}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="grid sm:grid-cols-2 gap-4">
           <label className="flex flex-col gap-1">

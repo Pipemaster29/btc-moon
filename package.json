@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "analyze": "tsx scripts/analyze.mts"
+    "analyze": "tsx scripts/analyze.mts",
+    "periods": "tsx scripts/periods.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

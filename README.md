@@ -25,18 +25,28 @@ Repetindo a busca inteira sobre **calendários lunares deslocados no tempo**
 **129.535x**. De 300 calendários inventados, **49 superaram a lua real**:
 **p = 0,17**, sem significância.
 
-| Teste | Resultado |
-| --- | --- |
-| Comprar na lua cheia, segurar 14d, stop 8% | **21,8x** (segurar: 5.869x) |
-| Melhor de 5.760 combinações | 88.776x |
-| Melhor em calendário lunar falso (mediana) | 60.748x |
-| Campeã do treino, aplicada fora da amostra | 14º lugar de 5.760 |
+E isso não depende do recorte. Comparar contra "segurar desde 2011" seria uma
+referência inflada — aquele Bitcoin era ilíquido e não voltou — então cada ano
+de entrada foi testado por conta própria. **Quanto mais recente o período, pior
+a lua fica:**
 
-O lucro aparente vem da tendência do ativo e do tamanho da busca, não da lua:
-comprar Bitcoin repetidamente e segurar ~29 dias num mercado que subiu 5.869x
-rende muito, com lua ou sem ela.
+| Entrada | Segurar até hoje | CAGR | Melhor c/ lua real | Melhor c/ lua falsa | Falsas que ganharam | p |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2011 | 5.891x (+589.025%) | 78,7% | 89.100x | 60.970x | 49/300 | 0,166 |
+| 2016 | 148x (+14.702%) | 60,4% | 376x | **497x** | 237/300 | 0,791 |
+| 2018 | 4,8x (+378%) | 20,0% | 25,4x | **27,5x** | 219/300 | 0,731 |
+| 2019 | 16,8x (+1.580%) | 45,1% | 37,6x | **38,9x** | 199/300 | 0,664 |
+| 2020 | 8,9x (+795%) | 39,5% | 18,3x | 18,2x | 142/300 | 0,475 |
 
-Reproduza com `npm run analyze`.
+De 2016 em diante a lua **falsa** rende mais que a verdadeira. E a fase vencedora
+troca a cada recorte — nova em 2011, minguante em 2016/2018/2020, cheia em 2019.
+Se houvesse efeito real, a mesma fase venceria sempre.
+
+A ideia de comprar na lua cheia e segurar 14 dias com stop de 8% perde para
+comprar e segurar em **todos** os períodos, sem exceção.
+
+Reproduza com `npm run analyze` (período completo) e `npm run periods`
+(comparação por ano de entrada).
 
 ## Stack
 
