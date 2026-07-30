@@ -12,6 +12,32 @@ volatilidade, RSI) e as fases da lua sobrepostas ao preço.
   minguante, cada uma podendo ser ligada ou desligada.
 - **Indicadores**: SMA 7/30, EMA 12, volatilidade anualizada e RSI de Wilder.
 
+## A lua prevê o preço? Não.
+
+Em `/analise` o app testa a hipótese a sério, e a resposta é negativa.
+
+Varrendo **5.760 combinações** de fase, antecedência, permanência e stop loss
+sobre 15 anos de preço, a melhor rende **88.776x** contra 5.869x de comprar e
+segurar. O número impressiona — e é enganoso.
+
+Repetindo a busca inteira sobre **calendários lunares deslocados no tempo**
+(luas falsas), a melhor combinação rende na mediana **60.748x** e chega a
+**129.535x**. De 300 calendários inventados, **49 superaram a lua real**:
+**p = 0,17**, sem significância.
+
+| Teste | Resultado |
+| --- | --- |
+| Comprar na lua cheia, segurar 14d, stop 8% | **21,8x** (segurar: 5.869x) |
+| Melhor de 5.760 combinações | 88.776x |
+| Melhor em calendário lunar falso (mediana) | 60.748x |
+| Campeã do treino, aplicada fora da amostra | 14º lugar de 5.760 |
+
+O lucro aparente vem da tendência do ativo e do tamanho da busca, não da lua:
+comprar Bitcoin repetidamente e segurar ~29 dias num mercado que subiu 5.869x
+rende muito, com lua ou sem ela.
+
+Reproduza com `npm run analyze`.
+
 ## Stack
 
 - [Next.js](https://nextjs.org) (App Router)

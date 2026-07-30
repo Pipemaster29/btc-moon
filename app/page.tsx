@@ -1,3 +1,4 @@
+import Link from "next/link";
 import PriceChart from "@/components/PriceChart";
 import { getBitcoinAnalysis } from "@/lib/bitcoin";
 import { MOON_PHASE_LABEL, MOON_PHASE_SYMBOL, moonPhasesBetween } from "@/lib/moon";
@@ -38,12 +39,20 @@ export default async function Home() {
   return (
     <div className="flex flex-col flex-1 bg-zinc-50 font-sans dark:bg-black">
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-12 flex flex-col gap-8">
-        <header>
-          <h1 className="text-3xl font-bold">BTC Moon 🌙</h1>
-          <p className="text-black/60 dark:text-white/60 mt-1">
-            Análise de Bitcoin com dados públicos e indicadores matemáticos, com as
-            fases da lua sobrepostas ao gráfico.
-          </p>
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold">BTC Moon 🌙</h1>
+            <p className="text-black/60 dark:text-white/60 mt-1">
+              Análise de Bitcoin com dados públicos e indicadores matemáticos, com as
+              fases da lua sobrepostas ao gráfico.
+            </p>
+          </div>
+          <Link
+            href="/analise"
+            className="text-sm px-3 py-2 rounded-md border border-black/15 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 transition-colors whitespace-nowrap"
+          >
+            A lua move o preço? →
+          </Link>
         </header>
 
         <PriceChart />
