@@ -78,6 +78,20 @@ As fases da lua não vêm de API nenhuma: são calculadas pelo algoritmo de Jean
 Meeus (*Astronomical Algorithms*, cap. 49), em `lib/moon.ts`. Conferido contra
 efemérides publicadas, o erro fica em torno de 1 minuto.
 
+### Cotação ao vivo (KuCoin)
+
+A cotação em tempo real vem da **KuCoin**, também sem chave. A REST dela não
+devolve cabeçalhos CORS, então o navegador não pode chamá-la direto — daí o
+proxy em `/api/kucoin/token`. Já o WebSocket **é isento de CORS**, de modo que
+o navegador conecta direto em `wss://ws-api-spot.kucoin.com` e o preço flui
+sem passar pelo servidor. Isso também imuniza contra bloqueio por região: quem
+conecta é o visitante, não a função na Vercel.
+
+Se o `wss:` estiver bloqueado (rede corporativa, proxy, extensão), o componente
+cai automaticamente para polling REST a cada 8 segundos. O indicador ao lado do
+preço mostra qual dos dois está ativo: **ao vivo** (WebSocket) ou **atualizando**
+(REST).
+
 ## Rodando localmente
 
 ```bash
@@ -102,6 +116,9 @@ Veja `.env.example`:
 - `lib/bitstamp.ts` — busca paginada de candles e agregação para timeframes maiores
 - `lib/moon.ts` — cálculo astronômico das fases da lua
 - `lib/bitcoin.ts` — SMA, EMA, volatilidade e RSI
+- `components/LivePrice.tsx` — cotação ao vivo da KuCoin, com fallback REST
+- `lib/window.ts` — caracterização da janela lunar e estratégia com fallback
+- `lib/backtest.ts` — motor de backtest, Monte Carlo e testes de significância
 - `lib/supabase/` — clients Supabase (browser e server)
 
 ## Cache no Supabase (opcional)

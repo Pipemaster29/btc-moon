@@ -1,4 +1,5 @@
 import Link from "next/link";
+import LivePrice from "@/components/LivePrice";
 import PriceChart from "@/components/PriceChart";
 import { getBitcoinAnalysis } from "@/lib/bitcoin";
 import { MOON_PHASE_LABEL, MOON_PHASE_SYMBOL, moonPhasesBetween } from "@/lib/moon";
@@ -42,10 +43,13 @@ export default async function Home() {
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold">BTC Moon 🌙</h1>
-            <p className="text-black/60 dark:text-white/60 mt-1">
+            <p className="text-black/60 dark:text-white/60 mt-1 mb-3">
               Análise de Bitcoin com dados públicos e indicadores matemáticos, com as
               fases da lua sobrepostas ao gráfico.
             </p>
+            {/* A cotação ao vivo vem da KuCoin; o histórico continua vindo da
+                Bitstamp, então a variação usa o fechamento de ontem como base. */}
+            <LivePrice referenceClose={analysis.previousClose} />
           </div>
           <Link
             href="/analise"

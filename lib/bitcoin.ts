@@ -2,6 +2,8 @@ import { getCandles } from "./bitstamp";
 
 export interface BitcoinAnalysis {
   currentPrice: number;
+  /** Fechamento do dia anterior, base da variação diária mostrada ao vivo. */
+  previousClose: number;
   sma7: number;
   sma30: number;
   ema12: number;
@@ -68,6 +70,7 @@ export async function getBitcoinAnalysis(): Promise<BitcoinAnalysis> {
 
   return {
     currentPrice: closes[closes.length - 1],
+    previousClose: closes[closes.length - 2] ?? closes[closes.length - 1],
     sma7: simpleMovingAverage(closes, 7),
     sma30: simpleMovingAverage(closes, 30),
     ema12: exponentialMovingAverage(closes, 12),
