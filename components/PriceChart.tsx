@@ -15,6 +15,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { Candle, Timeframe } from "@/lib/bitstamp";
+import { useLivePrice } from "./LivePriceProvider";
 import {
   MOON_PHASE_LABEL,
   MOON_PHASE_SYMBOL,
@@ -51,6 +52,14 @@ const DOWN_COLOR = "#F6465D";
 
 /** Referência estável para o estado vazio, para não refazer efeitos a cada render. */
 const EMPTY_CANDLES: Candle[] = [];
+
+/** Duração de cada período, para saber a qual vela um tick ao vivo pertence. */
+const TIMEFRAME_SECONDS: Record<Timeframe, number> = {
+  "1h": 3600,
+  "4h": 14400,
+  "1d": 86400,
+  "1w": 604800,
+};
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
@@ -90,6 +99,11 @@ export default function PriceChart() {
   const loading = !error && loaded?.tf !== timeframe;
 
   const isDark = useIsDark();
+  const { tick } = useLivePrice();
+
+  // A vela em formação vive fora do React: ela muda a cada tick e só o
+  // lightweight-charts precisa saber disso.
+  const liveBarRef = useRef<CandlestickData<Time> | null>(null);
 
   // Fases da lua cobrindo todo o período carregado. Cálculo puro, roda no
   // cliente sem nenhuma chamada de rede.
@@ -225,6 +239,54 @@ export default function PriceChart() {
       mode: logScale ? 1 : 0,
     });
   }, [logScale, candles]);
+
+  // A última vela segue o preço ao vivo. Sem isto o gráfico congela no
+  // fechamento vindo da Bitstamp enquanto a cotação acima dele continua andando.
+  useEffect(() => {
+    const series = candleSeriesRef.current;
+    if (!series || !tick || candles.length === 0) return;
+
+    const bucket = TIMEFRAME_SECONDS[timeframe];
+    const last = candles[candles.length - 1];
+    const nowBucket = Math.floor(Date.now() / 1000 / bucket) * bucket;
+
+    let bar = liveBarRef.current;
+
+    if (nowBucket > last.time) {
+      // O período virou e a vela nova ainda não existe nos dados carregados.
+      if (!bar || bar.time !== nowBucket) {
+        bar = {
+          time: nowBucket as UTCTimestamp,
+          open: tick.price,
+          high: tick.price,
+          low: tick.price,
+          close: tick.price,
+        };
+      }
+    } else if (!bar || bar.time !== last.time) {
+      // Ainda dentro do último período carregado: continua a vela existente,
+      // preservando abertura, máxima e mínima já registradas.
+      bar = {
+        time: last.time as UTCTimestamp,
+        open: last.open,
+        high: last.high,
+        low: last.low,
+        close: last.close,
+      };
+    }
+
+    bar.high = Math.max(bar.high, tick.price);
+    bar.low = Math.min(bar.low, tick.price);
+    bar.close = tick.price;
+    liveBarRef.current = bar;
+
+    series.update(bar);
+  }, [tick, candles, timeframe]);
+
+  // Trocar de timeframe ou recarregar dados invalida a vela acumulada.
+  useEffect(() => {
+    liveBarRef.current = null;
+  }, [timeframe, candles]);
 
   // Marcadores lunares, recalculados conforme o intervalo visível.
   useEffect(() => {
