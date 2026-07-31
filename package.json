@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "analyze": "tsx scripts/analyze.mts",
-    "periods": "tsx scripts/periods.mts"
+    "periods": "tsx scripts/periods.mts",
+    "dip": "tsx scripts/dip.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

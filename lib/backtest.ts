@@ -33,6 +33,54 @@ export interface StrategyParams {
   stopLossPct: number;
   /** Direção da aposta. Ausente equivale a comprada. */
   direction?: Direction;
+  /**
+   * Desconto da ordem limitada em relação ao fechamento do dia do sinal.
+   * 0 entra a mercado; 0,03 espera uma queda de 3% para comprar.
+   */
+  entryDiscountPct?: number;
+  /** Dias que a ordem limitada fica válida antes de ser cancelada. */
+  entryWindowDays?: number;
+  /** Alvo de saída em fração do preço de entrada; 0 desliga. */
+  takeProfitPct?: number;
+  /**
+   * Só entra quando o RSI do dia do sinal estiver a favor: comprada exige RSI
+   * abaixo do limite, vendida exige acima do complemento.
+   */
+  rsiThreshold?: number;
+}
+
+/**
+ * RSI de Wilder alinhado ao vetor de candles.
+ *
+ * As primeiras `period` posições ficam como NaN — não há histórico suficiente
+ * para calculá-las, e devolver um número ali fabricaria sinal onde não existe.
+ */
+export function rsiSeries(candles: Candle[], period = 14): number[] {
+  const rsi = new Array<number>(candles.length).fill(NaN);
+  if (candles.length <= period) return rsi;
+
+  let avgGain = 0;
+  let avgLoss = 0;
+
+  for (let i = 1; i <= period; i++) {
+    const change = candles[i].close - candles[i - 1].close;
+    if (change > 0) avgGain += change;
+    else avgLoss += Math.abs(change);
+  }
+  avgGain /= period;
+  avgLoss /= period;
+  rsi[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+
+  for (let i = period + 1; i < candles.length; i++) {
+    const change = candles[i].close - candles[i - 1].close;
+    const gain = change > 0 ? change : 0;
+    const loss = change < 0 ? Math.abs(change) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    rsi[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  }
+
+  return rsi;
 }
 
 /**
@@ -78,6 +126,10 @@ export interface BacktestResult {
   tradeCount: number;
   /** Fração do período com posição aberta. */
   timeInMarket: number;
+  /** Sinais lunares que não viraram operação (ordem não executada ou filtro). */
+  signalsSkipped: number;
+  /** Fração dos sinais que virou operação. */
+  fillRate: number;
 }
 
 /** Índice auxiliar: número do dia (UTC) → posição no vetor de candles. */
@@ -107,28 +159,78 @@ function findCandleAtOrAfter(
 }
 
 /**
- * Simula uma operação: entra no fechamento do candle `entryIdx` e sai após
- * `holdingDays`, ou antes se o stop for tocado.
+ * Onde a ordem de entrada foi executada, ou `null` se ela nunca disparou.
  *
- * O stop é avaliado contra a extremidade adversa do candle — mínima quando
- * comprado, máxima quando vendido — e assume execução no preço exato do stop.
- * Num gap além dele a saída real seria pior, então esta é a hipótese otimista.
- * Também não há custo de aluguel nem funding, que na venda a descoberto são
- * cobrados continuamente e corroem o resultado.
+ * Com `entryDiscountPct` igual a zero a entrada é a mercado, no fechamento do
+ * dia do sinal. Acima disso vira ordem limitada: comprada, abaixo do preço de
+ * referência; vendida, acima. Ela só executa se o candle alcançar o preço — o
+ * que é verificável sem espiar o futuro, porque uma ordem parada no book teria
+ * sido executada de qualquer forma.
  */
-function simulateTrade(
+function resolveEntry(
   candles: Candle[],
-  entryIdx: number,
+  signalIdx: number,
   params: StrategyParams,
-): Trade | null {
-  const entry = candles[entryIdx];
-  if (!entry) return null;
+  rsi?: number[],
+): { index: number; price: number } | null {
+  const signal = candles[signalIdx];
+  if (!signal) return null;
 
   const direction = params.direction ?? "long";
-  const entryPrice = entry.close;
 
-  // Comprado o stop fica abaixo e é acionado pela mínima; vendido fica acima
-  // e é acionado pela máxima.
+  // O filtro usa o RSI já fechado no dia do sinal. Usar o do dia da execução
+  // seria olhar para frente.
+  if (params.rsiThreshold !== undefined && rsi) {
+    const value = rsi[signalIdx];
+    if (!Number.isFinite(value)) return null;
+    const favorable =
+      direction === "long"
+        ? value <= params.rsiThreshold
+        : value >= 100 - params.rsiThreshold;
+    if (!favorable) return null;
+  }
+
+  const discount = params.entryDiscountPct ?? 0;
+  if (discount <= 0) {
+    return { index: signalIdx, price: signal.close };
+  }
+
+  const limitPrice =
+    direction === "long"
+      ? signal.close * (1 - discount)
+      : signal.close * (1 + discount);
+
+  const window = params.entryWindowDays ?? 0;
+  const lastIdx = Math.min(signalIdx + window, candles.length - 1);
+
+  for (let i = signalIdx + 1; i <= lastIdx; i++) {
+    const candle = candles[i];
+    const filled =
+      direction === "long" ? candle.low <= limitPrice : candle.high >= limitPrice;
+    if (filled) return { index: i, price: limitPrice };
+  }
+
+  // A queda esperada não veio dentro da janela: nenhuma operação acontece.
+  return null;
+}
+
+/**
+ * Simula a posição a partir da execução até a saída, que ocorre pelo alvo, pelo
+ * stop ou pelo prazo — o que vier primeiro.
+ *
+ * Duas hipóteses importam na leitura dos números. O stop e o alvo assumem
+ * execução no preço exato, sem gap, o que é otimista. E quando alvo e stop são
+ * tocados no mesmo candle, o diário não diz qual veio antes: assume-se o stop,
+ * que é a leitura pessimista. Também não há corretagem, spread nem funding.
+ */
+function simulatePosition(
+  candles: Candle[],
+  entryIdx: number,
+  entryPrice: number,
+  params: StrategyParams,
+): Trade | null {
+  const direction = params.direction ?? "long";
+
   const hasStop = params.stopLossPct > 0;
   const stopPrice = hasStop
     ? direction === "long"
@@ -136,53 +238,66 @@ function simulateTrade(
       : entryPrice * (1 + params.stopLossPct)
     : 0;
 
+  const takeProfit = params.takeProfitPct ?? 0;
+  const hasTarget = takeProfit > 0;
+  const targetPrice = hasTarget
+    ? direction === "long"
+      ? entryPrice * (1 + takeProfit)
+      : entryPrice * (1 - takeProfit)
+    : 0;
+
   const lastIdx = Math.min(entryIdx + params.holdingDays, candles.length - 1);
   if (lastIdx <= entryIdx) return null;
 
+  const entryTime = candles[entryIdx].time;
+
+  const close = (exitTime: number, exitPrice: number, stopped: boolean): Trade => ({
+    entryTime,
+    exitTime,
+    entryPrice,
+    exitPrice,
+    return: positionReturn(entryPrice, exitPrice, direction),
+    stopped,
+    direction,
+  });
+
   for (let i = entryIdx + 1; i <= lastIdx; i++) {
     const candle = candles[i];
-    const hit =
+
+    const stopHit =
       hasStop &&
       (direction === "long" ? candle.low <= stopPrice : candle.high >= stopPrice);
+    if (stopHit) return close(candle.time, stopPrice, true);
 
-    if (hit) {
-      return {
-        entryTime: entry.time,
-        exitTime: candle.time,
-        entryPrice,
-        exitPrice: stopPrice,
-        return: positionReturn(entryPrice, stopPrice, direction),
-        stopped: true,
-        direction,
-      };
-    }
+    const targetHit =
+      hasTarget &&
+      (direction === "long"
+        ? candle.high >= targetPrice
+        : candle.low <= targetPrice);
+    if (targetHit) return close(candle.time, targetPrice, false);
 
     // Sem stop, uma venda a descoberto pode ser liquidada: se o preço dobra, a
     // perda chega a 100% e a posição acaba. Ignorar isso permitiria "recuperar"
     // de uma bancada já zerada.
     if (!hasStop && direction === "short" && candle.high >= entryPrice * 2) {
-      return {
-        entryTime: entry.time,
-        exitTime: candle.time,
-        entryPrice,
-        exitPrice: entryPrice * 2,
-        return: -1,
-        stopped: true,
-        direction,
-      };
+      return close(candle.time, entryPrice * 2, true);
     }
   }
 
   const exit = candles[lastIdx];
-  return {
-    entryTime: entry.time,
-    exitTime: exit.time,
-    entryPrice,
-    exitPrice: exit.close,
-    return: positionReturn(entryPrice, exit.close, direction),
-    stopped: false,
-    direction,
-  };
+  return close(exit.time, exit.close, false);
+}
+
+/** Entrada e posição encadeadas a partir de um dia de sinal. */
+function simulateTrade(
+  candles: Candle[],
+  signalIdx: number,
+  params: StrategyParams,
+  rsi?: number[],
+): Trade | null {
+  const entry = resolveEntry(candles, signalIdx, params, rsi);
+  if (!entry) return null;
+  return simulatePosition(candles, entry.index, entry.price, params);
 }
 
 /**
@@ -249,7 +364,11 @@ function sharpeRatio(curve: number[]): number {
   return sd === 0 ? 0 : (mean / sd) * Math.sqrt(365);
 }
 
-function summarize(candles: Candle[], trades: Trade[]): BacktestResult {
+function summarize(
+  candles: Candle[],
+  trades: Trade[],
+  signalsSkipped = 0,
+): BacktestResult {
   const curve = equityCurve(candles, trades);
   const finalEquity = curve[curve.length - 1] ?? 1;
 
@@ -289,6 +408,11 @@ function summarize(candles: Candle[], trades: Trade[]): BacktestResult {
     sharpe: sharpeRatio(curve),
     tradeCount: trades.length,
     timeInMarket: spanDays > 0 ? daysHeld / spanDays : 0,
+    signalsSkipped,
+    fillRate:
+      trades.length + signalsSkipped === 0
+        ? 0
+        : trades.length / (trades.length + signalsSkipped),
   };
 }
 
@@ -299,28 +423,33 @@ export function runBacktest(
   params: StrategyParams,
 ): BacktestResult {
   const dayIndex = buildDayIndex(candles);
+  const rsi = params.rsiThreshold !== undefined ? rsiSeries(candles) : undefined;
   const trades: Trade[] = [];
   let lastExitTime = 0;
+  let skipped = 0;
 
   for (const phase of phases) {
     if (phase.phase !== params.phase) continue;
 
     const targetDay =
       Math.floor(phase.date.getTime() / 1000 / DAY) + params.entryOffsetDays;
-    const entryIdx = findCandleAtOrAfter(candles, dayIndex, targetDay);
-    if (entryIdx === null) continue;
+    const signalIdx = findCandleAtOrAfter(candles, dayIndex, targetDay);
+    if (signalIdx === null) continue;
 
     // Uma posição por vez: janelas longas podem alcançar a fase seguinte.
-    if (candles[entryIdx].time < lastExitTime) continue;
+    if (candles[signalIdx].time < lastExitTime) continue;
 
-    const trade = simulateTrade(candles, entryIdx, params);
-    if (!trade) continue;
+    const trade = simulateTrade(candles, signalIdx, params, rsi);
+    if (!trade) {
+      skipped++;
+      continue;
+    }
 
     trades.push(trade);
     lastExitTime = trade.exitTime;
   }
 
-  return summarize(candles, trades);
+  return summarize(candles, trades, skipped);
 }
 
 /** Comprar no primeiro candle e segurar até o último. */
@@ -459,8 +588,12 @@ export function monteCarloNull(
   seed = 12345,
 ): MonteCarloResult {
   const random = makeRandom(seed);
+  const rsi = params.rsiThreshold !== undefined ? rsiSeries(candles) : undefined;
   const samples: number[] = [];
-  const latestEntry = candles.length - params.holdingDays - 1;
+  // A janela da ordem limitada também consome dias, então o último sinal
+  // possível recua junto — sem isso o sorteio geraria entradas impossíveis.
+  const latestEntry =
+    candles.length - params.holdingDays - (params.entryWindowDays ?? 0) - 1;
 
   for (let trial = 0; trial < trials; trial++) {
     const entries: number[] = [];
@@ -474,10 +607,11 @@ export function monteCarloNull(
 
     for (const entryIdx of entries) {
       if (entryIdx <= lastExitIdx) continue;
-      const trade = simulateTrade(candles, entryIdx, params);
+      const trade = simulateTrade(candles, entryIdx, params, rsi);
+      // Sinal descartado conta como "sem operação", igual à estratégia real.
       if (!trade) continue;
       equity *= Math.max(1 + trade.return, 0);
-      lastExitIdx = entryIdx + params.holdingDays;
+      lastExitIdx = entryIdx + params.holdingDays + (params.entryWindowDays ?? 0);
     }
 
     samples.push(equity - 1);
@@ -522,6 +656,8 @@ export interface Grid {
   stopLosses: number[];
   /** Direções varridas. Ausente equivale a só comprada. */
   directions?: Direction[];
+  /** Limiares de RSI varridos. Ausente desliga o filtro. */
+  rsiThresholds?: number[];
 }
 
 /** Varre o espaço de parâmetros e devolve tudo ordenado por retorno. */
@@ -569,6 +705,7 @@ function bestGridReturn(
 ): number {
   let best = -Infinity;
   const directions = grid.directions ?? ["long"];
+  const rsi = grid.rsiThresholds ? rsiSeries(candles) : undefined;
 
   for (const direction of directions) {
     for (const phase of grid.phases) {
@@ -598,7 +735,7 @@ function bestGridReturn(
               if (entryIdx === null) continue;
               if (candles[entryIdx].time < lastExitTime) continue;
 
-              const trade = simulateTrade(candles, entryIdx, params);
+              const trade = simulateTrade(candles, entryIdx, params, rsi);
               if (!trade) continue;
 
               equity *= Math.max(1 + trade.return, 0);

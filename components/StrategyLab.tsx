@@ -192,6 +192,9 @@ export default function StrategyLab({ candles: allCandles }: { candles: Candle[]
     holdingDays: 14,
     stopLossPct: 0.08,
     direction: "long",
+    entryDiscountPct: 0,
+    entryWindowDays: 7,
+    takeProfitPct: 0,
   });
 
   const candles = useMemo(() => {
@@ -342,6 +345,48 @@ export default function StrategyLab({ candles: allCandles }: { candles: Candle[]
             format={(v) => (v === 0 ? "sem stop" : pct(v))}
             onChange={(v) => setParams((p) => ({ ...p, stopLossPct: v }))}
           />
+
+          <Slider
+            label="Esperar uma queda de"
+            value={params.entryDiscountPct ?? 0}
+            min={0}
+            max={0.15}
+            step={0.005}
+            format={(v) => (v === 0 ? "entra a mercado" : pct(v))}
+            onChange={(v) => setParams((p) => ({ ...p, entryDiscountPct: v }))}
+          />
+
+          <Slider
+            label="Ordem válida por"
+            value={params.entryWindowDays ?? 7}
+            min={1}
+            max={14}
+            step={1}
+            format={(v) => `${v} dias`}
+            onChange={(v) => setParams((p) => ({ ...p, entryWindowDays: v }))}
+          />
+
+          <Slider
+            label="Alvo de saída"
+            value={params.takeProfitPct ?? 0}
+            min={0}
+            max={0.3}
+            step={0.01}
+            format={(v) => (v === 0 ? "sem alvo" : pct(v))}
+            onChange={(v) => setParams((p) => ({ ...p, takeProfitPct: v }))}
+          />
+
+          <Slider
+            label="Só entrar com RSI abaixo de"
+            value={params.rsiThreshold ?? 100}
+            min={20}
+            max={100}
+            step={5}
+            format={(v) => (v >= 100 ? "sem filtro" : String(v))}
+            onChange={(v) =>
+              setParams((p) => ({ ...p, rsiThreshold: v >= 100 ? undefined : v }))
+            }
+          />
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -358,7 +403,15 @@ export default function StrategyLab({ candles: allCandles }: { candles: Candle[]
             value={pct(result.maxDrawdown)}
             hint={`segurar: ${pct(bh.maxDrawdown)}`}
           />
-          <Metric label="Operações" value={String(result.tradeCount)} />
+          <Metric
+            label="Operações"
+            value={String(result.tradeCount)}
+            hint={
+              result.signalsSkipped > 0
+                ? `${result.signalsSkipped} sinais sem entrada`
+                : undefined
+            }
+          />
           <Metric label="Tempo posicionado" value={pct(result.timeInMarket)} />
           <Metric label="Sharpe" value={result.sharpe.toFixed(2)} hint={`segurar: ${bh.sharpe.toFixed(2)}`} />
           <Metric label="Retorno médio/op" value={pct(result.meanTradeReturn)} />
