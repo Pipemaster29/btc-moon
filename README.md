@@ -11,6 +11,9 @@ volatilidade, RSI) e as fases da lua sobrepostas ao preço.
 - **Fases da lua sobre o gráfico** — lua nova, quarto crescente, cheia e
   minguante, cada uma podendo ser ligada ou desligada.
 - **Indicadores**: SMA 7/30, EMA 12, volatilidade anualizada e RSI de Wilder.
+- **28 eventos que marcaram o mercado** marcados no gráfico — Mt. Gox, FTX,
+  aprovação dos ETFs, halvings — coloridos por categoria.
+- **Cotação ao vivo** da KuCoin, com a vela em formação acompanhando o preço.
 
 ## A lua prevê o preço? Não.
 
@@ -53,8 +56,18 @@ recortes; com doze testes, um acerto desses é o esperado por acaso.
 
 A melhor combinação de **todos** os períodos é comprada, nunca vendida.
 
-Reproduza com `npm run analyze` (período completo) e `npm run periods`
-(comparação por ano de entrada).
+### E os grandes eventos, caem perto da lua cheia?
+
+Também não. A distância média dos 28 eventos até a lua cheia mais próxima é
+**7,66 dias**, contra 7,38 esperados se não houvesse relação alguma — ou seja,
+ficam um pouco *mais longe* que o acaso (p = 0,63).
+
+A FTX suspendeu saques a 0,5 dia de uma lua cheia, o que impressiona. Mas o El
+Salvador e a aprovação dos ETFs caem a 14 dias, no extremo oposto do ciclo.
+
+Reproduza com `npm run analyze` (período completo), `npm run periods` (por ano
+de entrada), `npm run pattern` (o padrão "cai antes, sobe depois") e
+`npm run events` (proximidade dos eventos).
 
 ## Stack
 
@@ -117,6 +130,7 @@ Veja `.env.example`:
 - `lib/moon.ts` — cálculo astronômico das fases da lua
 - `lib/bitcoin.ts` — SMA, EMA, volatilidade e RSI
 - `components/LivePrice.tsx` — cotação ao vivo da KuCoin, com fallback REST
+- `lib/events.ts` — os 28 eventos que marcaram o mercado, com data e categoria
 - `lib/window.ts` — caracterização da janela lunar e estratégia com fallback
 - `lib/backtest.ts` — motor de backtest, Monte Carlo e testes de significância
 - `lib/supabase/` — clients Supabase (browser e server)

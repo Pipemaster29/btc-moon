@@ -109,6 +109,104 @@ function PeriodTable() {
   );
 }
 
+/** Saída de `npm run events`: 28 eventos vs. 20.000 sorteios. */
+const EVENT_TEST = {
+  observed: "7,66",
+  expected: "7,38",
+  randomRange: "6,05 a 8,71",
+  p: "0,63",
+  closest: [
+    { date: "08/11/2022", label: "FTX suspende saques", days: "0,5" },
+    { date: "05/06/2023", label: "SEC processa a Binance", days: "0,8" },
+    { date: "06/10/2025", label: "Máxima histórica", days: "1,2" },
+    { date: "12/03/2020", label: "Quinta-feira Negra da covid", days: "2,3" },
+  ],
+  farthest: [
+    { date: "07/09/2021", label: "El Salvador adota o Bitcoin", days: "14,0" },
+    { date: "10/01/2024", label: "SEC aprova os ETFs spot", days: "14,0" },
+    { date: "10/04/2013", label: "Estouro da bolha de 2013", days: "13,6" },
+    { date: "17/12/2017", label: "Topo do ciclo de 2017", days: "13,3" },
+  ],
+};
+
+function EventsTable() {
+  return (
+    <section className="rounded-xl border border-black/10 dark:border-white/10 p-5 flex flex-col gap-4">
+      <div>
+        <h2 className="font-semibold">Os grandes eventos caem perto da lua cheia?</h2>
+        <p className="text-xs text-black/50 dark:text-white/50 mt-1">
+          28 eventos que moveram o mercado, da Mt. Gox à Reserva Estratégica dos EUA,
+          medidos pela distância até a lua cheia mais próxima. Todos estão marcados no
+          gráfico da página inicial.
+        </p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <p className="text-xs font-medium text-[#0ECB81] mb-2">Mais próximos</p>
+          <ul className="text-sm flex flex-col gap-1.5">
+            {EVENT_TEST.closest.map((e) => (
+              <li key={e.label} className="flex justify-between gap-3">
+                <span className="text-black/70 dark:text-white/70">
+                  {e.label}
+                  <span className="text-black/40 dark:text-white/40 text-xs"> · {e.date}</span>
+                </span>
+                <span className="tabular-nums whitespace-nowrap">{e.days}d</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-[#F6465D] mb-2">Mais distantes</p>
+          <ul className="text-sm flex flex-col gap-1.5">
+            {EVENT_TEST.farthest.map((e) => (
+              <li key={e.label} className="flex justify-between gap-3">
+                <span className="text-black/70 dark:text-white/70">
+                  {e.label}
+                  <span className="text-black/40 dark:text-white/40 text-xs"> · {e.date}</span>
+                </span>
+                <span className="tabular-nums whitespace-nowrap">{e.days}d</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-black/5 dark:bg-white/5 p-3 text-sm">
+        <div className="flex flex-wrap gap-x-6 gap-y-1">
+          <span>
+            Distância média observada:{" "}
+            <strong className="tabular-nums">{EVENT_TEST.observed} dias</strong>
+          </span>
+          <span className="text-black/60 dark:text-white/60">
+            Esperado sem relação: <span className="tabular-nums">{EVENT_TEST.expected} dias</span>
+          </span>
+          <span className="text-black/60 dark:text-white/60">
+            Faixa do acaso:{" "}
+            <span className="tabular-nums">{EVENT_TEST.randomRange} dias</span>
+          </span>
+          <span className="text-[#F6465D] font-medium">p = {EVENT_TEST.p}</span>
+        </div>
+      </div>
+
+      <p className="text-xs text-black/60 dark:text-white/60">
+        A média observada é <strong>maior</strong> que a esperada — os eventos ficam, se
+        alguma coisa, um pouco <em>mais longe</em> da lua cheia do que datas sorteadas.
+        A FTX a 0,5 dia da lua cheia é impressionante, mas o El Salvador e a aprovação
+        do ETF caem a 14 dias, exatamente no extremo oposto. É a memória seletiva de
+        sempre: os casos que encaixam ficam; os que não encaixam somem.
+      </p>
+      <p className="text-xs text-black/50 dark:text-white/50">
+        Uma ressalva sobre este teste em particular: fui eu quem escolheu quais eventos
+        entram na lista. Uma seleção diferente move os números. Separando por categoria,
+        as quebras ficam a 6,15 dias em média e as adoções institucionais a 12,43 — mas
+        olhar categorias depois de ver o resultado é o mesmo erro de escolher a melhor
+        de milhares de estratégias, e mesmo assim o p das quebras dá 0,18.
+      </p>
+    </section>
+  );
+}
+
 /** Saída de `npm run pattern`: 105 luas cheias vs. 200 conjuntos sorteados. */
 const PATTERN = {
   moon: { drop: "−11,13%", rise: "+13,76%", fromClose: "+7,99%" },
@@ -257,6 +355,8 @@ export default async function AnalysisPage() {
         <Verdict />
 
         <PatternTable />
+
+        <EventsTable />
 
         <PeriodTable />
 

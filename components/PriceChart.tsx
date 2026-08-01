@@ -17,6 +17,11 @@ import {
 import type { Candle, Timeframe } from "@/lib/bitstamp";
 import { useLivePrice } from "./LivePriceProvider";
 import {
+  EVENT_KIND_COLOR,
+  MARKET_EVENTS,
+  eventTime,
+} from "@/lib/events";
+import {
   MOON_PHASE_LABEL,
   MOON_PHASE_SYMBOL,
   moonPhasesBetween,
@@ -85,6 +90,7 @@ export default function PriceChart() {
   const [timeframe, setTimeframe] = useState<Timeframe>("1d");
   const [activePhases, setActivePhases] = useState<MoonPhaseName[]>(DEFAULT_PHASES);
   const [logScale, setLogScale] = useState(true);
+  const [showEvents, setShowEvents] = useState(true);
 
   // Resultado e erro carregam junto o timeframe a que pertencem, de modo que
   // "carregando" seja estado derivado em vez de um setState dentro do efeito.
@@ -308,7 +314,7 @@ export default function PriceChart() {
 
       // Com o gráfico afastado sobram fases demais para caber; nesse caso os
       // marcadores viram ruído, então some com eles até o usuário aproximar.
-      const markers: SeriesMarker<Time>[] =
+      const moonMarkers: SeriesMarker<Time>[] =
         visible.length > MAX_MARKERS
           ? []
           : visible.map((p) => ({
@@ -319,14 +325,34 @@ export default function PriceChart() {
               text: MOON_PHASE_SYMBOL[p.phase],
             }));
 
-      plugin.setMarkers(markers);
+      // Eventos ficam abaixo das velas para não disputar espaço com a lua.
+      // São poucos, então não passam pelo mesmo teto dos marcadores lunares.
+      const eventMarkers: SeriesMarker<Time>[] = showEvents
+        ? MARKET_EVENTS.filter((e) => {
+            const seconds = eventTime(e);
+            return seconds >= from && seconds <= to;
+          }).map((e) => ({
+            time: eventTime(e) as UTCTimestamp,
+            position: "belowBar" as const,
+            color: EVENT_KIND_COLOR[e.kind],
+            shape: "arrowUp" as const,
+            text: e.short,
+          }))
+        : [];
+
+      // A biblioteca exige os marcadores em ordem cronológica.
+      plugin.setMarkers(
+        [...moonMarkers, ...eventMarkers].sort(
+          (a, b) => Number(a.time) - Number(b.time),
+        ),
+      );
     };
 
     render();
     const timeScale = chart.timeScale();
     timeScale.subscribeVisibleTimeRangeChange(render);
     return () => timeScale.unsubscribeVisibleTimeRangeChange(render);
-  }, [moonPhases, activePhases, candles]);
+  }, [moonPhases, activePhases, candles, showEvents]);
 
   function togglePhase(phase: MoonPhaseName) {
     setActivePhases((current) =>
@@ -370,7 +396,20 @@ export default function PriceChart() {
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          <button
+            onClick={() => setShowEvents((on) => !on)}
+            aria-pressed={showEvents}
+            title="Marca no gráfico os eventos que moveram o mercado cripto"
+            className={`px-2 py-1 text-xs rounded-md border transition-colors ${
+              showEvents
+                ? "border-current text-[#A78BFA]"
+                : "border-transparent opacity-40 hover:opacity-70"
+            }`}
+          >
+            ▲ Eventos
+          </button>
+          <span className="h-4 w-px bg-black/10 dark:bg-white/15" />
           {(Object.keys(MOON_PHASE_LABEL) as MoonPhaseName[]).map((phase) => (
             <button
               key={phase}
