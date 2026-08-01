@@ -109,6 +109,80 @@ function PeriodTable() {
   );
 }
 
+/** Saída de `npm run pattern`: 105 luas cheias vs. 200 conjuntos sorteados. */
+const PATTERN = {
+  moon: { drop: "−11,13%", rise: "+13,76%", fromClose: "+7,99%" },
+  random: { drop: "−11,15%", rise: "+14,15%", fromClose: "+8,63%" },
+  randomRange: { drop: "−12,45% a −9,94%", rise: "+12,36% a +15,93%", fromClose: "+7,38% a +9,72%" },
+};
+
+function PatternTable() {
+  return (
+    <section className="rounded-xl border border-black/10 dark:border-white/10 p-5 flex flex-col gap-3">
+      <div>
+        <h2 className="font-semibold">“Cai antes da lua cheia e sobe depois”</h2>
+        <p className="text-xs text-black/50 dark:text-white/50 mt-1">
+          O padrão mais citado, medido com precisão: a queda do topo até o fundo nos 10
+          dias anteriores, e a subida daquele fundo até o topo dos 10 dias seguintes.
+        </p>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse min-w-[560px]">
+          <thead>
+            <tr className="text-left text-xs text-black/50 dark:text-white/50">
+              <th className="py-2 pr-3 font-medium"></th>
+              <th className="py-2 pr-3 font-medium">Na lua cheia</th>
+              <th className="py-2 pr-3 font-medium">Em datas sorteadas</th>
+              <th className="py-2 font-medium">Faixa do acaso</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-t border-black/10 dark:border-white/10">
+              <td className="py-2 pr-3">Queda antes</td>
+              <td className="py-2 pr-3 text-[#F6465D] font-medium">{PATTERN.moon.drop}</td>
+              <td className="py-2 pr-3 text-[#F6465D]">{PATTERN.random.drop}</td>
+              <td className="py-2 text-black/50 dark:text-white/50 text-xs">
+                {PATTERN.randomRange.drop}
+              </td>
+            </tr>
+            <tr className="border-t border-black/10 dark:border-white/10">
+              <td className="py-2 pr-3">Subida depois</td>
+              <td className="py-2 pr-3 text-[#0ECB81] font-medium">{PATTERN.moon.rise}</td>
+              <td className="py-2 pr-3 text-[#0ECB81]">{PATTERN.random.rise}</td>
+              <td className="py-2 text-black/50 dark:text-white/50 text-xs">
+                {PATTERN.randomRange.rise}
+              </td>
+            </tr>
+            <tr className="border-t border-black/10 dark:border-white/10">
+              <td className="py-2 pr-3">Comprando no fechamento da fase</td>
+              <td className="py-2 pr-3 font-medium">{PATTERN.moon.fromClose}</td>
+              <td className="py-2 pr-3">{PATTERN.random.fromClose}</td>
+              <td className="py-2 text-black/50 dark:text-white/50 text-xs">
+                {PATTERN.randomRange.fromClose}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs text-black/60 dark:text-white/60">
+        O padrão é <strong>real e mensurável</strong>: queda de 11% seguida de subida de
+        14%, em <strong>100% das janelas</strong>. Só que ele aparece igual em qualquer
+        data — sorteando âncoras ao acaso a queda dá −11,15% e a subida +14,15%. A lua
+        cheia fica no percentil 48% da queda e 35% da subida, ou seja, no meio ou abaixo
+        do acaso.
+      </p>
+      <p className="text-xs text-black/60 dark:text-white/60">
+        A razão é o método de medir: procurar o topo, depois o fundo, depois o topo
+        seguinte <em>sempre</em> encontra uma queda seguida de subida — é assim que a
+        série foi recortada, não uma propriedade da data. Um gráfico com essa marcação
+        mostra o padrão em toda lua cheia, e mostraria igual em toda terça-feira.
+      </p>
+    </section>
+  );
+}
+
 function ShortTable() {
   return (
     <section className="rounded-xl border border-black/10 dark:border-white/10 p-5 flex flex-col gap-3">
@@ -181,6 +255,8 @@ export default async function AnalysisPage() {
         </header>
 
         <Verdict />
+
+        <PatternTable />
 
         <PeriodTable />
 
