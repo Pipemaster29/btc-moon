@@ -14,6 +14,7 @@
 
 import type { Candle } from "./bitstamp";
 import type { MoonPhase, MoonPhaseName } from "./moon";
+import type { Direction } from "./backtest";
 
 const DAY = 86400;
 
@@ -21,16 +22,22 @@ export interface WickParams {
   phase: MoonPhaseName;
   /** Dias antes da fase em que a observação começa. */
   lookbackDays: number;
-  /** Queda em relação à máxima corrente da janela que dispara a compra. */
+  /**
+   * Distância da ordem até o extremo corrente da janela. Comprado, é o quanto
+   * o preço precisa cair abaixo da máxima; vendido, o quanto precisa subir
+   * acima da mínima.
+   */
   dipPct: number;
-  /** Alta sobre o preço de entrada que dispara a venda. */
+  /** Movimento a favor, sobre o preço de entrada, que dispara a saída. */
   targetPct: number;
-  /** Stop loss abaixo do preço de entrada; 0 desliga. */
+  /** Stop loss contra a posição; 0 desliga. */
   stopPct: number;
   /** Dias após a fase em que a posição é encerrada, se ainda estiver aberta. */
   exitAfterPhaseDays: number;
-  /** Compra no dia da fase quando a queda não vem. */
+  /** Entra a mercado no dia da fase quando a ordem não executa. */
   fallback: boolean;
+  /** Direção da aposta. Ausente equivale a comprada. */
+  direction?: Direction;
 }
 
 export type ExitReason = "target" | "stop" | "deadline";
@@ -114,6 +121,20 @@ export interface WickProfile {
   };
   /** Alta máxima após a fase, medida contra o fundo da janela. */
   riseQuantiles: { p25: number; median: number; mean: number; p75: number };
+  /**
+   * Espelho de `dipQuantiles` para a venda: alta máxima da janela contra a
+   * mínima corrente. `deep` aqui é o percentil 90 — as altas mais violentas,
+   * que são o risco de quem está vendido.
+   */
+  rallyQuantiles: {
+    p25: number;
+    median: number;
+    mean: number;
+    p75: number;
+    deep: number;
+  };
+  /** Queda máxima após a fase, medida contra o topo da janela. */
+  dropAfterQuantiles: { p25: number; median: number; mean: number; p75: number };
   eventCount: number;
 }
 
@@ -151,6 +172,8 @@ export function profileWicks(
 
   const dips: number[] = [];
   const rises: number[] = [];
+  const rallies: number[] = [];
+  const dropsAfter: number[] = [];
   let events = 0;
 
   for (const p of phases) {
@@ -194,6 +217,30 @@ export function profileWicks(
     if (Number.isFinite(lowest) && Number.isFinite(highest)) {
       rises.push(highest / lowest - 1);
     }
+
+    // Espelho para a venda: maior alta da janela contra a mínima corrente.
+    let runningLow = candles[phaseIdx - lookbackDays].low;
+    let bestRally = 0;
+    for (let i = phaseIdx - lookbackDays; i <= phaseIdx; i++) {
+      const c = candles[i];
+      if (c.low < runningLow) runningLow = c.low;
+      const rally = c.high / runningLow - 1;
+      if (rally > bestRally) bestRally = rally;
+    }
+    rallies.push(bestRally);
+
+    // E a maior queda depois da fase, contra o topo da janela.
+    let windowHigh = -Infinity;
+    for (let i = phaseIdx - lookbackDays; i <= phaseIdx; i++) {
+      if (candles[i].high > windowHigh) windowHigh = candles[i].high;
+    }
+    let lowestAfter = Infinity;
+    for (let i = phaseIdx + 1; i <= phaseIdx + forwardDays; i++) {
+      if (candles[i].low < lowestAfter) lowestAfter = candles[i].low;
+    }
+    if (Number.isFinite(windowHigh) && Number.isFinite(lowestAfter)) {
+      dropsAfter.push(lowestAfter / windowHigh - 1);
+    }
   }
 
   const byDay: IntradayDayStat[] = offsets.map((offset) => {
@@ -226,9 +273,19 @@ export function profileWicks(
     };
   });
 
+  const rallyQ = quantiles(rallies);
+
   return {
     byDay,
     dipQuantiles: quantiles(dips),
+    // Para altas, o extremo perigoso está no topo da distribuição.
+    rallyQuantiles: {
+      ...rallyQ,
+      deep: [...rallies].sort((a, b) => a - b)[
+        Math.min(Math.floor(rallies.length * 0.9), rallies.length - 1)
+      ],
+    },
+    dropAfterQuantiles: quantiles(dropsAfter),
     riseQuantiles: quantiles(rises),
     eventCount: events,
   };
@@ -260,23 +317,39 @@ export function runWickStrategyAt(
     if (start < 1 || deadline <= phaseIdx) continue;
     if (start <= lastExitIdx) continue;
 
-    // A ordem persegue a máxima corrente: a cada novo topo o limite sobe junto.
+    const direction = params.direction ?? "long";
+
+    // A ordem persegue o extremo corrente da janela: comprada, fica abaixo da
+    // máxima e sobe junto com ela; vendida, fica acima da mínima e desce junto.
     let runningHigh = candles[start].high;
+    let runningLow = candles[start].low;
     let entryIdx: number | null = null;
     let entryPrice = 0;
     let onWick = false;
 
     for (let i = start; i <= phaseIdx; i++) {
       const c = candles[i];
-      const limit = runningHigh * (1 - params.dipPct);
 
-      if (c.low <= limit) {
-        entryIdx = i;
-        entryPrice = limit;
-        onWick = true;
-        break;
+      if (direction === "long") {
+        const limit = runningHigh * (1 - params.dipPct);
+        if (c.low <= limit) {
+          entryIdx = i;
+          entryPrice = limit;
+          onWick = true;
+          break;
+        }
+      } else {
+        const limit = runningLow * (1 + params.dipPct);
+        if (c.high >= limit) {
+          entryIdx = i;
+          entryPrice = limit;
+          onWick = true;
+          break;
+        }
       }
+
       if (c.high > runningHigh) runningHigh = c.high;
+      if (c.low < runningLow) runningLow = c.low;
     }
 
     if (entryIdx === null) {
@@ -289,8 +362,17 @@ export function runWickStrategyAt(
       onWick = false;
     }
 
-    const target = entryPrice * (1 + params.targetPct);
-    const stop = params.stopPct > 0 ? entryPrice * (1 - params.stopPct) : 0;
+    // Alvo e stop trocam de lado conforme a direção.
+    const target =
+      direction === "long"
+        ? entryPrice * (1 + params.targetPct)
+        : entryPrice * (1 - params.targetPct);
+    const stop =
+      params.stopPct > 0
+        ? direction === "long"
+          ? entryPrice * (1 - params.stopPct)
+          : entryPrice * (1 + params.stopPct)
+        : 0;
 
     let exitIdx = deadline;
     let exitPrice = candles[deadline].close;
@@ -302,16 +384,22 @@ export function runWickStrategyAt(
     for (let i = entryIdx; i <= deadline; i++) {
       const c = candles[i];
 
-      if (stop > 0 && c.low <= stop) {
+      const stopHit =
+        stop > 0 && (direction === "long" ? c.low <= stop : c.high >= stop);
+      if (stopHit) {
         exitIdx = i;
         exitPrice = stop;
         exitReason = "stop";
         break;
       }
+
       // O alvo só é avaliado a partir do dia seguinte: no dia da entrada não dá
-      // para saber se a máxima veio antes ou depois da mínima que executou a
-      // compra, e supor que veio depois seria a leitura otimista.
-      if (i > entryIdx && c.high >= target) {
+      // para saber se o extremo a favor veio antes ou depois do que executou a
+      // entrada, e supor que veio depois seria a leitura otimista.
+      const targetHit =
+        i > entryIdx &&
+        (direction === "long" ? c.high >= target : c.low <= target);
+      if (targetHit) {
         exitIdx = i;
         exitPrice = target;
         exitReason = "target";
@@ -324,7 +412,10 @@ export function runWickStrategyAt(
       exitTime: candles[exitIdx].time,
       entryPrice,
       exitPrice,
-      return: exitPrice / entryPrice - 1,
+      return:
+        direction === "long"
+          ? exitPrice / entryPrice - 1
+          : 1 - exitPrice / entryPrice,
       onWick,
       exitReason,
       entryOffset: entryIdx - phaseIdx,
@@ -343,7 +434,7 @@ function summarize(
   let equity = 1;
   const curve: number[] = [1];
   for (const t of trades) {
-    equity *= 1 + t.return;
+    equity *= Math.max(1 + t.return, 0);
     curve.push(equity);
   }
 
