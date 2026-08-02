@@ -16,7 +16,9 @@
     "mechanics": "tsx scripts/mechanics.mts",
     "wick": "tsx scripts/wick.mts",
     "fills": "tsx scripts/fills.mts",
-    "short": "tsx scripts/short.mts"
+    "short": "tsx scripts/short.mts",
+    "fetch-deriv": "tsx scripts/fetch-derivatives.mts",
+    "oi-cvd": "tsx scripts/oi-cvd.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",
