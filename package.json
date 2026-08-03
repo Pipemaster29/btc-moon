@@ -18,7 +18,8 @@
     "fills": "tsx scripts/fills.mts",
     "short": "tsx scripts/short.mts",
     "fetch-deriv": "tsx scripts/fetch-derivatives.mts",
-    "oi-cvd": "tsx scripts/oi-cvd.mts"
+    "oi-cvd": "tsx scripts/oi-cvd.mts",
+    "compare": "tsx scripts/compare.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",
