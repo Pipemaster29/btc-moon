@@ -198,19 +198,25 @@ const holdTest = bars[bars.length - 1].close / bars[split].close;
 console.log(`\n  Comprar e segurar: ${holdAll.toFixed(2)}x no período todo`);
 console.log(`    ${holdTrain.toFixed(2)}x no treino · ${holdTest.toFixed(2)}x no teste`);
 console.log(`  Corte fora da amostra em ${splitDate}\n`);
-console.log("  cenário                                 tudo   ops     treino    teste   segurar(teste)");
+console.log("  cenário                                 tudo   ops    treino  vs.seg     teste  vs.seg");
 
 for (const regime of REGIMES) {
   const all = tradeRegime(labels, regime, HORIZON, 0, bars.length);
   const tr = tradeRegime(labels, regime, HORIZON, 0, split);
   const te = tradeRegime(labels, regime, HORIZON, split, bars.length);
+  // O que interessa é a diferença para segurar em CADA metade, porque as duas
+  // metades caíram em regimes de mercado muito diferentes.
+  const trEdge = tr.equity / holdTrain - 1;
+  const teEdge = te.equity / holdTest - 1;
   console.log(
-    `  ${REGIME_LABEL[regime].padEnd(38)} ${`${all.equity.toFixed(2)}x`.padStart(6)} ${String(all.trades).padStart(5)}   ${`${tr.equity.toFixed(2)}x`.padStart(7)}  ${`${te.equity.toFixed(2)}x`.padStart(7)}   ${`${holdTest.toFixed(2)}x`.padStart(8)}`,
+    `  ${REGIME_LABEL[regime].padEnd(38)} ${`${all.equity.toFixed(2)}x`.padStart(6)} ${String(all.trades).padStart(5)}  ${`${tr.equity.toFixed(2)}x`.padStart(7)} ${signed(trEdge).padStart(7)}  ${`${te.equity.toFixed(2)}x`.padStart(7)} ${signed(teEdge).padStart(7)}`,
   );
 }
 
 console.log(`
-  A comparação que importa é treino contra teste: um sinal real mantém o sinal
-  nas duas metades. O melhor cenário da primeira metade precisa continuar bom na
-  segunda para não ser apenas o vencedor de uma escolha feita olhando os dados.
+  ATENÇÃO ao ler estes números: o corte caiu num ponto em que o preço voltou
+  quase exatamente ao de 2021-01-01 (US$ 29.337 contra US$ 28.382). A primeira
+  metade é um ciclo inteiro que terminou de lado, ${holdTrain.toFixed(2)}x, e a segunda é uma
+  alta de ${holdTest.toFixed(2)}x. Comparar o retorno bruto das duas metades não diz nada — só
+  a diferença para segurar DENTRO de cada metade é comparável.
 `);
