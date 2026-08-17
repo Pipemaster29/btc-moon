@@ -25,6 +25,8 @@ export interface WatchedToken {
   chain: string;
   /** Contrato ERC-20/BEP-20; vazio quando a moeda não vive nesta rede. */
   contract: string;
+  /** Bloco da primeira transferência — o começo da vida do token. */
+  firstBlock: number;
   wallets: WatchedWallet[];
 }
 
@@ -35,6 +37,9 @@ export const WATCHLIST: WatchedToken[] = [
     // Bitway Token, confirmado on-chain: símbolo BTW, 18 decimais,
     // 10 bilhões de supply.
     contract: "0x444045B0EE1ee319A660a5E3d604CA0ffA35ACaA",
+    // Primeira transferência em 2026-02-27, achada por busca binária sobre os
+    // logs. O perpétuo só nasceu em junho: a moeda é mais velha que o pump.
+    firstBlock: 83663846,
     wallets: [
       {
         address: "0x26209d9f0Dc3aC0129C3FB1bADaBFeb9eE728c66",
@@ -63,6 +68,21 @@ export const WATCHLIST: WatchedToken[] = [
         label: "Bitget (quente)",
         verified: false,
       },
+      // Estas duas não vieram da lista original: apareceram na varredura como
+      // destino do movimento de 16/08. Receberam 12M e 8M em valores redondos,
+      // cada uma precedida por uma transferência de teste, e desde então não
+      // moveram nada. Estão sem BNB, então não CONSEGUEM mover — a chegada de
+      // gás em qualquer uma delas é o aviso de que a venda vem a seguir.
+      {
+        address: "0x97673748476e5D7b0c3d944094aD7ce45fE90261",
+        label: "novo 12M (16/08)",
+        verified: true,
+      },
+      {
+        address: "0xd34E22fc32bFE217c112fB037361b612c54471d9",
+        label: "novo 8M (16/08)",
+        verified: true,
+      },
     ],
   },
   {
@@ -74,6 +94,7 @@ export const WATCHLIST: WatchedToken[] = [
     // dia): usá-lo mediria a moeda errada. Sem contrato, este símbolo é
     // acompanhado só pelo lado dos derivativos.
     contract: "",
+    firstBlock: 0,
     wallets: [],
   },
 ];

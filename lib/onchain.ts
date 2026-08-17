@@ -27,6 +27,24 @@ const ENDPOINTS = [
   "https://bsc-dataseed1.ninicoin.io",
 ];
 
+/**
+ * Endpoints que servem histórico completo.
+ *
+ * Quase nenhum nó público serve: dos doze testados, um único devolve log de
+ * bloco antigo e outro devolve estado antigo. Eles fazem coisas diferentes e
+ * não são intercambiáveis — o primeiro responde `eth_getLogs` em qualquer
+ * profundidade, o segundo responde `eth_call` em qualquer profundidade.
+ */
+const ARCHIVE_LOG_ENDPOINTS = ["https://bsc.rpc.blxrbdn.com"];
+const ARCHIVE_STATE_ENDPOINTS = ["https://bsc-mainnet.public.blastapi.io"];
+
+/**
+ * Teto de vazão do endpoint de arquivo, medido: ~4,6 requisições por segundo,
+ * e concorrência acima de 16 não melhora nada. Agrupar chamadas em lote também
+ * não ajuda, porque o limite conta requisições, não conexões.
+ */
+export const ARCHIVE_CONCURRENCY = 16;
+
 /** Faixa máxima aceita por chamada de `eth_getLogs`. */
 export const MAX_LOG_SPAN = 5000;
 
@@ -54,11 +72,16 @@ interface RpcResponse {
  * Um erro devolvido pelo nó (faixa grande demais, estado podado) também dispara
  * a troca: outro endpoint pode ter política diferente para a mesma pergunta.
  */
-async function rpc(method: string, params: unknown[]): Promise<unknown> {
+async function callRpc(
+  pool: string[],
+  method: string,
+  params: unknown[],
+  attempts: number,
+): Promise<unknown> {
   let lastError = "sem resposta";
 
-  for (let attempt = 0; attempt < ENDPOINTS.length * 2; attempt++) {
-    const url = ENDPOINTS[cursor % ENDPOINTS.length];
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const url = pool[cursor % pool.length];
     cursor++;
 
     try {
@@ -66,12 +89,24 @@ async function rpc(method: string, params: unknown[]): Promise<unknown> {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: nextId++, method, params }),
-        signal: AbortSignal.timeout(20_000),
+        signal: AbortSignal.timeout(30_000),
       });
 
-      const body = (await res.json()) as RpcResponse;
+      // Nós sobrecarregados às vezes respondem texto puro em vez de JSON;
+      // deixar o parser estourar derrubaria a varredura inteira.
+      const text = await res.text();
+      let body: RpcResponse;
+      try {
+        body = JSON.parse(text) as RpcResponse;
+      } catch {
+        lastError = text.slice(0, 60);
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+        continue;
+      }
+
       if (body.error) {
         lastError = body.error.message;
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
         continue;
       }
       if (body.result === undefined) {
@@ -81,10 +116,15 @@ async function rpc(method: string, params: unknown[]): Promise<unknown> {
       return body.result;
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
     }
   }
 
   throw new Error(`${method}: ${lastError}`);
+}
+
+async function rpc(method: string, params: unknown[]): Promise<unknown> {
+  return callRpc(ENDPOINTS, method, params, ENDPOINTS.length * 2);
 }
 
 /** Endereço de 20 bytes no formato de 32 bytes usado nos tópicos de evento. */
@@ -161,6 +201,24 @@ export async function balancesOf(
   return new Map(entries);
 }
 
+/**
+ * Saldo de BNB de vários endereços, em unidades inteiras (wei).
+ *
+ * Interessa como combustível, não como riqueza: sem BNB uma carteira não paga
+ * gás, e portanto não consegue mover token nenhum por mais que segure. Uma
+ * carteira cheia de token e vazia de BNB está travada, e o momento em que
+ * alguém a abastece é o aviso de que vão movimentá-la.
+ */
+export async function gasOf(addresses: string[]): Promise<Map<string, bigint>> {
+  const entries = await Promise.all(
+    addresses.map(async (address) => {
+      const wei = (await rpc("eth_getBalance", [address, "latest"])) as string;
+      return [address.toLowerCase(), BigInt(wei)] as const;
+    }),
+  );
+  return new Map(entries);
+}
+
 /** Distingue carteira de contrato — trocas usam ambos, e o rótulo muda a leitura. */
 export async function isContract(address: string): Promise<boolean> {
   const code = (await rpc("eth_getCode", [address, "latest"])) as string;
@@ -211,21 +269,165 @@ export async function transfersBetween(
     ])) as RawLog[];
 
     for (const log of logs) {
-      // Transferências com tópicos faltando vêm de contratos que emitem o
-      // evento fora do padrão; não dá para lê-las com segurança.
-      if (log.topics.length < 3) continue;
-
-      out.push({
-        block: Number(BigInt(log.blockNumber)),
-        txHash: log.transactionHash,
-        from: unpadAddress(log.topics[1]),
-        to: unpadAddress(log.topics[2]),
-        value: BigInt(log.data === "0x" ? "0x0" : log.data),
-      });
+      const transfer = decodeTransfer(log);
+      if (transfer) out.push(transfer);
     }
   }
 
   return out.sort((a, b) => a.block - b.block);
+}
+
+/** Um log cru de Transfer virando evento tipado, ou nulo se estiver malformado. */
+function decodeTransfer(log: RawLog): Transfer | null {
+  // Transferências com tópicos faltando vêm de contratos que emitem o evento
+  // fora do padrão; não dá para lê-las com segurança.
+  if (log.topics.length < 3) return null;
+
+  return {
+    block: Number(BigInt(log.blockNumber)),
+    txHash: log.transactionHash,
+    from: unpadAddress(log.topics[1]),
+    to: unpadAddress(log.topics[2]),
+    value: BigInt(log.data === "0x" ? "0x0" : log.data),
+  };
+}
+
+// ------------------------------------------------------------------ arquivo
+
+export interface ScanOptions {
+  token: string;
+  fromBlock: number;
+  toBlock: number;
+  /**
+   * Restringe a varredura a transferências que tocam estes endereços.
+   *
+   * Sem o filtro, um token movimentado devolve milhares de eventos por faixa —
+   * dezenas de milhões na vida inteira, inviável de trafegar. Com ele, são
+   * algumas dezenas. O custo é que cada faixa vira DUAS consultas: tópicos são
+   * posicionais e combinam com E, então remetente e destinatário não cabem na
+   * mesma pergunta.
+   */
+  involving?: string[];
+  onProgress?: (done: number, total: number, found: number) => void;
+}
+
+export interface ScanResult {
+  transfers: Transfer[];
+  /** Faixas que nenhuma tentativa conseguiu ler. */
+  failed: number;
+}
+
+/**
+ * Faixa sem filtro de carteira.
+ *
+ * Um token movimentado devolve milhares de eventos em 5 mil blocos, e a
+ * resposta chega a estourar o tempo limite do nó. Faixas curtas trocam mais
+ * requisições por respostas que cabem — e requisição que retorna vale mais do
+ * que faixa larga que falha.
+ */
+const UNFILTERED_SPAN = 500;
+
+/**
+ * Varre transferências de um token em qualquer profundidade da cadeia.
+ *
+ * Os eventos voltam ordenados e sem repetição: as duas consultas por faixa se
+ * sobrepõem quando remetente e destinatário estão ambos na lista vigiada, e
+ * contar duas vezes a mesma transferência estragaria qualquer saldo derivado.
+ */
+export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
+  const { token, fromBlock, toBlock, involving, onProgress } = options;
+
+  const padded = involving?.map(padAddress) ?? [];
+  const filters: (string[] | null)[][] = padded.length
+    ? [[padded], [null, padded]]
+    : [[]];
+
+  const span = padded.length ? MAX_LOG_SPAN : UNFILTERED_SPAN;
+
+  const starts: number[] = [];
+  for (let start = fromBlock; start <= toBlock; start += span) {
+    starts.push(start);
+  }
+
+  const found = new Map<string, Transfer>();
+  let done = 0;
+  let next = 0;
+  let failed = 0;
+
+  async function worker(): Promise<void> {
+    while (next < starts.length) {
+      const start = starts[next++];
+      const end = Math.min(start + span - 1, toBlock);
+
+      for (const tail of filters) {
+        // Uma faixa perdida não pode derrubar a varredura inteira: numa
+        // varredura de milhares de faixas, alguma sempre falha, e abortar
+        // desperdiça tudo o que já foi lido.
+        try {
+          const logs = (await callRpc(
+            ARCHIVE_LOG_ENDPOINTS,
+            "eth_getLogs",
+            [
+              {
+                fromBlock: `0x${start.toString(16)}`,
+                toBlock: `0x${end.toString(16)}`,
+                address: token,
+                topics: [TRANSFER_TOPIC, ...tail],
+              },
+            ],
+            6,
+          )) as RawLog[];
+
+          for (const log of logs) {
+            const transfer = decodeTransfer(log);
+            if (!transfer) continue;
+            // Hash sozinho não identifica: uma transação pode emitir vários
+            // Transfer. Tópicos e valor juntos separam os eventos irmãos.
+            found.set(`${log.transactionHash}|${log.topics.join("")}|${log.data}`, transfer);
+          }
+        } catch {
+          failed++;
+        }
+      }
+
+      done++;
+      onProgress?.(done, starts.length, found.size);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(ARCHIVE_CONCURRENCY, starts.length) }, worker),
+  );
+
+  return {
+    transfers: [...found.values()].sort((a, b) => a.block - b.block),
+    failed,
+  };
+}
+
+/** Saldo do token num bloco passado, via nó de arquivo. */
+export async function balanceAt(
+  token: string,
+  holder: string,
+  block: number,
+): Promise<bigint> {
+  const data = `0x70a08231${padAddress(holder).slice(2)}`;
+  const result = (await callRpc(
+    ARCHIVE_STATE_ENDPOINTS,
+    "eth_call",
+    [{ to: token, data }, `0x${block.toString(16)}`],
+    8,
+  )) as string;
+  return BigInt(result === "0x" ? "0x0" : result);
+}
+
+/** Timestamp de vários blocos, para converter altura em data. */
+export async function blockTimes(blocks: number[]): Promise<Map<number, number>> {
+  const unique = [...new Set(blocks)];
+  const entries = await Promise.all(
+    unique.map(async (block) => [block, await blockTime(block)] as const),
+  );
+  return new Map(entries);
 }
 
 /**

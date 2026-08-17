@@ -17,6 +17,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import {
   balancesOf,
   blockNumber,
+  gasOf,
   isContract,
   toUnits,
   tokenInfo,
@@ -136,6 +137,26 @@ async function report(token: WatchedToken, state: State): Promise<void> {
   console.log(
     `  ${"TOTAL".padEnd(20)} ${units(held).padStart(11)}  ${money(held * price).padStart(11)}  ${((held / supply) * 100).toFixed(3).padStart(8)}%`,
   );
+
+  // --------------------------------------------------------------- combustível
+  const gas = await gasOf(addresses);
+  const stuck = token.wallets.filter((w) => {
+    const bnb = Number(gas.get(w.address.toLowerCase()) ?? BigInt(0)) / 1e18;
+    return bnb < 0.001 && (current[w.address.toLowerCase()] ?? 0) > 0;
+  });
+
+  if (stuck.length > 0) {
+    console.log(`\n  TRAVADAS POR FALTA DE GÁS`);
+    for (const wallet of stuck) {
+      const amount = current[wallet.address.toLowerCase()] ?? 0;
+      console.log(
+        `    ${wallet.label.padEnd(20)} ${units(amount).padStart(11)} (${money(amount * price)}) · 0 BNB — não consegue mover`,
+      );
+    }
+    console.log(
+      `\n    Vigie a chegada de BNB nestes endereços: é o passo obrigatório antes\n    de qualquer venda, e acontece minutos antes dela.`,
+    );
+  }
 
   // ------------------------------------------------------------- o veredito
   if (depth && depth.liquidityUsd > 0) {
