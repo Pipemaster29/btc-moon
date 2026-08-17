@@ -140,10 +140,17 @@ async function report(token: WatchedToken, state: State): Promise<void> {
 
   // --------------------------------------------------------------- combustível
   const gas = await gasOf(addresses);
-  const stuck = token.wallets.filter((w) => {
+
+  // O sinal só vale para carteira comum. Um contrato não paga o próprio gás:
+  // quem o chama é que paga, então saldo zero de BNB num contrato não trava
+  // nada e listá-lo aqui daria uma falsa sensação de segurança.
+  const starving = token.wallets.filter((w) => {
     const bnb = Number(gas.get(w.address.toLowerCase()) ?? BigInt(0)) / 1e18;
     return bnb < 0.001 && (current[w.address.toLowerCase()] ?? 0) > 0;
   });
+
+  const kinds = await Promise.all(starving.map((w) => isContract(w.address)));
+  const stuck = starving.filter((_, i) => !kinds[i]);
 
   if (stuck.length > 0) {
     console.log(`\n  TRAVADAS POR FALTA DE GÁS`);
@@ -158,6 +165,44 @@ async function report(token: WatchedToken, state: State): Promise<void> {
     );
   }
 
+  // ------------------------------------------------------ estrutura do supply
+  //
+  // O market cap divulgado supõe que o supply circulante é vendável. Somando
+  // por papel dá para checar essa suposição em vez de aceitá-la: o que está
+  // travado em contrato e o que está parado sem gás não são oferta.
+  const byRole = new Map<string, number>();
+  for (const wallet of token.wallets) {
+    const amount = current[wallet.address.toLowerCase()] ?? 0;
+    byRole.set(wallet.role, (byRole.get(wallet.role) ?? 0) + amount);
+  }
+
+  const locked = byRole.get("lock") ?? 0;
+  const dormant = byRole.get("dormant") ?? 0;
+  const mapped = held;
+  const unmapped = supply - mapped;
+
+  console.log(`\n  ESTRUTURA DO SUPPLY`);
+  const line = (name: string, amount: number, note: string) =>
+    console.log(
+      `    ${name.padEnd(24)} ${units(amount).padStart(10)}  ${((amount / supply) * 100).toFixed(2).padStart(6)}%  ${money(amount * price).padStart(9)}   ${note}`,
+    );
+
+  line("travado em contrato", locked, "só sai se o administrador mandar");
+  line("parado sem gás", dormant, "não consegue mover");
+  line("em corretora", byRole.get("exchange") ?? 0, "custódia / oferta pronta");
+  line("distribuidora", byRole.get("treasury") ?? 0, "de onde saem os repasses");
+  line("operacional", byRole.get("operational") ?? 0, "ativa, com gás");
+  line("não mapeado", unmapped, "todo o resto do mercado");
+
+  // A oferta que pode virar venda hoje é o que sobra depois de tirar trava e
+  // paralisia. É esse número, e não o supply, que o preço tem de absorver.
+  const sellable = (byRole.get("exchange") ?? 0) + (byRole.get("treasury") ?? 0)
+    + (byRole.get("operational") ?? 0) + unmapped;
+
+  console.log(
+    `\n    oferta destravada        ${units(sellable).padStart(10)}  ${((sellable / supply) * 100).toFixed(2).padStart(6)}%  ${money(sellable * price).padStart(9)}`,
+  );
+
   // ------------------------------------------------------------- o veredito
   if (depth && depth.liquidityUsd > 0) {
     const value = held * price;
@@ -165,16 +210,17 @@ async function report(token: WatchedToken, state: State): Promise<void> {
 
     console.log(`\n  CONCENTRAÇÃO vs LIQUIDEZ`);
     console.log(`    nas carteiras vigiadas : ${money(value)}`);
+    console.log(`    oferta destravada      : ${money(sellable * price)}`);
     console.log(`    liquidez à vista total : ${money(depth.liquidityUsd)}`);
-    console.log(`    razão                  : ${ratio.toFixed(0)}x`);
+    console.log(`    razão (destravado/liq) : ${(sellable * price / depth.liquidityUsd).toFixed(0)}x`);
 
     if (ratio > 50) {
       console.log(`
-    Estas carteiras seguram ${ratio.toFixed(0)} vezes mais do que a pool inteira
-    consegue absorver. O preço de tela não é um preço em que esse volume possa
-    ser vendido — é o preço do último punhado de dólares que passou por uma pool
-    de ${money(depth.liquidityUsd)}. É a assinatura de um livro controlado, e explica por que
-    o mercado real da moeda é o perpétuo, não o mercado à vista.`);
+    A oferta que pode virar venda vale ${money(sellable * price)} e a pool inteira
+    aguenta ${money(depth.liquidityUsd)} — ${((sellable * price) / depth.liquidityUsd).toFixed(0)} vezes menos. O preço de tela não é um preço
+    em que esse volume possa ser vendido; é o preço do último punhado de dólares
+    que passou por uma pool rasa. É por isso que o mercado real da moeda é o
+    perpétuo, e não o mercado à vista.`);
     }
   }
 
