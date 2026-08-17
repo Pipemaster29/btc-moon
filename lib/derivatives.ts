@@ -79,24 +79,64 @@ export function parseKlines(csv: string): Omit<DerivBar, "cvd" | "openInterest">
 }
 
 /**
- * Open interest de fechamento do dia, a partir do arquivo de métricas de 5 em
- * 5 minutos. Usa a última leitura, que é a que corresponde ao candle diário.
+ * Uma leitura do painel de posicionamento da Binance, a cada 5 minutos.
+ *
+ * As três razões medem coisas distintas e é fácil confundi-las. `accountRatio`
+ * conta CABEÇAS entre todos os clientes; `topTraderAccountRatio` conta cabeças
+ * só entre as maiores contas; e `topTraderPositionRatio` pesa pelo TAMANHO da
+ * posição dessas contas. A divergência entre as duas últimas é justamente o que
+ * separa "muitas baleias compradas" de "muito dinheiro comprado".
  */
-export function parseOpenInterest(csv: string): number {
-  let last = NaN;
+export interface PositioningSnapshot {
+  time: number;
+  openInterest: number;
+  openInterestValue: number;
+  /** Contas grandes compradas ÷ vendidas, por cabeça. */
+  topTraderAccountRatio: number;
+  /** Posição comprada ÷ vendida das contas grandes, por tamanho. */
+  topTraderPositionRatio: number;
+  /** Todas as contas compradas ÷ vendidas, por cabeça. */
+  accountRatio: number;
+  /** Volume agressor comprador ÷ vendedor. */
+  takerRatio: number;
+}
+
+/** Todas as leituras do arquivo diário de métricas. */
+export function parsePositioning(csv: string): PositioningSnapshot[] {
+  const out: PositioningSnapshot[] = [];
 
   for (const line of csv.split("\n")) {
     const row = line.trim();
     if (!row || row.startsWith("create_time")) continue;
 
     const cols = row.split(",");
-    if (cols.length < 3) continue;
+    if (cols.length < 8) continue;
 
-    const oi = Number(cols[2]);
-    if (Number.isFinite(oi)) last = oi;
+    const time = Date.parse(`${cols[0].replace(" ", "T")}Z`) / 1000;
+    if (!Number.isFinite(time)) continue;
+
+    out.push({
+      time,
+      openInterest: Number(cols[2]),
+      openInterestValue: Number(cols[3]),
+      topTraderAccountRatio: Number(cols[4]),
+      topTraderPositionRatio: Number(cols[5]),
+      accountRatio: Number(cols[6]),
+      takerRatio: Number(cols[7]),
+    });
   }
 
-  return last;
+  return out;
+}
+
+/**
+ * Open interest de fechamento do dia, a partir do arquivo de métricas de 5 em
+ * 5 minutos. Usa a última leitura, que é a que corresponde ao candle diário.
+ */
+export function parseOpenInterest(csv: string): number {
+  const snapshots = parsePositioning(csv);
+  const last = snapshots[snapshots.length - 1];
+  return last ? last.openInterest : NaN;
 }
 
 /** Acumula o delta para formar o CVD e junta o open interest de cada dia. */
