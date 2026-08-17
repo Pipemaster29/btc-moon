@@ -164,8 +164,10 @@ export const WATCHLIST: WatchedToken[] = [
       },
       {
         address: "0x87dC0E03e7AC509Cd4500B18a3D104BE1C9b1383",
-        label: "59M",
-        role: "dormant",
+        // 76 transações e BNB no saldo: mexe pouco, mas mexe. Chamar de parada
+        // subestimaria a oferta que pode virar venda.
+        label: "59M ativa",
+        role: "operational",
         verified: true,
       },
       // Quatro carteiras com valores redondos, zero transações enviadas e zero

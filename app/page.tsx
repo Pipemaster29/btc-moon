@@ -71,12 +71,20 @@ export default async function Home() {
                 Bitstamp, então a variação usa o fechamento de ontem como base. */}
               <LivePrice referenceClose={analysis.previousClose} />
             </div>
-            <Link
-              href="/analise"
-              className="text-sm px-3 py-2 rounded-md border border-black/15 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 transition-colors whitespace-nowrap"
-            >
-              A lua move o preço? →
-            </Link>
+            <nav className="flex flex-wrap gap-2">
+              <Link
+                href="/analise"
+                className="text-sm px-3 py-2 rounded-md border border-black/15 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 transition-colors whitespace-nowrap"
+              >
+                A lua move o preço? →
+              </Link>
+              <Link
+                href="/radar"
+                className="text-sm px-3 py-2 rounded-md border border-black/15 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 transition-colors whitespace-nowrap"
+              >
+                Radar de manipulação →
+              </Link>
+            </nav>
           </header>
 
           <PriceChart />
