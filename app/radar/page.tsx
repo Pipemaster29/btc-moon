@@ -1,5 +1,7 @@
 import Link from "next/link";
+import PositioningPanel from "@/components/PositioningPanel";
 import { getRadar, type AlertLevel, type RadarSnapshot } from "@/lib/radar";
+import { getPositioning, type PositioningSnapshotView } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
 
 /**
@@ -247,12 +249,22 @@ function Transfers({ snapshot }: { snapshot: RadarSnapshot }) {
 }
 
 export default async function Radar() {
-  const symbols = WATCHLIST.filter((t) => t.contract).map((t) => t.symbol);
-  const snapshots = (await Promise.all(symbols.map(getRadar))).filter(
-    (s): s is RadarSnapshot => s !== null,
-  );
+  // O on-chain só existe para quem tem contrato configurado; o perpétuo existe
+  // para todos os símbolos da lista, inclusive os que não vivem na BSC.
+  const [onchain, positioning] = await Promise.all([
+    Promise.all(WATCHLIST.filter((t) => t.contract).map((t) => getRadar(t.symbol))),
+    Promise.all(WATCHLIST.map((t) => getPositioning(t.symbol))),
+  ]);
 
-  const skipped = WATCHLIST.filter((t) => !t.contract);
+  const snapshots = onchain.filter((s): s is RadarSnapshot => s !== null);
+
+  const perpBySymbol = new Map<string, PositioningSnapshotView>();
+  for (const p of positioning) if (p) perpBySymbol.set(p.symbol, p);
+
+  // Símbolos que só têm leitura de derivativos, sem lado on-chain.
+  const perpOnly = WATCHLIST.filter(
+    (t) => !t.contract && perpBySymbol.has(t.symbol),
+  );
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50 font-sans dark:bg-black">
@@ -328,23 +340,33 @@ export default async function Radar() {
               </section>
             )}
 
+            {perpBySymbol.has(snapshot.symbol) && (
+              <PositioningPanel snapshot={perpBySymbol.get(snapshot.symbol)!} />
+            )}
+
             <SupplyBar snapshot={snapshot} />
             <Wallets snapshot={snapshot} />
             <Transfers snapshot={snapshot} />
           </div>
         ))}
 
-        {skipped.length > 0 && (
-          <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
-            <h2 className="font-semibold">Sem leitura on-chain</h2>
-            <p className="text-sm text-black/60 dark:text-white/60 mt-1">
-              {skipped.map((t) => t.symbol).join(", ")} — o PRL negociado com volume é o
-              Perle, que vive na Solana. O contrato BSC de mesmo símbolo é outro projeto,
+        {perpOnly.map((token) => (
+          <div key={token.symbol} className="flex flex-col gap-6">
+            <div className="flex flex-wrap items-baseline gap-3">
+              <h2 className="text-xl font-semibold">{token.symbol.replace("USDT", "")}</h2>
+              <span className="text-sm text-black/50 dark:text-white/50">
+                só derivativos
+              </span>
+            </div>
+            <p className="text-sm text-black/60 dark:text-white/60">
+              O PRL negociado com volume é o Perle, que vive na Solana — fora do alcance
+              da leitura on-chain daqui. O contrato BSC de mesmo símbolo é outro projeto,
               com US$ 445 mil de FDV e quatro negócios por dia: usá-lo mediria a moeda
-              errada.
+              errada, então este símbolo é acompanhado só pelo lado do perpétuo.
             </p>
-          </section>
-        )}
+            <PositioningPanel snapshot={perpBySymbol.get(token.symbol)!} />
+          </div>
+        ))}
 
         <p className="text-xs text-black/40 dark:text-white/40">
           Leitura pública da BNB Smart Chain e do DexScreener, sem chave de API. Rótulos

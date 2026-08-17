@@ -12,10 +12,9 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { promisify } from "node:util";
+import { monthlyKlineUrl, metricsUrl } from "../lib/datavision";
 import {
   assemble,
-  klineUrl,
-  metricsUrl,
   parseKlines,
   parseOpenInterest,
   type DerivBar,
@@ -110,7 +109,7 @@ const klineParts = new Map<string, string>();
 let klineOk = 0;
 
 await pool(months, CONCURRENCY, async (month) => {
-  const csv = await fetchCsv(klineUrl(SYMBOL, "1d", month), `k-${month}.csv`);
+  const csv = await fetchCsv(monthlyKlineUrl(SYMBOL, "1d", month), `k-${month}.csv`);
   if (csv) {
     klineParts.set(month, csv);
     klineOk++;

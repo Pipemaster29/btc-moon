@@ -9,19 +9,14 @@
  * Rode com: npm run watch BTWUSDT PRLUSDT
  */
 
-import { execFile } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import { promisify } from "node:util";
+import { monthlyKlineUrl, metricsUrl } from "../lib/datavision";
 import {
-  klineUrl,
-  metricsUrl,
   parseKlines,
   parsePositioning,
   type PositioningSnapshot,
 } from "../lib/derivatives";
+import { cachedCsv } from "./cache.mjs";
 
-const run = promisify(execFile);
 const CACHE = ".cache/watch";
 
 const symbols = process.argv.slice(2).map((s) => s.toUpperCase());
@@ -33,33 +28,6 @@ if (symbols.length === 0) {
 const signed = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`;
 const money = (v: number) =>
   v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}k`;
-
-async function fetchCsv(url: string, key: string): Promise<string | null> {
-  await mkdir(CACHE, { recursive: true });
-  const cached = `${CACHE}/${key}`;
-  if (existsSync(cached)) return readFile(cached, "utf8");
-
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const res = await fetch(url);
-      if (res.status === 404) return null;
-      if (!res.ok) throw new Error(String(res.status));
-
-      const buffer = Buffer.from(await res.arrayBuffer());
-      if (buffer.length < 100) throw new Error("truncado");
-      await writeFile(`${cached}.zip`, buffer);
-      const { stdout } = await run("unzip", ["-p", `${cached}.zip`], {
-        maxBuffer: 64 * 1024 * 1024,
-      });
-      await writeFile(cached, stdout);
-      return stdout;
-    } catch {
-      if (attempt === 3) return null;
-      await new Promise((r) => setTimeout(r, 300 * attempt));
-    }
-  }
-  return null;
-}
 
 /** Últimos N dias no formato AAAA-MM-DD, do mais antigo ao mais recente. */
 function recentDays(count: number): string[] {
@@ -89,7 +57,7 @@ for (const symbol of symbols) {
   // ------------------------------------------------------------- preço
   const klineParts: string[] = [];
   for (const month of monthsOf(days)) {
-    const csv = await fetchCsv(klineUrl(symbol, "1d", month), `k-${symbol}-${month}.csv`);
+    const csv = await cachedCsv(monthlyKlineUrl(symbol, "1d", month), `${CACHE}/k-${symbol}-${month}.csv`);
     if (csv) klineParts.push(csv);
   }
 
@@ -103,7 +71,7 @@ for (const symbol of symbols) {
   // -------------------------------------------------------- posicionamento
   const byDay = new Map<string, PositioningSnapshot[]>();
   for (const date of days) {
-    const csv = await fetchCsv(metricsUrl(symbol, date), `m-${symbol}-${date}.csv`);
+    const csv = await cachedCsv(metricsUrl(symbol, date), `${CACHE}/m-${symbol}-${date}.csv`);
     if (csv) byDay.set(date, parsePositioning(csv));
   }
 
