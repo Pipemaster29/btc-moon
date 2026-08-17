@@ -30,7 +30,6 @@ if (symbols.length === 0) {
   process.exit(1);
 }
 
-const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 const signed = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`;
 const money = (v: number) =>
   v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}k`;

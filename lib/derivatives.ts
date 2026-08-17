@@ -28,10 +28,22 @@ export interface DerivBar {
 }
 
 const KLINE_BASE = "https://data.binance.vision/data/futures/um/monthly/klines";
+const DAILY_KLINE_BASE = "https://data.binance.vision/data/futures/um/daily/klines";
 const METRICS_BASE = "https://data.binance.vision/data/futures/um/daily/metrics";
 
 export function klineUrl(symbol: string, interval: string, month: string): string {
   return `${KLINE_BASE}/${symbol}/${interval}/${symbol}-${interval}-${month}.zip`;
+}
+
+/**
+ * Klines de um único dia.
+ *
+ * O arquivo mensal só é publicado depois que o mês fecha, então acompanhar o
+ * presente exige os diários — sem eles, todo dia 1º o painel fica cego até o
+ * mês seguinte.
+ */
+export function dailyKlineUrl(symbol: string, interval: string, date: string): string {
+  return `${DAILY_KLINE_BASE}/${symbol}/${interval}/${symbol}-${interval}-${date}.zip`;
 }
 
 export function metricsUrl(symbol: string, date: string): string {
