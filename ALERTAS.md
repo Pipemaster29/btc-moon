@@ -1,6 +1,6 @@
 # Alertas da BTW no Telegram
 
-Monitor que lê a BNB Smart Chain a cada 30 minutos, compara com a leitura
+Monitor que lê a BNB Smart Chain a cada 10 minutos, compara com a leitura
 anterior e avisa no Telegram quando algo indica venda a caminho.
 
 ## Ligar o Telegram (uma vez, ~3 minutos)
@@ -51,7 +51,7 @@ Deve chegar uma mensagem no Telegram na hora.
 ## Ligar as 24 horas
 
 O arquivo `.github/workflows/monitor.yml` já está no repositório. Assim que os
-dois secrets existirem, ele roda sozinho de 30 em 30 minutos.
+dois secrets existirem, ele roda sozinho de 10 em 10 minutos.
 
 Para disparar à mão e conferir: aba **Actions → Radar BTW → Run workflow**.
 
@@ -76,7 +76,7 @@ aconteceu.
 ## Sem alarme falso repetido
 
 Cada alerta tem uma identidade e não repete por 6 horas. Sem isso, uma carteira
-abastecida geraria o mesmo aviso a cada 30 minutos até alguém desligar tudo — e
+abastecida geraria o mesmo aviso a cada 10 minutos até alguém desligar tudo — e
 um alerta ignorado é pior do que nenhum.
 
 ## Comandos
@@ -91,11 +91,17 @@ npm run telegram-setup -- TOKEN
 ## Limites conhecidos
 
 **A janela de log é de uma hora.** Os nós públicos da BSC só servem
-`eth_getLogs` dos últimos ~8 mil blocos. Por isso a cadência é de 30 minutos: um
-intervalo maior deixa buracos. Se o GitHub atrasar o agendamento — acontece sob
-carga —, os alertas de saldo e de gás continuam pegando a mudança, porque
-comparam retratos; os de teste e de carteira nova, que dependem de ver a
-transferência, podem perder aquela janela.
+`eth_getLogs` dos últimos ~8 mil blocos. A cadência de 10 minutos dá seis
+leituras por janela, folga suficiente para o agendamento atrasar — o que
+acontece sob carga — sem abrir buraco. Mesmo num atraso grande, os alertas de
+saldo e de gás continuam pegando a mudança, porque comparam retratos; só os de
+teste e de carteira nova dependem de ver a transferência passar.
+
+**O custo é zero porque o repositório é público.** Em repositório público o
+GitHub não cobra minutos de execução. Se ele voltar a ser privado, o teto de
+2.000 minutos mensais passa a valer e esta cadência custaria cerca de US$ 18 por
+mês — nesse caso o certo é voltar para 30 minutos, editando o `cron` do
+workflow.
 
 **A memória vive no cache do GitHub Actions.** Se o cache for descartado, o
 ciclo seguinte vira "primeira leitura" e não alerta nada naquela rodada. É uma

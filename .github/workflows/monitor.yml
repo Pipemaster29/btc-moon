@@ -2,19 +2,25 @@
 #
 # A cadência não é arbitrária: os nós públicos da BSC só servem log da última
 # hora, então rodar mais espaçado que isso deixa buracos em que uma
-# transferência passa sem ser vista. Trinta minutos dá margem sem estourar os
-# 2.000 minutos gratuitos do mês — o GitHub arredonda cada execução para cima,
-# e 48 execuções por dia dão 1.440 minutos.
+# transferência passa sem ser vista. Dez minutos dá seis leituras por janela,
+# margem suficiente para o agendamento atrasar — o que acontece sob carga — sem
+# nunca abrir buraco.
 #
-# Uma pausa maior não cega o monitor por completo: os alertas de saldo e de gás
-# comparam retratos e continuam pegando a mudança, só que atrasada. Quem depende
-# de ver a transferência no log são os alertas de teste e de carteira nova.
+# Dez e não cinco porque cada ciclo faz cerca de cinquenta chamadas a nós
+# públicos gratuitos: a cinco minutos seriam catorze mil por dia num endpoint
+# sem contrato, e levar bloqueio por abuso pararia o monitor de vez, o que é
+# muito pior do que atrasar um pouco.
+#
+# O custo é zero porque o repositório é público, e nesse caso o GitHub não
+# cobra minutos de execução. Se ele voltar a ser privado, o teto de 2.000
+# minutos mensais volta a valer e esta cadência custaria cerca de 18 dólares
+# por mês — aí o certo é voltar para trinta minutos.
 
 name: Radar BTW
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/10 * * * *"
   # Permite disparar à mão pela aba Actions, para testar sem esperar.
   workflow_dispatch:
 
