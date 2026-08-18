@@ -67,7 +67,8 @@ Ordenado por quanta antecedência dá, que é o que importa — não pelo tamanh
 | 🧊→🔥 **Fria para quente** | horas | Carteira fria não vende; abastece a quente, que vende. Em 16/08 essa sequência precedeu a distribuição em ~12 horas. |
 | 🆕 **Destino recém-criado** | imediato | Padrão de quebrar a trilha antes de distribuir, igual às duas carteiras de 16/08. |
 | 🏦 **Entrada em corretora** | imediato | Token indo para corretora costuma ser o passo anterior à venda no livro. |
-| 📤 **Saída de carteira vigiada** | imediato | Movimento acima de 5% da liquidez à vista. |
+| 📤 **Saída de carteira vigiada** | imediato | Movimento grande perto da liquidez à vista. |
+| 💸 **Transferência grande fora da lista** | imediato | Boa parte do fluxo passa por endereços de depósito que ninguém mapeou. Esta regra olha o token inteiro, não só as carteiras vigiadas — foi o ponto cego que deixou passar uma sequência de US$ 76 mil e US$ 99 mil. Saltos do mesmo valor em sequência contam como um evento só. |
 
 O que **não** virou alerta, de propósito: queda de preço, volume alto, variação
 de open interest isolada. São consequências, não avisos — quando aparecem, já

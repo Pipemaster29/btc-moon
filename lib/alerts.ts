@@ -39,7 +39,8 @@ export type AlertKind =
   | "cold-to-hot"
   | "exchange-inflow"
   | "balance-drop"
-  | "fresh-recipient";
+  | "fresh-recipient"
+  | "large-transfer";
 
 export type Severity = "critical" | "high" | "medium";
 
@@ -253,6 +254,49 @@ export function detect(input: DetectInput): Alert[] {
         `Em 16/08 o intervalo entre o teste e a transferência cheia foi de 13 a 16 minutos.`,
       valueUsd: value,
       addresses: [t.to, t.from],
+    });
+  }
+
+  // ------------------------------------------------ transferência grande
+  //
+  // As regras acima só enxergam as carteiras da lista. Boa parte do fluxo passa
+  // por endereços de depósito que ninguém mapeou — foi assim que uma sequência
+  // de US$ 76 mil e US$ 99 mil passou batida: os dois lados estavam fora da
+  // lista. Esta regra olha o token inteiro e fecha esse ponto cego.
+  //
+  // Só entram as que NÃO tocam carteira vigiada: quando tocam, a mudança de
+  // saldo já gera aviso, e alertar duas vezes pelo mesmo evento é ruído.
+  const watched = new Set(current.map((w) => w.address.toLowerCase()));
+
+  // O mesmo dinheiro costuma passar por três ou quatro endereços em sequência
+  // até chegar na corretora, e cada salto é uma transferência de valor idêntico.
+  // São um evento econômico só: avisar de cada salto multiplicaria o alerta sem
+  // acrescentar informação. Fica o primeiro, que é o mais próximo da origem.
+  const seenAmount = new Set<string>();
+
+  for (const t of [...transfers].sort((a, b) => a.block - b.block)) {
+    const value = t.amount * priceUsd;
+    if (value < bigUsd) continue;
+    if (watched.has(t.from.toLowerCase()) || watched.has(t.to.toLowerCase())) continue;
+
+    const hop = t.amount.toFixed(6);
+    if (seenAmount.has(hop)) continue;
+    seenAmount.add(hop);
+
+    alerts.push({
+      kind: "large-transfer",
+      severity: "high",
+      // Por transferência, não por carteira: cada uma é um evento distinto e a
+      // janela de varredura sobrepõe ciclos, então o identificador precisa ser
+      // estável para a mesma transferência não avisar quatro vezes.
+      fingerprint: `big:${t.block}:${t.from}:${t.to}:${Math.round(t.amount)}`,
+      title: `💸 ${symbol} · ${units(t.amount)} entre carteiras fora da lista`,
+      detail:
+        `${money(value)} mudaram de mãos entre dois endereços não mapeados — ` +
+        `${Math.round((value / liquidityUsd) * 100)}% da liquidez à vista da moeda. ` +
+        `Costuma ser roteamento por endereço de depósito a caminho de uma corretora.`,
+      valueUsd: value,
+      addresses: [t.from, t.to],
     });
   }
 

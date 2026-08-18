@@ -199,14 +199,20 @@ async function inspect(
 
   // ---------------------------------------------------------- transferências
   //
-  // A janela cobre a profundidade inteira que o nó serve, não só uma faixa.
-  // Motivo medido: o GitHub atrasa o agendamento e os ciclos saem a cada 31
-  // minutos em média, chegando a 42 — mais do que os 37 minutos que 5 mil
-  // blocos cobrem na BNB Chain. Com uma faixa só, uma transferência entre dois
-  // ciclos atrasados nunca seria vista. Custa uma chamada a mais e fecha o
-  // buraco; as repetições são absorvidas pela deduplicação.
+  // A janela é definida em TEMPO, não em blocos, porque as redes têm ritmos
+  // diferentes: 5 mil blocos são 37 minutos na BNB Chain e 167 na Base.
+  //
+  // Três horas cobrem com folga o pior atraso observado do agendamento do
+  // GitHub — que pede 10 minutos e entrega 31 em média, chegando a 42. Menos do
+  // que isso deixaria uma transferência escapar entre dois ciclos atrasados;
+  // muito mais só traria evento velho e mais dados para trafegar.
   const config = CHAINS[token.chain];
-  const from = Math.max(head - config.prunedDepth, 0);
+  const WINDOW_HOURS = 3;
+  const span = Math.min(
+    Math.round((WINDOW_HOURS * 3600) / config.secondsPerBlock),
+    config.prunedDepth,
+  );
+  const from = Math.max(head - span, 0);
   const transfers: TransferSeen[] = [];
 
   try {
