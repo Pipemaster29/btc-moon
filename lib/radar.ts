@@ -19,8 +19,8 @@ import {
   toUnits,
   tokenInfo,
   transfersBetween,
-  MAX_LOG_SPAN,
-  SECONDS_PER_BLOCK,
+  CHAINS,
+  type Chain,
 } from "./onchain";
 import { depthOn, pairsOfToken } from "./dexscreener";
 import { findToken, labelOf, type WalletRole, type WatchedToken } from "./watchlist";
@@ -36,7 +36,8 @@ export interface WalletState {
   amount: number;
   valueUsd: number;
   pctSupply: number;
-  bnb: number;
+  /** Saldo do ativo de gás da rede. */
+  gas: number;
   /** Carteira comum, com saldo, sem gás: fisicamente impedida de mover. */
   stuck: boolean;
   /** Estava parada e agora tem gás — pode mover a qualquer momento. */
@@ -74,6 +75,11 @@ export interface RadarSnapshot {
   symbol: string;
   tokenSymbol: string;
   contract: string;
+  chain: Chain;
+  /** Ativo que paga gás nesta rede: BNB na BNB Chain, ETH na Base. */
+  gasSymbol: string;
+  /** Explorador da rede, para os links de endereço. */
+  explorer: string;
   supply: number;
   priceUsd: number;
   liquidityUsd: number;
@@ -109,14 +115,15 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
   const token = findToken(symbol);
   if (!token?.contract) return null;
 
+  const config = CHAINS[token.chain];
   const addresses = token.wallets.map((w) => w.address);
 
-  const [info, head, pairs, balances, gas] = await Promise.all([
-    tokenInfo(token.contract),
-    blockNumber(),
+  const [info, head, pairs, balances, gasBalances] = await Promise.all([
+    tokenInfo(token.chain, token.contract),
+    blockNumber(token.chain),
     pairsOfToken(token.contract),
-    balancesOf(token.contract, addresses),
-    gasOf(addresses),
+    balancesOf(token.chain, token.contract, addresses),
+    gasOf(token.chain, addresses),
   ]);
 
   const depth = depthOn(pairs, token.chain);
@@ -128,7 +135,7 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
   const wallets: WalletState[] = token.wallets.map((wallet) => {
     const key = wallet.address.toLowerCase();
     const amount = toUnits(balances.get(key) ?? BigInt(0), info.decimals);
-    const bnb = Number(gas.get(key) ?? BigInt(0)) / 1e18;
+    const fuel = Number(gasBalances.get(key) ?? BigInt(0)) / 1e18;
     const isEoa = wallet.role !== "lock";
 
     return {
@@ -139,9 +146,9 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
       amount,
       valueUsd: amount * price,
       pctSupply: supply > 0 ? amount / supply : 0,
-      bnb,
-      stuck: isEoa && amount > 0 && bnb < GAS_FLOOR,
-      armed: isEoa && wallet.role === "dormant" && amount > 0 && bnb >= GAS_FLOOR,
+      gas: fuel,
+      stuck: isEoa && amount > 0 && fuel < GAS_FLOOR,
+      armed: isEoa && wallet.role === "dormant" && amount > 0 && fuel >= GAS_FLOOR,
     };
   });
 
@@ -180,14 +187,14 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
     unmapped;
 
   // -------------------------------------------------- movimentação recente
-  const from = Math.max(head - MAX_LOG_SPAN, 0);
-  const windowHours = ((head - from) * SECONDS_PER_BLOCK) / 3600;
+  const from = Math.max(head - config.maxLogSpan, 0);
+  const windowHours = ((head - from) * config.secondsPerBlock) / 3600;
 
   let scanned = 0;
   let bigTransfers: BigTransfer[] = [];
 
   try {
-    const transfers = await transfersBetween(token.contract, from, head);
+    const transfers = await transfersBetween(token.chain, token.contract, from, head);
     scanned = transfers.length;
 
     // Só o que é grande perto da pool. Abaixo disso é fluxo de varejo e
@@ -218,6 +225,9 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
     symbol: token.symbol,
     tokenSymbol: info.symbol,
     contract: token.contract,
+    chain: token.chain,
+    gasSymbol: config.gasSymbol,
+    explorer: config.explorer,
     supply,
     priceUsd: price,
     liquidityUsd: depth?.liquidityUsd ?? 0,

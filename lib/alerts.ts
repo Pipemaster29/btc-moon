@@ -80,6 +80,8 @@ export interface TransferSeen {
 }
 
 export interface DetectInput {
+  /** Nome do ativo que paga gás na rede — "BNB", "ETH". */
+  gasSymbol: string;
   previous: Record<string, WalletMemory>;
   current: Observation[];
   transfers: TransferSeen[];
@@ -100,7 +102,7 @@ const units = (v: number) =>
         : v.toFixed(0);
 
 export function detect(input: DetectInput): Alert[] {
-  const { previous, current, transfers, priceUsd, liquidityUsd } = input;
+  const { gasSymbol, previous, current, transfers, priceUsd, liquidityUsd } = input;
   const alerts: Alert[] = [];
 
   // O que conta como movimento grande depende da moeda, não de um número fixo:
@@ -124,7 +126,7 @@ export function detect(input: DetectInput): Alert[] {
         fingerprint: `gas:${wallet.address}`,
         title: `⛽ ${wallet.label} foi abastecida com gás`,
         detail:
-          `Estava com 0 BNB e agora tem ${wallet.bnb.toFixed(4)}. ` +
+          `Estava com 0 ${gasSymbol} e agora tem ${wallet.bnb.toFixed(4)}. ` +
           `Segura ${units(wallet.balance)} (${money(wallet.balance * priceUsd)}) e agora CONSEGUE mover. ` +
           `Abastecer é o passo obrigatório antes de vender.`,
         valueUsd: wallet.balance * priceUsd,

@@ -22,7 +22,7 @@ import {
   toUnits,
   tokenInfo,
   transfersBetween,
-  MAX_LOG_SPAN,
+  CHAINS,
 } from "../lib/onchain";
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
 import { WATCHLIST, labelOf, type WatchedToken } from "../lib/watchlist";
@@ -132,11 +132,11 @@ async function inspect(
   const addresses = token.wallets.map((w) => w.address);
 
   const [info, head, pairs, balances, gas] = await Promise.all([
-    tokenInfo(token.contract),
-    blockNumber(),
+    tokenInfo(token.chain, token.contract),
+    blockNumber(token.chain),
     pairsOfToken(token.contract),
-    balancesOf(token.contract, addresses),
-    gasOf(addresses),
+    balancesOf(token.chain, token.contract, addresses),
+    gasOf(token.chain, addresses),
   ]);
 
   const depth = depthOn(pairs, token.chain);
@@ -154,11 +154,11 @@ async function inspect(
   });
 
   // ---------------------------------------------------------- transferências
-  const from = Math.max(head - MAX_LOG_SPAN, 0);
+  const from = Math.max(head - CHAINS[token.chain].maxLogSpan, 0);
   const transfers: TransferSeen[] = [];
 
   try {
-    const raw = await transfersBetween(token.contract, from, head);
+    const raw = await transfersBetween(token.chain, token.contract, from, head);
     const bigEnough = raw.filter(
       (t) => toUnits(t.value, info.decimals) * price >= 100,
     );
@@ -172,7 +172,7 @@ async function inspect(
     const freshness = new Map<string, boolean>();
     await Promise.all(
       [...new Set(relevant.map((t) => t.to.toLowerCase()))].map(async (to) => {
-        freshness.set(to, await isFreshAddress(to));
+        freshness.set(to, await isFreshAddress(token.chain, to));
       }),
     );
 
@@ -194,6 +194,7 @@ async function inspect(
   const previous = state.wallets[token.symbol] ?? {};
 
   const alerts = detect({
+    gasSymbol: CHAINS[token.chain].gasSymbol,
     previous,
     current,
     transfers,

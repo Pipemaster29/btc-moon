@@ -7,7 +7,7 @@ import { WATCHLIST } from "@/lib/watchlist";
 /**
  * O painel é leitura ao vivo da cadeia, então revalida de cinco em cinco
  * minutos: mais rápido que isso só castiga os nós públicos sem mostrar nada
- * novo — bloco na BSC leva 0,45 s, mas saldo de baleia não muda a cada minuto.
+ * novo — bloco leva segundos, mas saldo de baleia não muda a cada minuto.
  */
 export const revalidate = 300;
 
@@ -15,6 +15,12 @@ export const metadata = {
   title: "BTC Moon · Radar de manipulação",
   description:
     "Quem segura o supply, quanto está travado e o que pode virar venda — lido direto da blockchain.",
+};
+
+/** Nome de exibição da rede — o identificador interno é minúsculo. */
+const CHAIN_LABEL: Record<string, string> = {
+  bsc: "BNB Chain",
+  base: "Base",
 };
 
 const ROLE_COLOR: Record<string, string> = {
@@ -149,7 +155,7 @@ function Wallets({ snapshot }: { snapshot: RadarSnapshot }) {
               <th className="font-normal pb-2 text-right">Saldo</th>
               <th className="font-normal pb-2 text-right">Valor</th>
               <th className="font-normal pb-2 text-right">% supply</th>
-              <th className="font-normal pb-2 text-right">BNB</th>
+              <th className="font-normal pb-2 text-right">{snapshot.gasSymbol}</th>
               <th className="font-normal pb-2 pl-3">Estado</th>
             </tr>
           </thead>
@@ -175,7 +181,7 @@ function Wallets({ snapshot }: { snapshot: RadarSnapshot }) {
                 </td>
                 <td className="py-2 font-mono text-xs text-black/50 dark:text-white/50">
                   <a
-                    href={`https://bscscan.com/address/${wallet.address}`}
+                    href={`${snapshot.explorer}/address/${wallet.address}`}
                     target="_blank"
                     rel="noreferrer"
                     className="hover:underline"
@@ -189,7 +195,7 @@ function Wallets({ snapshot }: { snapshot: RadarSnapshot }) {
                   {(wallet.pctSupply * 100).toFixed(3)}%
                 </td>
                 <td className="py-2 text-right tabular-nums text-black/50 dark:text-white/50">
-                  {wallet.bnb.toFixed(3)}
+                  {wallet.gas.toFixed(3)}
                 </td>
                 <td className="py-2 pl-3">
                   {wallet.armed ? (
@@ -296,7 +302,7 @@ export default async function Radar() {
               <Stat
                 label="Preço à vista"
                 value={`US$ ${snapshot.priceUsd.toPrecision(4)}`}
-                hint={`${snapshot.pools} pools na BSC`}
+                hint={`${snapshot.pools} ${snapshot.pools === 1 ? "pool" : "pools"} na ${CHAIN_LABEL[snapshot.chain]}`}
               />
               <Stat
                 label="Valor de todo o supply"

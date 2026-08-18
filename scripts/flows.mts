@@ -31,7 +31,7 @@ import {
   scanTransfers,
   toUnits,
   tokenInfo,
-  SECONDS_PER_BLOCK,
+  CHAINS,
   type Transfer,
 } from "../lib/onchain";
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
@@ -85,20 +85,20 @@ const unpack = (r: Cache["transfers"][number]): Transfer => ({
 
 // -------------------------------------------------------------------- scan
 
-const head = await blockNumber();
-const info = await tokenInfo(token.contract);
+const head = await blockNumber(token.chain);
+const info = await tokenInfo(token.chain, token.contract);
 const wallets = token.wallets.map((w) => w.address);
 const tracked = new Set(wallets.map((w) => w.toLowerCase()));
 
 const wanted = scanAll
   ? token.firstBlock
-  : Math.max(token.firstBlock, head - Math.round((days * 86400) / SECONDS_PER_BLOCK));
+  : Math.max(token.firstBlock, head - Math.round((days * 86400) / CHAINS[token.chain].secondsPerBlock));
 
 console.log(`\n${"=".repeat(94)}`);
 console.log(`${symbol} · ${info.symbol} · fluxos e maiores donos`);
 console.log("=".repeat(94));
 console.log(
-  `\n  varrendo do bloco ${wanted} ao ${head} (${((head - wanted) * SECONDS_PER_BLOCK / 86400).toFixed(1)} dias)`,
+  `\n  varrendo do bloco ${wanted} ao ${head} (${((head - wanted) * CHAINS[token.chain].secondsPerBlock / 86400).toFixed(1)} dias)`,
 );
 
 const cached = await loadCache();
@@ -114,6 +114,7 @@ if (cached && cached.from <= wanted && cached.to >= head - 20_000) {
 
   let lastPrint = 0;
   const scan = await scanTransfers({
+    chain: token.chain,
     token: token.contract,
     fromBlock: from,
     toBlock: head,
@@ -157,7 +158,7 @@ console.log("─".repeat(94));
 const anchor = new Map<string, bigint>();
 await Promise.all(
   wallets.map(async (w) => {
-    anchor.set(w.toLowerCase(), await balanceAt(token.contract, w, wanted));
+    anchor.set(w.toLowerCase(), await balanceAt(token.chain, token.contract, w, wanted));
   }),
 );
 
@@ -166,7 +167,7 @@ const SLICES = 12;
 const step = Math.max(1, Math.floor((head - wanted) / SLICES));
 const marks = Array.from({ length: SLICES + 1 }, (_, i) => wanted + i * step);
 const times = new Map<number, number>();
-await Promise.all(marks.map(async (b) => times.set(b, await blockTime(Math.min(b, head)))));
+await Promise.all(marks.map(async (b) => times.set(b, await blockTime(token.chain, Math.min(b, head)))));
 
 const running = new Map(anchor);
 const rows: { when: string; total: number; each: number[] }[] = [];
@@ -198,7 +199,7 @@ for (const row of rows) {
 
 // Confere o fim da série contra o saldo real: se divergir, a varredura perdeu
 // eventos e todo o resto do relatório fica suspeito.
-const live = await balancesOf(token.contract, wallets);
+const live = await balancesOf(token.chain, token.contract, wallets);
 const liveTotal = wallets.reduce(
   (s, w) => s + toUnits(live.get(w.toLowerCase()) ?? BigInt(0), info.decimals), 0,
 );
@@ -260,10 +261,11 @@ for (const address of flows.keys()) candidates.add(address);
 
 // Janela sem filtro: pega quem se moveu recentemente sem passar pelas carteiras
 // vigiadas. É o que evita que um dono grande e independente fique de fora.
-const wideFrom = Math.max(token.firstBlock, head - Math.round((wideDays * 86400) / SECONDS_PER_BLOCK));
+const wideFrom = Math.max(token.firstBlock, head - Math.round((wideDays * 86400) / CHAINS[token.chain].secondsPerBlock));
 console.log(`\n  ampliando com ${wideDays} dias sem filtro…`);
 let lastWide = 0;
 const wide = await scanTransfers({
+  chain: token.chain,
   token: token.contract,
   fromBlock: wideFrom,
   toBlock: head,
@@ -305,7 +307,7 @@ const list = [...candidates];
 const balances = new Map<string, bigint>();
 for (let i = 0; i < list.length; i += 40) {
   const slice = list.slice(i, i + 40);
-  const got = await balancesOf(token.contract, slice);
+  const got = await balancesOf(token.chain, token.contract, slice);
   for (const [k, v] of got) balances.set(k, v);
   process.stdout.write(`\r  ${Math.min(i + 40, list.length)}/${list.length}   `);
 }
@@ -325,7 +327,7 @@ console.log(`\n  #   endereço                                        saldo     
 for (const [i, h] of holders.entries()) {
   const label = labelOf(token as WatchedToken, h.address);
   const known = label.includes("…") ? "" : `  ← ${label}`;
-  const kind = await isContract(h.address);
+  const kind = await isContract(token.chain, h.address);
   console.log(
     `  ${String(i + 1).padStart(2)}  ${h.address}  ${units(h.amount).padStart(10)}  ${money(h.amount * price).padStart(10)}  ${((h.amount / supply) * 100).toFixed(3).padStart(8)}%   ${kind ? "contrato" : "carteira"}${known}`,
   );

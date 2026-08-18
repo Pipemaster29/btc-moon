@@ -22,8 +22,7 @@ import {
   toUnits,
   tokenInfo,
   transfersBetween,
-  PRUNED_DEPTH,
-  SECONDS_PER_BLOCK,
+  CHAINS,
 } from "../lib/onchain";
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
 import { WATCHLIST, labelOf, type WatchedToken } from "../lib/watchlist";
@@ -81,8 +80,8 @@ async function report(token: WatchedToken, state: State): Promise<void> {
   }
 
   const [info, head, pairs] = await Promise.all([
-    tokenInfo(token.contract),
-    blockNumber(),
+    tokenInfo(token.chain, token.contract),
+    blockNumber(token.chain),
     pairsOfToken(token.contract),
   ]);
 
@@ -101,7 +100,7 @@ async function report(token: WatchedToken, state: State): Promise<void> {
 
   // --------------------------------------------------------------- saldos
   const addresses = token.wallets.map((w) => w.address);
-  const balances = await balancesOf(token.contract, addresses);
+  const balances = await balancesOf(token.chain, token.contract, addresses);
 
   const history = state[token.symbol] ?? [];
   const previous = history[history.length - 1];
@@ -139,7 +138,7 @@ async function report(token: WatchedToken, state: State): Promise<void> {
   );
 
   // --------------------------------------------------------------- combustível
-  const gas = await gasOf(addresses);
+  const gas = await gasOf(token.chain, addresses);
 
   // O sinal só vale para carteira comum. Um contrato não paga o próprio gás:
   // quem o chama é que paga, então saldo zero de BNB num contrato não trava
@@ -149,7 +148,7 @@ async function report(token: WatchedToken, state: State): Promise<void> {
     return bnb < 0.001 && (current[w.address.toLowerCase()] ?? 0) > 0;
   });
 
-  const kinds = await Promise.all(starving.map((w) => isContract(w.address)));
+  const kinds = await Promise.all(starving.map((w) => isContract(token.chain, w.address)));
   const stuck = starving.filter((_, i) => !kinds[i]);
 
   if (stuck.length > 0) {
@@ -225,14 +224,15 @@ async function report(token: WatchedToken, state: State): Promise<void> {
   }
 
   // -------------------------------------------------- movimentação recente
-  const from = Math.max(head - PRUNED_DEPTH + 500, 0);
-  const hours = ((head - from) * SECONDS_PER_BLOCK) / 3600;
+  const config = CHAINS[token.chain];
+  const from = Math.max(head - config.prunedDepth + 500, 0);
+  const hours = ((head - from) * config.secondsPerBlock) / 3600;
 
   console.log(`\n  TRANSFERÊNCIAS GRANDES (últimos ${hours.toFixed(1)}h, bloco ${from}–${head})`);
 
   let transfers: Awaited<ReturnType<typeof transfersBetween>> = [];
   try {
-    transfers = await transfersBetween(token.contract, from, head);
+    transfers = await transfersBetween(token.chain, token.contract, from, head);
   } catch (error) {
     console.log(`    não foi possível ler os eventos: ${(error as Error).message}`);
   }
@@ -311,8 +311,8 @@ if (unverified.length > 0) {
   console.log(
     `\n  Os rótulos abaixo vieram de fora e não foram confirmados. Contrato e\n  carteira comum contam histórias diferentes sobre o mesmo saldo.\n`,
   );
-  for (const { wallet } of unverified) {
-    const code = await isContract(wallet.address);
+  for (const { token: owner, wallet } of unverified) {
+    const code = await isContract(owner.chain, wallet.address);
     console.log(
       `  ${wallet.label.padEnd(20)} ${wallet.address}  ${code ? "CONTRATO" : "carteira comum"}`,
     );

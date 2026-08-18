@@ -19,42 +19,78 @@
  * servem log vêm primeiro.
  */
 
-const ENDPOINTS = [
-  "https://bsc-rpc.publicnode.com",
-  "https://bsc.publicnode.com",
-  "https://bsc-dataseed.binance.org",
-  "https://bsc-dataseed1.defibit.io",
-  "https://bsc-dataseed1.ninicoin.io",
-];
-
 /**
- * Endpoints que servem histórico completo.
+ * As redes suportadas.
  *
- * Quase nenhum nó público serve: dos doze testados, um único devolve log de
- * bloco antigo e outro devolve estado antigo. Eles fazem coisas diferentes e
- * não são intercambiáveis — o primeiro responde `eth_getLogs` em qualquer
- * profundidade, o segundo responde `eth_call` em qualquer profundidade.
+ * Cada uma tem limitações próprias que mudam o que dá para observar, e tratá-las
+ * como intercambiáveis quebraria em silêncio: um `eth_getLogs` de 5 mil blocos
+ * cobre 37 minutos de BNB Chain e 167 minutos de Base, porque uma fecha bloco a
+ * cada 0,45 s e a outra a cada 2 s.
  */
-const ARCHIVE_LOG_ENDPOINTS = ["https://bsc.rpc.blxrbdn.com"];
-const ARCHIVE_STATE_ENDPOINTS = ["https://bsc-mainnet.public.blastapi.io"];
+export type Chain = "bsc" | "base";
+
+export interface ChainConfig {
+  /** Nome do ativo que paga gás — muda o texto dos alertas. */
+  gasSymbol: string;
+  endpoints: string[];
+  /** Servem `eth_getLogs` em qualquer profundidade. Vazio quando não há. */
+  archiveLog: string[];
+  /** Servem `eth_call` em qualquer profundidade. Vazio quando não há. */
+  archiveState: string[];
+  /** Faixa máxima aceita por chamada de `eth_getLogs`. */
+  maxLogSpan: number;
+  /** Profundidade até onde os nós públicos ainda respondem. */
+  prunedDepth: number;
+  secondsPerBlock: number;
+  explorer: string;
+}
+
+export const CHAINS: Record<Chain, ChainConfig> = {
+  bsc: {
+    gasSymbol: "BNB",
+    // Os dataseed da própria Binance recusam `eth_getLogs` em qualquer faixa,
+    // então os que servem log vêm primeiro.
+    endpoints: [
+      "https://bsc-rpc.publicnode.com",
+      "https://bsc.publicnode.com",
+      "https://bsc-dataseed.binance.org",
+      "https://bsc-dataseed1.defibit.io",
+      "https://bsc-dataseed1.ninicoin.io",
+    ],
+    // Dos doze nós públicos testados, um único devolve log antigo e outro
+    // devolve estado antigo. Fazem coisas diferentes e não se substituem.
+    archiveLog: ["https://bsc.rpc.blxrbdn.com"],
+    archiveState: ["https://bsc-mainnet.public.blastapi.io"],
+    maxLogSpan: 5000,
+    prunedDepth: 8000,
+    secondsPerBlock: 0.45,
+    explorer: "https://bscscan.com",
+  },
+  base: {
+    gasSymbol: "ETH",
+    // `mainnet.base.org` aceita faixas maiores que os demais e é o único que
+    // não recusa log fora da janela recente.
+    endpoints: [
+      "https://mainnet.base.org",
+      "https://base.drpc.org",
+      "https://base-rpc.publicnode.com",
+    ],
+    archiveLog: ["https://mainnet.base.org"],
+    archiveState: [],
+    maxLogSpan: 10_000,
+    prunedDepth: 100_000,
+    secondsPerBlock: 2,
+    explorer: "https://basescan.org",
+  },
+};
 
 /**
- * Teto de vazão do endpoint de arquivo, medido: ~4,6 requisições por segundo,
+ * Teto de vazão dos endpoints de arquivo, medido: ~4,6 requisições por segundo,
  * e concorrência acima de 16 não melhora nada. Agrupar chamadas em lote também
  * não ajuda, porque o limite conta requisições, não conexões.
  */
 export const ARCHIVE_CONCURRENCY = 16;
 
-/** Faixa máxima aceita por chamada de `eth_getLogs`. */
-export const MAX_LOG_SPAN = 5000;
-
-/** Profundidade aproximada até onde os nós públicos ainda respondem. */
-export const PRUNED_DEPTH = 8000;
-
-/** Um bloco a cada ~0,45 s desde a atualização de finalidade rápida da BSC. */
-export const SECONDS_PER_BLOCK = 0.45;
-
-/** Assinatura do evento `Transfer(address,address,uint256)`. */
 export const TRANSFER_TOPIC =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
@@ -123,8 +159,9 @@ async function callRpc(
   throw new Error(`${method}: ${lastError}`);
 }
 
-async function rpc(method: string, params: unknown[]): Promise<unknown> {
-  return callRpc(ENDPOINTS, method, params, ENDPOINTS.length * 2);
+async function rpc(chain: Chain, method: string, params: unknown[]): Promise<unknown> {
+  const pool = CHAINS[chain].endpoints;
+  return callRpc(pool, method, params, pool.length * 2);
 }
 
 /** Endereço de 20 bytes no formato de 32 bytes usado nos tópicos de evento. */
@@ -137,20 +174,20 @@ export function unpadAddress(topic: string): string {
   return `0x${topic.slice(-40)}`;
 }
 
-export async function blockNumber(): Promise<number> {
-  return Number(BigInt((await rpc("eth_blockNumber", [])) as string));
+export async function blockNumber(chain: Chain): Promise<number> {
+  return Number(BigInt((await rpc(chain, "eth_blockNumber", [])) as string));
 }
 
-export async function blockTime(block: number): Promise<number> {
-  const header = (await rpc("eth_getBlockByNumber", [
+export async function blockTime(chain: Chain, block: number): Promise<number> {
+  const header = (await rpc(chain, "eth_getBlockByNumber", [
     `0x${block.toString(16)}`,
     false,
   ])) as { timestamp: string };
   return Number(BigInt(header.timestamp));
 }
 
-async function call(to: string, data: string): Promise<string> {
-  return (await rpc("eth_call", [{ to, data }, "latest"])) as string;
+async function call(chain: Chain, to: string, data: string): Promise<string> {
+  return (await rpc(chain, "eth_call", [{ to, data }, "latest"])) as string;
 }
 
 // ------------------------------------------------------------------- ERC-20
@@ -172,11 +209,11 @@ function decodeString(hex: string): string {
   return Buffer.from(raw.slice(128, 128 + length * 2), "hex").toString("utf8");
 }
 
-export async function tokenInfo(address: string): Promise<TokenInfo> {
+export async function tokenInfo(chain: Chain, address: string): Promise<TokenInfo> {
   const [symbol, decimals, supply] = await Promise.all([
-    call(address, "0x95d89b41"),
-    call(address, "0x313ce567"),
-    call(address, "0x18160ddd"),
+    call(chain, address, "0x95d89b41"),
+    call(chain, address, "0x313ce567"),
+    call(chain, address, "0x18160ddd"),
   ]);
 
   return {
@@ -189,13 +226,14 @@ export async function tokenInfo(address: string): Promise<TokenInfo> {
 
 /** Saldo do token para vários endereços, no bloco mais recente. */
 export async function balancesOf(
+  chain: Chain,
   token: string,
   holders: string[],
 ): Promise<Map<string, bigint>> {
   const entries = await Promise.all(
     holders.map(async (holder) => {
       const data = `0x70a08231${padAddress(holder).slice(2)}`;
-      return [holder.toLowerCase(), BigInt(await call(token, data))] as const;
+      return [holder.toLowerCase(), BigInt(await call(chain, token, data))] as const;
     }),
   );
   return new Map(entries);
@@ -209,10 +247,13 @@ export async function balancesOf(
  * carteira cheia de token e vazia de BNB está travada, e o momento em que
  * alguém a abastece é o aviso de que vão movimentá-la.
  */
-export async function gasOf(addresses: string[]): Promise<Map<string, bigint>> {
+export async function gasOf(
+  chain: Chain,
+  addresses: string[],
+): Promise<Map<string, bigint>> {
   const entries = await Promise.all(
     addresses.map(async (address) => {
-      const wei = (await rpc("eth_getBalance", [address, "latest"])) as string;
+      const wei = (await rpc(chain, "eth_getBalance", [address, "latest"])) as string;
       return [address.toLowerCase(), BigInt(wei)] as const;
     }),
   );
@@ -220,8 +261,8 @@ export async function gasOf(addresses: string[]): Promise<Map<string, bigint>> {
 }
 
 /** Distingue carteira de contrato — trocas usam ambos, e o rótulo muda a leitura. */
-export async function isContract(address: string): Promise<boolean> {
-  const code = (await rpc("eth_getCode", [address, "latest"])) as string;
+export async function isContract(chain: Chain, address: string): Promise<boolean> {
+  const code = (await rpc(chain, "eth_getCode", [address, "latest"])) as string;
   return code !== "0x" && code.length > 2;
 }
 
@@ -250,16 +291,18 @@ interface RawLog {
  * é assim que aparece a carteira nova que ninguém estava vigiando.
  */
 export async function transfersBetween(
+  chain: Chain,
   token: string,
   fromBlock: number,
   toBlock: number,
 ): Promise<Transfer[]> {
   const out: Transfer[] = [];
+  const span = CHAINS[chain].maxLogSpan;
 
-  for (let start = fromBlock; start <= toBlock; start += MAX_LOG_SPAN) {
-    const end = Math.min(start + MAX_LOG_SPAN - 1, toBlock);
+  for (let start = fromBlock; start <= toBlock; start += span) {
+    const end = Math.min(start + span - 1, toBlock);
 
-    const logs = (await rpc("eth_getLogs", [
+    const logs = (await rpc(chain, "eth_getLogs", [
       {
         fromBlock: `0x${start.toString(16)}`,
         toBlock: `0x${end.toString(16)}`,
@@ -295,6 +338,7 @@ function decodeTransfer(log: RawLog): Transfer | null {
 // ------------------------------------------------------------------ arquivo
 
 export interface ScanOptions {
+  chain: Chain;
   token: string;
   fromBlock: number;
   toBlock: number;
@@ -335,14 +379,17 @@ const UNFILTERED_SPAN = 500;
  * contar duas vezes a mesma transferência estragaria qualquer saldo derivado.
  */
 export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
-  const { token, fromBlock, toBlock, involving, onProgress } = options;
+  const { chain, token, fromBlock, toBlock, involving, onProgress } = options;
+  const config = CHAINS[chain];
 
   const padded = involving?.map(padAddress) ?? [];
   const filters: (string[] | null)[][] = padded.length
     ? [[padded], [null, padded]]
     : [[]];
 
-  const span = padded.length ? MAX_LOG_SPAN : UNFILTERED_SPAN;
+  // Sem filtro a resposta de uma faixa cheia estoura o tempo limite do nó, então
+  // faixas sem filtro são curtas mesmo custando mais requisições.
+  const span = padded.length ? config.maxLogSpan : UNFILTERED_SPAN;
 
   const starts: number[] = [];
   for (let start = fromBlock; start <= toBlock; start += span) {
@@ -365,7 +412,7 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
         // desperdiça tudo o que já foi lido.
         try {
           const logs = (await callRpc(
-            ARCHIVE_LOG_ENDPOINTS,
+            config.archiveLog.length ? config.archiveLog : config.endpoints,
             "eth_getLogs",
             [
               {
@@ -407,13 +454,18 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
 
 /** Saldo do token num bloco passado, via nó de arquivo. */
 export async function balanceAt(
+  chain: Chain,
   token: string,
   holder: string,
   block: number,
 ): Promise<bigint> {
+  const config = CHAINS[chain];
+  if (config.archiveState.length === 0) {
+    throw new Error(`${chain} não tem nó de arquivo público para estado antigo`);
+  }
   const data = `0x70a08231${padAddress(holder).slice(2)}`;
   const result = (await callRpc(
-    ARCHIVE_STATE_ENDPOINTS,
+    config.archiveState,
     "eth_call",
     [{ to: token, data }, `0x${block.toString(16)}`],
     8,
@@ -422,10 +474,13 @@ export async function balanceAt(
 }
 
 /** Timestamp de vários blocos, para converter altura em data. */
-export async function blockTimes(blocks: number[]): Promise<Map<number, number>> {
+export async function blockTimes(
+  chain: Chain,
+  blocks: number[],
+): Promise<Map<number, number>> {
   const unique = [...new Set(blocks)];
   const entries = await Promise.all(
-    unique.map(async (block) => [block, await blockTime(block)] as const),
+    unique.map(async (block) => [block, await blockTime(chain, block)] as const),
   );
   return new Map(entries);
 }
@@ -449,9 +504,9 @@ export function toUnits(value: bigint, decimals: number): number {
  * teste é o contador de transações — quem nunca enviou tem contador zero,
  * independentemente de quanto já recebeu.
  */
-export async function isFreshAddress(address: string): Promise<boolean> {
+export async function isFreshAddress(chain: Chain, address: string): Promise<boolean> {
   try {
-    const nonce = (await rpc("eth_getTransactionCount", [address, "latest"])) as string;
+    const nonce = (await rpc(chain, "eth_getTransactionCount", [address, "latest"])) as string;
     return BigInt(nonce) === BigInt(0);
   } catch {
     // Na dúvida, não é novidade: um falso positivo aqui vira alerta à toa.
