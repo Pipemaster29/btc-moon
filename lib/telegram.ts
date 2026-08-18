@@ -76,8 +76,11 @@ export async function sendTelegram(
 export async function discoverChatIds(
   token: string,
 ): Promise<{ id: string; name: string }[]> {
+  // Margem folgada: a API responde em menos de um segundo quando a conexão já
+  // está quente, mas a primeira chamada de uma rede fria passou de quinze — e um
+  // tempo esgotado aqui parece configuração errada quando é só lentidão.
   const res = await fetch(`${API}/bot${token}/getUpdates`, {
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(45_000),
   });
   if (!res.ok) throw new Error(`getUpdates respondeu ${res.status}`);
 
