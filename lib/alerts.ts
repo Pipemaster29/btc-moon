@@ -126,9 +126,16 @@ export function detect(input: DetectInput): Alert[] {
   const { symbol, gasSymbol, previous, current, transfers, priceUsd, liquidityUsd } = input;
   const alerts: Alert[] = [];
 
-  // O que conta como movimento grande depende da moeda, não de um número fixo:
-  // 5% da pool é o ponto em que uma venda já move o preço de forma visível.
-  const bigUsd = Math.max(liquidityUsd * 0.05, 5_000);
+  // O que torna um movimento relevante é o tamanho dele contra o que o mercado
+  // consegue absorver — ou seja, contra a LIQUIDEZ. Não contra o saldo de quem
+  // enviou: uma corretora com US$ 6 milhões em carteira e uma pool de US$ 157
+  // mil movimenta valores que são pequenos para ela e enormes para o preço.
+  // Ancorar na carteira foi um erro que calou movimentos de 60% da pool inteira.
+  //
+  // Trinta por cento da pool é o ponto em que a venda não tem como passar
+  // despercebida. O piso absoluto cobre moedas de liquidez ínfima, onde a
+  // fração sozinha daria um limiar de poucos dólares.
+  const bigUsd = Math.max(liquidityUsd * 0.3, 25_000);
 
   for (const wallet of current) {
     const before = previous[wallet.address.toLowerCase()];
@@ -156,19 +163,10 @@ export function detect(input: DetectInput): Alert[] {
     }
 
     // ------------------------------------------------------ saldo caindo
-    //
-    // O limiar é RELATIVO ao tamanho da carteira, e não um valor fixo. Uma
-    // corretora movimenta depósito e saque de clientes o tempo todo: US$ 30 mil
-    // saindo de uma carteira com US$ 6 milhões é rotina, e alertar sobre isso
-    // enterra o aviso que importa. Já a mesma quantia saindo de uma carteira
-    // parada é o evento inteiro.
     const drop = before.balance - wallet.balance;
     const isLock = wallet.role === "lock";
-    const churns = wallet.role === "exchange" || wallet.role === "operational";
     // Trava não deveria se mexer nunca, então qualquer saída conta.
-    const dropFloor = isLock
-      ? 0
-      : Math.max(bigUsd, before.balance * priceUsd * (churns ? 0.1 : 0.02));
+    const dropFloor = isLock ? 0 : bigUsd;
 
     if (drop > 0 && drop * priceUsd >= dropFloor) {
       alerts.push({
@@ -191,14 +189,9 @@ export function detect(input: DetectInput): Alert[] {
     }
 
     // ------------------------------------------- entrada em corretora
-    //
-    // Mesma lógica: só interessa quando a entrada é grande PARA AQUELA
-    // carteira. Um décimo do saldo chegando de uma vez é depósito fora do
-    // comum; alguns por cento é o fluxo normal de clientes.
     const rise = wallet.balance - before.balance;
-    const riseFloor = Math.max(bigUsd, before.balance * priceUsd * 0.1);
 
-    if (wallet.role === "exchange" && rise * priceUsd >= riseFloor) {
+    if (wallet.role === "exchange" && rise * priceUsd >= bigUsd) {
       alerts.push({
         kind: "exchange-inflow",
         severity: "high",

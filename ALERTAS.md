@@ -79,11 +79,12 @@ Cada alerta tem uma identidade e não repete por 6 horas. A identidade inclui a
 ORDEM DE GRANDEZA do valor, não o valor exato: assim um segundo movimento de
 US$ 30 mil na mesma carteira fica calado, mas um de US$ 3 milhões passa.
 
-Os limiares de entrada e saída são **relativos ao tamanho da carteira**, não um
-valor fixo. Uma corretora movimenta depósito e saque de clientes o tempo todo:
-US$ 30 mil saindo de uma carteira com US$ 6 milhões é rotina. A mesma quantia
-saindo de uma carteira parada é o evento inteiro. Trava é exceção — qualquer
-saída conta, porque ela não deveria se mexer nunca.
+Os limiares são ancorados na **liquidez à vista**, não no saldo de quem enviou.
+O que torna um movimento relevante é o tamanho dele contra o que o mercado
+consegue absorver: US$ 98 mil saindo contra uma pool de US$ 157 mil é 60% dela,
+por mais que seja pouco para uma corretora que guarda US$ 6 milhões. O corte é
+30% da pool, com piso de US$ 25 mil para moedas de liquidez ínfima. Trava é
+exceção — qualquer saída conta, porque não deveria se mexer nunca.
 
 Há também um teto de 6 alertas por rodada. Se algo disparar dezenas de uma vez,
 mandar todos é o mesmo que não mandar nenhum: os mais graves passam e o resto
@@ -102,12 +103,15 @@ npm run telegram-setup -- TOKEN
 
 ## Limites conhecidos
 
-**A janela de log é de uma hora.** Os nós públicos da BSC só servem
-`eth_getLogs` dos últimos ~8 mil blocos. A cadência de 10 minutos dá seis
-leituras por janela, folga suficiente para o agendamento atrasar — o que
-acontece sob carga — sem abrir buraco. Mesmo num atraso grande, os alertas de
-saldo e de gás continuam pegando a mudança, porque comparam retratos; só os de
-teste e de carteira nova dependem de ver a transferência passar.
+**O GitHub atrasa o agendamento.** O cron pede 10 minutos, mas as execuções
+reais saem a cada 31 em média, chegando a 42 — é comportamento documentado para
+workflows agendados sob carga. Por isso cada ciclo varre a profundidade inteira
+que o nó serve (~8 mil blocos, cerca de uma hora na BNB Chain) em vez de uma
+faixa só: com faixa única, uma transferência entre dois ciclos atrasados nunca
+seria vista. Custa uma chamada a mais por ciclo.
+
+Os alertas de saldo e de gás não dependem disso — comparam retratos e pegam a
+mudança de qualquer forma, só mais tarde.
 
 **O custo é zero porque o repositório é público.** Em repositório público o
 GitHub não cobra minutos de execução. Se ele voltar a ser privado, o teto de
