@@ -440,3 +440,21 @@ export function toUnits(value: bigint, decimals: number): number {
   const scale = BigInt(1_000_000);
   return Number((value * scale) / BigInt(10) ** BigInt(decimals)) / 1_000_000;
 }
+
+/**
+ * Um endereço que nunca enviou nada.
+ *
+ * Carteira recém-criada é o destino clássico de quem quer quebrar a trilha
+ * antes de distribuir: recebe, fica parada, e só se mexe na hora da venda. O
+ * teste é o contador de transações — quem nunca enviou tem contador zero,
+ * independentemente de quanto já recebeu.
+ */
+export async function isFreshAddress(address: string): Promise<boolean> {
+  try {
+    const nonce = (await rpc("eth_getTransactionCount", [address, "latest"])) as string;
+    return BigInt(nonce) === BigInt(0);
+  } catch {
+    // Na dúvida, não é novidade: um falso positivo aqui vira alerta à toa.
+    return false;
+  }
+}

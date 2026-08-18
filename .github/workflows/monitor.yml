@@ -1,0 +1,66 @@
+# Vigilância das carteiras da BTW, 24 horas por dia.
+#
+# A cadência não é arbitrária: os nós públicos da BSC só servem log da última
+# hora, então rodar mais espaçado que isso deixa buracos em que uma
+# transferência passa sem ser vista. Trinta minutos dá margem sem estourar os
+# 2.000 minutos gratuitos do mês — o GitHub arredonda cada execução para cima,
+# e 48 execuções por dia dão 1.440 minutos.
+#
+# Uma pausa maior não cega o monitor por completo: os alertas de saldo e de gás
+# comparam retratos e continuam pegando a mudança, só que atrasada. Quem depende
+# de ver a transferência no log são os alertas de teste e de carteira nova.
+
+name: Radar BTW
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  # Permite disparar à mão pela aba Actions, para testar sem esperar.
+  workflow_dispatch:
+
+# Se um ciclo demorar, o próximo espera em vez de rodar em cima dele e gravar
+# um estado inconsistente.
+concurrency:
+  group: radar-btw
+  cancel-in-progress: false
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      # A memória entre execuções vive no cache: o runner é descartado a cada
+      # rodada, e sem o retrato anterior não existe comparação — só um estado
+      # solto. A chave é rolante porque cache do GitHub é imutável: grava-se uma
+      # nova a cada ciclo e restaura-se a mais recente pelo prefixo.
+      - name: Restaurar memória
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/monitor.json
+          key: radar-btw-${{ github.run_id }}
+          restore-keys: radar-btw-
+
+      - run: npm ci
+
+      - name: Rodar ciclo
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: npm run monitor
+
+      - name: Guardar memória
+        # Grava mesmo se o ciclo falhar no meio: perder o retrato faz o ciclo
+        # seguinte virar "primeira leitura" e engolir os alertas daquela janela.
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/monitor.json
+          key: radar-btw-${{ github.run_id }}

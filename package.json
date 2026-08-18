@@ -25,7 +25,9 @@
     "watch": "tsx scripts/watch.mts",
     "wallets": "tsx scripts/wallets.mts",
     "radar": "tsx scripts/radar.mts",
-    "flows": "tsx scripts/flows.mts"
+    "flows": "tsx scripts/flows.mts",
+    "monitor": "tsx scripts/monitor.mts",
+    "telegram-setup": "tsx scripts/telegram-setup.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",
