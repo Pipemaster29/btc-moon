@@ -37,6 +37,24 @@ export function escapeMarkdown(text: string): string {
   return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, (c) => `\\${c}`);
 }
 
+/**
+ * Um link clicável em MarkdownV2.
+ *
+ * O escape aqui é diferente do texto comum e é fácil errar: dentro do rótulo
+ * valem as regras normais, mas dentro da URL só `)` e `\\` precisam de barra —
+ * escapar o resto quebraria o endereço. Como o Telegram recusa a mensagem
+ * INTEIRA quando a sintaxe não fecha, um erro aqui derruba o alerta em vez de
+ * só estragar a formatação.
+ */
+export function markdownLink(label: string, url: string): string {
+  return `[${escapeMarkdown(label)}](${url.replace(/[)\\]/g, (c) => `\\${c}`)})`;
+}
+
+/** Endereço em fonte monoespaçada, que o Telegram deixa copiar com um toque. */
+export function markdownCode(text: string): string {
+  return `\`${text.replace(/[`\\]/g, (c) => `\\${c}`)}\``;
+}
+
 export async function sendTelegram(
   config: TelegramConfig,
   text: string,

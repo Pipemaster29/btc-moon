@@ -27,7 +27,13 @@ import {
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
 import { WATCHLIST, labelOf, type WatchedToken } from "../lib/watchlist";
 import { detect, type Alert, type Observation, type TransferSeen, type WalletMemory } from "../lib/alerts";
-import { escapeMarkdown, sendTelegram, telegramFromEnv } from "../lib/telegram";
+import {
+  escapeMarkdown,
+  markdownCode,
+  markdownLink,
+  sendTelegram,
+  telegramFromEnv,
+} from "../lib/telegram";
 import { isFreshAddress } from "../lib/onchain";
 
 const args = process.argv.slice(2);
@@ -78,11 +84,19 @@ if (!telegram && !dryRun) {
 
 const state = await loadState();
 const now = Math.floor(Date.now() / 1000);
-const pending: Alert[] = [];
+
+/** O alerta viaja junto com a rede de origem, que decide o explorador do link. */
+interface Pending {
+  alert: Alert;
+  explorer: string;
+}
+
+const pending: Pending[] = [];
 
 for (const token of WATCHLIST.filter((t) => t.contract)) {
   const found = await inspect(token, state, now);
-  pending.push(...found);
+  const explorer = CHAINS[token.chain].explorer;
+  pending.push(...found.map((alert) => ({ alert, explorer })));
 }
 
 // ------------------------------------------------------------------ envio
@@ -98,9 +112,13 @@ if (pending.length === 0) {
   console.log("Nada digno de alerta neste ciclo.");
 } else {
   console.log(`${pending.length} alertas:\n`);
-  for (const alert of pending) {
+  for (const { alert, explorer } of pending) {
     console.log(`  [${alert.severity}] ${alert.title}`);
-    console.log(`      ${alert.detail}\n`);
+    console.log(`      ${alert.detail}`);
+    for (const address of alert.addresses) {
+      console.log(`      ${explorer}/address/${address}`);
+    }
+    console.log("");
   }
 
   if (telegram && !dryRun) {
@@ -116,11 +134,20 @@ if (pending.length === 0) {
     // Uma mensagem por alerta em vez de um bloco só: no celular a notificação
     // mostra as primeiras linhas, e um alerta crítico enterrado no meio de um
     // texto longo perde justamente a urgência que o torna útil.
-    for (const alert of sending) {
+    for (const { alert, explorer } of sending) {
+      // O endereço vai em bloco de código, que o Telegram copia com um toque,
+      // seguido do link para o explorador — conferir na fonte é o primeiro
+      // passo depois de receber um aviso destes.
+      const links = alert.addresses.map(
+        (address) =>
+          `${markdownCode(address)}\n${markdownLink("ver no explorador", `${explorer}/address/${address}`)}`,
+      );
+
       const text = [
         `*${escapeMarkdown(alert.title)}*`,
         "",
         escapeMarkdown(alert.detail),
+        ...(links.length ? ["", ...links] : []),
       ].join("\n");
 
       if (await sendTelegram(telegram, text)) {

@@ -51,6 +51,14 @@ export interface Alert {
   title: string;
   detail: string;
   valueUsd: number;
+  /**
+   * Endereços envolvidos, do mais relevante ao menos.
+   *
+   * Ficam fora do texto de propósito: quem envia decide como mostrá-los, e no
+   * Telegram viram link para o explorador da rede. Enfiar o endereço no meio da
+   * frase deixaria a mensagem ilegível no celular e sem como clicar.
+   */
+  addresses: string[];
 }
 
 /** O que ficou guardado da rodada anterior. */
@@ -143,6 +151,7 @@ export function detect(input: DetectInput): Alert[] {
           `Segura ${units(wallet.balance)} (${money(wallet.balance * priceUsd)}) e agora CONSEGUE mover. ` +
           `Abastecer é o passo obrigatório antes de vender.`,
         valueUsd: wallet.balance * priceUsd,
+        addresses: [wallet.address],
       });
     }
 
@@ -177,6 +186,7 @@ export function detect(input: DetectInput): Alert[] {
           : `Saldo caiu de ${units(before.balance)} para ${units(wallet.balance)}. ` +
             `São ${money(drop * priceUsd)} saindo desta carteira.`,
         valueUsd: drop * priceUsd,
+        addresses: [wallet.address],
       });
     }
 
@@ -198,6 +208,7 @@ export function detect(input: DetectInput): Alert[] {
           `${money(rise * priceUsd)} chegaram a uma carteira de corretora. ` +
           `Token indo para corretora costuma ser o passo anterior à venda no livro.`,
         valueUsd: rise * priceUsd,
+        addresses: [wallet.address],
       });
     }
   }
@@ -221,6 +232,7 @@ export function detect(input: DetectInput): Alert[] {
           `Carteira fria não vende; ela abastece a quente, que vende. ` +
           `Em 16/08 essa mesma sequência precedeu a distribuição em cerca de 12 horas.`,
         valueUsd: t.amount * priceUsd,
+        addresses: [t.from, t.to],
       });
     }
   }
@@ -243,10 +255,11 @@ export function detect(input: DetectInput): Alert[] {
       fingerprint: `test:${t.from}:${t.to}`,
       title: `🧪 ${symbol} · possível transferência de teste de ${t.fromLabel}`,
       detail:
-        `Apenas ${units(t.amount)} (${money(value)}) foram para ${t.to}, ` +
-        `um endereço que nunca enviou nada. Quem vai mover milhões confere o endereço antes. ` +
+        `Apenas ${units(t.amount)} (${money(value)}) foram para um endereço que nunca ` +
+        `enviou nada. Quem vai mover milhões confere o endereço antes. ` +
         `Em 16/08 o intervalo entre o teste e a transferência cheia foi de 13 a 16 minutos.`,
       valueUsd: value,
+      addresses: [t.to, t.from],
     });
   }
 
@@ -262,9 +275,10 @@ export function detect(input: DetectInput): Alert[] {
       fingerprint: `fresh:${t.from}:${t.to}:${Math.round(t.amount)}`,
       title: `🆕 ${symbol} · ${units(t.amount)} para carteira recém-criada`,
       detail:
-        `${money(value)} saíram de ${t.fromLabel} para ${t.to}, que nunca enviou nada. ` +
+        `${money(value)} saíram de ${t.fromLabel} para um endereço que nunca enviou nada. ` +
         `É o padrão de quebrar a trilha antes de distribuir — igual às duas carteiras de 16/08.`,
       valueUsd: value,
+      addresses: [t.to, t.from],
     });
   }
 
