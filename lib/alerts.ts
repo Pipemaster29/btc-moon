@@ -80,6 +80,8 @@ export interface TransferSeen {
 }
 
 export interface DetectInput {
+  /** Símbolo da moeda, para o alerta dizer de qual se trata. */
+  symbol: string;
   /** Nome do ativo que paga gás na rede — "BNB", "ETH". */
   gasSymbol: string;
   previous: Record<string, WalletMemory>;
@@ -101,8 +103,19 @@ const units = (v: number) =>
       : v >= 1e3 ? `${(v / 1e3).toFixed(1)} mil`
         : v.toFixed(0);
 
+/**
+ * Ordem de grandeza do valor, para o identificador do alerta.
+ *
+ * Um movimento de US$ 30 mil e outro de US$ 3 milhões na mesma carteira são
+ * eventos diferentes e os dois merecem aviso; dois de US$ 30 mil seguidos, não.
+ * Agrupar por ordem de grandeza deixa o segundo passar e cala o repetido.
+ */
+function magnitude(valueUsd: number): number {
+  return valueUsd > 0 ? Math.floor(Math.log10(valueUsd)) : 0;
+}
+
 export function detect(input: DetectInput): Alert[] {
-  const { gasSymbol, previous, current, transfers, priceUsd, liquidityUsd } = input;
+  const { symbol, gasSymbol, previous, current, transfers, priceUsd, liquidityUsd } = input;
   const alerts: Alert[] = [];
 
   // O que conta como movimento grande depende da moeda, não de um número fixo:
@@ -124,7 +137,7 @@ export function detect(input: DetectInput): Alert[] {
         kind: "gas-arrived",
         severity: "critical",
         fingerprint: `gas:${wallet.address}`,
-        title: `⛽ ${wallet.label} foi abastecida com gás`,
+        title: `⛽ ${symbol} · ${wallet.label} foi abastecida com gás`,
         detail:
           `Estava com 0 ${gasSymbol} e agora tem ${wallet.bnb.toFixed(4)}. ` +
           `Segura ${units(wallet.balance)} (${money(wallet.balance * priceUsd)}) e agora CONSEGUE mover. ` +
@@ -134,16 +147,30 @@ export function detect(input: DetectInput): Alert[] {
     }
 
     // ------------------------------------------------------ saldo caindo
+    //
+    // O limiar é RELATIVO ao tamanho da carteira, e não um valor fixo. Uma
+    // corretora movimenta depósito e saque de clientes o tempo todo: US$ 30 mil
+    // saindo de uma carteira com US$ 6 milhões é rotina, e alertar sobre isso
+    // enterra o aviso que importa. Já a mesma quantia saindo de uma carteira
+    // parada é o evento inteiro.
     const drop = before.balance - wallet.balance;
-    if (drop > 0 && drop * priceUsd >= bigUsd) {
-      const isLock = wallet.role === "lock";
+    const isLock = wallet.role === "lock";
+    const churns = wallet.role === "exchange" || wallet.role === "operational";
+    // Trava não deveria se mexer nunca, então qualquer saída conta.
+    const dropFloor = isLock
+      ? 0
+      : Math.max(bigUsd, before.balance * priceUsd * (churns ? 0.1 : 0.02));
+
+    if (drop > 0 && drop * priceUsd >= dropFloor) {
       alerts.push({
         kind: isLock ? "lock-outflow" : "balance-drop",
         severity: isLock ? "critical" : "high",
-        fingerprint: `out:${wallet.address}:${Math.round(wallet.balance)}`,
+        // Sem o saldo no identificador: ele muda a cada ciclo, e incluí-lo fazia
+        // a deduplicação nunca casar — a mesma carteira alertava para sempre.
+        fingerprint: `out:${wallet.address}:${magnitude(drop * priceUsd)}`,
         title: isLock
-          ? `🔓 A TRAVA SE MEXEU — ${wallet.label}`
-          : `📤 ${wallet.label} enviou ${units(drop)}`,
+          ? `🔓 ${symbol} · A TRAVA SE MEXEU — ${wallet.label}`
+          : `📤 ${symbol} · ${wallet.label} enviou ${units(drop)}`,
         detail: isLock
           ? `Saíram ${units(drop)} (${money(drop * priceUsd)}) de um contrato de trava. ` +
             `Era supply que não circulava e agora circula. É o evento mais grave possível para o preço.`
@@ -154,13 +181,19 @@ export function detect(input: DetectInput): Alert[] {
     }
 
     // ------------------------------------------- entrada em corretora
+    //
+    // Mesma lógica: só interessa quando a entrada é grande PARA AQUELA
+    // carteira. Um décimo do saldo chegando de uma vez é depósito fora do
+    // comum; alguns por cento é o fluxo normal de clientes.
     const rise = wallet.balance - before.balance;
-    if (wallet.role === "exchange" && rise * priceUsd >= bigUsd) {
+    const riseFloor = Math.max(bigUsd, before.balance * priceUsd * 0.1);
+
+    if (wallet.role === "exchange" && rise * priceUsd >= riseFloor) {
       alerts.push({
         kind: "exchange-inflow",
         severity: "high",
-        fingerprint: `in:${wallet.address}:${Math.round(wallet.balance)}`,
-        title: `🏦 ${units(rise)} entraram em ${wallet.label}`,
+        fingerprint: `in:${wallet.address}:${magnitude(rise * priceUsd)}`,
+        title: `🏦 ${symbol} · ${units(rise)} entraram em ${wallet.label}`,
         detail:
           `${money(rise * priceUsd)} chegaram a uma carteira de corretora. ` +
           `Token indo para corretora costuma ser o passo anterior à venda no livro.`,
@@ -182,7 +215,7 @@ export function detect(input: DetectInput): Alert[] {
         kind: "cold-to-hot",
         severity: "critical",
         fingerprint: `c2h:${t.block}:${Math.round(t.amount)}`,
-        title: `🧊→🔥 ${units(t.amount)} da carteira fria para a quente`,
+        title: `🧊→🔥 ${symbol} · ${units(t.amount)} da carteira fria para a quente`,
         detail:
           `${money(t.amount * priceUsd)} mudaram de custódia fria para operacional. ` +
           `Carteira fria não vende; ela abastece a quente, que vende. ` +
@@ -208,7 +241,7 @@ export function detect(input: DetectInput): Alert[] {
       kind: "test-transfer",
       severity: "critical",
       fingerprint: `test:${t.from}:${t.to}`,
-      title: `🧪 Possível transferência de teste de ${t.fromLabel}`,
+      title: `🧪 ${symbol} · possível transferência de teste de ${t.fromLabel}`,
       detail:
         `Apenas ${units(t.amount)} (${money(value)}) foram para ${t.to}, ` +
         `um endereço que nunca enviou nada. Quem vai mover milhões confere o endereço antes. ` +
@@ -227,7 +260,7 @@ export function detect(input: DetectInput): Alert[] {
       kind: "fresh-recipient",
       severity: "critical",
       fingerprint: `fresh:${t.from}:${t.to}:${Math.round(t.amount)}`,
-      title: `🆕 ${units(t.amount)} para carteira recém-criada`,
+      title: `🆕 ${symbol} · ${units(t.amount)} para carteira recém-criada`,
       detail:
         `${money(value)} saíram de ${t.fromLabel} para ${t.to}, que nunca enviou nada. ` +
         `É o padrão de quebrar a trilha antes de distribuir — igual às duas carteiras de 16/08.`,

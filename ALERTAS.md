@@ -75,9 +75,21 @@ aconteceu.
 
 ## Sem alarme falso repetido
 
-Cada alerta tem uma identidade e não repete por 6 horas. Sem isso, uma carteira
-abastecida geraria o mesmo aviso a cada 10 minutos até alguém desligar tudo — e
-um alerta ignorado é pior do que nenhum.
+Cada alerta tem uma identidade e não repete por 6 horas. A identidade inclui a
+ORDEM DE GRANDEZA do valor, não o valor exato: assim um segundo movimento de
+US$ 30 mil na mesma carteira fica calado, mas um de US$ 3 milhões passa.
+
+Os limiares de entrada e saída são **relativos ao tamanho da carteira**, não um
+valor fixo. Uma corretora movimenta depósito e saque de clientes o tempo todo:
+US$ 30 mil saindo de uma carteira com US$ 6 milhões é rotina. A mesma quantia
+saindo de uma carteira parada é o evento inteiro. Trava é exceção — qualquer
+saída conta, porque ela não deveria se mexer nunca.
+
+Há também um teto de 6 alertas por rodada. Se algo disparar dezenas de uma vez,
+mandar todos é o mesmo que não mandar nenhum: os mais graves passam e o resto
+vira uma linha de resumo.
+
+Todo alerta começa com o símbolo da moeda, porque o monitor vigia mais de uma.
 
 ## Comandos
 

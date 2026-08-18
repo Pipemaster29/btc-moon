@@ -86,6 +86,14 @@ for (const token of WATCHLIST.filter((t) => t.contract)) {
 }
 
 // ------------------------------------------------------------------ envio
+//
+// Teto por rodada. Se algo disparar dezenas de alertas de uma vez, mandar todos
+// é o mesmo que não mandar nenhum: o celular vira uma parede de notificação e o
+// mais grave se perde no meio. Os mais graves passam, o resto vira uma linha.
+const MAX_PER_CYCLE = 6;
+const overflow = pending.length - MAX_PER_CYCLE;
+const sending = pending.slice(0, MAX_PER_CYCLE);
+
 if (pending.length === 0) {
   console.log("Nada digno de alerta neste ciclo.");
 } else {
@@ -96,10 +104,19 @@ if (pending.length === 0) {
   }
 
   if (telegram && !dryRun) {
+    if (overflow > 0) {
+      await sendTelegram(
+        telegram,
+        escapeMarkdown(
+          `⚠️ ${pending.length} alertas nesta rodada — mostrando os ${MAX_PER_CYCLE} mais graves. ` +
+            `Volume assim costuma ser distribuição em andamento, não ruído.`,
+        ),
+      );
+    }
     // Uma mensagem por alerta em vez de um bloco só: no celular a notificação
     // mostra as primeiras linhas, e um alerta crítico enterrado no meio de um
     // texto longo perde justamente a urgência que o torna útil.
-    for (const alert of pending) {
+    for (const alert of sending) {
       const text = [
         `*${escapeMarkdown(alert.title)}*`,
         "",
@@ -194,6 +211,7 @@ async function inspect(
   const previous = state.wallets[token.symbol] ?? {};
 
   const alerts = detect({
+    symbol: info.symbol,
     gasSymbol: CHAINS[token.chain].gasSymbol,
     previous,
     current,
