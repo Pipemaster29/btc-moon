@@ -27,7 +27,7 @@
  * cobre 37 minutos de BNB Chain e 167 minutos de Base, porque uma fecha bloco a
  * cada 0,45 s e a outra a cada 2 s.
  */
-export type Chain = "bsc" | "base" | "ethereum";
+export type Chain = "bsc" | "base" | "ethereum" | "solana";
 
 export interface ChainConfig {
   /** Nome do ativo que paga gás — muda o texto dos alertas. */
@@ -81,6 +81,27 @@ export const CHAINS: Record<Chain, ChainConfig> = {
     prunedDepth: 20_000,
     secondsPerBlock: 12,
     explorer: "https://etherscan.io",
+  },
+  // A Solana entra na lista de redes sem nenhum endpoint, e isso é proposital.
+  //
+  // Tudo neste módulo fala JSON-RPC de EVM: `eth_call`, `eth_getLogs`, saldo
+  // guardado num mapa dentro do contrato. Na Solana o saldo de um dono mora
+  // numa CONTA DE TOKEN separada, que se descobre por `getTokenAccountsByOwner`,
+  // e as transferências saem de instruções dentro de transações em vez de logs
+  // indexados por tópico. Não é uma questão de trocar a URL: é outro adaptador.
+  //
+  // Deixar a rede declarada com as listas vazias mantém a tipagem honesta — uma
+  // moeda pode dizer que vive aqui — e faz qualquer tentativa de leitura falhar
+  // alto, na primeira chamada, em vez de devolver zero e passar por saldo.
+  solana: {
+    gasSymbol: "SOL",
+    endpoints: [],
+    archiveLog: [],
+    archiveState: [],
+    maxLogSpan: 0,
+    prunedDepth: 0,
+    secondsPerBlock: 0.4,
+    explorer: "https://solscan.io",
   },
   base: {
     gasSymbol: "ETH",

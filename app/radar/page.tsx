@@ -23,6 +23,8 @@ export const metadata = {
 const CHAIN_LABEL: Record<string, string> = {
   bsc: "BNB Chain",
   base: "Base",
+  ethereum: "Ethereum",
+  solana: "Solana",
 };
 
 const ROLE_COLOR: Record<string, string> = {
@@ -372,12 +374,9 @@ export default async function Radar() {
                 só derivativos
               </span>
             </div>
-            <p className="text-sm text-black/60 dark:text-white/60">
-              O PRL negociado com volume é o Perle, que vive na Solana — fora do alcance
-              da leitura on-chain daqui. O contrato BSC de mesmo símbolo é outro projeto,
-              com US$ 445 mil de FDV e quatro negócios por dia: usá-lo mediria a moeda
-              errada, então este símbolo é acompanhado só pelo lado do perpétuo.
-            </p>
+            {token.note && (
+              <p className="text-sm text-black/60 dark:text-white/60">{token.note}</p>
+            )}
             <PositioningPanel snapshot={perpBySymbol.get(token.symbol)!} />
           </div>
         ))}

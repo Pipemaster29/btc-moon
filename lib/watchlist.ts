@@ -60,6 +60,14 @@ export interface WatchedToken {
   /** Bloco da primeira transferência — o começo da vida do token. */
   firstBlock: number;
   wallets: WatchedWallet[];
+  /**
+   * Por que esta moeda é acompanhada só pelo perpétuo.
+   *
+   * Existe porque a explicação estava escrita na página, presa a um símbolo:
+   * ao trocar a moeda, o texto continuaria falando da anterior. Aqui ela anda
+   * junto de quem a explica.
+   */
+  note?: string;
 }
 
 export const WATCHLIST: WatchedToken[] = [
@@ -357,117 +365,38 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
+    note:
+      "O PRL negociado com volume é o Perle, que vive na Solana — fora do alcance da leitura " +
+      "on-chain daqui. O contrato BSC de mesmo símbolo é outro projeto, com US$ 445 mil de FDV " +
+      "e quatro negócios por dia: usá-lo mediria a moeda errada.",
   },
   {
-    symbol: "GPSUSDT",
-    // GoPlus Security. Vive na BASE, não na BNB Chain — o contrato de mesmo
-    // símbolo na BSC é outro projeto, com 179 milhões de supply e US$ 3 milhões
-    // de FDV. O da Base tem os 10 bilhões que batem com o token listado, e é
-    // nele que as carteiras informadas seguram 87,9% do total.
-    chain: "base",
-    contract: "0x0C1dC73159e30c4b06170F2593D3118968a0DCa5",
-    // Primeira transferência em 2025-02-21, achada por busca binária.
-    firstBlock: 26660000,
-    wallets: [
-      {
-        address: "0xF977814e90dA44bFA03b6295A0616a897441aceC",
-        // Endereço amplamente conhecido como carteira da Binance: segura 30 mil
-        // ETH na Base, 739 mil ETH na Ethereum e 6,4 milhões de BNB na BNB
-        // Chain. O rótulo vem de fora, mas a escala é confirmada on-chain.
-        label: "Binance",
-        role: "exchange",
-        verified: false,
-      },
-
-      // ---------------------------------------------------- os nove contratos
-      //
-      // Todos são CONTRATO com exatamente uma transação e zero ETH, segurando
-      // de 1,7% a 16,3% cada. Somam 57,2% do supply. O padrão — alocações
-      // redondas, imóveis, em código em vez de carteira — é de trava por
-      // cronograma, e a saída de qualquer uma delas é o evento que importa.
-      {
-        address: "0x7bBbB6fb4DC48E7DF86D2a11f8cdF9a687091300",
-        label: "trava 16,3%",
-        role: "lock",
-        verified: true,
-      },
-      {
-        address: "0x7448817552B70F9E423710B704Aa1cE7c4218e7d",
-        // Exatamente 1.600.000.000 — número redondo demais para ser acaso.
-        label: "trava 16,0%",
-        role: "lock",
-        verified: true,
-      },
-      {
-        address: "0x0b3c68A69205C2fffE5B10DF9994C306172fee43",
-        label: "trava 8,0%",
-        role: "lock",
-        verified: true,
-      },
-      {
-        address: "0xC2bcb8170fCf72040E03f0AfD937D27E6F178619",
-        label: "trava 6,5%",
-        role: "lock",
-        verified: true,
-      },
-      {
-        address: "0x9Df0A205BaE0E8A8866d73ED960EDfa17a56251B",
-        label: "trava 2,4%",
-        role: "lock",
-        verified: true,
-      },
-      {
-        address: "0xf1afc52B48d12D9DCf6f9527D35fF877e5826d81",
-        label: "trava 2,3%",
-        role: "lock",
-        verified: true,
-      },
-      {
-        address: "0x2075C84869bdb934164514Db0ea099C7B816868C",
-        label: "trava 2,3%",
-        role: "lock",
-        verified: true,
-      },
-      {
-        address: "0x01efc19badCAC4EDaE0d75c5F344AcD0F7311722",
-        label: "trava 1,8%",
-        role: "lock",
-        verified: true,
-      },
-      {
-        address: "0xDf79f254f0c7dec970A6a3df86Cf149bdb642F55",
-        label: "trava 1,7%",
-        role: "lock",
-        verified: true,
-      },
-
-      // ------------------------------------------------ infraestrutura pesada
-      //
-      // Milhões de transações e milhares de ETH de gás: é corretora ou serviço
-      // de custódia, não carteira de projeto. Qual delas, não dá para saber
-      // pela cadeia.
-      {
-        address: "0xBaeD383EDE0e5d9d72430661f3285DAa77E9439F",
-        label: "corretora (1,96M txs)",
-        role: "exchange",
-        verified: false,
-      },
-      {
-        address: "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe",
-        label: "corretora (1,57M txs)",
-        role: "exchange",
-        verified: false,
-      },
-      {
-        address: "0xf89d7b9c864f589bbF53a82105107622B35EaA40",
-        // Zerada de GPS na Base, mas segura 101 milhões do token homônimo na
-        // BSC. Fica na lista porque saldo zero é informação: se encher, alguém
-        // voltou a movimentar.
-        label: "zerada na Base",
-        role: "dormant",
-        verified: true,
-      },
-    ],
+    // Akedo (AKE), que vive na SOLANA. Fica só no perpétuo por um motivo
+    // concreto e não por preguiça: não consegui identificar o mint com
+    // confiança. O único candidato do DexScreener com liquidez de verdade
+    // (BMsBH4H7… no Raydium, US$ 6,2 mi de pool) negocia a US$ 0,0064 enquanto
+    // o perpétuo marca US$ 0,0087 — 36% de diferença, que não sobrevive a
+    // arbitragem entre o mesmo ativo. São tokens homônimos, e a Solana está
+    // cheia deles.
+    //
+    // Chutar o mint seria repetir o erro do GPS, quando um impostor na BSC me
+    // fez medir a moeda errada. Com o mint confirmado — e com as carteiras
+    // principais, como as que vieram para a BTW — falta ainda um adaptador de
+    // Solana: a leitura daqui é toda EVM, e SPL token guarda saldo em contas de
+    // token em vez de num mapa dentro do contrato.
+    //
+    // O que JÁ funciona: o Binance Data Vision publica AKEUSDT e a Gate lista o
+    // perpétuo. Posicionamento, mapa de liquidação, natureza da alta e saída
+    // das baleias valem por inteiro.
+    symbol: "AKEUSDT",
+    chain: "solana",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note:
+      "O AKE vive na Solana, e a leitura on-chain daqui é de redes EVM. Falta confirmar o mint: " +
+      "o único par com liquidez real negocia 36% abaixo do perpétuo, o que indica token homônimo " +
+      "e não o mesmo ativo. Enquanto isso, o lado dos derivativos vale por inteiro.",
   },
 ];
 
