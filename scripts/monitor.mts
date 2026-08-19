@@ -26,7 +26,14 @@ import {
 } from "../lib/onchain";
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
 import { WATCHLIST, labelOf, type WatchedToken } from "../lib/watchlist";
-import { detect, type Alert, type Observation, type TransferSeen, type WalletMemory } from "../lib/alerts";
+import {
+  detect,
+  type Alert,
+  type ExchangePoint,
+  type Observation,
+  type TransferSeen,
+  type WalletMemory,
+} from "../lib/alerts";
 import {
   escapeMarkdown,
   markdownCode,
@@ -46,6 +53,14 @@ const QUIET_HOURS = 6;
 
 interface State {
   wallets: Record<string, Record<string, WalletMemory>>;
+  /**
+   * Saldo somado das corretoras, por moeda, ao longo do tempo.
+   *
+   * Diferente do resto do estado, esta série precisa de memória LONGA: o sinal
+   * de topo compara o saldo de hoje com o fundo das últimas semanas, e uma
+   * janela curta não enxergaria o aperto que o precede.
+   */
+  exchange?: Record<string, ExchangePoint[]>;
   /** fingerprint → quando foi enviado, em segundos. */
   fired: Record<string, number>;
   lastBlock: number;
@@ -55,7 +70,7 @@ async function loadState(): Promise<State> {
   try {
     return JSON.parse(await readFile(STATE, "utf8")) as State;
   } catch {
-    return { wallets: {}, fired: {}, lastBlock: 0 };
+    return { wallets: {}, fired: {}, exchange: {}, lastBlock: 0 };
   }
 }
 
@@ -262,8 +277,24 @@ async function inspect(
 
   const previous = state.wallets[token.symbol] ?? {};
 
+  // Uma leitura por hora basta para a série: o sinal é de dias, e guardar um
+  // ponto a cada ciclo de 5 minutos encheria o arquivo sem afinar nada.
+  const exchangeTotal = current
+    .filter((w) => w.role === "exchange")
+    .reduce((sum, w) => sum + w.balance, 0);
+
+  const historico = state.exchange?.[token.symbol] ?? [];
+  const ultimo = historico[historico.length - 1];
+  if (!ultimo || now - ultimo.time >= 3600) {
+    historico.push({ time: now, total: exchangeTotal });
+  } else {
+    ultimo.total = exchangeTotal;
+  }
+  state.exchange = { ...state.exchange, [token.symbol]: historico.slice(-400) };
+
   const alerts = detect({
     symbol: info.symbol,
+    exchangeHistory: historico,
     gasSymbol: CHAINS[token.chain].gasSymbol,
     previous,
     current,

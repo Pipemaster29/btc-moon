@@ -41,7 +41,8 @@ export type AlertKind =
   | "exchange-outflow"
   | "balance-drop"
   | "fresh-recipient"
-  | "large-transfer";
+  | "large-transfer"
+  | "cycle-top";
 
 export type Severity = "critical" | "high" | "medium";
 
@@ -89,9 +90,22 @@ export interface TransferSeen {
   toIsFresh: boolean;
 }
 
+/** Uma leitura passada do saldo somado das corretoras. */
+export interface ExchangePoint {
+  time: number;
+  total: number;
+}
+
 export interface DetectInput {
   /** Símbolo da moeda, para o alerta dizer de qual se trata. */
   symbol: string;
+  /**
+   * Série do saldo agregado das corretoras, do mais antigo ao mais recente.
+   *
+   * É a única entrada que exige memória longa, e é a mais valiosa: o topo de um
+   * pump não se anuncia no preço, se anuncia aqui.
+   */
+  exchangeHistory?: ExchangePoint[];
   /** Nome do ativo que paga gás na rede — "BNB", "ETH". */
   gasSymbol: string;
   previous: Record<string, WalletMemory>;
@@ -126,6 +140,7 @@ function magnitude(valueUsd: number): number {
 
 export function detect(input: DetectInput): Alert[] {
   const { symbol, gasSymbol, previous, current, transfers, priceUsd, liquidityUsd } = input;
+  const history = input.exchangeHistory ?? [];
   const alerts: Alert[] = [];
 
   // O que torna um movimento relevante é o tamanho dele contra o que o mercado
@@ -266,6 +281,46 @@ export function detect(input: DetectInput): Alert[] {
       valueUsd: variacaoUsd,
       addresses: [],
     });
+  }
+
+  // ---------------------------------------------------------- topo do ciclo
+  //
+  // Medido no LAB, que percorreu o ciclo inteiro: o saldo somado das corretoras
+  // caiu 97% enquanto o preço multiplicava por 79, e o TOPO foi a REVERSÃO
+  // desse saldo — de 0,36 para 5,87 milhões em quatro dias, com o preço indo de
+  // US$ 14 para US$ 0,89.
+  //
+  // A mecânica é obrigatória, não coincidência: secar o livro faz pouco
+  // dinheiro mover muito preço, mas VENDER exige devolver o token para a
+  // corretora, e o depósito acontece antes da venda. Por isso a virada do saldo
+  // antecede a queda em vez de segui-la.
+  //
+  // Duas condições, e as duas precisam valer. Um repique sem aperto anterior é
+  // só ruído de fluxo; um aperto sem repique ainda é a fase de alta.
+  if (history.length >= 4) {
+    const recente = history.slice(-14);
+    const minimo = Math.min(...recente.map((p) => p.total));
+    const maximo = Math.max(...history.map((p) => p.total));
+    const atual = history[history.length - 1].total;
+
+    const houveAperto = maximo > 0 && minimo / maximo < 0.8;
+    const repique = minimo > 0 ? atual / minimo - 1 : 0;
+
+    if (houveAperto && repique >= 0.25) {
+      alerts.push({
+        kind: "cycle-top",
+        severity: "critical",
+        fingerprint: `top:${symbol}:${magnitude(atual * priceUsd)}`,
+        title: `🔻 ${symbol} · POSSÍVEL TOPO — oferta voltando para as corretoras`,
+        detail:
+          `O saldo somado das corretoras encolheu ${((1 - minimo / maximo) * 100).toFixed(0)}% durante a alta e ` +
+          `agora subiu ${(repique * 100).toFixed(0)}% desde o fundo. Vender exige devolver o token para a ` +
+          `corretora antes, então essa virada costuma anteceder a distribuição. ` +
+          `Foi este o sinal no topo do LAB, quatro dias antes de o preço cair de US$ 14 para US$ 0,89.`,
+        valueUsd: atual * priceUsd,
+        addresses: [],
+      });
+    }
   }
 
   // ------------------------------------------------- fria alimentando quente
