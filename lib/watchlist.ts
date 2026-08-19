@@ -22,8 +22,16 @@ import type { Chain } from "./onchain";
  * papéis, não a do supply, que diz quanto pode ser vendido.
  */
 export type WalletRole =
-  /** Contrato que segura o token; só sai se quem administra mandar. */
+  /** Contrato que segura o token por cronograma, sem chave que libere antes. */
   | "lock"
+  /**
+   * Cofre multi-assinatura: sai quando N pessoas concordarem, e só isso.
+   *
+   * Separado de `lock` porque a diferença é tudo. Uma trava por cronograma tem
+   * data; um cofre 2-de-3 tem apenas duas pessoas. Chamar os dois de travado
+   * subestima a oferta disponível pelo pior fator possível.
+   */
+  | "multisig"
   /** Carteira que distribui — origem dos repasses. */
   | "treasury"
   /** Custódia de corretora. */
@@ -123,26 +131,30 @@ export const WATCHLIST: WatchedToken[] = [
       // foram informadas, e os saldos foram conferidos on-chain.
       {
         address: "0x76D77531258b4DDDFA4087e97A6C89Bc0f0f1e50",
-        // 10.805 bytes de código, `token()` aponta para o BTW e `owner()` para
-        // outro contrato. É uma trava administrada: sai quando o dono mandar.
-        label: "trava principal",
-        role: "lock",
+        // NÃO é trava por cronograma. O `owner()` é um cofre Gnosis Safe que
+        // exige apenas 2 de 3 assinaturas, e dois dos três signatários são a
+        // carteira distribuidora e a "59M ativa" — ambas já nesta lista. Ou
+        // seja: 72,92% do supply se move quando duas pessoas concordarem.
+        label: "cofre 2-de-3 (72,9%)",
+        role: "multisig",
         verified: true,
       },
       {
         address: "0xcD3e5E5Ca176aF4958Ee33E346CC5eE93Eca73D7",
-        // 171 bytes — tamanho de proxy mínimo. Segura US$ 414 milhões com
-        // praticamente nenhuma lógica própria, o mesmo tamanho do dono do token
-        // e do dono da trava principal: os três saíram da mesma fábrica.
-        label: "trava (proxy)",
-        role: "lock",
+        // Gnosis Safe de 4 de 6, confirmado por `getThreshold()` e
+        // `getOwners()`. Os 171 bytes são o proxy padrão do Safe — o mesmo
+        // tamanho do dono do token e do dono do cofre maior, porque os três SÃO
+        // cofres Safe, não travas.
+        label: "cofre 4-de-6 (12,0%)",
+        role: "multisig",
         verified: true,
       },
       {
         address: "0x7d455713A6e14967fA145c7F5204122aebfd9256",
-        // É a origem da primeira transferência do token que existe em log.
-        // Tem gás e 188 transações: é daqui que a distribuição sai.
-        label: "distribuidora",
+        // Origem da primeira transferência do token que existe em log, e
+        // signatária dos TRÊS cofres: o de 72,9%, o de 12,0% e o que é dono do
+        // contrato. É o endereço com mais poder sobre a moeda.
+        label: "distribuidora · signatária",
         role: "treasury",
         verified: true,
       },
@@ -168,9 +180,10 @@ export const WATCHLIST: WatchedToken[] = [
       },
       {
         address: "0x87dC0E03e7AC509Cd4500B18a3D104BE1C9b1383",
-        // 76 transações e BNB no saldo: mexe pouco, mas mexe. Chamar de parada
-        // subestimaria a oferta que pode virar venda.
-        label: "59M ativa",
+        // Signatária dos três cofres, junto com a distribuidora. Mexe pouco em
+        // saldo próprio, mas é uma das duas assinaturas que bastam para mover
+        // 72,92% do supply.
+        label: "59M · signatária",
         role: "operational",
         verified: true,
       },
@@ -258,6 +271,14 @@ export const WATCHLIST: WatchedToken[] = [
         address: "0xb300000b72deaeb607a12d5f54773d1c19c7028d",
         label: "roteador 3",
         role: "router",
+        verified: true,
+      },
+      // Terceiro signatário dos cofres, sem saldo próprio relevante. Entra na
+      // lista porque assinatura é poder mesmo sem saldo.
+      {
+        address: "0x7c86f7fe5843c226b7c7878656ea70d34ba8e37c",
+        label: "signatária 3",
+        role: "operational",
         verified: true,
       },
     ],

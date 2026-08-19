@@ -186,17 +186,21 @@ async function report(token: WatchedToken, state: State): Promise<void> {
       `    ${name.padEnd(24)} ${units(amount).padStart(10)}  ${((amount / supply) * 100).toFixed(2).padStart(6)}%  ${money(amount * price).padStart(9)}   ${note}`,
     );
 
-  line("travado em contrato", locked, "só sai se o administrador mandar");
+  line("travado por cronograma", locked, "tem data para liberar");
+  line("cofre multi-assinatura", byRole.get("multisig") ?? 0, "sai se os signatários concordarem");
   line("parado sem gás", dormant, "não consegue mover");
   line("em corretora", byRole.get("exchange") ?? 0, "custódia / oferta pronta");
   line("distribuidora", byRole.get("treasury") ?? 0, "de onde saem os repasses");
   line("operacional", byRole.get("operational") ?? 0, "ativa, com gás");
+  line("roteamento", byRole.get("router") ?? 0, "carrega token até o livro");
   line("não mapeado", unmapped, "todo o resto do mercado");
 
   // A oferta que pode virar venda hoje é o que sobra depois de tirar trava e
   // paralisia. É esse número, e não o supply, que o preço tem de absorver.
+  // Cofre multi-assinatura é oferta disponível: não tem cronograma que o
+  // segure, só o número de assinaturas. Somá-lo ao travado escondia o risco.
   const sellable = (byRole.get("exchange") ?? 0) + (byRole.get("treasury") ?? 0)
-    + (byRole.get("operational") ?? 0) + unmapped;
+    + (byRole.get("operational") ?? 0) + (byRole.get("multisig") ?? 0) + unmapped;
 
   console.log(
     `\n    oferta destravada        ${units(sellable).padStart(10)}  ${((sellable / supply) * 100).toFixed(2).padStart(6)}%  ${money(sellable * price).padStart(9)}`,

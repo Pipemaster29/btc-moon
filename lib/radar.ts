@@ -100,7 +100,11 @@ export interface RadarSnapshot {
 }
 
 const ROLE_META: Record<WalletRole, { label: string; note: string }> = {
-  lock: { label: "Travado em contrato", note: "só sai se o administrador mandar" },
+  lock: { label: "Travado por cronograma", note: "tem data para liberar" },
+  multisig: {
+    label: "Cofre multi-assinatura",
+    note: "sai quando os signatários concordarem",
+  },
   dormant: { label: "Parado sem gás", note: "não consegue mover" },
   exchange: { label: "Em corretora", note: "custódia ou oferta pronta" },
   treasury: { label: "Distribuidora", note: "de onde saem os repasses" },
@@ -181,10 +185,15 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
     },
   ];
 
+  // Cofre multi-assinatura conta como oferta disponível. Não tem cronograma que
+  // o segure: basta o número de assinaturas combinar, e no caso da BTW são duas
+  // pessoas para 72,92% do supply. Tratá-lo como travado era o erro que fazia a
+  // oferta parecer dez vezes menor do que é.
   const sellable =
     (byRole.get("exchange") ?? 0) +
     (byRole.get("treasury") ?? 0) +
     (byRole.get("operational") ?? 0) +
+    (byRole.get("multisig") ?? 0) +
     unmapped;
 
   // -------------------------------------------------- movimentação recente
