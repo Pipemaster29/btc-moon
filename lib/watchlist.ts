@@ -371,32 +371,61 @@ export const WATCHLIST: WatchedToken[] = [
       "e quatro negócios por dia: usá-lo mediria a moeda errada.",
   },
   {
-    // Akedo (AKE), que vive na SOLANA. Fica só no perpétuo por um motivo
-    // concreto e não por preguiça: não consegui identificar o mint com
-    // confiança. O único candidato do DexScreener com liquidez de verdade
-    // (BMsBH4H7… no Raydium, US$ 6,2 mi de pool) negocia a US$ 0,0064 enquanto
-    // o perpétuo marca US$ 0,0087 — 36% de diferença, que não sobrevive a
-    // arbitragem entre o mesmo ativo. São tokens homônimos, e a Solana está
-    // cheia deles.
+    // Akedo (AKE), na BNB Chain — conferido on-chain: símbolo AKE, 18 decimais,
+    // 100 bilhões de supply. O preço à vista bate com o do perpétuo
+    // (US$ 0,00869 contra US$ 0,00872), que é o teste que separa a moeda certa
+    // de um homônimo: entre o mesmo ativo a arbitragem não deixa a diferença
+    // passar de um dígito percentual.
     //
-    // Chutar o mint seria repetir o erro do GPS, quando um impostor na BSC me
-    // fez medir a moeda errada. Com o mint confirmado — e com as carteiras
-    // principais, como as que vieram para a BTW — falta ainda um adaptador de
-    // Solana: a leitura daqui é toda EVM, e SPL token guarda saldo em contas de
-    // token em vez de num mapa dentro do contrato.
+    // Registro do erro, porque ele é reincidente: procurei "AKE" no DexScreener,
+    // vieram doze tokens chamados AKEDO na Solana, e eu tratei o de maior
+    // liquidez como o certo — ele negociava 36% abaixo do perpétuo, que era
+    // justamente o sinal de que NÃO era. A busca por nome devolve o mercado
+    // inteiro de homônimos; o que identifica a moeda é o preço bater com o
+    // derivativo que se está lendo.
     //
-    // O que JÁ funciona: o Binance Data Vision publica AKEUSDT e a Gate lista o
-    // perpétuo. Posicionamento, mapa de liquidação, natureza da alta e saída
-    // das baleias valem por inteiro.
+    // Escala contra a BTW: US$ 869 milhões de FDV e US$ 1,45 milhão de liquidez
+    // à vista — dez vezes a pool da BTW. Ou seja, aqui o mercado à vista tem
+    // peso de verdade, e o preço não é formado só no perpétuo.
     symbol: "AKEUSDT",
-    chain: "solana",
-    contract: "",
+    chain: "bsc",
+    contract: "0x2c3a8Ee94dDD97244a93Bc48298f97d2C412F7Db",
     firstBlock: 0,
-    wallets: [],
-    note:
-      "O AKE vive na Solana, e a leitura on-chain daqui é de redes EVM. Falta confirmar o mint: " +
-      "o único par com liquidez real negocia 36% abaixo do perpétuo, o que indica token homônimo " +
-      "e não o mesmo ativo. Enquanto isso, o lado dos derivativos vale por inteiro.",
+    wallets: [
+      // As carteiras de corretora são as mesmas entre tokens — o que muda é o
+      // saldo. Conferidas agora: a Binance carrega 3,16% do supply e a MEXC
+      // 0,06%; Bitget e a quente da Binance estão zeradas em AKE.
+      {
+        address: "0x73D8bD54F7Cf5FAb43fE4Ef40A62D390644946Db",
+        label: "Binance (contrato)",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x4982085C9e2F89F2eCb8131Eca71aFAD896e89CB",
+        label: "MEXC",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x1AB4973a48dc892Cd9971ECE8e01DcC7688f8F23",
+        label: "Bitget (quente)",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x26209d9f0Dc3aC0129C3FB1bADaBFeb9eE728c66",
+        label: "Bitget (fria)",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x7FcBd9d429932A11884Cb5CE9c61055b369F56F7",
+        label: "Binance",
+        role: "exchange",
+        verified: true,
+      },
+    ],
   },
 ];
 

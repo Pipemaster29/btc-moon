@@ -510,6 +510,27 @@ export async function balanceAt(
   return BigInt(result === "0x" ? "0x0" : result);
 }
 
+/**
+ * O bloco mais próximo de um instante, por busca binária.
+ *
+ * A conta óbvia — dividir a diferença de tempo pelo tempo de bloco — só funciona
+ * para o passado recente. A BSC rodava a 3 segundos por bloco e hoje roda a
+ * 0,45: extrapolar um ano para trás com a taxa de hoje erra por meses, e foi
+ * exatamente assim que uma varredura da "gênese" de um token de agosto de 2025
+ * foi parar em fevereiro de 2026. A busca binária não depende de taxa nenhuma.
+ */
+export async function blockAtTime(chain: Chain, timestamp: number): Promise<number> {
+  let baixo = 1;
+  let alto = await blockNumber(chain);
+
+  while (alto - baixo > 1) {
+    const meio = Math.floor((baixo + alto) / 2);
+    if ((await blockTime(chain, meio)) < timestamp) baixo = meio;
+    else alto = meio;
+  }
+  return baixo;
+}
+
 /** Timestamp de vários blocos, para converter altura em data. */
 export async function blockTimes(
   chain: Chain,
