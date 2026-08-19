@@ -25,6 +25,7 @@ import {
   CHAINS,
 } from "../lib/onchain";
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
+import { currentMove } from "../lib/positioning";
 import { WATCHLIST, labelOf, type WatchedToken } from "../lib/watchlist";
 import {
   detect,
@@ -293,6 +294,11 @@ async function inspect(
   }
   state.exchange = { ...state.exchange, [token.symbol]: historico.slice(-400) };
 
+  // O perpétuo é onde o preço destas moedas realmente se forma: no dia 19/08 a
+  // BTW fez +60% e −50% com o saldo das corretoras variando meio por cento.
+  // Sem esta leitura o monitor fica mudo justamente nos dias que importam.
+  const perp = await currentMove(token.symbol).catch(() => null);
+
   const alerts = detect({
     symbol: info.symbol,
     exchangeHistory: historico,
@@ -302,6 +308,7 @@ async function inspect(
     transfers,
     priceUsd: price,
     liquidityUsd: depth?.liquidityUsd ?? 0,
+    perp,
   }).filter((alert) => {
     const last = state.fired[alert.fingerprint];
     return !last || now - last > QUIET_MINUTES[alert.kind] * 60;

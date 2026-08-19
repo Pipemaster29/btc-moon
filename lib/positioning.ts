@@ -11,6 +11,7 @@
  */
 
 import { fetchCsv, dailyKlineUrl, metricsUrl, recentDays } from "./datavision";
+import { liveStats, type LiveStat } from "./gate";
 import { parseKlines, parsePositioning, type PositioningSnapshot } from "./derivatives";
 import { clusters, liquidationMap, reconstructPositions, type LiquidationLevel } from "./liquidation";
 import { depthOn, pairsOfToken } from "./dexscreener";
@@ -58,6 +59,67 @@ export interface RiseQuality {
   note: string;
 }
 
+/**
+ * O movimento dominante das últimas 24 horas, lido no presente.
+ *
+ * O `rise` acima olha dias fechados do Data Vision e por isso enxerga só até
+ * ontem. Este olha a leitura viva, e classifica tanto alta quanto queda — que
+ * é onde a confusão mais cara acontece.
+ *
+ * As quedas, em particular, têm três origens que ninguém distingue no gráfico:
+ *
+ *   DESALAVANCAGEM  o open interest em moeda cai junto com o preço. Comprado
+ *                   alavancado foi encerrado. A queda inteira mora no perpétuo
+ *                   e não deixa rastro na rede, porque moeda nenhuma trocou de
+ *                   mão de verdade.
+ *   LIVRO VAZIO     o open interest fica de pé, e quase ninguém é liquidado. O
+ *                   preço cai porque a COMPRA sumiu, não porque apareceu venda.
+ *                   É o que sobra quando uma alta movida a squeeze fica sem
+ *                   vendidos para espremer.
+ *   DISTRIBUIÇÃO    o open interest fica de pé e o preço cai porque alguém
+ *                   entregou moeda de verdade. Esta é a única das três que
+ *                   aparece no saldo das corretoras na rede.
+ */
+export type MoveKind =
+  | "squeeze"
+  | "alavancagem"
+  | "oferta"
+  | "desalavancagem"
+  | "livro vazio"
+  | "distribuicao"
+  | "misto";
+
+export interface MoveRead {
+  kind: MoveKind;
+  direction: "alta" | "queda";
+  priceFrom: number;
+  priceTo: number;
+  priceChange: number;
+  oiChange: number;
+  /** oiChange ÷ priceChange. */
+  ratio: number;
+  longLiqUsd: number;
+  shortLiqUsd: number;
+  /** Liquidado NA DIREÇÃO do movimento ÷ open interest: quanto dele foi forçado.
+   *  Numa queda só contam os comprados; vendido liquidado durante uma queda é o
+   *  rastro do squeeze que a precedeu, não parte dela. */
+  forcedShare: number;
+  note: string;
+}
+
+/** A leitura viva do perpétuo — hoje, não ontem. */
+export interface LiveRead {
+  price: number;
+  openInterest: number;
+  openInterestUsd: number;
+  accountRatio: number;
+  whaleRatio: number;
+  longLiqUsd24h: number;
+  shortLiqUsd24h: number;
+  move: MoveRead | null;
+  updatedAt: number;
+}
+
 export interface Basis {
   perp: number;
   spot: number;
@@ -84,6 +146,8 @@ export interface PositioningSnapshotView {
   readings: number;
   basis: Basis | null;
   rise: RiseQuality;
+  /** Nulo quando a Gate não lista o par. */
+  live: LiveRead | null;
   verdict: Verdict;
   verdictTitle: string;
   verdictDetail: string;
@@ -100,9 +164,10 @@ export async function getPositioning(
 ): Promise<PositioningSnapshotView | null> {
   const days = recentDays(DAYS);
 
-  const [klineParts, metricParts] = await Promise.all([
+  const [klineParts, metricParts, live] = await Promise.all([
     Promise.all(days.map((d) => fetchCsv(dailyKlineUrl(symbol, "1d", d)))),
     Promise.all(days.map((d) => fetchCsv(metricsUrl(symbol, d)))),
+    liveStats(symbol, "1h", 100),
   ]);
 
   const bars = klineParts
@@ -207,6 +272,7 @@ export async function getPositioning(
     readings: snapshots.length,
     basis,
     rise,
+    live: readLive(live),
     ...call,
   };
 }
@@ -273,6 +339,174 @@ function classifyRise(rows: DailyRow[]): RiseQuality {
     oiChange,
     ratio,
     note: `Preço e open interest cresceram em proporção parecida; não dá para separar as duas origens.`,
+  };
+}
+
+/**
+ * Só a perna atual do perpétuo, sem montar o painel inteiro.
+ *
+ * É o que o monitor precisa: ele roda a cada poucos minutos e não tem uso para
+ * o mapa de liquidação nem para os catorze dias de histórico.
+ */
+export async function currentMove(symbol: string): Promise<MoveRead | null> {
+  return readLive(await liveStats(symbol, "1h", 100))?.move ?? null;
+}
+
+/**
+ * Lê o movimento dominante das últimas 24 horas.
+ *
+ * O trecho relevante é da ponta ao fundo — se o topo veio antes do fundo, a
+ * perna atual é de queda; se veio depois, é de alta. Isso escolhe sozinho a
+ * perna mais recente sem precisar de janela fixa.
+ */
+function readLive(stats: LiveStat[]): LiveRead | null {
+  if (stats.length < 6) return null;
+
+  const janela = stats.slice(-24);
+  const ultimo = janela[janela.length - 1];
+
+  let topo = 0;
+  let fundo = 0;
+  for (const [i, s] of janela.entries()) {
+    if (s.price > janela[topo].price) topo = i;
+    if (s.price < janela[fundo].price) fundo = i;
+  }
+
+  const queda = topo < fundo;
+  const [de, ate] = queda ? [topo, fundo] : [fundo, topo];
+  const trecho = janela.slice(de, ate + 1);
+
+  const longLiq = trecho.reduce((s, r) => s + r.longLiqUsd, 0);
+  const shortLiq = trecho.reduce((s, r) => s + r.shortLiqUsd, 0);
+
+  return {
+    price: ultimo.price,
+    openInterest: ultimo.openInterest,
+    openInterestUsd: ultimo.openInterestUsd,
+    accountRatio: ultimo.accountRatio,
+    whaleRatio: ultimo.whaleRatio,
+    longLiqUsd24h: janela.reduce((s, r) => s + r.longLiqUsd, 0),
+    shortLiqUsd24h: janela.reduce((s, r) => s + r.shortLiqUsd, 0),
+    move: classifyMove(
+      janela[de],
+      janela[ate],
+      queda ? "queda" : "alta",
+      longLiq,
+      shortLiq,
+    ),
+    updatedAt: ultimo.time * 1000,
+  };
+}
+
+/** Abaixo disso o movimento é ruído e não vale classificar. */
+const MOVE_FLOOR = 0.1;
+
+function classifyMove(
+  de: LiveStat,
+  ate: LiveStat,
+  direction: "alta" | "queda",
+  longLiqUsd: number,
+  shortLiqUsd: number,
+): MoveRead | null {
+  const priceChange = ate.price / de.price - 1;
+  if (Math.abs(priceChange) < MOVE_FLOOR) return null;
+
+  const oiChange = ate.openInterest / de.openInterest - 1;
+  const ratio = oiChange / priceChange;
+  const forcado = direction === "queda" ? longLiqUsd : shortLiqUsd;
+  const forcedShare = ate.openInterestUsd > 0 ? forcado / ate.openInterestUsd : 0;
+
+  const base = {
+    direction,
+    priceFrom: de.price,
+    priceTo: ate.price,
+    priceChange,
+    oiChange,
+    ratio,
+    longLiqUsd,
+    shortLiqUsd,
+    forcedShare,
+  };
+
+  const p = (v: number) => `${(v * 100).toFixed(0)}%`;
+  const usd = (v: number) =>
+    v >= 1e6 ? `US$ ${(v / 1e6).toFixed(1)} mi` : `US$ ${(v / 1e3).toFixed(0)} mil`;
+
+  if (direction === "alta") {
+    // Vendido sendo liquidado em massa enquanto o open interest quase não
+    // cresce: a compra que sobe o preço é forçada, não voluntária. Acaba
+    // quando acabam os vendidos, e aí não sobra bid nenhum embaixo.
+    if (shortLiqUsd >= 3 * longLiqUsd && shortLiqUsd > 0 && ratio < 1) {
+      return {
+        ...base,
+        kind: "squeeze",
+        note:
+          `Preço +${p(priceChange)} com open interest ${p(oiChange)} e ${usd(shortLiqUsd)} de ` +
+          `vendidos liquidados. Quem comprou foi obrigado a comprar. Esse tipo de alta não ` +
+          `deixa comprador voluntário embaixo do preço: quando os vendidos acabam, o bid some junto.`,
+      };
+    }
+    if (ratio >= 1.5) {
+      return {
+        ...base,
+        kind: "alavancagem",
+        note:
+          `Open interest +${p(oiChange)} contra preço +${p(priceChange)} — a alta é posição nova ` +
+          `alavancada, e desfaz na mesma velocidade com que se montou.`,
+      };
+    }
+    if (ratio <= 0.5) {
+      return {
+        ...base,
+        kind: "oferta",
+        note:
+          `Preço +${p(priceChange)} com open interest quase parado (${p(oiChange)}). Compatível ` +
+          `com float saindo do livro — o tipo que se sustenta enquanto a oferta ficar fora.`,
+      };
+    }
+    return { ...base, kind: "misto", note: `Preço e open interest subiram em proporção parecida.` };
+  }
+
+  // ------------------------------------------------------------------ queda
+  if (ratio >= 0.6) {
+    return {
+      ...base,
+      kind: "desalavancagem",
+      note:
+        `Open interest ${p(oiChange)} contra preço ${p(priceChange)}: a maior parte da queda é ` +
+        `posição sendo encerrada, com ${usd(longLiqUsd)} de comprados liquidados. Aconteceu tudo ` +
+        `no perpétuo — não há por que procurar rastro na rede.`,
+    };
+  }
+
+  if (ratio <= 0.25) {
+    // Posição de pé e quase ninguém liquidado. Não sumiu dinheiro do
+    // perpétuo nem apareceu moeda para vender: sumiu a COMPRA.
+    if (forcedShare < 0.02) {
+      return {
+        ...base,
+        kind: "livro vazio",
+        note:
+          `O preço caiu ${p(priceChange)} com o open interest praticamente intacto (${p(oiChange)}) ` +
+          `e só ${usd(longLiqUsd)} de comprados liquidados — ${(forcedShare * 100).toFixed(1)}% do ` +
+          `open interest. Ninguém foi liquidado e ninguém encerrou posição: o que sumiu foi a compra. ` +
+          `É a queda de quem subiu por squeeze e ficou sem vendidos para espremer.`,
+      };
+    }
+    return {
+      ...base,
+      kind: "distribuicao",
+      note:
+        `Preço ${p(priceChange)} com o open interest de pé (${p(oiChange)}). As posições não foram ` +
+        `desfeitas, então a venda veio de moeda de verdade — e isso aparece no saldo das corretoras ` +
+        `na rede. Vale conferir de onde ela veio.`,
+    };
+  }
+
+  return {
+    ...base,
+    kind: "misto",
+    note: `Parte posição encerrada, parte venda à vista: open interest ${p(oiChange)} contra preço ${p(priceChange)}.`,
   };
 }
 

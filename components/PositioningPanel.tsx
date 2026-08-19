@@ -1,4 +1,9 @@
-import type { PositioningSnapshotView, RiseKind, Verdict } from "@/lib/positioning";
+import type {
+  MoveKind,
+  PositioningSnapshotView,
+  RiseKind,
+  Verdict,
+} from "@/lib/positioning";
 import type { LiquidationLevel } from "@/lib/liquidation";
 
 /** Alta a crédito é frágil; alta por oferta é a que se sustenta. */
@@ -14,6 +19,31 @@ const RISE_LABEL: Record<RiseKind, string> = {
   oferta: "Alta movida a oferta",
   misto: "Origem da alta indefinida",
   "sem alta": "Sem alta relevante",
+};
+
+/**
+ * O verde e o vermelho aqui não são "bom" e "ruim" — são a durabilidade do
+ * movimento. Alta por oferta é a que segura; squeeze e livro vazio são os dois
+ * lados da mesma moeda frágil.
+ */
+const MOVE_STYLE: Record<MoveKind, string> = {
+  squeeze: "border-[#F0B90B]/40 bg-[#F0B90B]/5",
+  alavancagem: "border-[#F6465D]/40 bg-[#F6465D]/5",
+  oferta: "border-[#0ECB81]/40 bg-[#0ECB81]/5",
+  desalavancagem: "border-[#F0B90B]/40 bg-[#F0B90B]/5",
+  "livro vazio": "border-[#F0B90B]/40 bg-[#F0B90B]/5",
+  distribuicao: "border-[#F6465D]/40 bg-[#F6465D]/5",
+  misto: "border-black/10 dark:border-white/10",
+};
+
+const MOVE_LABEL: Record<MoveKind, string> = {
+  squeeze: "Alta por squeeze de vendidos",
+  alavancagem: "Alta movida a alavancagem",
+  oferta: "Alta movida a oferta",
+  desalavancagem: "Queda por desalavancagem",
+  "livro vazio": "Queda por livro vazio",
+  distribuicao: "Queda por distribuição",
+  misto: "Movimento de origem indefinida",
 };
 
 const VERDICT_STYLE: Record<Verdict, string> = {
@@ -145,6 +175,80 @@ export default function PositioningPanel({
           </div>
         </div>
       </section>
+
+      {/* ------------------------------------------- o movimento de agora */}
+      {snapshot.live?.move && (
+        <section className={`rounded-xl border p-5 ${MOVE_STYLE[snapshot.live.move.kind]}`}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="font-semibold">{MOVE_LABEL[snapshot.live.move.kind]}</h3>
+            <p className="text-xs text-black/40 dark:text-white/40">
+              perna atual · leitura de{" "}
+              {new Date(snapshot.live.updatedAt).toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: "UTC",
+              })}{" "}
+              UTC
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-4 mt-3 text-sm">
+            <div>
+              <p className="text-black/50 dark:text-white/50">Preço</p>
+              <p
+                className={`text-lg font-semibold tabular-nums ${changeColor(snapshot.live.move.priceChange)}`}
+              >
+                {signed(snapshot.live.move.priceChange)}
+              </p>
+              <p className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+                {snapshot.live.move.priceFrom.toPrecision(4)} →{" "}
+                {snapshot.live.move.priceTo.toPrecision(4)}
+              </p>
+            </div>
+            <div>
+              <p className="text-black/50 dark:text-white/50">Posições abertas</p>
+              <p
+                className={`text-lg font-semibold tabular-nums ${changeColor(snapshot.live.move.oiChange)}`}
+              >
+                {signed(snapshot.live.move.oiChange)}
+              </p>
+              <p className="text-xs text-black/40 dark:text-white/40">contadas em moeda</p>
+            </div>
+            <div>
+              <p className="text-black/50 dark:text-white/50">Liquidados</p>
+              <p className="text-lg font-semibold tabular-nums">
+                {money(
+                  snapshot.live.move.direction === "queda"
+                    ? snapshot.live.move.longLiqUsd
+                    : snapshot.live.move.shortLiqUsd,
+                )}
+              </p>
+              <p className="text-xs text-black/40 dark:text-white/40">
+                {snapshot.live.move.direction === "queda" ? "comprados" : "vendidos"} — a favor do
+                movimento
+              </p>
+            </div>
+            <div>
+              <p className="text-black/50 dark:text-white/50">Forçado</p>
+              <p className="text-lg font-semibold tabular-nums">
+                {(snapshot.live.move.forcedShare * 100).toFixed(1)}%
+              </p>
+              <p className="text-xs text-black/40 dark:text-white/40">do open interest</p>
+            </div>
+          </div>
+
+          <p className="text-sm text-black/60 dark:text-white/60 mt-3">
+            {snapshot.live.move.note}
+          </p>
+          <p className="text-xs text-black/40 dark:text-white/40 mt-2">
+            Fonte: perpétuo da Gate, em tempo real. Os arquivos da Binance usados no resto do
+            painel só saem depois que o dia fecha — os níveis são menores aqui, a estrutura é a
+            mesma.
+          </p>
+        </section>
+      )}
 
       {/* --------------------------------------------- natureza da alta */}
       {snapshot.rise.kind !== "sem alta" && (

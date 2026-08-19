@@ -58,6 +58,9 @@ export const QUIET_MINUTES: Record<AlertKind, number> = {
   "large-transfer": 240,
   "test-transfer": 240,
   "fresh-recipient": 240,
+  // Estrutura do perpétuo: muda devagar e o aviso vale enquanto a perna durar.
+  squeeze: 120,
+  unwind: 120,
   // Por saldo — curta, para não calar movimento novo.
   "exchange-inflow": 45,
   "exchange-outflow": 45,
@@ -76,7 +79,9 @@ export type AlertKind =
   | "balance-drop"
   | "fresh-recipient"
   | "large-transfer"
-  | "cycle-top";
+  | "cycle-top"
+  | "squeeze"
+  | "unwind";
 
 export type Severity = "critical" | "high" | "medium";
 
@@ -130,6 +135,24 @@ export interface ExchangePoint {
   total: number;
 }
 
+/**
+ * A perna atual do perpétuo, já classificada.
+ *
+ * Chega pronta de `lib/positioning`. O tipo é redeclarado aqui em vez de
+ * importado porque este arquivo roda também fora do Next, e importar de lá
+ * arrastaria o módulo inteiro de rede junto.
+ */
+export interface PerpMove {
+  kind: string;
+  direction: "alta" | "queda";
+  priceChange: number;
+  oiChange: number;
+  longLiqUsd: number;
+  shortLiqUsd: number;
+  forcedShare: number;
+  note: string;
+}
+
 export interface DetectInput {
   /** Símbolo da moeda, para o alerta dizer de qual se trata. */
   symbol: string;
@@ -148,6 +171,8 @@ export interface DetectInput {
   priceUsd: number;
   /** Liquidez à vista, que dá a escala do que é "grande" nesta moeda. */
   liquidityUsd: number;
+  /** A perna atual do perpétuo. Ausente quando a praça não lista o par. */
+  perp?: PerpMove | null;
 }
 
 const money = (v: number) =>
@@ -296,7 +321,15 @@ export function detect(input: DetectInput): Alert[] {
   // da liquidez diz alguma coisa sobre o preço.
   if (antesCorretoras > 0 && variacaoUsd >= bigUsd * 2) {
     const saindo = variacao < 0;
-    const pct = Math.abs(variacao / antesCorretoras) * 100;
+    // A fração do saldo das corretoras é o denominador errado: 230 mil moedas
+    // contra um agregado de 480 milhões arredonda para 0,0% e some, mesmo
+    // valendo metade da pool à vista. O que decide se o movimento mexe no preço
+    // é o tamanho dele contra a LIQUIDEZ, e é isso que a mensagem diz.
+    const daPool = liquidityUsd > 0 ? (variacaoUsd / liquidityUsd) * 100 : 0;
+    const escala =
+      daPool >= 10
+        ? `${daPool.toFixed(0)}% da liquidez à vista`
+        : `${money(variacaoUsd)} contra ${money(liquidityUsd)} de pool`;
 
     alerts.push({
       kind: saindo ? "exchange-outflow" : "exchange-inflow",
@@ -306,11 +339,11 @@ export function detect(input: DetectInput): Alert[] {
         ? `🚀 ${symbol} · CHOQUE DE OFERTA — ${units(-variacao)} saíram das corretoras`
         : `⚓ ${symbol} · ${units(variacao)} entraram nas corretoras`,
       detail: saindo
-        ? `O saldo somado das corretoras caiu ${pct.toFixed(1)}% (${money(variacaoUsd)}). ` +
+        ? `Saíram ${units(-variacao)} do saldo somado das corretoras — ${escala}. ` +
           `Oferta disponível para venda imediata está sendo retirada do mercado. ` +
           `É configuração de alta por aperto, não de distribuição — e o pior momento possível ` +
           `para estar vendido.`
-        : `O saldo somado das corretoras subiu ${pct.toFixed(1)}% (${money(variacaoUsd)}). ` +
+        : `Entraram ${units(variacao)} no saldo somado das corretoras — ${escala}. ` +
           `Oferta se acumulando no livro é o que precede distribuição.`,
       valueUsd: variacaoUsd,
       addresses: [],
@@ -491,6 +524,52 @@ export function detect(input: DetectInput): Alert[] {
       valueUsd: value,
       addresses: [t.to, t.from],
     });
+  }
+
+  // -------------------------------------------------- o que o perpétuo diz
+  //
+  // As regras acima leem a rede, e a rede só enxerga moeda trocando de mão.
+  // Boa parte do preço destas moedas não passa por lá: no dia 19/08 a BTW subiu
+  // 60% e caiu 50% com o saldo das corretoras variando 0,5%. Quem olhasse só a
+  // rede concluiria que não aconteceu nada.
+  //
+  // As duas regras abaixo cobrem justamente os movimentos que NÃO deixam rastro
+  // on-chain — e a primeira delas é um aviso de topo, não de queda.
+  const perp = input.perp;
+  if (perp) {
+    if (perp.kind === "squeeze") {
+      alerts.push({
+        kind: "squeeze",
+        severity: "critical",
+        fingerprint: `sqz:${symbol}:${magnitude(perp.shortLiqUsd)}`,
+        title: `⚠️ ${symbol} · ALTA FORÇADA — ${money(perp.shortLiqUsd)} de vendidos liquidados`,
+        detail:
+          `Preço ${(perp.priceChange * 100).toFixed(0)}% com as posições abertas em ` +
+          `${(perp.oiChange * 100).toFixed(0)}%: quem comprou foi obrigado a comprar, não quis. ` +
+          `Squeeze não deixa comprador voluntário abaixo do preço — quando os vendidos acabam, ` +
+          `o bid some junto e o preço volta sozinho, sem precisar de venda nenhuma. ` +
+          `É o tipo de alta em que ficar comprado depois do estouro custa caro.`,
+        valueUsd: perp.shortLiqUsd,
+        addresses: [],
+      });
+    }
+
+    if (perp.kind === "livro vazio" || perp.kind === "desalavancagem") {
+      const vazio = perp.kind === "livro vazio";
+      alerts.push({
+        kind: "unwind",
+        severity: "high",
+        fingerprint: `unw:${symbol}:${perp.kind}:${magnitude(Math.abs(perp.priceChange) * 1e6)}`,
+        title: vazio
+          ? `📉 ${symbol} · queda de ${(perp.priceChange * 100).toFixed(0)}% sem venda — sumiu a compra`
+          : `📉 ${symbol} · queda de ${(perp.priceChange * 100).toFixed(0)}% por desalavancagem`,
+        detail:
+          `${perp.note} Nada disso aparece no saldo das corretoras na rede, então não adianta ` +
+          `procurar lá: a queda não passou por ela.`,
+        valueUsd: perp.longLiqUsd,
+        addresses: [],
+      });
+    }
   }
 
   // Uma transferência entre duas carteiras vigiadas gera TRÊS avisos: o da
