@@ -281,6 +281,55 @@ export const WATCHLIST: WatchedToken[] = [
         role: "operational",
         verified: true,
       },
+      // ------------------------------------------------ o leque de 19/08
+      //
+      // Entre 18h30 e 19h07 UTC de 19/08, logo depois da queda de 50%, saíram
+      // 150 milhões de BTW (1,5% do supply, ~US$ 53 mi) da fria da Bitget,
+      // passaram pela quente e foram para estes cinco endereços — 30 milhões
+      // exatos em cada um.
+      //
+      // Os cinco eram novos, nunca enviaram nada e estão com ZERO BNB. Ou seja:
+      // fisicamente impedidos de mover até alguém abastecê-los. É por isso que
+      // entram como `dormant` e não como algo mais brando — nesse papel o
+      // radar dispara o alerta de gás chegando, que é o que dá minutos de
+      // aviso antes de qualquer movimento.
+      //
+      // O que isto NÃO prova: que vão vender. Retirada em pedaços iguais para
+      // carteiras novas é o padrão de quem quebra a trilha antes de distribuir,
+      // mas também é o que parece um cliente grande levando para custódia
+      // própria. O LAB não fez leque nenhum antes do topo dele — fez uma
+      // retirada única. O que decide é o que acontece depois: para vender numa
+      // corretora, esses 150 milhões precisam VOLTAR para uma.
+      {
+        address: "0x8f5f8958d27adb5211f2f57201b6f7cfa325d3b1",
+        label: "leque 1 (30M, 19/08)",
+        role: "dormant",
+        verified: true,
+      },
+      {
+        address: "0x452e2fb2b0025cd9a59b906c34d3f2ee606d8d6e",
+        label: "leque 2 (30M, 19/08)",
+        role: "dormant",
+        verified: true,
+      },
+      {
+        address: "0xbd530e13774eb81626d744302e5a6b6f5e3f9c78",
+        label: "leque 3 (30M, 19/08)",
+        role: "dormant",
+        verified: true,
+      },
+      {
+        address: "0x492052ba92a3fe0385fe4dc29099f4e0ad11a25c",
+        label: "leque 4 (30M, 19/08)",
+        role: "dormant",
+        verified: true,
+      },
+      {
+        address: "0x9948b5257b9d9b5d06672ae2279e5785965236df",
+        label: "leque 5 (30M, 19/08)",
+        role: "dormant",
+        verified: true,
+      },
     ],
   },
   {

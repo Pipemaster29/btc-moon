@@ -1,5 +1,7 @@
 import Link from "next/link";
+import CyclePanel from "@/components/CyclePanel";
 import PositioningPanel from "@/components/PositioningPanel";
+import { lerCiclo } from "@/lib/setup";
 import { getRadar, type AlertLevel, type RadarSnapshot } from "@/lib/radar";
 import { getPositioning, type PositioningSnapshotView } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
@@ -347,6 +349,10 @@ export default async function Radar() {
                 ))}
               </section>
             )}
+
+            <CyclePanel
+              leitura={lerCiclo(snapshot, perpBySymbol.get(snapshot.symbol)?.live ?? null)}
+            />
 
             {perpBySymbol.has(snapshot.symbol) && (
               <PositioningPanel snapshot={perpBySymbol.get(snapshot.symbol)!} />

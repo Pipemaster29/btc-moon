@@ -349,26 +349,55 @@ export function detect(input: DetectInput): Alert[] {
     // contra um agregado de 480 milhões arredonda para 0,0% e some, mesmo
     // valendo metade da pool à vista. O que decide se o movimento mexe no preço
     // é o tamanho dele contra a LIQUIDEZ, e é isso que a mensagem diz.
-    const daPool = liquidityUsd > 0 ? (variacaoUsd / liquidityUsd) * 100 : 0;
+    const daPool = liquidityUsd > 0 ? variacaoUsd / liquidityUsd : 0;
     const escala =
       daPool >= 10
-        ? `${daPool.toFixed(0)}% da liquidez à vista`
-        : `${money(variacaoUsd)} contra ${money(liquidityUsd)} de pool`;
+        ? `${daPool.toFixed(0)}x a liquidez à vista`
+        : daPool >= 0.1
+          ? `${(daPool * 100).toFixed(0)}% da liquidez à vista`
+          : `${money(variacaoUsd)} contra ${money(liquidityUsd)} de pool`;
+
+    // Saída de corretora tem DOIS significados opostos, e confundi-los foi o
+    // erro de 19/08: o alerta chamou de "choque de oferta" — leitura altista —
+    // uma retirada de 150 milhões que foi direto para cinco carteiras novas
+    // sem gás, em pedaços iguais de 30 milhões.
+    //
+    //   PARA CUSTÓDIA   o token sai do livro e some por tempo indeterminado.
+    //                   Aperta a oferta de verdade, e é altista.
+    //   PARA ESTOQUE    o token sai para carteira nova ou parada, que não
+    //                   consome nem custodia nada. Não sumiu — foi POSICIONADO,
+    //                   e o passo seguinte é voltar para uma corretora para ser
+    //                   vendido. É o oposto de altista.
+    //
+    // A diferença é observável: basta olhar para onde a saída foi parar.
+    const paraEstoque = transfers
+      .filter((t) => /corretora|binance|bitget|mexc|gate|okx/i.test(t.fromLabel))
+      .filter((t) => t.toIsFresh || /leque|parad|dormant/i.test(t.toLabel))
+      .reduce((sum, t) => sum + t.amount, 0);
+    const estocando = saindo && paraEstoque >= Math.abs(variacao) * 0.5;
 
     alerts.push({
       kind: saindo ? "exchange-outflow" : "exchange-inflow",
       severity: "critical",
-      fingerprint: `net:${saindo ? "out" : "in"}:${magnitude(variacaoUsd)}`,
-      title: saindo
-        ? `🚀 ${symbol} · CHOQUE DE OFERTA — ${units(-variacao)} saíram das corretoras`
-        : `⚓ ${symbol} · ${units(variacao)} entraram nas corretoras`,
-      detail: saindo
-        ? `Saíram ${units(-variacao)} do saldo somado das corretoras — ${escala}. ` +
-          `Oferta disponível para venda imediata está sendo retirada do mercado. ` +
-          `É configuração de alta por aperto, não de distribuição — e o pior momento possível ` +
-          `para estar vendido.`
-        : `Entraram ${units(variacao)} no saldo somado das corretoras — ${escala}. ` +
-          `Oferta se acumulando no livro é o que precede distribuição.`,
+      fingerprint: `net:${saindo ? (estocando ? "stock" : "out") : "in"}:${magnitude(variacaoUsd)}`,
+      title: estocando
+        ? `🎯 ${symbol} · ${units(-variacao)} saíram das corretoras para carteiras novas`
+        : saindo
+          ? `🚀 ${symbol} · CHOQUE DE OFERTA — ${units(-variacao)} saíram das corretoras`
+          : `⚓ ${symbol} · ${units(variacao)} entraram nas corretoras`,
+      detail: estocando
+        ? `Saíram ${units(-variacao)} das corretoras — ${escala} — e ${units(paraEstoque)} disso ` +
+          `foram parar em endereços novos ou parados. Isso NÃO é aperto de oferta: carteira nova ` +
+          `não custodia nem consome nada, ela guarda. Para virar venda numa corretora o token ` +
+          `precisa VOLTAR, e é essa volta que marca o topo — no LAB ela foi de 1% do supply e ` +
+          `caiu no dia exato da máxima. Vale vigiar o gás dessas carteiras: sem ele não movem.`
+        : saindo
+          ? `Saíram ${units(-variacao)} do saldo somado das corretoras — ${escala}. ` +
+            `Oferta disponível para venda imediata está sendo retirada do mercado. ` +
+            `É configuração de alta por aperto, não de distribuição — e o pior momento possível ` +
+            `para estar vendido.`
+          : `Entraram ${units(variacao)} no saldo somado das corretoras — ${escala}. ` +
+            `Oferta se acumulando no livro é o que precede distribuição.`,
       valueUsd: variacaoUsd,
       addresses: [],
     });
