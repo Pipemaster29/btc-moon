@@ -31,7 +31,9 @@ export type WalletRole =
   /** Carteira ativa, com gás e histórico. */
   | "operational"
   /** Tem saldo mas nunca gastou e não tem gás: não consegue mover. */
-  | "dormant";
+  | "dormant"
+  /** Carrega token entre as carteiras grandes e o livro das corretoras. */
+  | "router";
 
 export interface WatchedWallet {
   address: string;
@@ -222,6 +224,40 @@ export const WATCHLIST: WatchedToken[] = [
         address: "0x729d894f658A12B562f372Bf5cB6C039a1531436",
         label: "carteira vazia",
         role: "dormant",
+        verified: true,
+      },
+
+      // -------------------------------------------- a camada de roteamento
+      //
+      // Estes três carregam o token entre as carteiras grandes e o livro. Não
+      // foram informados: apareceram varrendo as duas moedas e são os mesmos
+      // endereços nas duas — no LAB e na BTW.
+      //
+      // O comportamento deles no LAB é o achado que mais vale. O 0x238a3588
+      // dominou todas as janelas da acumulação (março a abril, preço 0,17 →
+      // 0,77), SUMIU durante a alta vertical inteira (maio a julho, 4,76 →
+      // 16,58) e voltou depois do colapso. O silêncio dele marcou o começo da
+      // parte vertical, quando o preço passa a subir com pouco volume porque o
+      // float já está travado.
+      //
+      // Na BTW ele aparece em TODAS as doze janelas, inclusive a mais recente.
+      // Enquanto estiver assim, a fase é de preparação, não de marcação.
+      {
+        address: "0x238a358808379702088667322f80ac48bad5e6c4",
+        label: "roteador principal",
+        role: "router",
+        verified: true,
+      },
+      {
+        address: "0x278d858f05b94576c1e6f73285886876ff6ef8d2",
+        label: "roteador 2",
+        role: "router",
+        verified: true,
+      },
+      {
+        address: "0xb300000b72deaeb607a12d5f54773d1c19c7028d",
+        label: "roteador 3",
+        role: "router",
         verified: true,
       },
     ],

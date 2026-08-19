@@ -105,6 +105,7 @@ const ROLE_META: Record<WalletRole, { label: string; note: string }> = {
   exchange: { label: "Em corretora", note: "custódia ou oferta pronta" },
   treasury: { label: "Distribuidora", note: "de onde saem os repasses" },
   operational: { label: "Operacional", note: "ativa, com gás" },
+  router: { label: "Roteamento", note: "carrega token até o livro" },
 };
 
 /**

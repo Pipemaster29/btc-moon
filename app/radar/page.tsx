@@ -29,6 +29,7 @@ const ROLE_COLOR: Record<string, string> = {
   exchange: "bg-[#0ECB81]",
   treasury: "bg-[#F6465D]",
   operational: "bg-[#3B82F6]",
+  router: "bg-[#EC4899]",
   unmapped: "bg-black/25 dark:bg-white/25",
 };
 
