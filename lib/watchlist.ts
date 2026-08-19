@@ -284,6 +284,20 @@ export const WATCHLIST: WatchedToken[] = [
     ],
   },
   {
+    // O BTW da Ethereum é OUTRO token, não uma ponte do da BNB Chain: supply
+    // próprio de 1 bilhão, e nenhuma das carteiras que controlam o da BSC
+    // aparece aqui. O que muda a leitura é a liquidez — US$ 39 milhões contra
+    // US$ 110 mil na BSC, ou seja, o mercado à vista de verdade está aqui.
+    //
+    // Sem carteira mapeada, entra pelo lado do preço e da liquidez. O perpétuo
+    // da Binance é o mesmo símbolo, então não há painel de derivativos próprio.
+    symbol: "BTW-ETH",
+    chain: "ethereum",
+    contract: "0x41c9eE7a06FF69F0BF63Ec4B5A928279B26469EE",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
     symbol: "PRLUSDT",
     chain: "bsc",
     // O PRL negociado com volume é o Perle, que vive na Solana — fora do

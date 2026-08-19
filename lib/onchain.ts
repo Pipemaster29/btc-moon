@@ -27,7 +27,7 @@
  * cobre 37 minutos de BNB Chain e 167 minutos de Base, porque uma fecha bloco a
  * cada 0,45 s e a outra a cada 2 s.
  */
-export type Chain = "bsc" | "base";
+export type Chain = "bsc" | "base" | "ethereum";
 
 export interface ChainConfig {
   /** Nome do ativo que paga gás — muda o texto dos alertas. */
@@ -65,6 +65,22 @@ export const CHAINS: Record<Chain, ChainConfig> = {
     prunedDepth: 8000,
     secondsPerBlock: 0.45,
     explorer: "https://bscscan.com",
+  },
+  ethereum: {
+    gasSymbol: "ETH",
+    endpoints: [
+      "https://ethereum-rpc.publicnode.com",
+      "https://eth.drpc.org",
+      "https://rpc.flashbots.net",
+    ],
+    // Não procurei nó de arquivo gratuito aqui; sem isso a reconstrução
+    // histórica não roda nesta rede, e `balanceAt` falha com mensagem clara.
+    archiveLog: [],
+    archiveState: [],
+    maxLogSpan: 5000,
+    prunedDepth: 20_000,
+    secondsPerBlock: 12,
+    explorer: "https://etherscan.io",
   },
   base: {
     gasSymbol: "ETH",
