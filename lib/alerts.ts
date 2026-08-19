@@ -32,6 +32,39 @@ import type { WalletRole } from "./watchlist";
 /** Abaixo disso a carteira não paga nem uma transferência. */
 export const GAS_FLOOR = 0.001;
 
+/**
+ * Quanto tempo cada tipo de alerta fica em silêncio depois de disparar.
+ *
+ * Não pode ser um número só, e errar isso cala o monitor sem quebrar nada — foi
+ * o que aconteceu: seis horas para tudo, e uma carteira que movimentou US$ 1,9
+ * milhão às 8h55 ficou muda até as 14h55 mesmo movimentando de novo.
+ *
+ * Os dois grupos precisam de janelas opostas:
+ *
+ *   POR TRANSFERÊNCIA  a identidade já é única por evento, mas a varredura
+ *                      cobre 3 horas e o mesmo evento reaparece em dezenas de
+ *                      ciclos. Precisa de janela MAIOR que a varredura.
+ *   POR SALDO          a identidade é a carteira mais a ordem de grandeza, e o
+ *                      saldo muda a cada movimento. Janela longa aqui significa
+ *                      engolir movimentos novos e legítimos.
+ */
+export const QUIET_MINUTES: Record<AlertKind, number> = {
+  // Estado, não evento: enquanto durar, repetir não acrescenta nada.
+  "gas-arrived": 360,
+  "cycle-top": 360,
+  // Por transferência — maior que as 3 horas de varredura.
+  "hot-to-cold": 240,
+  "cold-to-hot": 240,
+  "large-transfer": 240,
+  "test-transfer": 240,
+  "fresh-recipient": 240,
+  // Por saldo — curta, para não calar movimento novo.
+  "exchange-inflow": 45,
+  "exchange-outflow": 45,
+  "balance-drop": 45,
+  "lock-outflow": 45,
+};
+
 export type AlertKind =
   | "gas-arrived"
   | "test-transfer"

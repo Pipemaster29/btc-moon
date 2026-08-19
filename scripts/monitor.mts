@@ -28,6 +28,7 @@ import { depthOn, pairsOfToken } from "../lib/dexscreener";
 import { WATCHLIST, labelOf, type WatchedToken } from "../lib/watchlist";
 import {
   detect,
+  QUIET_MINUTES,
   type Alert,
   type ExchangePoint,
   type Observation,
@@ -48,8 +49,8 @@ const dryRun = args.includes("--dry");
 const testOnly = args.includes("--test");
 
 const STATE = ".cache/monitor.json";
-/** Um alerta já enviado não repete dentro desta janela. */
-const QUIET_HOURS = 6;
+/** Silêncio máximo, usado só para limpar o arquivo de identidades vencidas. */
+const QUIET_MAX_MINUTES = 360;
 
 interface State {
   wallets: Record<string, Record<string, WalletMemory>>;
@@ -186,7 +187,7 @@ if (pending.length === 0) {
 
 // Esquece os silêncios vencidos, para o arquivo não crescer sem fim.
 for (const [key, when] of Object.entries(state.fired)) {
-  if (now - when > QUIET_HOURS * 3600 * 4) delete state.fired[key];
+  if (now - when > QUIET_MAX_MINUTES * 60 * 4) delete state.fired[key];
 }
 
 await mkdir(".cache", { recursive: true });
@@ -303,7 +304,7 @@ async function inspect(
     liquidityUsd: depth?.liquidityUsd ?? 0,
   }).filter((alert) => {
     const last = state.fired[alert.fingerprint];
-    return !last || now - last > QUIET_HOURS * 3600;
+    return !last || now - last > QUIET_MINUTES[alert.kind] * 60;
   });
 
   // A memória é gravada mesmo quando nada dispara: é ela que transforma o
