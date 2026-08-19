@@ -1,26 +1,29 @@
 # Vigilância das carteiras da BTW, 24 horas por dia.
 #
-# A cadência não é arbitrária: os nós públicos da BSC só servem log da última
-# hora, então rodar mais espaçado que isso deixa buracos em que uma
-# transferência passa sem ser vista. Dez minutos dá seis leituras por janela,
-# margem suficiente para o agendamento atrasar — o que acontece sob carga — sem
-# nunca abrir buraco.
+# A cadência NÃO vem do agendamento do GitHub, e isso é deliberado: medido ao
+# longo de dois dias, ele pede 10 minutos e entrega de 17 a 78. Numa moeda que
+# se move 47% numa noite, 78 minutos de cegueira é inaceitável.
 #
-# Dez e não cinco porque cada ciclo faz cerca de cinquenta chamadas a nós
-# públicos gratuitos: a cinco minutos seriam catorze mil por dia num endpoint
-# sem contrato, e levar bloqueio por abuso pararia o monitor de vez, o que é
-# muito pior do que atrasar um pouco.
+# Aqui o cron só dispara a execução de hora em hora; a cadência real vem de um
+# laço interno que roda um ciclo a cada 5 minutos durante 50 minutos. O atraso
+# do agendamento passa a deslocar o início da janela em vez de abrir buraco
+# dentro dela.
 #
-# O custo é zero porque o repositório é público, e nesse caso o GitHub não
-# cobra minutos de execução. Se ele voltar a ser privado, o teto de 2.000
-# minutos mensais volta a valer e esta cadência custaria cerca de 18 dólares
-# por mês — aí o certo é voltar para trinta minutos.
+# Cinco minutos e não menos porque cada ciclo faz cerca de cinquenta chamadas a
+# nós públicos gratuitos. Levar bloqueio por abuso pararia o monitor de vez, o
+# que é muito pior do que atrasar um pouco.
+#
+# O custo é zero porque o repositório é público, e nesse caso o GitHub não cobra
+# minutos de execução. Se ele voltar a ser privado, isto consumiria os 2.000
+# minutos mensais em menos de dois dias — aí o certo é voltar ao cron simples.
 
 name: Radar BTW
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    # De hora em hora, e cada execução se repete por dentro durante ~50 minutos.
+    # O agendamento do GitHub é só o disparo; a cadência real vem do laço.
+    - cron: "5 * * * *"
   # Permite disparar à mão pela aba Actions, para testar sem esperar.
   workflow_dispatch:
 
@@ -33,7 +36,7 @@ concurrency:
 jobs:
   vigiar:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
@@ -56,15 +59,39 @@ jobs:
 
       - run: npm ci
 
-      - name: Rodar ciclo
+      # O agendamento do GitHub não é confiável para vigilância: medido, ele pede
+      # 10 minutos e entrega de 17 a 78. Numa moeda que se move 47% em uma noite,
+      # 78 minutos de cegueira é inaceitável.
+      #
+      # A solução é parar de depender dele para a cadência: o cron só dispara a
+      # execução, e o laço aqui dentro faz um ciclo a cada 5 minutos por 50
+      # minutos. O atraso do agendamento passa a deslocar o início da janela, não
+      # a abrir buraco dentro dela.
+      #
+      # Uma falha de ciclo não derruba o laço — a rede pode oscilar, e perder um
+      # ciclo é muito melhor do que perder a hora inteira.
+      - name: Vigiar por 50 minutos
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: npm run monitor
+        run: |
+          fim=$(( $(date +%s) + 50*60 ))
+          n=0
+          while [ "$(date +%s)" -lt "$fim" ]; do
+            n=$((n+1))
+            echo "=== ciclo $n · $(date -u +%H:%M:%S) UTC ==="
+            npm run monitor || echo "ciclo $n falhou, seguindo"
+            [ "$(date +%s)" -ge "$fim" ] && break
+            sleep 300
+          done
+          echo "=== $n ciclos nesta execução ==="
 
       - name: Guardar memória
-        # Grava mesmo se o ciclo falhar no meio: perder o retrato faz o ciclo
+        # Grava mesmo se o laço falhar no meio: perder o retrato faz o ciclo
         # seguinte virar "primeira leitura" e engolir os alertas daquela janela.
+        #
+        # Dentro da execução a memória vive em disco e passa de ciclo em ciclo
+        # sem depender do cache; o cache só a carrega entre execuções.
         if: always()
         uses: actions/cache/save@v4
         with:

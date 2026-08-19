@@ -121,6 +121,8 @@ if (pending.length === 0) {
     console.log("");
   }
 
+  let delivered = 0;
+
   if (telegram && !dryRun) {
     if (overflow > 0) {
       await sendTelegram(
@@ -152,9 +154,18 @@ if (pending.length === 0) {
 
       if (await sendTelegram(telegram, text)) {
         state.fired[alert.fingerprint] = now;
+        delivered++;
       }
     }
-    console.log("Enviados ao Telegram.");
+
+    // Contagem real, não uma frase otimista: dizer "enviados" sem conferir
+    // esconderia exatamente o caso em que o Telegram recusou a mensagem e o
+    // alerta se perdeu em silêncio.
+    console.log(
+      delivered === sending.length
+        ? `${delivered} enviados ao Telegram.`
+        : `⚠ ${delivered} de ${sending.length} enviados — ${sending.length - delivered} FALHARAM.`,
+    );
   }
 }
 
