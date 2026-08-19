@@ -61,6 +61,7 @@ export const QUIET_MINUTES: Record<AlertKind, number> = {
   // Estrutura do perpétuo: muda devagar e o aviso vale enquanto a perna durar.
   squeeze: 120,
   unwind: 120,
+  "whale-exit": 180,
   // Por saldo — curta, para não calar movimento novo.
   "exchange-inflow": 45,
   "exchange-outflow": 45,
@@ -81,7 +82,8 @@ export type AlertKind =
   | "large-transfer"
   | "cycle-top"
   | "squeeze"
-  | "unwind";
+  | "unwind"
+  | "whale-exit";
 
 export type Severity = "critical" | "high" | "medium";
 
@@ -153,6 +155,26 @@ export interface PerpMove {
   note: string;
 }
 
+/**
+ * O histórico do aviso, dito na própria mensagem.
+ *
+ * Vai junto de propósito: este é o único alerta aqui que tenta antecipar o topo
+ * em vez de descrever o que já aconteceu, e quem recebe às três da manhã
+ * precisa saber o quanto pode confiar nele sem ter que lembrar de nada.
+ */
+const PLACAR_WHALE_EXIT =
+  "Placar medido: 6 episódios em BTW, GPS, PRL e LAB, com DOGE e SOL de controle. Em 24 horas, 3 caíram mais de 8% e 3 subiram; em 48 horas, 5 caíram e 1 subiu. Ou seja, quando erra costuma ser por chegar cedo, não por estar errado — mas a amostra é de 5 dias. É aviso, não veredito.";
+
+/** Contas grandes desmontando posição comprada perto do topo. */
+export interface WhaleExitSeen {
+  share: number;
+  peakNet: number;
+  net: number;
+  rally: number;
+  fromHigh: number;
+  fragile: boolean;
+}
+
 export interface DetectInput {
   /** Símbolo da moeda, para o alerta dizer de qual se trata. */
   symbol: string;
@@ -173,6 +195,8 @@ export interface DetectInput {
   liquidityUsd: number;
   /** A perna atual do perpétuo. Ausente quando a praça não lista o par. */
   perp?: PerpMove | null;
+  /** Contas grandes saindo de comprado. Ausente quando não estão. */
+  whaleExit?: WhaleExitSeen | null;
 }
 
 const money = (v: number) =>
@@ -570,6 +594,41 @@ export function detect(input: DetectInput): Alert[] {
         addresses: [],
       });
     }
+  }
+
+  // ------------------------------------------- baleia desmontando comprado
+  //
+  // Este é o único aviso aqui que tenta antecipar o TOPO em vez de descrever o
+  // que já aconteceu, e por isso é o mais frágil. O placar medido está escrito
+  // na mensagem de propósito: quem recebe precisa saber que são quatro acertos
+  // em seis, e não uma sentença.
+  //
+  // Na BTW de 19/08 ele teria disparado às 09h UTC, com o preço em US$ 0,6999
+  // — a máxima do dia. As baleias largaram 4,8% do livro naquela hora, o preço
+  // ficou de lado por cinco horas e só então caiu 50%. O intervalo entre o
+  // sinal e a queda é justamente o que o torna útil.
+  //
+  // O modo de errar dele é chegar cedo: no GPS falou três vezes em 17/08, o
+  // preço subiu 10% e só caiu 32% no dia seguinte. Por isso a severidade é
+  // "high" e não "critical" — quem age em cima disso precisa aguentar ficar
+  // um dia parecendo errado.
+  const exit = input.whaleExit;
+  if (exit && exit.fragile) {
+    alerts.push({
+      kind: "whale-exit",
+      severity: "high",
+      fingerprint: `whx:${symbol}:${Math.round(exit.share * 100)}`,
+      title: `🐋 ${symbol} · baleias largaram ${(exit.share * 100).toFixed(1)}% do livro no topo`,
+      detail:
+        `As contas grandes desmontaram ${units(exit.peakNet - exit.net)} de posição comprada ` +
+        `depois de uma alta de ${(exit.rally * 100).toFixed(0)}%, e o preço ainda está a ` +
+        `${(exit.fromHigh * 100).toFixed(0)}% da máxima — ou seja, saíram antes de quebrar. ` +
+        `A alta que veio antes era a crédito (squeeze ou alavancagem), que é quando essa saída ` +
+        `costuma marcar o fim. ` +
+        `${PLACAR_WHALE_EXIT}`,
+      valueUsd: (exit.peakNet - exit.net) * priceUsd,
+      addresses: [],
+    });
   }
 
   // Uma transferência entre duas carteiras vigiadas gera TRÊS avisos: o da

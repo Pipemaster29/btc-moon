@@ -297,7 +297,10 @@ async function inspect(
   // O perpétuo é onde o preço destas moedas realmente se forma: no dia 19/08 a
   // BTW fez +60% e −50% com o saldo das corretoras variando meio por cento.
   // Sem esta leitura o monitor fica mudo justamente nos dias que importam.
-  const perp = await currentMove(token.symbol).catch(() => null);
+  const perp = await currentMove(token.symbol).catch(() => ({
+    move: null,
+    whaleExit: null,
+  }));
 
   const alerts = detect({
     symbol: info.symbol,
@@ -308,7 +311,8 @@ async function inspect(
     transfers,
     priceUsd: price,
     liquidityUsd: depth?.liquidityUsd ?? 0,
-    perp,
+    perp: perp.move,
+    whaleExit: perp.whaleExit,
   }).filter((alert) => {
     const last = state.fired[alert.fingerprint];
     return !last || now - last > QUIET_MINUTES[alert.kind] * 60;

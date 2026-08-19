@@ -250,6 +250,62 @@ export default function PositioningPanel({
         </section>
       )}
 
+      {/* ------------------------------------ baleias saindo de comprado */}
+      {snapshot.live?.whaleExit && (
+        <section
+          className={`rounded-xl border p-5 ${
+            snapshot.live.whaleExit.fragile
+              ? "border-[#F6465D]/40 bg-[#F6465D]/5"
+              : "border-black/10 dark:border-white/10"
+          }`}
+        >
+          <h3 className="font-semibold">
+            🐋 Contas grandes desmontando posição comprada
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-4 mt-3 text-sm">
+            <div>
+              <p className="text-black/50 dark:text-white/50">Largaram</p>
+              <p className="text-lg font-semibold tabular-nums text-[#F6465D]">
+                {(snapshot.live.whaleExit.share * 100).toFixed(1)}%
+              </p>
+              <p className="text-xs text-black/40 dark:text-white/40">do open interest</p>
+            </div>
+            <div>
+              <p className="text-black/50 dark:text-white/50">Posição líquida</p>
+              <p className="text-lg font-semibold tabular-nums">
+                {(snapshot.live.whaleExit.peakNet / 1e6).toFixed(2)} →{" "}
+                {(snapshot.live.whaleExit.net / 1e6).toFixed(2)} mi
+              </p>
+              <p className="text-xs text-black/40 dark:text-white/40">em moeda</p>
+            </div>
+            <div>
+              <p className="text-black/50 dark:text-white/50">Alta antes</p>
+              <p className="text-lg font-semibold tabular-nums text-[#0ECB81]">
+                {signed(snapshot.live.whaleExit.rally)}
+              </p>
+            </div>
+            <div>
+              <p className="text-black/50 dark:text-white/50">Abaixo da máxima</p>
+              <p className="text-lg font-semibold tabular-nums">
+                {(snapshot.live.whaleExit.fromHigh * 100).toFixed(0)}%
+              </p>
+              <p className="text-xs text-black/40 dark:text-white/40">o preço ainda não quebrou</p>
+            </div>
+          </div>
+          <p className="text-sm text-black/60 dark:text-white/60 mt-3">
+            {snapshot.live.whaleExit.fragile
+              ? "A alta que veio antes era a crédito — squeeze ou alavancagem. É quando essa saída costuma marcar o fim, porque não fica comprador voluntário embaixo do preço."
+              : "A alta que veio antes foi orgânica, então isto pode ser só realização de lucro. O mesmo movimento depois de uma alta a crédito seria bem mais grave."}
+          </p>
+          <p className="text-xs text-black/40 dark:text-white/40 mt-2">
+            Placar medido em 5 dias sobre BTW, GPS, PRL e LAB, com DOGE e SOL de controle: 6
+            episódios. Em 24 horas, 3 caíram mais de 8% e 3 subiram; em 48 horas, 5 caíram e 1
+            subiu. O modo de errar dele é chegar cedo, não errar a direção — mas a amostra é
+            pequena. É aviso, não veredito.
+          </p>
+        </section>
+      )}
+
       {/* --------------------------------------------- natureza da alta */}
       {snapshot.rise.kind !== "sem alta" && (
         <section className={`rounded-xl border p-5 ${RISE_STYLE[snapshot.rise.kind]}`}>

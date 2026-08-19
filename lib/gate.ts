@@ -43,6 +43,11 @@ export interface LiveStat {
   takerRatio: number;
   /** Posição comprada ÷ vendida das contas grandes, por tamanho. */
   whaleRatio: number;
+  /** Posição comprada das contas grandes, EM MOEDA. */
+  whaleLong: number;
+  whaleShort: number;
+  /** whaleLong − whaleShort: o que elas realmente carregam. */
+  whaleNet: number;
 }
 
 /** BTWUSDT → BTW_USDT. */
@@ -61,6 +66,8 @@ interface RawStat {
   lsr_account: number;
   lsr_taker: number;
   top_lsr_size: number;
+  top_long_size: number;
+  top_short_size: number;
 }
 
 /**
@@ -94,18 +101,27 @@ export async function liveStats(
       .map((r) => {
         const price = Number(r.mark_price);
         const usd = Number(r.open_interest_usd);
+        const moedas = price > 0 ? usd / price : 0;
+        // As posições das contas grandes vêm em CONTRATOS, e o multiplicador
+        // muda por par. Ele sai da própria resposta: moedas ÷ contratos.
+        const mult = r.open_interest > 0 ? moedas / Number(r.open_interest) : 0;
+        const whaleLong = Number(r.top_long_size) * mult || 0;
+        const whaleShort = Number(r.top_short_size) * mult || 0;
         return {
           time: Number(r.time),
           price,
           // Vem em contratos, e o multiplicador varia por par. Dividir o valor
           // pelo preço dá a contagem em moeda sem depender do multiplicador.
-          openInterest: price > 0 ? usd / price : 0,
+          openInterest: moedas,
           openInterestUsd: usd,
           longLiqUsd: Number(r.long_liq_usd) || 0,
           shortLiqUsd: Number(r.short_liq_usd) || 0,
           accountRatio: Number(r.lsr_account) || 0,
           takerRatio: Number(r.lsr_taker) || 0,
           whaleRatio: Number(r.top_lsr_size) || 0,
+          whaleLong,
+          whaleShort,
+          whaleNet: whaleLong - whaleShort,
         };
       })
       .filter((s) => Number.isFinite(s.time) && s.price > 0 && s.openInterest > 0)

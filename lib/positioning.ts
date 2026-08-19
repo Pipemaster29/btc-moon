@@ -107,6 +107,43 @@ export interface MoveRead {
   note: string;
 }
 
+/**
+ * As contas grandes desmontando posição comprada perto do topo.
+ *
+ * A razão comprado÷vendido não serve para isto: ela some quando a posição
+ * líquida passa perto de zero, e aí "caiu 30% do pico" vira ruído — no GPS
+ * chegou a marcar −371%. O que mede de verdade é quanto do LIVRO elas
+ * largaram: (pico da posição líquida − posição agora) ÷ open interest.
+ *
+ * Quatro condições, e as quatro precisam valer:
+ *
+ *   1. as baleias estavam de fato compradas no pico (≥8% do open interest),
+ *      senão não há posição para desmontar;
+ *   2. largaram pelo menos 3% do livro;
+ *   3. houve alta de pelo menos 15% até esse pico — o sinal é sair do topo de
+ *      uma subida, não ficar de lado num mercado parado;
+ *   4. o preço ainda não quebrou (a menos de 10% da máxima da janela). Depois
+ *      que caiu, o aviso não serve para nada.
+ *
+ * O placar medido em 5 dias de dado da Gate, sobre BTW, GPS, PRL e LAB, com
+ * DOGE, SOL e XRP de controle: 6 episódios, 4 seguidos de queda maior que 8%
+ * em 24 horas, 2 seguidos de alta — os dois no GPS, um dia antes do topo real.
+ * Zero disparos nos controles. É aviso, não veredito, e a amostra é pequena.
+ */
+export interface WhaleExit {
+  /** Fração do open interest que as contas grandes largaram desde o pico. */
+  share: number;
+  /** Posição líquida no pico e agora, em moeda. */
+  peakNet: number;
+  net: number;
+  /** Quanto o preço subiu até o pico da posição. */
+  rally: number;
+  /** Distância do preço atual até a máxima da janela. */
+  fromHigh: number;
+  /** A alta que precedeu era frágil — squeeze ou alavancagem. */
+  fragile: boolean;
+}
+
 /** A leitura viva do perpétuo — hoje, não ontem. */
 export interface LiveRead {
   price: number;
@@ -117,6 +154,8 @@ export interface LiveRead {
   longLiqUsd24h: number;
   shortLiqUsd24h: number;
   move: MoveRead | null;
+  /** Nulo quando as contas grandes não estão saindo de nada. */
+  whaleExit: WhaleExit | null;
   updatedAt: number;
 }
 
@@ -348,8 +387,11 @@ function classifyRise(rows: DailyRow[]): RiseQuality {
  * É o que o monitor precisa: ele roda a cada poucos minutos e não tem uso para
  * o mapa de liquidação nem para os catorze dias de histórico.
  */
-export async function currentMove(symbol: string): Promise<MoveRead | null> {
-  return readLive(await liveStats(symbol, "1h", 100))?.move ?? null;
+export async function currentMove(
+  symbol: string,
+): Promise<{ move: MoveRead | null; whaleExit: WhaleExit | null }> {
+  const live = readLive(await liveStats(symbol, "1h", 100));
+  return { move: live?.move ?? null, whaleExit: live?.whaleExit ?? null };
 }
 
 /**
@@ -387,6 +429,7 @@ function readLive(stats: LiveStat[]): LiveRead | null {
     whaleRatio: ultimo.whaleRatio,
     longLiqUsd24h: janela.reduce((s, r) => s + r.longLiqUsd, 0),
     shortLiqUsd24h: janela.reduce((s, r) => s + r.shortLiqUsd, 0),
+    whaleExit: detectWhaleExit(janela),
     move: classifyMove(
       janela[de],
       janela[ate],
@@ -395,6 +438,61 @@ function readLive(stats: LiveStat[]): LiveRead | null {
       shortLiq,
     ),
     updatedAt: ultimo.time * 1000,
+  };
+}
+
+/**
+ * As contas grandes largando posição comprada enquanto o preço ainda está no
+ * topo. Devolve nulo quando qualquer uma das quatro condições falha.
+ */
+export function detectWhaleExit(janela: LiveStat[]): WhaleExit | null {
+  if (janela.length < 8) return null;
+
+  const atual = janela[janela.length - 1];
+  let pico = janela[0];
+  let iPico = 0;
+  for (const [i, s] of janela.entries()) {
+    if (s.whaleNet > pico.whaleNet) {
+      pico = s;
+      iPico = i;
+    }
+  }
+
+  if (pico.openInterest <= 0 || atual.openInterest <= 0) return null;
+  if (pico.whaleNet / pico.openInterest < 0.08) return null;
+
+  const share = (pico.whaleNet - atual.whaleNet) / atual.openInterest;
+  if (share < 0.03) return null;
+
+  const antes = janela.slice(0, iPico + 1);
+  const fundo = antes.reduce((a, b) => (b.price < a.price ? b : a), antes[0]);
+  const rally = pico.price / fundo.price - 1;
+  if (rally < 0.15) return null;
+
+  const maxima = Math.max(...janela.map((s) => s.price));
+  const fromHigh = 1 - atual.price / maxima;
+  if (fromHigh > 0.1) return null;
+
+  // Tentei também exigir que o open interest tivesse parado de crescer — a
+  // ideia de que a saída só marca o fim quando ninguém repõe a posição. Mediu
+  // pior: cortou um acerto da BTW junto com os erros do GPS e o placar foi de
+  // 3 em 6 para 2 em 4. Ficou de fora, e fica registrado para não ser tentado
+  // de novo.
+
+  // A alta que precedeu era a crédito? Squeeze e alavancagem são as duas
+  // formas frágeis; saída de baleia depois de alta orgânica é só realização.
+  const trecho = janela.slice(janela.indexOf(fundo), iPico + 1);
+  const shortLiq = trecho.reduce((s, r) => s + r.shortLiqUsd, 0);
+  const longLiq = trecho.reduce((s, r) => s + r.longLiqUsd, 0);
+  const oiRatio = (pico.openInterest / fundo.openInterest - 1) / rally;
+
+  return {
+    share,
+    peakNet: pico.whaleNet,
+    net: atual.whaleNet,
+    rally,
+    fromHigh,
+    fragile: (shortLiq >= 3 * longLiq && shortLiq > 0) || oiRatio >= 1.5,
   };
 }
 
