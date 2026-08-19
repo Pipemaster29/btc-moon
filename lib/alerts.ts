@@ -38,6 +38,7 @@ export type AlertKind =
   | "lock-outflow"
   | "cold-to-hot"
   | "exchange-inflow"
+  | "exchange-outflow"
   | "balance-drop"
   | "fresh-recipient"
   | "large-transfer";
@@ -166,24 +167,37 @@ export function detect(input: DetectInput): Alert[] {
     // ------------------------------------------------------ saldo caindo
     const drop = before.balance - wallet.balance;
     const isLock = wallet.role === "lock";
+    const isExchange = wallet.role === "exchange";
     // Trava não deveria se mexer nunca, então qualquer saída conta.
     const dropFloor = isLock ? 0 : bigUsd;
 
     if (drop > 0 && drop * priceUsd >= dropFloor) {
       alerts.push({
-        kind: isLock ? "lock-outflow" : "balance-drop",
+        kind: isLock ? "lock-outflow" : isExchange ? "exchange-outflow" : "balance-drop",
         severity: isLock ? "critical" : "high",
         // Sem o saldo no identificador: ele muda a cada ciclo, e incluí-lo fazia
         // a deduplicação nunca casar — a mesma carteira alertava para sempre.
         fingerprint: `out:${wallet.address}:${magnitude(drop * priceUsd)}`,
         title: isLock
           ? `🔓 ${symbol} · A TRAVA SE MEXEU — ${wallet.label}`
-          : `📤 ${symbol} · ${wallet.label} enviou ${units(drop)}`,
+          : isExchange
+            ? `📈 ${symbol} · ${units(drop)} SAÍRAM de ${wallet.label}`
+            : `📤 ${symbol} · ${wallet.label} enviou ${units(drop)}`,
         detail: isLock
           ? `Saíram ${units(drop)} (${money(drop * priceUsd)}) de um contrato de trava. ` +
             `Era supply que não circulava e agora circula. É o evento mais grave possível para o preço.`
-          : `Saldo caiu de ${units(before.balance)} para ${units(wallet.balance)}. ` +
-            `São ${money(drop * priceUsd)} saindo desta carteira.`,
+          : isExchange
+            // Saída de corretora é o OPOSTO de entrada, e confundir os dois
+            // inverte a leitura: token saindo do livro é oferta sendo retirada.
+            // Quando isso é sistemático, o efeito é choque de oferta e o preço
+            // sobe — foi o que aconteceu na BTW enquanto este aviso ainda
+            // tratava toda saída de saldo como evento neutro.
+            ? `${money(drop * priceUsd)} deixaram o livro de ${wallet.label}. ` +
+              `Token saindo de corretora é oferta sendo RETIRADA do mercado — o contrário ` +
+              `de token chegando para ser vendido. Retirada sistemática aperta a oferta e ` +
+              `empurra o preço para cima; para quem está vendido, é o combustível do squeeze.`
+            : `Saldo caiu de ${units(before.balance)} para ${units(wallet.balance)}. ` +
+              `São ${money(drop * priceUsd)} saindo desta carteira.`,
         valueUsd: drop * priceUsd,
         addresses: [wallet.address],
       });
@@ -205,6 +219,53 @@ export function detect(input: DetectInput): Alert[] {
         addresses: [wallet.address],
       });
     }
+  }
+
+  // ------------------------------------------------------ choque de oferta
+  //
+  // As regras acima olham uma carteira por vez, e isso esconde o movimento que
+  // mais importa: o SALDO AGREGADO das corretoras. Uma saída aqui e uma entrada
+  // ali se anulam no preço, mas quando o conjunto todo encolhe de forma
+  // consistente, a oferta disponível para venda imediata está sendo retirada —
+  // e é isso que produz alta por aperto em vez de queda por distribuição.
+  //
+  // Foi exatamente o que aconteceu na BTW: o painel avisava "possível venda" a
+  // cada saída isolada enquanto o agregado encolhia e o preço dobrava.
+  const antesCorretoras = current.reduce((sum, w) => {
+    const before = previous[w.address.toLowerCase()];
+    return w.role === "exchange" && before ? sum + before.balance : sum;
+  }, 0);
+  const agoraCorretoras = current.reduce(
+    (sum, w) => (w.role === "exchange" && previous[w.address.toLowerCase()] ? sum + w.balance : sum),
+    0,
+  );
+
+  const variacao = agoraCorretoras - antesCorretoras;
+  const variacaoUsd = Math.abs(variacao) * priceUsd;
+
+  // O agregado se move o tempo todo por ruído; só um deslocamento grande perto
+  // da liquidez diz alguma coisa sobre o preço.
+  if (antesCorretoras > 0 && variacaoUsd >= bigUsd * 2) {
+    const saindo = variacao < 0;
+    const pct = Math.abs(variacao / antesCorretoras) * 100;
+
+    alerts.push({
+      kind: saindo ? "exchange-outflow" : "exchange-inflow",
+      severity: "critical",
+      fingerprint: `net:${saindo ? "out" : "in"}:${magnitude(variacaoUsd)}`,
+      title: saindo
+        ? `🚀 ${symbol} · CHOQUE DE OFERTA — ${units(-variacao)} saíram das corretoras`
+        : `⚓ ${symbol} · ${units(variacao)} entraram nas corretoras`,
+      detail: saindo
+        ? `O saldo somado das corretoras caiu ${pct.toFixed(1)}% (${money(variacaoUsd)}). ` +
+          `Oferta disponível para venda imediata está sendo retirada do mercado. ` +
+          `É configuração de alta por aperto, não de distribuição — e o pior momento possível ` +
+          `para estar vendido.`
+        : `O saldo somado das corretoras subiu ${pct.toFixed(1)}% (${money(variacaoUsd)}). ` +
+          `Oferta se acumulando no livro é o que precede distribuição.`,
+      valueUsd: variacaoUsd,
+      addresses: [],
+    });
   }
 
   // ------------------------------------------------- fria alimentando quente
