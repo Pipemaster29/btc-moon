@@ -37,6 +37,7 @@ export type AlertKind =
   | "test-transfer"
   | "lock-outflow"
   | "cold-to-hot"
+  | "hot-to-cold"
   | "exchange-inflow"
   | "exchange-outflow"
   | "balance-drop"
@@ -328,6 +329,30 @@ export function detect(input: DetectInput): Alert[] {
   // Carteira fria não vende. Quando ela abastece a quente, quem opera está
   // preparando estoque para distribuir — foi exatamente a sequência de 16/08,
   // com cerca de doze horas entre uma coisa e outra.
+  // O sentido inverso — quente para fria — é o sinal oposto e some das outras
+  // regras: os dois lados têm o mesmo papel, então o agregado das corretoras não
+  // muda e nenhum alerta de saldo dispara. Mas tirar token do livro para a
+  // custódia é retirar oferta vendável, que é justamente a mecânica do aperto.
+  for (const t of transfers) {
+    const fromHot = /quente|hot/i.test(t.fromLabel);
+    const toCold = /fria|cold/i.test(t.toLabel);
+    if (fromHot && toCold && t.amount * priceUsd >= bigUsd) {
+      alerts.push({
+        kind: "hot-to-cold",
+        severity: "critical",
+        fingerprint: `h2c:${t.block}:${Math.round(t.amount)}`,
+        title: `🔒 ${symbol} · ${units(t.amount)} saíram do livro para a custódia`,
+        detail:
+          `${money(t.amount * priceUsd)} foram da carteira quente para a fria. ` +
+          `Sai do que pode ser vendido agora e entra em custódia, que precisa voltar ` +
+          `para a quente antes de virar venda. É retirada de oferta — a mecânica que ` +
+          `aperta o livro e sustenta alta.`,
+        valueUsd: t.amount * priceUsd,
+        addresses: [t.from, t.to],
+      });
+    }
+  }
+
   for (const t of transfers) {
     const fromCold = /fria|cold/i.test(t.fromLabel);
     const toHot = /quente|hot/i.test(t.toLabel);
@@ -435,9 +460,27 @@ export function detect(input: DetectInput): Alert[] {
     });
   }
 
+  // Uma transferência entre duas carteiras vigiadas gera TRÊS avisos: o da
+  // transferência em si, o saldo caindo de um lado e subindo do outro. É um
+  // evento só, e os dois de saldo dizem menos do que o primeiro — que já explica
+  // a direção. Ficam só quando não há alerta de transferência que os cubra.
+  const explicados = new Set<string>();
+  for (const a of alerts) {
+    if (a.kind === "hot-to-cold" || a.kind === "cold-to-hot") {
+      for (const addr of a.addresses) explicados.add(addr.toLowerCase());
+    }
+  }
+
+  const enxutos = alerts.filter((a) => {
+    const deSaldo =
+      a.kind === "exchange-inflow" || a.kind === "exchange-outflow" || a.kind === "balance-drop";
+    if (!deSaldo || a.addresses.length === 0) return true;
+    return !explicados.has(a.addresses[0].toLowerCase());
+  });
+
   // Mais grave primeiro, e entre iguais o maior valor.
   const rank: Record<Severity, number> = { critical: 0, high: 1, medium: 2 };
-  return alerts.sort(
+  return enxutos.sort(
     (a, b) => rank[a.severity] - rank[b.severity] || b.valueUsd - a.valueUsd,
   );
 }

@@ -4,14 +4,14 @@
 # longo de dois dias, ele pede 10 minutos e entrega de 17 a 78. Numa moeda que
 # se move 47% numa noite, 78 minutos de cegueira é inaceitável.
 #
-# Aqui o cron só dispara a execução de hora em hora; a cadência real vem de um
-# laço interno que roda um ciclo a cada 5 minutos durante 50 minutos. O atraso
-# do agendamento passa a deslocar o início da janela em vez de abrir buraco
-# dentro dela.
+# Aqui o cron dispara duas vezes por hora e a cadência real vem de um laço
+# interno que roda um ciclo a cada 3 minutos durante 35 minutos. Como as duas
+# partidas se emendam pela fila de concorrência, não sobra intervalo morto entre
+# elas — e uma partida atrasada pelo GitHub é coberta pela seguinte.
 #
-# Cinco minutos e não menos porque cada ciclo faz cerca de cinquenta chamadas a
-# nós públicos gratuitos. Levar bloqueio por abuso pararia o monitor de vez, o
-# que é muito pior do que atrasar um pouco.
+# Três minutos é o piso prático: cada ciclo faz cerca de cinquenta chamadas a
+# nós públicos gratuitos, e apertar mais arrisca bloqueio por abuso — o que
+# pararia o monitor de vez, muito pior do que atrasar um pouco.
 #
 # O custo é zero porque o repositório é público, e nesse caso o GitHub não cobra
 # minutos de execução. Se ele voltar a ser privado, isto consumiria os 2.000
@@ -23,7 +23,11 @@ on:
   schedule:
     # De hora em hora, e cada execução se repete por dentro durante ~50 minutos.
     # O agendamento do GitHub é só o disparo; a cadência real vem do laço.
-    - cron: "5 * * * *"
+    # Duas partidas por hora, cada uma cobrindo 35 minutos. Com a fila de
+    # concorrência elas se emendam em vez de se sobrepor, e uma partida atrasada
+    # pelo GitHub é coberta pela outra — foi um intervalo morto de dez minutos
+    # que deixou passar uma transferência de 2 milhões.
+    - cron: "5,35 * * * *"
   # Permite disparar à mão pela aba Actions, para testar sem esperar.
   workflow_dispatch:
 
@@ -70,19 +74,19 @@ jobs:
       #
       # Uma falha de ciclo não derruba o laço — a rede pode oscilar, e perder um
       # ciclo é muito melhor do que perder a hora inteira.
-      - name: Vigiar por 50 minutos
+      - name: Vigiar por 35 minutos
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          fim=$(( $(date +%s) + 50*60 ))
+          fim=$(( $(date +%s) + 35*60 ))
           n=0
           while [ "$(date +%s)" -lt "$fim" ]; do
             n=$((n+1))
             echo "=== ciclo $n · $(date -u +%H:%M:%S) UTC ==="
             npm run monitor || echo "ciclo $n falhou, seguindo"
             [ "$(date +%s)" -ge "$fim" ] && break
-            sleep 300
+            sleep 180
           done
           echo "=== $n ciclos nesta execução ==="
 
