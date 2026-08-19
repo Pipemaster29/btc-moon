@@ -1,5 +1,20 @@
-import type { PositioningSnapshotView, Verdict } from "@/lib/positioning";
+import type { PositioningSnapshotView, RiseKind, Verdict } from "@/lib/positioning";
 import type { LiquidationLevel } from "@/lib/liquidation";
+
+/** Alta a crédito é frágil; alta por oferta é a que se sustenta. */
+const RISE_STYLE: Record<RiseKind, string> = {
+  alavancagem: "border-[#F6465D]/40 bg-[#F6465D]/5",
+  oferta: "border-[#0ECB81]/40 bg-[#0ECB81]/5",
+  misto: "border-[#F0B90B]/40 bg-[#F0B90B]/5",
+  "sem alta": "border-black/10 dark:border-white/10",
+};
+
+const RISE_LABEL: Record<RiseKind, string> = {
+  alavancagem: "Alta movida a alavancagem",
+  oferta: "Alta movida a oferta",
+  misto: "Origem da alta indefinida",
+  "sem alta": "Sem alta relevante",
+};
 
 const VERDICT_STYLE: Record<Verdict, string> = {
   sell: "border-[#0ECB81]/40 bg-[#0ECB81]/5",
@@ -130,6 +145,34 @@ export default function PositioningPanel({
           </div>
         </div>
       </section>
+
+      {/* --------------------------------------------- natureza da alta */}
+      {snapshot.rise.kind !== "sem alta" && (
+        <section className={`rounded-xl border p-5 ${RISE_STYLE[snapshot.rise.kind]}`}>
+          <h3 className="font-semibold">{RISE_LABEL[snapshot.rise.kind]}</h3>
+          <div className="grid gap-4 sm:grid-cols-3 mt-3 text-sm">
+            <div>
+              <p className="text-black/50 dark:text-white/50">Preço</p>
+              <p className={`text-lg font-semibold tabular-nums ${changeColor(snapshot.rise.priceChange)}`}>
+                {signed(snapshot.rise.priceChange)}
+              </p>
+            </div>
+            <div>
+              <p className="text-black/50 dark:text-white/50">Open interest</p>
+              <p className={`text-lg font-semibold tabular-nums ${changeColor(snapshot.rise.oiChange)}`}>
+                {signed(snapshot.rise.oiChange)}
+              </p>
+            </div>
+            <div>
+              <p className="text-black/50 dark:text-white/50">OI ÷ preço</p>
+              <p className="text-lg font-semibold tabular-nums">
+                {snapshot.rise.ratio.toFixed(2)}x
+              </p>
+            </div>
+          </div>
+          <p className="text-sm text-black/60 dark:text-white/60 mt-3">{snapshot.rise.note}</p>
+        </section>
+      )}
 
       {/* ---------------------------------------------------------- base */}
       {snapshot.basis && Math.abs(snapshot.basis.basis) > 0.005 && (

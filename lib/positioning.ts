@@ -30,6 +30,34 @@ export interface DailyRow {
 
 export type Verdict = "sell" | "wait" | "avoid" | "unclear";
 
+/**
+ * De onde veio a alta — e é isso que decide quanto ela dura.
+ *
+ * Duas altas com o mesmo gráfico têm origens opostas e destinos opostos:
+ *
+ *   OFERTA       o float sai das corretoras e o livro seca. O preço sobe porque
+ *                não há o que vender. Enquanto a oferta ficar fora, se sustenta.
+ *                Foi o LAB: saldo nas corretoras caiu 97% e o preço fez 79x.
+ *   ALAVANCAGEM  o open interest explode enquanto o float não se mexe. A alta é
+ *                dinheiro emprestado comprando de quem está vendido, e acaba
+ *                quando os vendidos acabam. Foi o GPS: OI +115% num dia contra
+ *                preço +51%, com o saldo das corretoras parado — e −33% depois.
+ *
+ * A razão entre o crescimento do OI e o do preço separa as duas.
+ */
+export type RiseKind = "oferta" | "alavancagem" | "misto" | "sem alta";
+
+export interface RiseQuality {
+  kind: RiseKind;
+  /** Variação do preço na janela. */
+  priceChange: number;
+  /** Variação do open interest na janela. */
+  oiChange: number;
+  /** oiChange ÷ priceChange: acima de 1,5 a alta é movida a crédito. */
+  ratio: number;
+  note: string;
+}
+
 export interface Basis {
   perp: number;
   spot: number;
@@ -55,6 +83,7 @@ export interface PositioningSnapshotView {
   shortNotional: number;
   readings: number;
   basis: Basis | null;
+  rise: RiseQuality;
   verdict: Verdict;
   verdictTitle: string;
   verdictDetail: string;
@@ -154,6 +183,7 @@ export async function getPositioning(
     }
   }
 
+  const rise = classifyRise(rows);
   const call = decide(latest, belowTotal, aboveTotal);
 
   return {
@@ -176,7 +206,73 @@ export async function getPositioning(
       .reduce((s, p) => s + p.notional, 0),
     readings: snapshots.length,
     basis,
+    rise,
     ...call,
+  };
+}
+
+/**
+ * Classifica a alta pelos últimos dias com dado completo.
+ *
+ * Usa três dias e não um: um único dia de OI é ruído, e a natureza da alta se
+ * revela no acumulado. Abaixo de 10% de alta não classifica — sem subida, a
+ * pergunta não faz sentido.
+ */
+function classifyRise(rows: DailyRow[]): RiseQuality {
+  const validas = rows.filter((r) => Number.isFinite(r.openInterestValue));
+  if (validas.length < 4) {
+    return { kind: "sem alta", priceChange: 0, oiChange: 0, ratio: 0, note: "dados insuficientes" };
+  }
+
+  const fim = validas[validas.length - 1];
+  const ini = validas[Math.max(0, validas.length - 4)];
+  const priceChange = fim.close / ini.close - 1;
+  const oiChange = fim.openInterestValue / ini.openInterestValue - 1;
+
+  if (priceChange < 0.1) {
+    return {
+      kind: "sem alta",
+      priceChange,
+      oiChange,
+      ratio: 0,
+      note: "sem subida relevante no período para classificar",
+    };
+  }
+
+  const ratio = oiChange / priceChange;
+
+  if (ratio >= 1.5) {
+    return {
+      kind: "alavancagem",
+      priceChange,
+      oiChange,
+      ratio,
+      note:
+        `O open interest cresceu ${(oiChange * 100).toFixed(0)}% contra ${(priceChange * 100).toFixed(0)}% de preço — ` +
+        `a alta é dinheiro emprestado, não oferta escasseando. Esse tipo se desfaz quando ` +
+        `os vendidos que alimentam o squeeze acabam, e a queda costuma ser tão rápida quanto a subida.`,
+    };
+  }
+
+  if (ratio <= 0.5) {
+    return {
+      kind: "oferta",
+      priceChange,
+      oiChange,
+      ratio,
+      note:
+        `O preço subiu ${(priceChange * 100).toFixed(0)}% com o open interest quase parado ` +
+        `(${(oiChange * 100).toFixed(0)}%). A alta não veio de crédito — é compatível com float ` +
+        `saindo do livro, que é o tipo que se sustenta enquanto a oferta ficar fora.`,
+    };
+  }
+
+  return {
+    kind: "misto",
+    priceChange,
+    oiChange,
+    ratio,
+    note: `Preço e open interest cresceram em proporção parecida; não dá para separar as duas origens.`,
   };
 }
 
