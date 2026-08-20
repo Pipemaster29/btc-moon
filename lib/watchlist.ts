@@ -806,6 +806,18 @@ export const WATCHLIST: WatchedToken[] = [
     firstBlock: 0,
     wallets: [],
   },
+  {
+    // liquidez 74k · giro 0.55x/dia · preço bate em 0,6%
+    //
+    // Cuidado com o vizinho: existe também POWRUSDT na Binance, que é a
+    // Powerledger — projeto antigo, US$ 0,039 contra US$ 0,093 daqui. São moedas
+    // diferentes com nome parecido, e trocar uma pela outra mediria a errada.
+    symbol: "POWERUSDT",
+    chain: "bsc",
+    contract: "0x9dC44ae5BE187ECA9e2A67e33f27A4c91cEA1223",
+    firstBlock: 0,
+    wallets: [],
+  },
 ];
 
 /**
