@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getPanorama, type PanoramaRow } from "@/lib/overview";
+import type { PanoramaRow } from "@/lib/overview";
+import { getSnapshot } from "@/lib/snapshot";
 import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
 
@@ -167,7 +168,8 @@ function Row({ row }: { row: PanoramaRow }) {
 }
 
 export default async function Radar() {
-  const rows = await getPanorama();
+  const snapshot = await getSnapshot();
+  const rows = snapshot.moedas;
   const comCarteiras = rows.filter((r) => r.hasWallets).length;
 
   const porVies = (v: Vies) =>
@@ -195,6 +197,24 @@ export default async function Radar() {
             blockchain. A ordem é por quanto cada uma merece atenção agora — não por
             tamanho, que colocaria em cima justamente as que não estão fazendo nada.
             Clique numa moeda para o retrato completo.
+          </p>
+          <p className="text-xs text-black/40 dark:text-white/40">
+            Retrato de{" "}
+            {new Date(snapshot.geradoEm).toLocaleString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            {snapshot.idadeMinutos >= 1 &&
+              ` · ${Math.round(snapshot.idadeMinutos)} min atrás`}
+            {snapshot.fonte === "cálculo" && " · calculado agora"}
+            {snapshot.velho && (
+              <span className="text-[#F0B90B]">
+                {" "}
+                · o retrato parou de ser atualizado, confira o workflow
+              </span>
+            )}
           </p>
         </header>
 

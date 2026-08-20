@@ -75,11 +75,34 @@ saída de baleia carrega o próprio placar dentro da mensagem: em 6 episódios
 medidos, 3 caíram mais de 8% em 24 horas e 5 em 48 — o modo de errar dele é
 chegar cedo, não errar a direção.
 
+## O retrato pré-calculado
+
+Montar o panorama leva vinte segundos — dez arquivos do Data Vision por moeda,
+mais o saldo em corretora de cada uma. Função serverless costuma ser cortada em
+dez, então a página não estava lenta: estava a um cold start de não abrir.
+
+`npm run panorama` calcula e grava em `data/panorama.json`; o workflow roda isso
+uma vez por execução e devolve o arquivo ao repositório. A página lê em três
+camadas — GitHub raw (fresco sem deploy), disco (congelado no build), cálculo ao
+vivo (caro, mas nunca falha) — e mostra na tela quando o retrato foi tirado.
+Dado velho apresentado como atual é pior do que dado ausente. Resultado: 20,9s
+para 0,10s.
+
+Cada execução também acrescenta uma linha por moeda a
+`data/historico-AAAA-MM.jsonl`. É essa série que responde a pergunta que hoje
+não tem resposta — os detectores funcionam? — porque a Gate só devolve cem horas
+de passado, e é com essas cem horas que o placar da saída de baleia foi medido.
+
+O `vercel.json` traz um `ignoreCommand` que pula o build quando só `data/` mudou.
+Sem ele, cada retrato dispararia um deploy novo.
+
 ## Scripts
 
 | comando | o que faz |
 | --- | --- |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
+| `npm run panorama` | calcula o retrato de todas e grava em `data/` |
+| `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |
 | `npm run monitor` | um ciclo de vigilância, com envio ao Telegram |
 | `npm run queda` | anatomia de um movimento: perpétuo cruzado com a rede |
