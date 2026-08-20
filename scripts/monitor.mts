@@ -110,11 +110,73 @@ interface Pending {
 
 const pending: Pending[] = [];
 
-for (const token of WATCHLIST.filter((t) => t.contract)) {
-  const found = await inspect(token, state, now);
-  const explorer = CHAINS[token.chain].explorer;
-  pending.push(...found.map((alert) => ({ alert, explorer })));
+// ------------------------------------------------------------------ a passada
+//
+// A lista tem quarenta e duas moedas, e as duas metades do trabalho custam
+// coisas muito diferentes.
+//
+// O PERPÉTUO custa uma requisição por moeda e não toca em nó nenhum: squeeze,
+// desalavancagem e saída de baleia saem daí. Roda para todas, inclusive as que
+// não têm contrato conferido — o posicionamento não depende de blockchain.
+//
+// A REDE custa dezenas de chamadas por moeda: saldo de cada carteira, gás de
+// cada carteira, varredura de log de três horas. Roda só para as moedas com
+// carteira mapeada, porque é a única situação em que ela responde mais do que
+// "houve transferências". Numa moeda sem carteira nomeada o mesmo custo
+// devolveria um punhado de endereços anônimos.
+//
+// Quando as carteiras de uma moeda forem mapeadas, ela migra de metade sozinha.
+const comCarteiras = WATCHLIST.filter((t) => t.contract && t.wallets.length > 0);
+const soPerpetuo = WATCHLIST.filter((t) => !comCarteiras.includes(t));
+
+for (const token of comCarteiras) {
+  try {
+    const found = await inspect(token, state, now);
+    const explorer = CHAINS[token.chain].explorer;
+    pending.push(...found.map((alert) => ({ alert, explorer })));
+  } catch (error) {
+    console.error(`${token.symbol}: ${(error as Error).message}`);
+  }
 }
+
+// As demais entram só pelo perpétuo, em paralelo — são requisições HTTP a uma
+// API pública, não a um nó com limite de concorrência.
+const perpAlerts = await Promise.all(
+  soPerpetuo.map(async (token) => {
+    try {
+      const perp = await currentMove(token.symbol);
+      if (!perp.move && !perp.whaleExit) return [];
+
+      const ticker = token.symbol.replace(/USDT$/, "");
+      return detect({
+        symbol: ticker,
+        gasSymbol: CHAINS[token.chain].gasSymbol,
+        previous: {},
+        current: [],
+        transfers: [],
+        priceUsd: 0,
+        liquidityUsd: 0,
+        perp: perp.move,
+        whaleExit: perp.whaleExit,
+      }).filter((alert) => {
+        const last = state.fired[alert.fingerprint];
+        return !last || now - last > QUIET_MINUTES[alert.kind] * 60;
+      });
+    } catch {
+      return [];
+    }
+  }),
+);
+
+for (const [i, alerts] of perpAlerts.entries()) {
+  const explorer = CHAINS[soPerpetuo[i].chain].explorer;
+  pending.push(...alerts.map((alert) => ({ alert, explorer })));
+}
+
+console.log(
+  `${comCarteiras.length} moedas com leitura on-chain · ${soPerpetuo.length} só pelo perpétuo · ` +
+    `${pending.length} alertas no total`,
+);
 
 // ------------------------------------------------------------------ envio
 //

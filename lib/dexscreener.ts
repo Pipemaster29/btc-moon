@@ -83,6 +83,8 @@ export async function searchPairs(query: string): Promise<Pair[]> {
 
 export interface TokenDepth {
   priceUsd: number;
+  /** Variação de 24h da pool mais funda, em fração. */
+  change24h: number;
   /** Liquidez somada de todas as pools da rede. */
   liquidityUsd: number;
   volume24h: number;
@@ -103,6 +105,7 @@ export function depthOn(pairs: Pair[], chain: string): TokenDepth | null {
 
   const deepest = local[0];
   return {
+    change24h: deepest.change24h / 100,
     priceUsd: deepest.priceUsd,
     liquidityUsd: local.reduce((sum, p) => sum + p.liquidityUsd, 0),
     volume24h: local.reduce((sum, p) => sum + p.volume24h, 0),

@@ -100,6 +100,8 @@ export interface MoveRead {
   ratio: number;
   longLiqUsd: number;
   shortLiqUsd: number;
+  /** Open interest em dólar no fim do movimento — a escala do mercado. */
+  openInterestUsd: number;
   /** Liquidado NA DIREÇÃO do movimento ÷ open interest: quanto dele foi forçado.
    *  Numa queda só contam os comprados; vendido liquidado durante uma queda é o
    *  rastro do squeeze que a precedeu, não parte dela. */
@@ -311,7 +313,7 @@ export async function getPositioning(
     readings: snapshots.length,
     basis,
     rise,
-    live: readLive(live),
+    live: readLiveFromStats(live),
     ...call,
   };
 }
@@ -390,7 +392,7 @@ function classifyRise(rows: DailyRow[]): RiseQuality {
 export async function currentMove(
   symbol: string,
 ): Promise<{ move: MoveRead | null; whaleExit: WhaleExit | null }> {
-  const live = readLive(await liveStats(symbol, "1h", 100));
+  const live = readLiveFromStats(await liveStats(symbol, "1h", 100));
   return { move: live?.move ?? null, whaleExit: live?.whaleExit ?? null };
 }
 
@@ -401,7 +403,7 @@ export async function currentMove(
  * perna atual é de queda; se veio depois, é de alta. Isso escolhe sozinho a
  * perna mais recente sem precisar de janela fixa.
  */
-function readLive(stats: LiveStat[]): LiveRead | null {
+export function readLiveFromStats(stats: LiveStat[]): LiveRead | null {
   if (stats.length < 6) return null;
 
   const janela = stats.slice(-24);
@@ -523,6 +525,7 @@ function classifyMove(
     ratio,
     longLiqUsd,
     shortLiqUsd,
+    openInterestUsd: ate.openInterestUsd,
     forcedShare,
   };
 

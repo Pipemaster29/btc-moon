@@ -21,13 +21,6 @@ import {
   MARKET_EVENTS,
   eventTime,
 } from "@/lib/events";
-import {
-  MOON_PHASE_LABEL,
-  MOON_PHASE_SYMBOL,
-  moonPhasesBetween,
-  type MoonPhaseName,
-} from "@/lib/moon";
-
 const TIMEFRAME_LABELS: { value: Timeframe; label: string }[] = [
   { value: "1h", label: "1H" },
   { value: "4h", label: "4H" },
@@ -35,22 +28,7 @@ const TIMEFRAME_LABELS: { value: Timeframe; label: string }[] = [
   { value: "1w", label: "1S" },
 ];
 
-/** Fases marcadas por padrão: nova e cheia são os extremos do ciclo. */
-const DEFAULT_PHASES: MoonPhaseName[] = ["new", "full"];
 
-const PHASE_COLOR: Record<MoonPhaseName, string> = {
-  new: "#8B93A7",
-  "first-quarter": "#5B8DEF",
-  full: "#F0B90B",
-  "last-quarter": "#5B8DEF",
-};
-
-/**
- * Teto de marcadores desenhados de uma vez. Desde 2011 são ~740 mudanças de
- * fase; renderizar todas deixa o gráfico ilegível, então só entram as que caem
- * no intervalo visível.
- */
-const MAX_MARKERS = 120;
 
 const UP_COLOR = "#0ECB81";
 const DOWN_COLOR = "#F6465D";
@@ -88,7 +66,6 @@ export default function PriceChart() {
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
 
   const [timeframe, setTimeframe] = useState<Timeframe>("1d");
-  const [activePhases, setActivePhases] = useState<MoonPhaseName[]>(DEFAULT_PHASES);
   const [logScale, setLogScale] = useState(true);
   const [showEvents, setShowEvents] = useState(true);
 
@@ -110,15 +87,6 @@ export default function PriceChart() {
   // A vela em formação vive fora do React: ela muda a cada tick e só o
   // lightweight-charts precisa saber disso.
   const liveBarRef = useRef<CandlestickData<Time> | null>(null);
-
-  // Fases da lua cobrindo todo o período carregado. Cálculo puro, roda no
-  // cliente sem nenhuma chamada de rede.
-  const moonPhases = useMemo(() => {
-    if (candles.length === 0) return [];
-    const from = new Date(candles[0].time * 1000);
-    const to = new Date(candles[candles.length - 1].time * 1000);
-    return moonPhasesBetween(from, to);
-  }, [candles]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -294,39 +262,17 @@ export default function PriceChart() {
     liveBarRef.current = null;
   }, [timeframe, candles]);
 
-  // Marcadores lunares, recalculados conforme o intervalo visível.
+  // Marcadores de evento, recalculados conforme o intervalo visível.
   useEffect(() => {
     const chart = chartRef.current;
     const plugin = markersRef.current;
     if (!chart || !plugin || candles.length === 0) return;
-
-    const selected = moonPhases.filter((p) => activePhases.includes(p.phase));
 
     const render = () => {
       const range = chart.timeScale().getVisibleRange();
       const from = range ? Number(range.from) : candles[0].time;
       const to = range ? Number(range.to) : candles[candles.length - 1].time;
 
-      const visible = selected.filter((p) => {
-        const seconds = p.date.getTime() / 1000;
-        return seconds >= from && seconds <= to;
-      });
-
-      // Com o gráfico afastado sobram fases demais para caber; nesse caso os
-      // marcadores viram ruído, então some com eles até o usuário aproximar.
-      const moonMarkers: SeriesMarker<Time>[] =
-        visible.length > MAX_MARKERS
-          ? []
-          : visible.map((p) => ({
-              time: Math.floor(p.date.getTime() / 1000) as UTCTimestamp,
-              position: "aboveBar" as const,
-              color: PHASE_COLOR[p.phase],
-              shape: "circle" as const,
-              text: MOON_PHASE_SYMBOL[p.phase],
-            }));
-
-      // Eventos ficam abaixo das velas para não disputar espaço com a lua.
-      // São poucos, então não passam pelo mesmo teto dos marcadores lunares.
       const eventMarkers: SeriesMarker<Time>[] = showEvents
         ? MARKET_EVENTS.filter((e) => {
             const seconds = eventTime(e);
@@ -342,9 +288,7 @@ export default function PriceChart() {
 
       // A biblioteca exige os marcadores em ordem cronológica.
       plugin.setMarkers(
-        [...moonMarkers, ...eventMarkers].sort(
-          (a, b) => Number(a.time) - Number(b.time),
-        ),
+        [...eventMarkers].sort((a, b) => Number(a.time) - Number(b.time)),
       );
     };
 
@@ -352,15 +296,9 @@ export default function PriceChart() {
     const timeScale = chart.timeScale();
     timeScale.subscribeVisibleTimeRangeChange(render);
     return () => timeScale.unsubscribeVisibleTimeRangeChange(render);
-  }, [moonPhases, activePhases, candles, showEvents]);
+  }, [candles, showEvents]);
 
-  function togglePhase(phase: MoonPhaseName) {
-    setActivePhases((current) =>
-      current.includes(phase)
-        ? current.filter((p) => p !== phase)
-        : [...current, phase],
-    );
-  }
+
 
   return (
     <section className="flex flex-col gap-3">
@@ -409,27 +347,6 @@ export default function PriceChart() {
           >
             ▲ Eventos
           </button>
-          <span className="h-4 w-px bg-black/10 dark:bg-white/15" />
-          {(Object.keys(MOON_PHASE_LABEL) as MoonPhaseName[]).map((phase) => (
-            <button
-              key={phase}
-              onClick={() => togglePhase(phase)}
-              title={MOON_PHASE_LABEL[phase]}
-              aria-pressed={activePhases.includes(phase)}
-              className={`px-2 py-1 text-xs rounded-md border transition-colors ${
-                activePhases.includes(phase)
-                  ? "border-current"
-                  : "border-transparent opacity-40 hover:opacity-70"
-              }`}
-              style={{
-                color: activePhases.includes(phase)
-                  ? PHASE_COLOR[phase]
-                  : undefined,
-              }}
-            >
-              {MOON_PHASE_SYMBOL[phase]} {MOON_PHASE_LABEL[phase]}
-            </button>
-          ))}
         </div>
       </div>
 

@@ -1,151 +1,101 @@
-# BTC Moon 🌙
+# Radar de moedas manipuladas
 
-App pessoal de análise de Bitcoin: gráfico de candles estilo plataforma de
-trading com histórico desde 2011, indicadores matemáticos (médias móveis,
-volatilidade, RSI) e as fases da lua sobrepostas ao preço.
+Ferramenta pessoal para acompanhar tokens de pump-and-dump: quem segura o
+supply na blockchain, como as posições estão montadas no perpétuo, e em que
+ponto do ciclo cada moeda está — com alerta no Telegram quando algo se mexe.
 
-## Funcionalidades
+Tudo é lido de fontes públicas, **sem nenhuma chave de API**: nós RPC públicos
+da BNB Chain, Base e Ethereum, o DexScreener para o mercado à vista, os arquivos
+do Binance Data Vision e a API pública da Gate para o perpétuo ao vivo.
 
-- **Candles desde agosto de 2011** nos timeframes 1H, 4H, 1D e 1S, com escala
-  logarítmica (essencial quando o preço vai de US$ 10 a seis dígitos).
-- **Fases da lua sobre o gráfico** — lua nova, quarto crescente, cheia e
-  minguante, cada uma podendo ser ligada ou desligada.
-- **Indicadores**: SMA 7/30, EMA 12, volatilidade anualizada e RSI de Wilder.
-- **28 eventos que marcaram o mercado** marcados no gráfico — Mt. Gox, FTX,
-  aprovação dos ETFs, halvings — coloridos por categoria.
-- **Cotação ao vivo** da KuCoin, com a vela em formação acompanhando o preço.
+## O que ele responde
 
-## A lua prevê o preço? Não.
+A pergunta que organiza tudo é: **esta queda foi alguém vendendo, ou não?**
+Porque as duas coisas se parecem no gráfico e têm consequências opostas.
 
-Em `/analise` o app testa a hipótese a sério, e a resposta é negativa.
+- **Desalavancagem** — o open interest em moeda cai junto com o preço. Foram
+  posições encerradas. Nenhuma moeda trocou de mão, e não há o que ver na rede.
+- **Livro vazio** — o open interest fica de pé e quase ninguém é liquidado. O
+  preço cai porque sumiu a COMPRA. Foi o caso da BTW em 19/08: −50% de preço com
+  o open interest intacto e US$ 51 mil de comprados liquidados (1,8% do livro).
+- **Distribuição** — alguém entregou moeda de verdade, e o saldo das corretoras
+  na rede sobe. A única das três que aparece on-chain.
 
-Varrendo **11.520 combinações** de fase, antecedência, permanência, stop loss e
-direção (comprado ou vendido) sobre 15 anos de preço, a melhor rende **89.172x**
-contra 5.896x de comprar e segurar. O número impressiona — e é enganoso.
+## As duas telas
 
-Repetindo a busca inteira sobre **calendários lunares deslocados no tempo**
-(luas falsas), a melhor combinação rende na mediana **61.019x** e chega a
-**130.113x**. De 300 calendários inventados, **49 superaram a lua real**:
-**p = 0,17**, sem significância.
+**`/`** — o gráfico do bitcoin, com os eventos que moveram o mercado marcados.
+É a referência de contexto, não o objeto de estudo.
 
-E isso não depende do recorte. Comparar contra "segurar desde 2011" seria uma
-referência inflada — aquele Bitcoin era ilíquido e não voltou — então cada ano
-de entrada foi testado por conta própria. **Quanto mais recente o período, pior
-a lua fica:**
+**`/radar`** — a triagem: todas as moedas vigiadas numa tabela, ordenadas por
+quanto merecem atenção agora. Duas requisições por moeda, quarenta e duas moedas
+em menos de um segundo. Clicar numa abre **`/radar/[moeda]`** com o retrato
+completo: estrutura do supply, carteira por carteira, transferências grandes,
+posicionamento, mapa de liquidação e o estágio do ciclo.
 
-| Entrada | Segurar até hoje | CAGR | Melhor c/ lua real | Melhor c/ lua falsa | Falsas que ganharam | p |
-| --- | --- | --- | --- | --- | --- | --- |
-| 2011 | 5.896x (+589.600%) | 78,7% | 89.172x | 61.019x | 49/300 | 0,166 |
-| 2015 | 205x (+20.380%) | 58,4% | 687x | **972x** | 219/300 | 0,731 |
-| 2016 | 148x (+14.714%) | 60,4% | 377x | **497x** | 237/300 | 0,791 |
-| 2018 | 4,8x (+378%) | 20,0% | 25,5x | **27,5x** | 219/300 | 0,731 |
-| 2019 | 16,8x (+1.581%) | 45,1% | 37,6x | **38,9x** | 199/300 | 0,664 |
-| 2020 | 9,0x (+795%) | 39,6% | 18,3x | 18,2x | 142/300 | 0,475 |
+## O ciclo, em quatro estágios
 
-De 2015 em diante a lua **falsa** rende mais que a verdadeira. E a fase vencedora
-troca a cada recorte — nova em 2011 e 2015, minguante em 2016/2018/2020, cheia em
-2019. Se houvesse efeito real, a mesma fase venceria sempre.
+Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.
+A ordem é mecânica, não estatística:
 
-### Comprado vs. vendido
+1. **Aperto** (dias a semanas) — o float sai das corretoras e o livro seca. No
+   LAB o saldo somado caiu 95% em duas semanas enquanto o preço triplicava.
+2. **Alta a crédito** (horas) — a subida final vem de alavancagem ou de vendidos
+   sendo espremidos. **É o pior momento possível para entrar vendido.**
+3. **Saída da baleia** (0 a 48h) — as contas grandes desmontam comprado com o
+   preço ainda na máxima. Na BTW foi às 09h UTC, na hora exata do topo.
+4. **A oferta volta** — o gatilho, e o único obrigatório: para vender numa
+   corretora é preciso depositar antes. No LAB isso foi 1% do supply indo e
+   voltando no dia exato da máxima.
 
-A varredura cobre as duas direções (11.520 combinações). Vender a descoberto na
-lua cheia perde em todos os períodos — de 1,0x a 0,5x — mas isso não é sinal
-lunar: vender um ativo que subiu perde com qualquer calendário. O único p abaixo
-de 0,05 aparece em 2011 (0,037) e não replica em nenhum dos outros cinco
-recortes; com doze testes, um acerto desses é o esperado por acaso.
+## Identificar a moeda certa
 
-A melhor combinação de **todos** os períodos é comprada, nunca vendida.
+O erro mais caro deste projeto foi analisar o token errado — duas vezes. Buscar
+um ticker pelo nome devolve o mercado inteiro de homônimos. `npm run descobrir`
+aplica os dois testes que resolvem isso:
 
-### E os grandes eventos, caem perto da lua cheia?
+- **O preço à vista bate com o do perpétuo** (dentro de 10%). Entre o mesmo
+  ativo a arbitragem não deixa a diferença crescer; um homônimo erra por
+  dezenas ou milhares de por cento.
+- **A pool gira** pelo menos 1% do próprio tamanho por dia. O VVV aparecia com
+  US$ 775 milhões de liquidez e volume ZERO — pool decorativa, que não absorve
+  venda nenhuma.
 
-Também não. A distância média dos 28 eventos até a lua cheia mais próxima é
-**7,66 dias**, contra 7,38 esperados se não houvesse relação alguma — ou seja,
-ficam um pouco *mais longe* que o acaso (p = 0,63).
+Os dois juntos corrigiram três identificações que o primeiro sozinho errava.
 
-A FTX suspendeu saques a 0,5 dia de uma lua cheia, o que impressiona. Mas o El
-Salvador e a aprovação dos ETFs caem a 14 dias, no extremo oposto do ciclo.
+## Alertas
 
-Reproduza com `npm run analyze` (período completo), `npm run periods` (por ano
-de entrada), `npm run pattern` (o padrão "cai antes, sobe depois") e
-`npm run events` (proximidade dos eventos).
+`npm run monitor` roda um ciclo e manda o que achou para o Telegram. O trabalho
+é dividido por custo: o perpétuo custa uma requisição por moeda e roda para
+todas; a leitura de rede custa dezenas e roda só para as moedas com carteira
+mapeada, porque é a única situação em que ela diz mais do que "houve
+transferências".
 
-## Stack
+Cada regra tem janela de silêncio própria e piso de relevância. O alerta de
+saída de baleia carrega o próprio placar dentro da mensagem: em 6 episódios
+medidos, 3 caíram mais de 8% em 24 horas e 5 em 48 — o modo de errar dele é
+chegar cedo, não errar a direção.
 
-- [Next.js](https://nextjs.org) (App Router)
-- [Tailwind CSS](https://tailwindcss.com)
-- [lightweight-charts](https://tradingview.github.io/lightweight-charts/) da TradingView
-- [Supabase](https://supabase.com) (opcional — ver "Cache no Supabase")
-- Deploy na [Vercel](https://vercel.com)
+## Scripts
 
-## De onde vêm os dados
+| comando | o que faz |
+| --- | --- |
+| `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
+| `npm run radar` | o retrato on-chain de uma moeda, no terminal |
+| `npm run monitor` | um ciclo de vigilância, com envio ao Telegram |
+| `npm run queda` | anatomia de um movimento: perpétuo cruzado com a rede |
+| `npm run ciclo` | o ciclo de vida completo, carteira de corretora por carteira |
+| `npm run replay` | roda um detector sobre a história e imprime o placar |
+| `npm run rotas` | mapeia a camada de roteamento entre carteiras |
+| `npm run wallets` | saldo e gás das carteiras vigiadas |
+| `npm run flows` | fluxo entre carteiras numa janela |
+| `npm run forense` | curva de saldo de endereços arbitrários |
+| `npm run telegram-setup` | descobre o chat_id do bot |
 
-Preços vêm da **API pública da Bitstamp**, sem chave nem cadastro. Ela foi
-escolhida no lugar da Binance por dois motivos concretos:
+Nenhuma regra nova vai para o Telegram sem passar pelo `replay` antes.
 
-1. o histórico começa em 2011, contra 2017 da Binance;
-2. a API da Binance **bloqueia por geolocalização** — como funções da Vercel
-   rodam por padrão na região `iad1` (EUA), chamá-la quebraria em produção
-   mesmo funcionando na máquina local.
+## Aviso
 
-As fases da lua não vêm de API nenhuma: são calculadas pelo algoritmo de Jean
-Meeus (*Astronomical Algorithms*, cap. 49), em `lib/moon.ts`. Conferido contra
-efemérides publicadas, o erro fica em torno de 1 minuto.
-
-### Cotação ao vivo (KuCoin)
-
-A cotação em tempo real vem da **KuCoin**, também sem chave. A REST dela não
-devolve cabeçalhos CORS, então o navegador não pode chamá-la direto — daí o
-proxy em `/api/kucoin/token`. Já o WebSocket **é isento de CORS**, de modo que
-o navegador conecta direto em `wss://ws-api-spot.kucoin.com` e o preço flui
-sem passar pelo servidor. Isso também imuniza contra bloqueio por região: quem
-conecta é o visitante, não a função na Vercel.
-
-Se o `wss:` estiver bloqueado (rede corporativa, proxy, extensão), o componente
-cai automaticamente para polling REST a cada 8 segundos. O indicador ao lado do
-preço mostra qual dos dois está ativo: **ao vivo** (WebSocket) ou **atualizando**
-(REST).
-
-## Rodando localmente
-
-```bash
-npm install
-cp .env.example .env.local # preencha as chaves do Supabase
-npm run dev
-```
-
-Abra [http://localhost:3000](http://localhost:3000).
-
-## Variáveis de ambiente
-
-Veja `.env.example`:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-
-## Estrutura
-
-- `app/page.tsx` — dashboard com o gráfico e os indicadores
-- `components/PriceChart.tsx` — gráfico de candles, seletor de timeframe e marcadores lunares
-- `lib/bitstamp.ts` — busca paginada de candles e agregação para timeframes maiores
-- `lib/moon.ts` — cálculo astronômico das fases da lua
-- `lib/bitcoin.ts` — SMA, EMA, volatilidade e RSI
-- `components/LivePrice.tsx` — cotação ao vivo da KuCoin, com fallback REST
-- `lib/events.ts` — os 28 eventos que marcaram o mercado, com data e categoria
-- `lib/window.ts` — caracterização da janela lunar e estratégia com fallback
-- `lib/backtest.ts` — motor de backtest, Monte Carlo e testes de significância
-- `lib/supabase/` — clients Supabase (browser e server)
-
-## Cache no Supabase (opcional)
-
-O app **funciona sem banco**: busca direto da Bitstamp usando o cache do
-Next.js. O Supabase passa a valer a pena para granularidade fina em janelas
-longas — 1h desde 2012 são ~123 mil velas, que ao vivo exigiriam centenas de
-requisições paginadas.
-
-A tabela e a função de agregação estão em
-`supabase/migrations/0001_btc_candles.sql`; basta colar no SQL Editor do painel.
-
-## Deploy
-
-Conecte o repositório na [Vercel](https://vercel.com/new). As variáveis do
-Supabase só são necessárias se você usar o cache descrito acima.
+Nada aqui é recomendação de investimento. As moedas acompanhadas são
+reconhecidamente manipuladas, o histórico usado para calibrar os detectores tem
+poucos dias, e moeda de float baixo já subiu 58% em nove horas duas vezes na
+mesma semana.

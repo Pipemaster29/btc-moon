@@ -151,6 +151,7 @@ export interface PerpMove {
   oiChange: number;
   longLiqUsd: number;
   shortLiqUsd: number;
+  openInterestUsd: number;
   forcedShare: number;
   note: string;
 }
@@ -588,9 +589,17 @@ export function detect(input: DetectInput): Alert[] {
   //
   // As duas regras abaixo cobrem justamente os movimentos que NÃO deixam rastro
   // on-chain — e a primeira delas é um aviso de topo, não de queda.
+  //
+  // Os dois pisos abaixo nasceram de um ciclo que mandou sete avisos de uma vez
+  // sobre liquidações de US$ 1 a 3 mil. Numa praça pequena o valor absoluto não
+  // diz nada: o que importa é a fração do livro que foi liquidada, e o tamanho
+  // do livro. Um squeeze que consome 0,1% do open interest não é um squeeze.
   const perp = input.perp;
-  if (perp) {
-    if (perp.kind === "squeeze") {
+  const OI_MINIMO = 500_000;
+  const FORCADO_MINIMO = 0.01;
+
+  if (perp && perp.openInterestUsd >= OI_MINIMO) {
+    if (perp.kind === "squeeze" && perp.forcedShare >= FORCADO_MINIMO) {
       alerts.push({
         kind: "squeeze",
         severity: "critical",
@@ -607,7 +616,13 @@ export function detect(input: DetectInput): Alert[] {
       });
     }
 
-    if (perp.kind === "livro vazio" || perp.kind === "desalavancagem") {
+    // Queda pequena não acorda ninguém: até 20% é oscilação de moeda
+    // manipulada em dia comum, e o aviso só vale quando o movimento é grande o
+    // bastante para mudar uma decisão.
+    if (
+      (perp.kind === "livro vazio" || perp.kind === "desalavancagem") &&
+      Math.abs(perp.priceChange) >= 0.2
+    ) {
       const vazio = perp.kind === "livro vazio";
       alerts.push({
         kind: "unwind",

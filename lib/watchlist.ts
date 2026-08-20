@@ -427,6 +427,338 @@ export const WATCHLIST: WatchedToken[] = [
       },
     ],
   },
+  // ------------------------------------------------------------------------
+  // A lista de moedas manipuladas.
+  //
+  // Cada contrato aqui passou por dois testes, e os dois são necessários. O
+  // PREÇO À VISTA bate com o do perpétuo dentro de 10% — entre o mesmo ativo a
+  // arbitragem não deixa a diferença crescer, e um homônimo erra por dezenas ou
+  // milhares de por cento. E a POOL GIRA pelo menos 1% do próprio tamanho por
+  // dia: o VVV aparecia com US$ 775 milhões de liquidez e volume ZERO, que é
+  // pool decorativa e não absorve venda nenhuma. Os dois testes juntos
+  // corrigiram três identificações que o primeiro sozinho errava.
+  //
+  // Sem carteira mapeada ainda: o `wallets` vazio significa que a leitura
+  // on-chain cobre preço, liquidez e transferências grandes, mas não sabe quem
+  // é quem. Mapear exige os endereços — foi assim que a BTW ganhou as 31 dela.
+  //
+  // Regerar com: npm run descobrir
+  // ------------------------------------------------------------------------
+  {
+    // liquidez 4.5mi · giro 1.61x/dia · OI 4.0mi · preço bate em 0.1%
+    symbol: "VELVETUSDT",
+    chain: "base",
+    contract: "0xbF927b841994731C573BDF09ceB0c6B0Aa887cDd",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 200k · giro 0.23x/dia · OI 2.5mi · preço bate em 2.3%
+    symbol: "USUSDT",
+    chain: "bsc",
+    contract: "0x51f1AFC16E154d1601e61EcA21d8Af4897f1e840",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 3.9mi · giro 1.14x/dia · OI 2.2mi · preço bate em 1.5%
+    symbol: "UBUSDT",
+    chain: "bsc",
+    contract: "0x40b8129B786D766267A7a118cF8C07E31CDB6Fde",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 15.8mi · giro 0.52x/dia · OI 2.0mi · preço bate em 2.6%
+    symbol: "VVVUSDT",
+    chain: "base",
+    contract: "0xacfE6019Ed1A7Dc6f7B508C02d1b04ec88cC21bf",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 2.4mi · giro 0.34x/dia · OI 1.8mi · preço bate em 0.5%
+    symbol: "TAGUSDT",
+    chain: "bsc",
+    contract: "0x208bF3E7dA9639f1Eaefa2DE78c23396B0682025",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 271k · giro 0.47x/dia · OI 1.7mi · preço bate em 0.7%
+    symbol: "EVAAUSDT",
+    chain: "bsc",
+    contract: "0xaa036928c9c0Df07d525B55ea8EE690Bb5a628C1",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 16k · giro 1.12x/dia · OI 1.5mi · preço bate em 1.1%
+    symbol: "CYSUSDT",
+    chain: "bsc",
+    contract: "0x0C69199C1562233640e0Db5Ce2c399A88eB507C7",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 1.3mi · giro 0.04x/dia · OI 1.4mi · preço bate em 2.2%
+    symbol: "BRUSDT",
+    chain: "bsc",
+    contract: "0xFf7d6A96ae471BbCD7713aF9CB1fEeB16cf56B41",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 31k · giro 0.08x/dia · OI 1.1mi · preço bate em 6.7%
+    symbol: "BASEDUSDT",
+    chain: "ethereum",
+    contract: "0x4f2b33840227DDD0e28da8d4185D6fa07ADfed87",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 67k · giro 1.46x/dia · OI 803k · preço bate em 1.3%
+    symbol: "CAPUSDT",
+    chain: "bsc",
+    contract: "0x99991c6AAbba5a096f24f250b73580F5179b9999",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 1.0mi · giro 0.13x/dia · OI 789k · preço bate em 0.3%
+    symbol: "BLUAIUSDT",
+    chain: "bsc",
+    contract: "0xed9Ae3DEF8d6F052971Bb8b6d1975FF267Cf9aaD",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 52k · giro 0.09x/dia · OI 678k · preço bate em 1.0%
+    symbol: "ZEREBROUSDT",
+    chain: "base",
+    contract: "0xD2e92077ad4d7d50D7d60be13FffE3FB52cc0B9f",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 17k · giro 1.26x/dia · OI 670k · preço bate em 1.0%
+    symbol: "REUSDT",
+    chain: "ethereum",
+    contract: "0x526526528F35AC738177003b8773B402B8Df8143",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 1.2mi · giro 5.58x/dia · OI 630k · preço bate em 0.0%
+    symbol: "HANAUSDT",
+    chain: "bsc",
+    contract: "0x6261963EbE9Ff014aAd10eCc3b0238D4D04E8353",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 1.3mi · giro 7.79x/dia · OI 601k · preço bate em 2.1%
+    symbol: "ONUSDT",
+    chain: "bsc",
+    contract: "0x0e4F6209eD984b21EDEA43acE6e09559eD051D48",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 14k · giro 0.08x/dia · OI 426k · preço bate em 2.8%
+    symbol: "JCTUSDT",
+    chain: "ethereum",
+    contract: "0xC477B6dfd26EC2460b3b92de18837Fd476Ea7549",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 57k · giro 0.48x/dia · OI 425k · preço bate em 1.0%
+    symbol: "BULLAUSDT",
+    chain: "bsc",
+    contract: "0x595E21b20E78674F8a64C1566A20b2b316Bc3511",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 1.7mi · giro 1.35x/dia · OI 410k · preço bate em 0.6%
+    symbol: "MORPHOUSDT",
+    chain: "base",
+    contract: "0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 143k · giro 0.21x/dia · OI 388k · preço bate em 1.5%
+    symbol: "EPICUSDT",
+    chain: "ethereum",
+    contract: "0x94314a14Df63779c99C0764a30e0CD22fA78fC0E",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 521k · giro 3.12x/dia · OI 361k · preço bate em 1.0%
+    symbol: "ZAMAUSDT",
+    chain: "ethereum",
+    contract: "0xA12CC123ba206d4031D1c7f6223D1C2Ec249f4f3",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 759k · giro 0.02x/dia · OI 246k · preço bate em 0.0%
+    symbol: "XNYUSDT",
+    chain: "bsc",
+    contract: "0xE3225e11Cab122F1a126A28997788E5230838ab9",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 926k · giro 2.68x/dia · OI 209k · preço bate em 0.3%
+    symbol: "STABLEUSDT",
+    chain: "bsc",
+    contract: "0x011EBe7d75E2C9D1E0bD0be0bEf5C36f0A90075F",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 2.0mi · giro 0.38x/dia · OI 191k · preço bate em 0.7%
+    symbol: "BASUSDT",
+    chain: "bsc",
+    contract: "0x0F0df6cB17ee5E883eddFEf9153fC6036BDB4e37",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 1.2mi · giro 1.08x/dia · OI 102k · preço bate em 0.9%
+    symbol: "AGTUSDT",
+    chain: "bsc",
+    contract: "0x5dBde81fcE337FF4bcaaEe4Ca3466C00aeCaE274",
+    firstBlock: 0,
+    wallets: [],
+  },
+  // ------------------------------------------------------------------------
+  // Moedas em que só o perpétuo entra.
+  //
+  // Não é falta de vontade: em cada uma o candidato on-chain reprovou num dos
+  // dois testes. Ou o preço não bate com o do derivativo — e aí é homônimo — ou
+  // a pool é pequena demais para significar coisa alguma. O `chain` é "bsc" só
+  // para satisfazer o tipo; com `contract` vazio nada de rede é lido.
+  //
+  // Vale mais do que parece: posicionamento, mapa de liquidação, natureza da
+  // alta e saída das baleias não dependem de contrato nenhum.
+  // ------------------------------------------------------------------------
+  {
+    symbol: "UAIUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: pool de US$ 9 mil. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "APRUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: pool de US$ 3 mil. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "CCUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: melhor candidato erra 78% no preço. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "COLLECTUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: pool de US$ 2 mil. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "MAGMAUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: nenhum par em rede EVM. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "RIFUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: melhor candidato erra 100% no preço. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "JELLYJELLYUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: nenhum par em rede EVM. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "ALLOUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: melhor candidato erra 19% no preço. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "BPUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: melhor candidato erra 98% no preço. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "QUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: nenhum par em rede EVM. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "JSTUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: pool de US$ 43 — o JST de verdade vive na Tron. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "BANUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: melhor candidato erra 90% no preço. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "ARCUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: melhor candidato erra 100% no preço. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "BUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: nenhum par em rede EVM. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
 ];
 
 export function findToken(symbol: string): WatchedToken | undefined {
