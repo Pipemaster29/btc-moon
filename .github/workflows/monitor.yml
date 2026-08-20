@@ -58,8 +58,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .cache/monitor.json
-          key: radar-btw-${{ github.run_id }}
-          restore-keys: radar-btw-
+          key: radar-monitor-${{ github.run_id }}
+          restore-keys: radar-monitor-
 
       - run: npm ci
 
@@ -68,13 +68,16 @@ jobs:
       # 78 minutos de cegueira é inaceitável.
       #
       # A solução é parar de depender dele para a cadência: o cron só dispara a
-      # execução, e o laço aqui dentro faz um ciclo a cada 5 minutos por 50
+      # execução, e o laço aqui dentro faz um ciclo a cada 3 minutos por 35
       # minutos. O atraso do agendamento passa a deslocar o início da janela, não
       # a abrir buraco dentro dela.
       #
+      # Com o cron em 5,35 * * * * e 35 minutos de laço, as duas execuções da
+      # hora se emendam com folga de 25 minutos para o atraso do agendamento.
+      #
       # Uma falha de ciclo não derruba o laço — a rede pode oscilar, e perder um
       # ciclo é muito melhor do que perder a hora inteira.
-      - name: Vigiar por 35 minutos
+      - name: Vigiar por 35 minutos, um ciclo a cada 3
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -100,4 +103,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .cache/monitor.json
-          key: radar-btw-${{ github.run_id }}
+          key: radar-monitor-${{ github.run_id }}

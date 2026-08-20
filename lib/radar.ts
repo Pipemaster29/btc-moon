@@ -197,7 +197,13 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
     unmapped;
 
   // -------------------------------------------------- movimentação recente
-  const from = Math.max(head - config.maxLogSpan, 0);
+  // A janela é definida em TEMPO e não em blocos. Usar `maxLogSpan` direto
+  // dava três horas na Base e trinta e sete minutos na BNB Chain para a mesma
+  // linha de código — e a página anunciava as duas como "movimentação recente",
+  // deixando a comparação entre moedas de redes diferentes sem sentido.
+  const JANELA_HORAS = 3;
+  const desejado = Math.round((JANELA_HORAS * 3600) / config.secondsPerBlock);
+  const from = Math.max(head - Math.min(desejado, config.prunedDepth), 0);
   const windowHours = ((head - from) * config.secondsPerBlock) / 3600;
 
   let scanned = 0;

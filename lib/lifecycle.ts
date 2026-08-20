@@ -325,7 +325,9 @@ export interface SinaisAgora {
 
 export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   const forcada = agora.moveKind === "squeeze" || agora.moveKind === "alavancagem";
-  const perpManda = agora.perpDominance >= 10;
+  // Mesma recalibração do painel: com o open interest medido na Binance, 10x
+  // deixou de ser exceção e virou o meio da lista.
+  const perpManda = agora.perpDominance >= 50;
   const floatAlto = vida.floatCex !== null && vida.floatCex >= 0.15;
   const floatBaixo = vida.floatCex !== null && vida.floatCex < 0.02;
   const pct = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(0)}%`;

@@ -14,6 +14,8 @@
  */
 
 import { liveStats } from "./gate";
+import { fetchCsv, metricsUrl, recentDays } from "./datavision";
+import { parsePositioning } from "./derivatives";
 import { depthOn, pairsOfToken } from "./dexscreener";
 import { WATCHLIST, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
@@ -37,6 +39,8 @@ export interface OverviewRow {
   fdv: number;
 
   openInterestUsd: number;
+  /** Open interest da Binance, a praça grande. Zero quando ela não lista. */
+  openInterestBinance: number;
   /** OI em dólar ÷ liquidez à vista: o quanto o preço se forma no perpétuo. */
   perpDominance: number;
   accountRatio: number;
@@ -87,10 +91,16 @@ function score(row: Omit<OverviewRow, "score" | "reasons">): { score: number; re
   // Quando o perpétuo é muito maior que a pool à vista, o preço não é formado
   // por quem compra a moeda — é formado por quem aposta nela. Foi a condição
   // que fez a BTW andar 58% em nove horas com o saldo das corretoras parado.
-  if (row.perpDominance >= 20) {
+  //
+  // Os limiares foram refeitos junto com a troca da fonte do open interest. Na
+  // escala da Gate a BTW media 31x e o corte alto era 20; medida na Binance ela
+  // mede 1250x, e o mesmo corte marcaria praticamente a lista inteira. Os
+  // valores abaixo vêm da distribuição real: 1250x na BTW, 342x no JCT, 165x no
+  // BASED, depois uma queda longa até 25x na AKE e 3x na TAG.
+  if (row.perpDominance >= 100) {
     total += 20;
     reasons.push(`perpétuo vale ${row.perpDominance.toFixed(0)}x a pool à vista`);
-  } else if (row.perpDominance >= 5) {
+  } else if (row.perpDominance >= 25) {
     total += 10;
     reasons.push(`perpétuo vale ${row.perpDominance.toFixed(0)}x a pool`);
   }
@@ -115,10 +125,28 @@ function score(row: Omit<OverviewRow, "score" | "reasons">): { score: number; re
   return { score: Math.min(total, 100), reasons };
 }
 
+/**
+ * O open interest da Binance, do último arquivo publicado.
+ *
+ * A Gate serve para ESTRUTURA — quem está de que lado, quem foi liquidado — e
+ * não serve para TAMANHO. Medido nas moedas da lista, a Binance carrega de 4 a
+ * 40 vezes o open interest da Gate, e o fator muda por moeda: 40x na BTW, 4x na
+ * TAG. Usar a Gate para a razão perpétuo÷pool não subestimava o número de forma
+ * uniforme — subestimava CADA MOEDA POR UM FATOR DIFERENTE, o que destruía
+ * exatamente a comparação entre elas que a coluna existe para fazer.
+ */
+async function oiBinance(symbol: string): Promise<number> {
+  const csv = await fetchCsv(metricsUrl(symbol, recentDays(2)[0]));
+  if (!csv) return 0;
+  const leituras = parsePositioning(csv);
+  return leituras[leituras.length - 1]?.openInterestValue ?? 0;
+}
+
 async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
-  const [stats, pairs] = await Promise.all([
+  const [stats, pairs, oiBnc] = await Promise.all([
     liveStats(token.symbol, "1h", 100).catch(() => []),
     token.contract ? pairsOfToken(token.contract).catch(() => []) : Promise.resolve([]),
+    oiBinance(token.symbol).catch(() => 0),
   ]);
 
   const depth = token.contract ? depthOn(pairs, token.chain) : null;
@@ -130,7 +158,9 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
   const live = readLiveFromStats(stats);
   const price = depth?.priceUsd || last?.price || 0;
   const liquidityUsd = depth?.liquidityUsd ?? 0;
-  const oiUsd = last?.openInterestUsd ?? 0;
+  const oiGate = last?.openInterestUsd ?? 0;
+  // A praça grande manda; a Gate só cobre quem a Binance não lista.
+  const oiUsd = oiBnc > 0 ? oiBnc : oiGate;
 
   const base = {
     symbol: token.symbol,
@@ -146,6 +176,7 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
     turnover: liquidityUsd > 0 ? (depth?.volume24h ?? 0) / liquidityUsd : 0,
     fdv: depth?.fdv ?? 0,
     openInterestUsd: oiUsd,
+    openInterestBinance: oiBnc,
     perpDominance: liquidityUsd > 0 ? oiUsd / liquidityUsd : 0,
     accountRatio: last?.accountRatio ?? 0,
     whaleRatio: last?.whaleRatio ?? 0,

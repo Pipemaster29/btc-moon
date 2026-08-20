@@ -30,6 +30,7 @@ import { WATCHLIST, labelOf, type WatchedToken } from "../lib/watchlist";
 import {
   detect,
   QUIET_MINUTES,
+  type Severity,
   type Alert,
   type ExchangePoint,
   type Observation,
@@ -147,6 +148,12 @@ const perpAlerts = await Promise.all(
       const perp = await currentMove(token.symbol);
       if (!perp.move && !perp.whaleExit) return [];
 
+      // O preço precisa ser real: `valueUsd` é o critério de desempate na hora
+      // de escolher quais alertas cabem no teto da rodada, e passar zero fazia
+      // todo alerta só-perpétuo ir para o fim da fila — perdendo justamente a
+      // disputa que o teto existe para arbitrar.
+      const preco = perp.move?.priceTo ?? 0;
+
       const ticker = token.symbol.replace(/USDT$/, "");
       return detect({
         symbol: ticker,
@@ -154,7 +161,7 @@ const perpAlerts = await Promise.all(
         previous: {},
         current: [],
         transfers: [],
-        priceUsd: 0,
+        priceUsd: preco,
         liquidityUsd: 0,
         perp: perp.move,
         whaleExit: perp.whaleExit,
@@ -184,6 +191,22 @@ console.log(
 // é o mesmo que não mandar nenhum: o celular vira uma parede de notificação e o
 // mais grave se perde no meio. Os mais graves passam, o resto vira uma linha.
 const MAX_PER_CYCLE = 6;
+
+// O corte precisa vir DEPOIS de ordenar, e não vinha.
+//
+// `detect` ordena por gravidade dentro de uma moeda, mas `pending` junta o
+// resultado de quarenta e duas delas na ordem em que foram lidas. Cortar os
+// seis primeiros dessa pilha entregava os seis primeiros POR MOEDA — e como a
+// passada on-chain roda antes, qualquer alerta das outras quarenta era
+// descartado em silêncio sempre que BTW e AKE somassem seis. A mensagem ainda
+// dizia "os mais graves", o que tornava o defeito invisível.
+const RANK: Record<Severity, number> = { critical: 0, high: 1, medium: 2 };
+pending.sort(
+  (a, b) =>
+    RANK[a.alert.severity] - RANK[b.alert.severity] ||
+    b.alert.valueUsd - a.alert.valueUsd,
+);
+
 const overflow = pending.length - MAX_PER_CYCLE;
 const sending = pending.slice(0, MAX_PER_CYCLE);
 

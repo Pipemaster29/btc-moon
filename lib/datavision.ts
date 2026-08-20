@@ -16,6 +16,33 @@ const KLINE_MONTHLY = "https://data.binance.vision/data/futures/um/monthly/kline
 const KLINE_DAILY = "https://data.binance.vision/data/futures/um/daily/klines";
 const METRICS_DAILY = "https://data.binance.vision/data/futures/um/daily/metrics";
 
+/**
+ * Teto de requisições simultâneas ao Data Vision.
+ *
+ * Sem ele, quarenta e duas moedas pedindo dez arquivos cada disparam 420
+ * requisições ao mesmo tempo. O servidor não recusa com erro: ele demora, e o
+ * `AbortSignal.timeout` transforma a demora em `null` — que quem chama lê como
+ * "esse dia não existe". O sintoma foi dezesseis moedas aparecendo sem
+ * histórico nenhum, tendo cada uma cento e cinquenta dias publicados.
+ *
+ * É o modo de falha mais traiçoeiro possível: silencioso, intermitente, e
+ * indistinguível de dado ausente de verdade.
+ */
+const TETO = 8;
+let emVoo = 0;
+const fila: (() => void)[] = [];
+
+async function comVaga<T>(tarefa: () => Promise<T>): Promise<T> {
+  if (emVoo >= TETO) await new Promise<void>((r) => fila.push(r));
+  emVoo++;
+  try {
+    return await tarefa();
+  } finally {
+    emVoo--;
+    fila.shift()?.();
+  }
+}
+
 export function monthlyKlineUrl(symbol: string, interval: string, month: string): string {
   return `${KLINE_MONTHLY}/${symbol}/${interval}/${symbol}-${interval}-${month}.zip`;
 }
@@ -45,6 +72,10 @@ export function metricsUrl(symbol: string, date: string): string {
  * derrubar o painel inteiro.
  */
 export async function fetchCsv(url: string, attempts = 3): Promise<string | null> {
+  return comVaga(() => baixar(url, attempts));
+}
+
+async function baixar(url: string, attempts: number): Promise<string | null> {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const res = await fetch(url, {
