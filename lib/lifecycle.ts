@@ -28,6 +28,7 @@ import { fetchCsv, monthlyKlineUrl, dailyKlineUrl, recentDays } from "./datavisi
 import { parseKlines } from "./derivatives";
 import { balancesOf, tokenInfo, toUnits, type Chain } from "./onchain";
 import { circulante, type Circulante } from "./binance";
+import { lerTecnica, type Tecnica } from "./tecnica";
 import type { WatchedToken } from "./watchlist";
 
 /**
@@ -90,6 +91,26 @@ export interface Vida {
    * futura — e cada unlock converte um pedaço dessa promessa em oferta real.
    */
   floatToken: number | null;
+  /**
+   * Estrutura de preço: resistência mais próxima, distância da média, tendência.
+   *
+   * Entra como CONTEXTO e fica fora de `lerVies` de propósito. Passou pelo mesmo
+   * crivo dos outros parâmetros e não sobreviveu em nenhuma configuração:
+   * rompimento de tendência de baixa deu 24 casos em 6.236 — raro demais para
+   * medir. Afrouxando para "fechou acima da máxima de 20 dias", a amostra subiu
+   * para 237 e o efeito apareceu INVERTIDO — −5,2 pontos percentuais em sete
+   * dias, ou seja, o rompimento falha — com p = 0,076 e 10 de 21 moedas
+   * concordando, que é cara ou coroa. Dentro dos estágios também não separou.
+   *
+   * O resultado mais revelador é o mais silencioso: o giro de tendência de
+   * verdade — romper a máxima vindo de dez dias abaixo da média — aconteceu TRÊS
+   * vezes em 6.236 observações. Estas moedas não revertem tendência de baixa;
+   * elas espetam e devolvem.
+   *
+   * Serve para saber onde há vendedor à frente e o quanto o preço esticou, o que
+   * ajuda a decidir ONDE entrar. Não ajuda a decidir SE entrar.
+   */
+  tecnica: Tecnica | null;
   veredito: string;
 }
 
@@ -281,6 +302,9 @@ export async function lerVida(
         ? Math.min(circ.atual / onchain.supplyContrato, 1)
         : null,
     unlocks: (circ?.saltos ?? []).map((s) => ({ quando: s.quando, variacao: s.variacao })),
+    tecnica: lerTecnica(
+      barras.map((b) => ({ close: b.close, high: b.high, low: b.low })),
+    ),
     veredito,
   };
 }

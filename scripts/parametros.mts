@@ -26,6 +26,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { fetchCsv, monthlyKlineUrl, dailyKlineUrl, metricsUrl, recentDays } from "../lib/datavision";
 import { parseKlines, parsePositioning } from "../lib/derivatives";
 import { classificar, type Estagio } from "../lib/lifecycle";
+import { lerTecnica } from "../lib/tecnica";
 // A lista CHEIA de propósito, incluindo as aposentadas: para medir a régua,
 // moeda morta é amostra tão boa quanto viva — melhor, até, porque é onde os
 // estágios finais acontecem. Aposentar existe para poupar requisição no que
@@ -62,6 +63,20 @@ interface Linha {
   taker: number;
   /** Preço em relação à máxima dos últimos 7 dias. */
   doTopo7: number;
+  /** Em tendência de baixa: topos descendentes e preço abaixo da média de 20. */
+  emBaixa: boolean;
+  /** Rompeu a tendência de baixa hoje. */
+  rompeu: boolean;
+  /** Distância até a resistência mais próxima acima. */
+  ateResistencia: number;
+  /** Preço ÷ média de 20 − 1. */
+  vsMedia20: number;
+  /** Cruzou acima da média de 20 hoje, depois de 10+ dias abaixo. */
+  cruzouMedia: boolean;
+  /** Fechou acima da máxima dos 20 dias anteriores. */
+  rompeuMax20: boolean;
+  /** Dias seguidos abaixo da média de 20 antes de hoje. */
+  diasAbaixo: number;
   r7: number | null;
   r14: number | null;
 }
@@ -172,6 +187,24 @@ for (const [symbol, dias] of Object.entries(bruto)) {
 
     const tres = ate[i - 3];
     const max7 = Math.max(...ate.slice(-7).map((x) => x.high));
+    const velas = ate.map((x) => ({ close: x.close, high: x.high, low: x.low }));
+    const tec = lerTecnica(velas);
+
+    // Definições mais frouxas, para ter amostra: a rígida deu 24 observações em
+    // seis mil, e com isso não se mede nada.
+    const m20 = (n: number) => {
+      const t = velas.slice(Math.max(0, velas.length - n - 1), velas.length - 1);
+      return t.length ? t.reduce((s2, v) => s2 + v.close, 0) / t.length : NaN;
+    };
+    const mediaHoje = velas.slice(-20).reduce((s2, v) => s2 + v.close, 0) / Math.min(20, velas.length);
+    let diasAbaixo = 0;
+    for (let k = velas.length - 2; k >= 20; k--) {
+      const m = velas.slice(k - 19, k + 1).reduce((s2, v) => s2 + v.close, 0) / 20;
+      if (velas[k].close < m) diasAbaixo++;
+      else break;
+    }
+    const cruzouMedia = preco > mediaHoje && diasAbaixo >= 10;
+    const max20 = Math.max(...ate.slice(-21, -1).map((x) => x.high));
 
     linhas.push({
       symbol,
@@ -185,6 +218,13 @@ for (const [symbol, dias] of Object.entries(bruto)) {
       varejo: hoje.varejo,
       taker: hoje.taker,
       doTopo7: max7 > 0 ? preco / max7 - 1 : NaN,
+      emBaixa: tec?.emBaixa ?? false,
+      rompeu: tec?.rompeu ?? false,
+      ateResistencia: tec?.ateResistencia ?? NaN,
+      vsMedia20: tec?.vsMedia20 ?? NaN,
+      cruzouMedia,
+      rompeuMax20: Number.isFinite(max20) && preco > max20,
+      diasAbaixo,
       r7: i + 7 < dias.length ? dias[i + 7].close / preco - 1 : null,
       r14: i + 14 < dias.length ? dias[i + 14].close / preco - 1 : null,
     });
@@ -252,6 +292,46 @@ const candidatos: Candidato[] = [
     nome: "divergência",
     descricao: "varejo comprando enquanto as contas grandes reduzem",
     testa: (l) => l.varejo >= 1.2 && l.dBaleias3 <= -0.05,
+  },
+  {
+    nome: "rompeu tendência de baixa",
+    descricao: "fechou acima do último topo, vindo de topos descendentes",
+    testa: (l) => l.rompeu,
+  },
+  {
+    nome: "em tendência de baixa",
+    descricao: "topos descendentes e preço abaixo da média de 20",
+    testa: (l) => l.emBaixa,
+  },
+  {
+    nome: "rompeu e é manipulável",
+    descricao: "rompeu a baixa numa moeda de float pequeno — o cruzamento sugerido",
+    testa: (l) => l.rompeu && l.dOi3 >= 0.1,
+  },
+  {
+    nome: "cruzou a média de 20",
+    descricao: "fechou acima da média de 20 depois de 10+ dias abaixo dela",
+    testa: (l) => l.cruzouMedia,
+  },
+  {
+    nome: "rompeu máxima de 20 dias",
+    descricao: "fechou acima da máxima dos 20 dias anteriores",
+    testa: (l) => l.rompeuMax20,
+  },
+  {
+    nome: "rompeu máxima vindo de baixa",
+    descricao: "o mesmo, mas depois de 10+ dias abaixo da média — o giro de tendência",
+    testa: (l) => l.rompeuMax20 && l.diasAbaixo >= 10,
+  },
+  {
+    nome: "colado na resistência",
+    descricao: "a menos de 3% do topo anterior mais próximo",
+    testa: (l) => Number.isFinite(l.ateResistencia) && l.ateResistencia <= 0.03,
+  },
+  {
+    nome: "esticado da média",
+    descricao: "mais de 30% acima da média de 20 dias",
+    testa: (l) => l.vsMedia20 >= 0.3,
   },
   {
     nome: "agressão vendedora",
@@ -331,7 +411,11 @@ console.log(`estágio          candidato                    n    com     sem    
 
 const focos: Estagio[] = ["no topo", "exausta", "ressuscitando", "caindo do topo"];
 const promissores = candidatos.filter((c) =>
-  ["baleias reduzindo no topo", "OI inflando", "OI desinflando", "varejo comprado"].includes(c.nome),
+  [
+    "baleias reduzindo no topo", "OI inflando", "OI desinflando", "varejo comprado",
+    "rompeu tendência de baixa", "esticado da média", "colado na resistência",
+    "cruzou a média de 20", "rompeu máxima de 20 dias", "rompeu máxima vindo de baixa",
+  ].includes(c.nome),
 );
 
 for (const est of focos) {

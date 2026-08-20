@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import CyclePanel from "@/components/CyclePanel";
 import PositioningPanel from "@/components/PositioningPanel";
 import { lerCiclo } from "@/lib/setup";
+import { lerVida } from "@/lib/lifecycle";
 import { getRadar, type AlertLevel, type RadarSnapshot } from "@/lib/radar";
 import { getPositioning, type PositioningSnapshotView } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
@@ -286,6 +287,8 @@ export default async function Page({
     getPositioning(token.symbol),
   ]);
 
+  const vida = await lerVida(token, snapshot?.priceUsd ?? perp?.price ?? 0).catch(() => null);
+
   return (
     <div className="flex flex-col flex-1 bg-zinc-50 font-sans dark:bg-black">
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-12 flex flex-col gap-8">
@@ -318,6 +321,65 @@ export default async function Page({
         </header>
 
         <CyclePanel leitura={lerCiclo(snapshot, perp?.live ?? null)} />
+
+        {vida?.tecnica && (
+          <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
+            <h3 className="font-semibold">Estrutura de preço</h3>
+            <div className="grid gap-4 sm:grid-cols-4 mt-3 text-sm">
+              <div>
+                <p className="text-black/50 dark:text-white/50">Resistência acima</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {vida.tecnica.resistencia
+                    ? `US$ ${vida.tecnica.resistencia.toPrecision(4)}`
+                    : "nenhuma"}
+                </p>
+                {vida.tecnica.ateResistencia !== null && (
+                  <p className="text-xs text-black/40 dark:text-white/40">
+                    +{(vida.tecnica.ateResistencia * 100).toFixed(1)}% daqui
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-black/50 dark:text-white/50">Contra a média de 20</p>
+                <p
+                  className={`text-lg font-semibold tabular-nums ${
+                    vida.tecnica.vsMedia20 > 0 ? "text-[#0ECB81]" : "text-[#F6465D]"
+                  }`}
+                >
+                  {vida.tecnica.vsMedia20 >= 0 ? "+" : ""}
+                  {(vida.tecnica.vsMedia20 * 100).toFixed(1)}%
+                </p>
+              </div>
+              <div>
+                <p className="text-black/50 dark:text-white/50">Topos descendentes</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {vida.tecnica.toposDescendentes}
+                </p>
+              </div>
+              <div>
+                <p className="text-black/50 dark:text-white/50">Tendência</p>
+                <p className="text-lg font-semibold">
+                  {vida.tecnica.rompeu
+                    ? "rompeu a baixa"
+                    : vida.tecnica.emBaixa
+                      ? "de baixa"
+                      : "sem baixa definida"}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-black/40 dark:text-white/40 mt-3">
+              Isto é contexto, não sinal, e a distinção foi medida. Rompimento de tendência
+              de baixa deu 24 casos em 6.236 — raro demais. Afrouxando para &ldquo;fechou acima da
+              máxima de 20 dias&rdquo;, a amostra subiu para 237 e o efeito apareceu invertido:
+              −5,2 pontos percentuais em sete dias, ou seja, o rompimento falha. E com 10 de
+              21 moedas concordando, que é cara ou coroa. O mais revelador: o giro de
+              tendência de verdade — romper a máxima vindo de dez dias abaixo da média —
+              aconteceu três vezes em 6.236. Estas moedas não revertem tendência; elas
+              espetam e devolvem. Serve para saber onde há vendedor à frente, não para
+              decidir se entra.
+            </p>
+          </section>
+        )}
 
         {snapshot ? (
           <div className="flex flex-col gap-6">
