@@ -11,7 +11,8 @@
  */
 
 import { fetchCsv, dailyKlineUrl, metricsUrl, recentDays } from "./datavision";
-import { liveStats, type LiveStat } from "./gate";
+import { type LiveStat } from "./gate";
+import { perpSeries } from "./perp";
 import { parseKlines, parsePositioning, type PositioningSnapshot } from "./derivatives";
 import { clusters, liquidationMap, reconstructPositions, type LiquidationLevel } from "./liquidation";
 import { depthOn, pairsOfToken } from "./dexscreener";
@@ -208,7 +209,7 @@ export async function getPositioning(
   const [klineParts, metricParts, live] = await Promise.all([
     Promise.all(days.map((d) => fetchCsv(dailyKlineUrl(symbol, "1d", d)))),
     Promise.all(days.map((d) => fetchCsv(metricsUrl(symbol, d)))),
-    liveStats(symbol, "1h", 100),
+    perpSeries(symbol, "1h", 100),
   ]);
 
   const bars = klineParts
@@ -392,7 +393,7 @@ function classifyRise(rows: DailyRow[]): RiseQuality {
 export async function currentMove(
   symbol: string,
 ): Promise<{ move: MoveRead | null; whaleExit: WhaleExit | null }> {
-  const live = readLiveFromStats(await liveStats(symbol, "1h", 100));
+  const live = readLiveFromStats(await perpSeries(symbol, "1h", 100));
   return { move: live?.move ?? null, whaleExit: live?.whaleExit ?? null };
 }
 
@@ -511,8 +512,16 @@ function classifyMove(
   const priceChange = ate.price / de.price - 1;
   if (Math.abs(priceChange) < MOVE_FLOOR) return null;
 
-  const oiChange = ate.openInterest / de.openInterest - 1;
+  // A variação do open interest tem de vir da praça que forma o preço. Medida
+  // na Gate, a mesma perna da BTW dava outro número — é praça pequena e o
+  // arbitrador a puxa em vez de ela puxar o mercado.
+  const oiDe = de.oiBinance ?? de.openInterest;
+  const oiAte = ate.oiBinance ?? ate.openInterest;
+  const oiChange = oiAte / oiDe - 1;
   const ratio = oiChange / priceChange;
+  // Liquidação é número da Gate, então a fração forçada divide por open
+  // interest DA GATE. Dividir pelo da Binance daria uma fração quarenta vezes
+  // menor e nenhum movimento pareceria forçado.
   const forcado = direction === "queda" ? longLiqUsd : shortLiqUsd;
   const forcedShare = ate.openInterestUsd > 0 ? forcado / ate.openInterestUsd : 0;
 
@@ -525,7 +534,7 @@ function classifyMove(
     ratio,
     longLiqUsd,
     shortLiqUsd,
-    openInterestUsd: ate.openInterestUsd,
+    openInterestUsd: ate.oiBinanceUsd ?? ate.openInterestUsd,
     forcedShare,
   };
 

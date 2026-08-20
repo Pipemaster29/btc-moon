@@ -13,9 +13,7 @@
  * /radar/[symbol], para uma moeda de cada vez.
  */
 
-import { liveStats } from "./gate";
-import { fetchCsv, metricsUrl, recentDays } from "./datavision";
-import { parsePositioning } from "./derivatives";
+import { perpSeries } from "./perp";
 import { depthOn, pairsOfToken } from "./dexscreener";
 import { WATCHLIST, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
@@ -125,28 +123,10 @@ function score(row: Omit<OverviewRow, "score" | "reasons">): { score: number; re
   return { score: Math.min(total, 100), reasons };
 }
 
-/**
- * O open interest da Binance, do último arquivo publicado.
- *
- * A Gate serve para ESTRUTURA — quem está de que lado, quem foi liquidado — e
- * não serve para TAMANHO. Medido nas moedas da lista, a Binance carrega de 4 a
- * 40 vezes o open interest da Gate, e o fator muda por moeda: 40x na BTW, 4x na
- * TAG. Usar a Gate para a razão perpétuo÷pool não subestimava o número de forma
- * uniforme — subestimava CADA MOEDA POR UM FATOR DIFERENTE, o que destruía
- * exatamente a comparação entre elas que a coluna existe para fazer.
- */
-async function oiBinance(symbol: string): Promise<number> {
-  const csv = await fetchCsv(metricsUrl(symbol, recentDays(2)[0]));
-  if (!csv) return 0;
-  const leituras = parsePositioning(csv);
-  return leituras[leituras.length - 1]?.openInterestValue ?? 0;
-}
-
 async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
-  const [stats, pairs, oiBnc] = await Promise.all([
-    liveStats(token.symbol, "1h", 100).catch(() => []),
+  const [stats, pairs] = await Promise.all([
+    perpSeries(token.symbol, "1h", 100).catch(() => []),
     token.contract ? pairsOfToken(token.contract).catch(() => []) : Promise.resolve([]),
-    oiBinance(token.symbol).catch(() => 0),
   ]);
 
   const depth = token.contract ? depthOn(pairs, token.chain) : null;
@@ -158,9 +138,11 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
   const live = readLiveFromStats(stats);
   const price = depth?.priceUsd || last?.price || 0;
   const liquidityUsd = depth?.liquidityUsd ?? 0;
-  const oiGate = last?.openInterestUsd ?? 0;
-  // A praça grande manda; a Gate só cobre quem a Binance não lista.
-  const oiUsd = oiBnc > 0 ? oiBnc : oiGate;
+  // A praça grande manda; a Gate só cobre quem a Binance não lista. E agora vem
+  // ao vivo em vez do arquivo de ontem: o bloqueio por região era do host
+  // `fapi`, não da API, e `www.binance.com` serve os mesmos caminhos.
+  const oiBnc = last?.oiBinanceUsd ?? 0;
+  const oiUsd = oiBnc > 0 ? oiBnc : last?.openInterestUsd ?? 0;
 
   const base = {
     symbol: token.symbol,

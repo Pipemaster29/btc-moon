@@ -389,6 +389,13 @@ export interface ScanOptions {
    * mesma pergunta.
    */
   involving?: string[];
+  /**
+   * Só quem RECEBE. Metade do custo de `involving`, que consulta os dois lados.
+   *
+   * Existe porque "chegou moeda na corretora" é uma pergunta de um lado só, e
+   * pagar pelo outro é desperdício num nó que já responde no limite.
+   */
+  receiving?: string[];
   onProgress?: (done: number, total: number, found: number) => void;
 }
 
@@ -420,13 +427,16 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
   const config = CHAINS[chain];
 
   const padded = involving?.map(padAddress) ?? [];
-  const filters: (string[] | null)[][] = padded.length
-    ? [[padded], [null, padded]]
-    : [[]];
+  const recebendo = options.receiving?.map(padAddress) ?? [];
+  const filters: (string[] | null)[][] = recebendo.length
+    ? [[null, recebendo]]
+    : padded.length
+      ? [[padded], [null, padded]]
+      : [[]];
 
   // Sem filtro a resposta de uma faixa cheia estoura o tempo limite do nó, então
   // faixas sem filtro são curtas mesmo custando mais requisições.
-  const span = padded.length ? config.maxLogSpan : UNFILTERED_SPAN;
+  const span = padded.length || recebendo.length ? config.maxLogSpan : UNFILTERED_SPAN;
 
   const starts: number[] = [];
   for (let start = fromBlock; start <= toBlock; start += span) {

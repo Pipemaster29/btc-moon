@@ -5,8 +5,12 @@ supply na blockchain, como as posições estão montadas no perpétuo, e em que
 ponto do ciclo cada moeda está — com alerta no Telegram quando algo se mexe.
 
 Tudo é lido de fontes públicas, **sem nenhuma chave de API**: nós RPC públicos
-da BNB Chain, Base e Ethereum, o DexScreener para o mercado à vista, os arquivos
-do Binance Data Vision e a API pública da Gate para o perpétuo ao vivo.
+da BNB Chain, Base e Ethereum, o DexScreener para o mercado à vista, e a API de
+futuros da Binance ao vivo — que parecia bloqueada por região e não estava: a
+recusa é do host `fapi.binance.com`, e `www.binance.com` serve os mesmos
+caminhos normalmente. A Gate entra só para as duas coisas que a Binance não
+expõe por REST: o valor liquidado de cada lado e a posição absoluta das contas
+grandes.
 
 ## O que ele responde
 
@@ -61,6 +65,24 @@ aplica os dois testes que resolvem isso:
   venda nenhuma.
 
 Os dois juntos corrigiram três identificações que o primeiro sozinho errava.
+
+## O alerta de oferta chegando ao livro
+
+Vale para **qualquer** moeda, mapeada ou não, e é o único número on-chain nessa
+condição: carteira de corretora é endereço externo, e endereço externo tem o
+mesmo valor em toda rede EVM. Não é preciso conhecer nenhuma carteira do projeto
+para saber quanto do supply dele está pousado num livro de vendas.
+
+São duas leituras da mesma coisa. A **fração do supply em corretora** é o estado,
+e responde "isso é grande para ESTA moeda?" sem depender de liquidez, que em pool
+decorativa mente. A **transferência** é o evento: chega com minutos de vida e
+nomeia quem enviou.
+
+A ordem entre as duas foi decidida por medição, não por gosto: varrer três horas
+da BNB Chain filtrando as seis carteiras levou 377 segundos numa moeda só, e ler
+o saldo custa duas chamadas. Então o saldo decide se vale procurar quem enviou —
+e na maioria dos ciclos não vale, porque nada chegou. O ciclo completo das 42
+moedas leva 31 segundos.
 
 ## Alertas
 

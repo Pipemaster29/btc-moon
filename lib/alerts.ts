@@ -62,6 +62,10 @@ export const QUIET_MINUTES: Record<AlertKind, number> = {
   squeeze: 120,
   unwind: 120,
   "whale-exit": 180,
+  // Chegada de moeda em corretora: evento, identificado pelo bloco.
+  "cex-inflow": 240,
+  // Salto do float: estado, e o estado novo vale enquanto durar.
+  "float-jump": 180,
   // Por saldo — curta, para não calar movimento novo.
   "exchange-inflow": 45,
   "exchange-outflow": 45,
@@ -83,7 +87,9 @@ export type AlertKind =
   | "cycle-top"
   | "squeeze"
   | "unwind"
-  | "whale-exit";
+  | "whale-exit"
+  | "cex-inflow"
+  | "float-jump";
 
 export type Severity = "critical" | "high" | "medium";
 
@@ -176,6 +182,38 @@ export interface WhaleExitSeen {
   fragile: boolean;
 }
 
+/**
+ * A oferta que chegou às corretoras desde a leitura anterior.
+ *
+ * Vale para QUALQUER moeda, mapeada ou não, e é o único número on-chain nessa
+ * condição: carteira de corretora é endereço externo, e endereço externo tem o
+ * mesmo valor em toda rede EVM. Não é preciso conhecer uma única carteira do
+ * projeto para saber quanto do supply dele está pousado num livro de vendas.
+ *
+ * É a medida que o ciclo do LAB elegeu como gatilho do topo. Lá o saldo somado
+ * das corretoras caiu 95% durante a alta e devolveu 1% do supply em UM dia — o
+ * dia exato da máxima. Vender numa corretora exige depositar antes, e é por
+ * isso que o depósito antecede a queda em vez de segui-la.
+ */
+export interface FloatCex {
+  /** Fração do supply em carteira de corretora agora. */
+  agora: number;
+  /** A mesma fração na leitura anterior. Nulo na primeira. */
+  antes: number | null;
+  /** Quanto tempo separa as duas leituras, em horas. */
+  horas: number;
+  /** Moedas que chegaram a carteiras de corretora na janela varrida. */
+  chegadas: {
+    amount: number;
+    from: string;
+    to: string;
+    toLabel: string;
+    block: number;
+  }[];
+  /** Supply total, para converter fração em moeda. */
+  supply: number;
+}
+
 export interface DetectInput {
   /** Símbolo da moeda, para o alerta dizer de qual se trata. */
   symbol: string;
@@ -198,6 +236,8 @@ export interface DetectInput {
   perp?: PerpMove | null;
   /** Contas grandes saindo de comprado. Ausente quando não estão. */
   whaleExit?: WhaleExitSeen | null;
+  /** Oferta pousando em corretora. Ausente quando não foi medida. */
+  floatCex?: FloatCex | null;
 }
 
 const money = (v: number) =>
@@ -637,6 +677,77 @@ export function detect(input: DetectInput): Alert[] {
         valueUsd: perp.longLiqUsd,
         addresses: [],
       });
+    }
+  }
+
+  // ------------------------------------------------ oferta chegando ao livro
+  //
+  // Duas leituras da mesma coisa, e as duas fazem falta.
+  //
+  // A TRANSFERÊNCIA é o evento: chega com minutos de vida, nomeia quem enviou e
+  // dá tempo de reagir. A FRAÇÃO DO SUPPLY é o estado: mais lenta, mas é ela
+  // que responde "isso é grande para ESTA moeda?" sem depender de liquidez, que
+  // em pool decorativa mente.
+  //
+  // Uma moeda com 1,25% do supply em corretora e 176% de alta desde o fundo tem
+  // pouca oferta pronta para vender. Se esse número for para 10%, a oferta
+  // octuplicou sem que o preço tenha mudado — e é exatamente o que precede a
+  // queda, porque vender numa corretora exige depositar antes.
+  const cex = input.floatCex;
+  if (cex && cex.supply > 0) {
+    for (const t of cex.chegadas) {
+      const fracao = t.amount / cex.supply;
+      const valor = t.amount * priceUsd;
+
+      // Grande contra a MOEDA (fração do supply) ou contra o MERCADO (liquidez).
+      // Os dois caminhos existem porque cada um cobre um buraco do outro: numa
+      // moeda de supply gigante, meio por cento já é muita coisa e nenhum
+      // limiar em dólar pegaria; numa de pool minúscula, um valor pequeno em
+      // dólar já estoura o livro.
+      if (fracao < 0.002 && valor < bigUsd) continue;
+
+      alerts.push({
+        kind: "cex-inflow",
+        severity: "critical",
+        fingerprint: `cexin:${t.block}:${Math.round(t.amount)}`,
+        title:
+          `🏦 ${symbol} · ${units(t.amount)} chegaram em ${t.toLabel}` +
+          (fracao >= 0.002 ? ` — ${(fracao * 100).toFixed(2)}% do supply` : ""),
+        detail:
+          `${money(valor)} entraram numa carteira de corretora. Token na corretora é oferta pronta ` +
+          `para virar venda a mercado, e o depósito é o passo obrigatório antes de vender — foi ` +
+          `esse depósito que marcou o topo do LAB, no dia exato da máxima.`,
+        valueUsd: valor,
+        addresses: [t.from, t.to],
+      });
+    }
+
+    // O salto do estado, que pega também o que entrou fora da janela varrida.
+    if (cex.antes !== null && cex.antes > 0) {
+      const variacao = cex.agora / cex.antes - 1;
+      const emPontos = cex.agora - cex.antes;
+
+      // Relativo E absoluto: sem o relativo, moedas com float alto nunca
+      // disparariam; sem o absoluto, ir de 0,001% para 0,002% viraria alerta de
+      // "dobrou".
+      if (variacao >= 0.5 && emPontos >= 0.005) {
+        alerts.push({
+          kind: "float-jump",
+          severity: "critical",
+          fingerprint: `float:${symbol}:${Math.round(cex.agora * 1000)}`,
+          title:
+            `📥 ${symbol} · oferta em corretora saltou de ${(cex.antes * 100).toFixed(2)}% ` +
+            `para ${(cex.agora * 100).toFixed(2)}% do supply`,
+          detail:
+            `Em ${cex.horas.toFixed(1)}h o supply parado em corretora ${variacao >= 1 ? "mais que dobrou" : `subiu ${(variacao * 100).toFixed(0)}%`}, ` +
+            `de ${units(cex.antes * cex.supply)} para ${units(cex.agora * cex.supply)}. ` +
+            `Essa oferta não estava disponível para venda e agora está. É a virada que antecedeu ` +
+            `o topo do LAB — lá foi 1% do supply voltando em um dia, e o preço caiu de US$ 14 ` +
+            `para US$ 0,89 nos dias seguintes.`,
+          valueUsd: emPontos * cex.supply * priceUsd,
+          addresses: [],
+        });
+      }
     }
   }
 

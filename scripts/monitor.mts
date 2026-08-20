@@ -25,12 +25,14 @@ import {
   CHAINS,
 } from "../lib/onchain";
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
+import { CARTEIRAS_CEX } from "../lib/lifecycle";
 import { currentMove } from "../lib/positioning";
 import { WATCHLIST, labelOf, type WatchedToken } from "../lib/watchlist";
 import {
   detect,
   QUIET_MINUTES,
   type Severity,
+  type FloatCex,
   type Alert,
   type ExchangePoint,
   type Observation,
@@ -44,7 +46,7 @@ import {
   sendTelegram,
   telegramFromEnv,
 } from "../lib/telegram";
-import { isFreshAddress } from "../lib/onchain";
+import { isFreshAddress, scanTransfers } from "../lib/onchain";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry");
@@ -64,6 +66,14 @@ interface State {
    * janela curta não enxergaria o aperto que o precede.
    */
   exchange?: Record<string, ExchangePoint[]>;
+  /**
+   * Fração do supply em carteira de corretora, por moeda.
+   *
+   * Guarda um ponto só, não uma série: o que a regra pergunta é "mudou desde a
+   * última vez que olhei", e para isso a leitura anterior basta. A série longa
+   * de verdade fica em `data/historico-AAAA-MM.jsonl`, gravada pelo panorama.
+   */
+  floatCex?: Record<string, { time: number; fracao: number }>;
   /** fingerprint → quando foi enviado, em segundos. */
   fired: Record<string, number>;
   lastBlock: number;
@@ -142,6 +152,33 @@ for (const token of comCarteiras) {
 
 // As demais entram só pelo perpétuo, em paralelo — são requisições HTTP a uma
 // API pública, não a um nó com limite de concorrência.
+// ------------------------------------------------- a oferta chegando ao livro
+//
+// Roda para TODAS as moedas com contrato, mapeadas ou não. É a única leitura
+// on-chain nessa condição: carteira de corretora é endereço externo e vale em
+// qualquer rede EVM, então dá para medir quanto do supply está pousado num
+// livro de vendas sem conhecer nenhuma carteira do projeto.
+//
+// A varredura é FILTRADA por essas seis carteiras, o que muda o custo por
+// completo: log filtrado por tópico aceita faixa de cinco mil blocos, contra
+// quinhentos da varredura aberta. Três horas de BNB Chain saem em cinco
+// chamadas em vez de quarenta e oito.
+const comContrato = WATCHLIST.filter((t) => t.contract);
+
+const cexAlerts = await Promise.all(
+  comContrato.map((token) =>
+    vigiarCorretoras(token, state, now).catch((error: Error) => {
+      console.error(`${token.symbol} (corretoras): ${error.message}`);
+      return [] as Alert[];
+    }),
+  ),
+);
+
+for (const [i, alerts] of cexAlerts.entries()) {
+  const explorer = CHAINS[comContrato[i].chain].explorer;
+  pending.push(...alerts.map((alert) => ({ alert, explorer })));
+}
+
 const perpAlerts = await Promise.all(
   soPerpetuo.map(async (token) => {
     try {
@@ -181,8 +218,8 @@ for (const [i, alerts] of perpAlerts.entries()) {
 }
 
 console.log(
-  `${comCarteiras.length} moedas com leitura on-chain · ${soPerpetuo.length} só pelo perpétuo · ` +
-    `${pending.length} alertas no total`,
+  `${comCarteiras.length} com leitura on-chain completa · ${comContrato.length} com float de corretora · ` +
+    `${soPerpetuo.length} só pelo perpétuo · ${pending.length} alertas no total`,
 );
 
 // ------------------------------------------------------------------ envio
@@ -278,6 +315,114 @@ for (const [key, when] of Object.entries(state.fired)) {
 
 await mkdir(".cache", { recursive: true });
 await writeFile(STATE, JSON.stringify(state, null, 2));
+
+// ------------------------------------------------------------------ corretoras
+
+/**
+ * Quanto do supply está em corretora, e o que chegou lá desde a última leitura.
+ *
+ * O saldo sozinho não basta e a transferência sozinha também não. O saldo pega
+ * o que entrou fora da janela varrida — inclusive enquanto o monitor esteve
+ * fora do ar — mas só depois do fato e sem dizer de onde veio. A transferência
+ * chega com minutos de vida e nomeia o remetente, mas some se cair num buraco
+ * entre ciclos. Juntas, uma cobre o furo da outra.
+ */
+async function vigiarCorretoras(
+  token: WatchedToken,
+  state: State,
+  now: number,
+): Promise<Alert[]> {
+  const config = CHAINS[token.chain];
+  if (config.endpoints.length === 0) return [];
+
+  const [info, head, pairs] = await Promise.all([
+    tokenInfo(token.chain, token.contract),
+    blockNumber(token.chain),
+    pairsOfToken(token.contract).catch(() => []),
+  ]);
+
+  const supply = toUnits(info.totalSupply, info.decimals);
+  if (!(supply > 0)) return [];
+
+  const depth = depthOn(pairs, token.chain);
+  const price = depth?.priceUsd ?? 0;
+
+  const saldos = await balancesOf(token.chain, token.contract, CARTEIRAS_CEX);
+  let emCorretora = 0;
+  for (const v of saldos.values()) emCorretora += toUnits(v, info.decimals);
+  const agora = emCorretora / supply;
+
+  const anterior = state.floatCex?.[token.symbol];
+  const horas = anterior ? (now - anterior.time) / 3600 : 0;
+
+  // A varredura de log só acontece quando o saldo REALMENTE subiu.
+  //
+  // Medi o custo antes de decidir: varrer três horas da BNB Chain filtrando as
+  // seis carteiras levou 377 segundos numa moeda só — vinte e seis delas por
+  // ciclo seria impossível. Já ler o saldo custa duas chamadas. Então o saldo
+  // decide se vale procurar quem enviou, e na maioria dos ciclos não vale,
+  // porque na maioria dos ciclos nada chegou.
+  //
+  // Quando vale, o filtro é só do lado de QUEM RECEBE: metade das requisições,
+  // e o outro lado não responde nada que interesse aqui.
+  const subiu = anterior ? agora - anterior.fracao : 0;
+  const chegadas: FloatCex["chegadas"] = [];
+
+  if (subiu >= 0.0005) {
+    const janela = Math.min(
+      Math.round((3 * 3600) / config.secondsPerBlock),
+      config.prunedDepth,
+    );
+    const alvos = new Set(CARTEIRAS_CEX.map((a) => a.toLowerCase()));
+
+    try {
+      const { transfers } = await scanTransfers({
+        chain: token.chain,
+        token: token.contract,
+        fromBlock: Math.max(head - janela, 0),
+        toBlock: head,
+        receiving: CARTEIRAS_CEX,
+      });
+
+      for (const t of transfers) {
+        // Movimento entre duas carteiras da mesma corretora não é oferta nova
+        // chegando ao livro — é arrumação interna, e conta dobrado no saldo.
+        if (alvos.has(t.from.toLowerCase())) continue;
+        chegadas.push({
+          amount: toUnits(t.value, info.decimals),
+          from: t.from,
+          to: t.to,
+          toLabel: labelOf(token, t.to),
+          block: t.block,
+        });
+      }
+    } catch {
+      // Sem os logs sobra o saldo, que ainda responde a pergunta principal.
+    }
+  }
+
+  state.floatCex = { ...state.floatCex, [token.symbol]: { time: now, fracao: agora } };
+
+  return detect({
+    symbol: token.symbol.replace(/USDT$/, ""),
+    gasSymbol: config.gasSymbol,
+    previous: {},
+    current: [],
+    transfers: [],
+    priceUsd: price,
+    liquidityUsd: depth?.liquidityUsd ?? 0,
+    floatCex: {
+      agora,
+      antes: anterior?.fracao ?? null,
+      horas,
+      chegadas,
+      supply,
+    },
+  }).filter((alert) => {
+    const last = state.fired[alert.fingerprint];
+    return !last || now - last > QUIET_MINUTES[alert.kind] * 60;
+  });
+}
 
 // --------------------------------------------------------------------- token
 

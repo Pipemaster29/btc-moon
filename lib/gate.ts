@@ -48,6 +48,20 @@ export interface LiveStat {
   whaleShort: number;
   /** whaleLong − whaleShort: o que elas realmente carregam. */
   whaleNet: number;
+  /**
+   * Open interest da Binance no mesmo instante, quando disponível.
+   *
+   * Fica ao lado do da Gate em vez de substituí-lo porque os dois medem coisas
+   * que não se misturam. A variação do open interest, que classifica o
+   * movimento, tem de vir da praça que forma o preço — a Binance. Já a fração
+   * do livro que as baleias largaram é uma divisão entre dois números da MESMA
+   * praça: usar posição da Gate sobre open interest da Binance daria uma fração
+   * quarenta vezes menor e o detector nunca dispararia.
+   */
+  oiBinance?: number;
+  oiBinanceUsd?: number;
+  accountRatioBinance?: number;
+  whaleRatioBinance?: number;
 }
 
 /** BTWUSDT → BTW_USDT. */
