@@ -16,6 +16,7 @@
 import { liveStats } from "./gate";
 import { depthOn, pairsOfToken } from "./dexscreener";
 import { WATCHLIST, type WatchedToken } from "./watchlist";
+import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
 import { readLiveFromStats, type MoveKind } from "./positioning";
 
 export interface OverviewRow {
@@ -163,4 +164,41 @@ export async function getOverview(): Promise<OverviewRow[]> {
   return linhas
     .filter((r): r is OverviewRow => r !== null)
     .sort((a, b) => b.score - a.score || b.openInterestUsd - a.openInterestUsd);
+}
+
+/**
+ * A triagem somada ao estágio de vida.
+ *
+ * Fica separada de `getOverview` porque custa outra ordem de grandeza: o
+ * histórico de seis meses são dez arquivos por moeda. Quem só quer saber o que
+ * está acontecendo agora não deve pagar por isso.
+ */
+export interface PanoramaRow extends OverviewRow {
+  vida: Vida | null;
+  leitura: Leitura | null;
+}
+
+export async function getPanorama(): Promise<PanoramaRow[]> {
+  const linhas = await getOverview();
+  const porSymbol = new Map(WATCHLIST.map((t) => [t.symbol, t]));
+
+  return Promise.all(
+    linhas.map(async (row) => {
+      const token = porSymbol.get(row.symbol);
+      if (!token) return { ...row, vida: null, leitura: null };
+
+      const vida = await lerVida(token, row.price).catch(() => null);
+      if (!vida) return { ...row, vida: null, leitura: null };
+
+      const leitura = lerVies(vida, {
+        moveKind: row.moveKind,
+        moveChange: row.moveChange,
+        whaleExiting: row.whaleExiting,
+        perpDominance: row.perpDominance,
+        accountRatio: row.accountRatio,
+        whaleRatio: row.whaleRatio,
+      });
+      return { ...row, vida, leitura };
+    }),
+  );
 }

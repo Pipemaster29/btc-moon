@@ -1,10 +1,41 @@
 import Link from "next/link";
-import { getOverview, type OverviewRow } from "@/lib/overview";
+import { getPanorama, type PanoramaRow } from "@/lib/overview";
+import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
 
 // Duas chamadas por moeda: dá para atualizar com frequência sem castigar as
 // APIs públicas, que não pedem chave e não deveriam ser abusadas por isso.
-export const revalidate = 180;
+export const revalidate = 300;
+
+/**
+ * A cor do estágio segue o ciclo, não a preferência: verde onde ainda há
+ * caminho pela frente, âmbar no topo, vermelho na descida, cinza no que já
+ * acabou. Uma moeda cinza não é ruim — ela é passado.
+ */
+const ESTAGIO_TONE: Record<Estagio, string> = {
+  "nunca subiu": "text-[#0ECB81]",
+  subindo: "text-[#0ECB81]",
+  "no topo": "text-[#F0B90B]",
+  "caindo do topo": "text-[#F6465D]",
+  ressuscitando: "text-[#5B8DEF]",
+  "em queda longa": "text-black/45 dark:text-white/45",
+  exausta: "text-black/30 dark:text-white/30",
+  "de lado": "text-black/30 dark:text-white/30",
+};
+
+const VIES_LABEL: Record<Vies, string> = {
+  short: "vender",
+  long: "comprar",
+  evitar: "não mexer",
+  observar: "observar",
+};
+
+const VIES_STYLE: Record<Vies, string> = {
+  short: "border-[#F6465D]/40 bg-[#F6465D]/10 text-[#F6465D]",
+  long: "border-[#0ECB81]/40 bg-[#0ECB81]/10 text-[#0ECB81]",
+  evitar: "border-black/15 dark:border-white/15 text-black/45 dark:text-white/45",
+  observar: "border-transparent text-black/25 dark:text-white/25",
+};
 
 const MOVE_LABEL: Record<MoveKind, string> = {
   squeeze: "squeeze",
@@ -65,7 +96,7 @@ function Score({ value }: { value: number }) {
   );
 }
 
-function Row({ row }: { row: OverviewRow }) {
+function Row({ row }: { row: PanoramaRow }) {
   return (
     <tr className="border-t border-black/5 dark:border-white/5 hover:bg-black/[0.02] dark:hover:bg-white/[0.03]">
       <td className="py-2.5 pr-3">
@@ -88,8 +119,29 @@ function Row({ row }: { row: OverviewRow }) {
       <td className="py-2.5 pr-3 text-right tabular-nums">
         {row.perpDominance > 0 ? `${row.perpDominance.toFixed(0)}x` : "—"}
       </td>
-      <td className="py-2.5 pr-3 text-right tabular-nums">
-        {row.accountRatio > 0 ? row.accountRatio.toFixed(2) : "—"}
+      <td className="py-2.5 pr-3">
+        {row.vida ? (
+          <span className={ESTAGIO_TONE[row.vida.estagio]}>{row.vida.estagio}</span>
+        ) : (
+          <span className="text-black/25 dark:text-white/25">—</span>
+        )}
+        {row.vida && (
+          <p className="text-xs text-black/35 dark:text-white/35 tabular-nums">
+            {signed(row.vida.queda)} do topo · {signed(row.vida.altaDesdeFundo)} do fundo
+          </p>
+        )}
+      </td>
+      <td className="py-2.5 pr-3">
+        {row.leitura && row.leitura.vies !== "observar" ? (
+          <span
+            className={`text-xs px-2 py-0.5 rounded-md border ${VIES_STYLE[row.leitura.vies]}`}
+            title={row.leitura.titulo}
+          >
+            {VIES_LABEL[row.leitura.vies]}
+          </span>
+        ) : (
+          <span className="text-black/20 dark:text-white/20 text-xs">—</span>
+        )}
       </td>
       <td className="py-2.5 pr-3">
         {row.moveKind ? (
@@ -115,9 +167,17 @@ function Row({ row }: { row: OverviewRow }) {
 }
 
 export default async function Radar() {
-  const rows = await getOverview();
-  const quentes = rows.filter((r) => r.score >= 35);
+  const rows = await getPanorama();
   const comCarteiras = rows.filter((r) => r.hasWallets).length;
+
+  const porVies = (v: Vies) =>
+    rows
+      .filter((r) => r.leitura?.vies === v)
+      .sort((a, b) => (b.leitura?.forca ?? 0) - (a.leitura?.forca ?? 0) || b.score - a.score);
+
+  const vender = porVies("short");
+  const comprar = porVies("long");
+  const mortas = rows.filter((r) => r.vida?.estagio === "exausta");
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50 font-sans dark:bg-black">
@@ -138,29 +198,54 @@ export default async function Radar() {
           </p>
         </header>
 
-        {quentes.length > 0 && (
-          <section className="rounded-xl border border-[#F0B90B]/40 bg-[#F0B90B]/5 p-5">
-            <h2 className="font-semibold">
-              {quentes.length} {quentes.length === 1 ? "moeda pedindo" : "moedas pedindo"} atenção
-            </h2>
-            <ul className="mt-3 flex flex-col gap-2 text-sm">
-              {quentes.slice(0, 6).map((r) => (
-                <li key={r.symbol}>
-                  <Link href={`/radar/${r.ticker}`} className="font-medium hover:underline">
-                    {r.ticker}
-                  </Link>
-                  <span className="text-black/60 dark:text-white/60">
-                    {" — "}
-                    {r.reasons.join(" · ")}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {[
+            { titulo: "Candidatas a vender", lista: vender, tom: "border-[#F6465D]/40 bg-[#F6465D]/5" },
+            { titulo: "Candidatas a comprar", lista: comprar, tom: "border-[#0ECB81]/40 bg-[#0ECB81]/5" },
+          ].map(({ titulo, lista, tom }) => (
+            <section key={titulo} className={`rounded-xl border p-5 ${tom}`}>
+              <h2 className="font-semibold">
+                {titulo} ({lista.length})
+              </h2>
+              {lista.length === 0 ? (
+                <p className="text-sm text-black/50 dark:text-white/50 mt-2">
+                  Nenhuma moeda com essa combinação agora. É o resultado mais comum, e é
+                  informação: o setup não existe na maior parte do tempo.
+                </p>
+              ) : (
+                <ul className="mt-3 flex flex-col gap-3 text-sm">
+                  {lista.slice(0, 4).map((r) => (
+                    <li key={r.symbol}>
+                      <Link href={`/radar/${r.ticker}`} className="font-medium hover:underline">
+                        {r.ticker}
+                      </Link>
+                      <span className="text-black/40 dark:text-white/40 text-xs">
+                        {" "}
+                        · {r.vida?.estagio} · força {r.leitura?.forca}/3
+                      </span>
+                      <p className="text-black/60 dark:text-white/60">{r.leitura?.titulo}</p>
+                      <p className="text-xs text-black/45 dark:text-white/45 mt-0.5">
+                        {r.leitura?.porque}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+        </div>
+
+        {mortas.length > 0 && (
+          <p className="text-sm text-black/50 dark:text-white/50">
+            <span className="font-medium">{mortas.length} já cumpriram o ciclo</span> —{" "}
+            {mortas.map((r) => r.ticker).join(", ")}. Caíram mais de 60% de um topo antigo e
+            não acharam comprador desde então. Vender agora é pagar financiamento para
+            capturar o que sobrou.
+          </p>
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[1050px]">
             <thead className="text-black/45 dark:text-white/45 text-xs">
               <tr>
                 <th className="font-normal pb-2 text-left">Moeda</th>
@@ -171,8 +256,11 @@ export default async function Radar() {
                 <th className="font-normal pb-2 text-right" title="Open interest dividido pela liquidez à vista">
                   Perp ÷ pool
                 </th>
-                <th className="font-normal pb-2 text-right" title="Contas compradas ÷ vendidas, por cabeça">
-                  Varejo
+                <th className="font-normal pb-2 text-left" title="Onde a moeda está na própria vida">
+                  Estágio
+                </th>
+                <th className="font-normal pb-2 text-left" title="O cruzamento do estágio com o que acontece agora">
+                  Leitura
                 </th>
                 <th className="font-normal pb-2 text-left">Perna atual</th>
                 <th className="font-normal pb-2 text-center" title="Contas grandes desmontando comprado perto do topo">
