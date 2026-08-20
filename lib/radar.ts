@@ -14,6 +14,7 @@
 
 import {
   balancesOf,
+  blocosPara,
   blockNumber,
   gasOf,
   toUnits,
@@ -202,8 +203,7 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
   // linha de código — e a página anunciava as duas como "movimentação recente",
   // deixando a comparação entre moedas de redes diferentes sem sentido.
   const JANELA_HORAS = 3;
-  const desejado = Math.round((JANELA_HORAS * 3600) / config.secondsPerBlock);
-  const from = Math.max(head - Math.min(desejado, config.prunedDepth), 0);
+  const from = Math.max(head - blocosPara(token.chain, JANELA_HORAS), 0);
   const windowHours = ((head - from) * config.secondsPerBlock) / 3600;
 
   let scanned = 0;

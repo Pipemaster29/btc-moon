@@ -19,7 +19,9 @@
     "replay": "tsx scripts/replay.mts",
     "descobrir": "tsx scripts/descobrir.mts",
     "estagio": "tsx scripts/estagio.mts",
-    "panorama": "tsx scripts/panorama.mts"
+    "panorama": "tsx scripts/panorama.mts",
+    "backtest": "tsx scripts/backtest.mts",
+    "testar-alerta": "tsx scripts/testar-alerta.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

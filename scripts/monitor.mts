@@ -46,7 +46,7 @@ import {
   sendTelegram,
   telegramFromEnv,
 } from "../lib/telegram";
-import { isFreshAddress, scanTransfers } from "../lib/onchain";
+import { blocosPara, isFreshAddress, scanTransfers } from "../lib/onchain";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry");
@@ -369,10 +369,7 @@ async function vigiarCorretoras(
   const chegadas: FloatCex["chegadas"] = [];
 
   if (subiu >= 0.0005) {
-    const janela = Math.min(
-      Math.round((3 * 3600) / config.secondsPerBlock),
-      config.prunedDepth,
-    );
+    const janela = blocosPara(token.chain, 3);
     const alvos = new Set(CARTEIRAS_CEX.map((a) => a.toLowerCase()));
 
     try {
@@ -466,10 +463,7 @@ async function inspect(
   // muito mais só traria evento velho e mais dados para trafegar.
   const config = CHAINS[token.chain];
   const WINDOW_HOURS = 3;
-  const span = Math.min(
-    Math.round((WINDOW_HOURS * 3600) / config.secondsPerBlock),
-    config.prunedDepth,
-  );
+  const span = blocosPara(token.chain, WINDOW_HOURS);
   const from = Math.max(head - span, 0);
   const transfers: TransferSeen[] = [];
 

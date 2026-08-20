@@ -499,6 +499,26 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
   };
 }
 
+/**
+ * Quantos blocos cobrem N horas nesta rede, respeitando o alcance real dos nós.
+ *
+ * O corte por `prunedDepth` descreve até onde os nós PÚBLICOS respondem, e
+ * aplicá-lo sempre era um erro caro: na BNB Chain ele vale 8.000 blocos, ou uma
+ * hora, então toda varredura que pedia três horas recebia uma — em silêncio, com
+ * o código e a mensagem continuando a dizer três. Justamente na rede onde estão
+ * quase todas as moedas vigiadas.
+ *
+ * Quando existe nó de arquivo, e na BNB Chain existe, o corte não se aplica:
+ * `scanTransfers` já prefere o arquivo para log. Sem ele, o corte é real e
+ * continua valendo.
+ */
+export function blocosPara(chain: Chain, horas: number): number {
+  const config = CHAINS[chain];
+  const desejado = Math.round((horas * 3600) / config.secondsPerBlock);
+  if (config.archiveLog.length > 0) return desejado;
+  return config.prunedDepth > 0 ? Math.min(desejado, config.prunedDepth) : desejado;
+}
+
 /** Saldo do token num bloco passado, via nó de arquivo. */
 export async function balanceAt(
   chain: Chain,

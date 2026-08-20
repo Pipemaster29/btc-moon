@@ -200,13 +200,22 @@ export async function lerVida(
   };
 }
 
-function classificar(m: {
+export interface Metricas {
   queda: number;
   altaDesdeFundo: number;
   amplitude: number;
   diasDesdePico: number;
   floatCex: number | null;
-}): { estagio: Estagio; veredito: string } {
+}
+
+/**
+ * A regra, isolada de qualquer busca de dado.
+ *
+ * Fica exportada e pura de propósito: é isso que permite rodá-la sobre o passado
+ * dia a dia sem tocar na rede, que é a única forma de saber se ela vale alguma
+ * coisa. Regra que só roda no presente não tem como ser testada.
+ */
+export function classificar(m: Metricas): { estagio: Estagio; veredito: string } {
   const pct = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(0)}%`;
   const cex =
     m.floatCex === null
