@@ -152,65 +152,75 @@ for (const est of [...ESTAGIOS, "TODAS" as const]) {
   );
 }
 
-// --------------------------------------------- o resultado é de uma moeda só?
+// ------------------------------------------- o efeito é do estágio ou da moeda?
 //
 // Uma mediana de seis mil observações ainda pode ser o retrato de duas ou três
-// moedas que se moveram muito. O teste é olhar quantas moedas, contadas uma a
-// uma, apontam para o mesmo lado — se a maioria concorda, o efeito é do estágio;
-// se não, é da moeda.
-console.log(`\n--- por moeda, em 7 dias (quantas concordam com o sinal) ---`);
+// moedas que se moveram muito e aparecem centenas de vezes. O teste é contar
+// quantas moedas, uma a uma, apontam para o mesmo lado: se a maioria concorda, o
+// efeito é do estágio; se não, é de quem estava dentro dele.
+console.log(`\n--- por moeda, em 7 dias ---`);
+console.log(`estágio          moedas   sobem  caem   mediana das medianas`);
 for (const est of ESTAGIOS) {
   const porMoeda = new Map<string, number[]>();
   for (const o of observacoes) {
     if (o.estagio !== est || o.retornos[2] === null) continue;
     porMoeda.set(o.symbol, [...(porMoeda.get(o.symbol) ?? []), o.retornos[2]]);
   }
-  const medianas = [...porMoeda.entries()]
-    .filter(([, rs]) => rs.length >= 5)
-    .map(([sym, rs]) => ({ sym, m: mediana(rs), n: rs.length }));
+  const medianas = [...porMoeda.values()]
+    .filter((rs) => rs.length >= 5)
+    .map((rs) => mediana(rs));
   if (medianas.length < 3) continue;
 
-  const positivas = medianas.filter((x) => x.m > 0).length;
-  const geral = mediana(medianas.map((x) => x.m));
+  const sobem = medianas.filter((m) => m > 0).length;
   console.log(
-    `${est.padEnd(16)} ${String(medianas.length).padStart(3)} moedas · ` +
-      `${positivas} sobem / ${medianas.length - positivas} caem · ` +
-      `mediana das medianas ${pct(geral).padStart(7)}`,
+    `${est.padEnd(16)} ${String(medianas.length).padStart(6)}   ${String(sobem).padStart(5)} ` +
+      `${String(medianas.length - sobem).padStart(5)}   ${pct(mediana(medianas)).padStart(8)}`,
   );
 }
 
-// -------------------------------------------- o sinal sobrevive a embaralhar?
+// ------------------------------------------- o sinal sobrevive a embaralhar?
 //
 // Se atribuir estágios ao acaso produzir separações tão grandes quanto a real,
-// não há sinal — há variação. Mil embaralhamentos dizem quanto do resultado
-// poderia ter vindo de sorte.
-function separacao(rotulos: Estagio[]): number {
-  let topo = 0, nTopo = 0, resto = 0, nResto = 0;
+// não há sinal — há variação. Os rótulos são embaralhados mil vezes mantendo a
+// mesma quantidade de cada estágio, e conta-se quantas vezes o acaso faz igual
+// ou melhor.
+function separacaoDe(est: Estagio, rotulos: Estagio[]): number {
+  let dentro = 0, nDentro = 0, fora = 0, nFora = 0;
   for (const [i, o] of observacoes.entries()) {
     const r = o.retornos[2];
     if (r === null) continue;
-    if (rotulos[i] === "no topo") { topo += r; nTopo++; } else { resto += r; nResto++; }
+    if (rotulos[i] === est) { dentro += r; nDentro++; } else { fora += r; nFora++; }
   }
-  return nTopo && nResto ? topo / nTopo - resto / nResto : 0;
+  return nDentro && nFora ? dentro / nDentro - fora / nFora : 0;
 }
 
-const real = separacao(observacoes.map((o) => o.estagio));
-let piores = 0;
 const SORTEIOS = 1000;
-for (let k = 0; k < SORTEIOS; k++) {
-  const emb = observacoes.map((o) => o.estagio);
-  for (let i = emb.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [emb[i], emb[j]] = [emb[j], emb[i]];
+const rotulosReais = observacoes.map((o) => o.estagio);
+
+console.log(`\n--- teste de embaralhamento (${SORTEIOS} sorteios, 7 dias) ---`);
+console.log(`estágio          diferença vs resto     p`);
+
+for (const est of ["no topo", "subindo", "exausta", "ressuscitando"] as Estagio[]) {
+  const real = separacaoDe(est, rotulosReais);
+  let extremos = 0;
+
+  for (let k = 0; k < SORTEIOS; k++) {
+    const emb = [...rotulosReais];
+    for (let i = emb.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [emb[i], emb[j]] = [emb[j], emb[i]];
+    }
+    // Bicaudal: interessa se o acaso chega tão longe do zero quanto o real,
+    // para qualquer lado. Testar só o lado observado inflaria a significância.
+    if (Math.abs(separacaoDe(est, emb)) >= Math.abs(real)) extremos++;
   }
-  if (separacao(emb) <= real) piores++;
+
+  const p = extremos / SORTEIOS;
+  console.log(
+    `${est.padEnd(16)} ${((real * 100).toFixed(2) + " p.p.").padStart(16)}   ` +
+      `${p.toFixed(3)}${p < 0.05 ? "  significativo" : "  não significativo"}`,
+  );
 }
-console.log(
-  `\n"no topo" contra o resto, em 7 dias: ${(real * 100).toFixed(2)} pontos percentuais de diferença na média`,
-);
-console.log(
-  `de ${SORTEIOS} embaralhamentos, ${piores} produziram separação igual ou mais negativa · p = ${(piores / SORTEIOS).toFixed(3)}`,
-);
 
 // ----------------------------------------------------- o que interessa vender
 console.log(`\n--- separação entre os extremos, em 7 dias ---`);

@@ -302,16 +302,36 @@ export function classificar(m: Metricas): { estagio: Estagio; veredito: string }
 /**
  * O cruzamento: onde a moeda está na vida × o que ela está fazendo agora.
  *
- * Nenhum dos dois sozinho decide nada, e é a combinação que carrega a
- * informação. Um squeeze numa moeda que ainda não subiu é o começo de um ciclo;
- * o MESMO squeeze numa moeda que já caiu 77% e não achou comprador em dois
- * meses é gato morto quicando — dinheiro emprestado empurrando um preço que não
- * tem para onde ir. São leituras opostas a partir de sinais idênticos.
+ * Esta função foi REESCRITA depois de ser medida, e duas das regras estavam
+ * invertidas. Vale registrar como, porque o erro era plausível e passaria
+ * despercebido para sempre sem o teste.
  *
- * O float em corretora entra como desempate porque ele diz onde está a OFERTA.
- * Numa moeda subindo, float alto é a venda já posicionada no livro; float baixo
- * é o aperto que sustenta a alta. A mesma medida muda de sinal conforme o
- * estágio, e é por isso que ela não vira um indicador solto.
+ * O raciocínio original era narrativo: moeda exausta já foi distribuída, logo
+ * não sobe; moeda ressuscitando encontrou comprador, logo sobe. Soa certo e é
+ * falso. Em 6.236 observações de 38 moedas, caminhando dia a dia e medindo sete
+ * dias à frente:
+ *
+ *   EXAUSTA        +8,23 pontos percentuais acima do resto · p = 0,000
+ *                  16 de 22 moedas sobem · mediana +2,7% em 7d, +9,2% em 14d
+ *   RESSUSCITANDO  −8,37 pontos percentuais abaixo do resto · p = 0,000
+ *                  17 de 27 moedas caem · mediana −1,2% em 7d, −4,2% em 14d
+ *   NO TOPO        −8,56 pontos percentuais abaixo do resto · p = 0,019
+ *                  8 de 13 moedas caem · mediana −8,3% em 7d
+ *
+ * O mecanismo, visto depois: estas moedas revertem à média com violência. A que
+ * acabou de derreter é a que mais quica, e a que já quicou 200% é a que
+ * devolve. Comprar o que caiu e vender o que subiu — o oposto de seguir a
+ * narrativa de cada uma.
+ *
+ * O que continua valendo do desenho original é a REGRA DE TEMPO, e ela não é
+ * sobre direção: durante um squeeze não se vende, porque entrar vendido no meio
+ * de uma alta forçada é virar o combustível dela. Isso é sobre QUANDO, e o teste
+ * não o contradiz.
+ *
+ * O que NÃO foi medido, e por isso não sustenta regra forte: squeeze e saída de
+ * baleia dependem de liquidação e posição absoluta, que só a Gate publica e só
+ * por cem horas. O float em corretora exige nó de arquivo e não existe na Base.
+ * Onde essas entradas aparecem abaixo, elas ajustam a força — nunca a direção.
  */
 export type Vies = "short" | "long" | "evitar" | "observar";
 
@@ -334,74 +354,71 @@ export interface SinaisAgora {
 
 export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   const forcada = agora.moveKind === "squeeze" || agora.moveKind === "alavancagem";
-  // Mesma recalibração do painel: com o open interest medido na Binance, 10x
-  // deixou de ser exceção e virou o meio da lista.
   const perpManda = agora.perpDominance >= 50;
   const floatAlto = vida.floatCex !== null && vida.floatCex >= 0.15;
   const floatBaixo = vida.floatCex !== null && vida.floatCex < 0.02;
   const pct = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(0)}%`;
 
+  // A regra de tempo vem antes de tudo, porque ela não discute direção: durante
+  // uma alta forçada, vender é alimentar o squeeze, esteja a moeda no estágio
+  // que estiver. O momento é depois que os vendidos acabam.
+  const podeVender = !(forcada && agora.moveChange > 0);
+
   // ------------------------------------------------------------------ short
-  if (vida.estagio === "exausta" && forcada && perpManda) {
+  if (vida.estagio === "no topo" && podeVender) {
+    const comSaida = agora.whaleExiting;
     return {
       vies: "short",
-      forca: 3,
-      titulo: "Gato morto quicando com dinheiro emprestado",
+      forca: comSaida ? 3 : 2,
+      titulo: comSaida
+        ? "Máxima fresca com dinheiro grande saindo"
+        : "Máxima fresca — o estágio que mais cai",
       porque:
-        `A moeda caiu ${pct(vida.queda)} do topo há ${vida.diasDesdePico} dias e só recuperou ` +
-        `${pct(vida.altaDesdeFundo)} — não apareceu comprador de verdade. A alta de agora é ` +
-        `${agora.moveKind}, e o open interest vale ${agora.perpDominance.toFixed(0)}x a pool à vista: ` +
-        `o preço está sendo empurrado por aposta, não por compra. É a combinação em que o repique ` +
-        `costuma devolver tudo.`,
+        `Topo de ${vida.diasDesdePico} dia(s), preço a ${pct(vida.queda)} dele. ` +
+        (comSaida
+          ? `As contas grandes estão desmontando comprado com o preço ainda em cima — a sequência ` +
+            `exata da BTW em 19/08, saída às 09h e queda de 50% seis horas depois. `
+          : "") +
+        `Medido: das oito fases, esta é a de pior retorno adiante — mediana de −8,3% em sete dias, ` +
+        `8,56 pontos abaixo do resto da amostra (p = 0,019), com 8 de 13 moedas concordando.`,
     };
   }
 
-  if (vida.estagio === "no topo" && agora.whaleExiting) {
+  if (vida.estagio === "ressuscitando" && podeVender) {
     return {
       vies: "short",
-      forca: 3,
-      titulo: "Máxima fresca com dinheiro grande saindo",
+      forca: floatAlto ? 3 : 2,
+      titulo: floatAlto
+        ? "Segundo ciclo devolvendo, com a oferta já no livro"
+        : "Segundo ciclo devolvendo",
       porque:
-        `Topo de ${vida.diasDesdePico} dia(s) e as contas grandes desmontando comprado com o preço ` +
-        `ainda em cima. É a sequência exata da BTW em 19/08 — saída às 09h, queda de 50% seis horas ` +
-        `depois. Falta só o gatilho: a oferta voltando para as corretoras.`,
-    };
-  }
-
-  if ((vida.estagio === "no topo" || vida.estagio === "subindo") && forcada && floatAlto) {
-    return {
-      vies: "short",
-      forca: 2,
-      titulo: "Alta a crédito com a oferta já posicionada no livro",
-      porque:
-        `A subida é ${agora.moveKind} e ${((vida.floatCex ?? 0) * 100).toFixed(0)}% do supply está ` +
-        `parado em carteira de corretora, pronto para ser vendido. Alta forçada acaba quando acabam ` +
-        `os vendidos; com essa oferta esperando, o que vem depois tem para onde cair.`,
-    };
-  }
-
-  if (vida.estagio === "ressuscitando" && forcada && floatAlto) {
-    return {
-      vies: "short",
-      forca: 2,
-      titulo: "Segundo ciclo forçado, com oferta esperando",
-      porque:
-        `${pct(vida.altaDesdeFundo)} desde o fundo, mas movido a ${agora.moveKind} e com ` +
-        `${((vida.floatCex ?? 0) * 100).toFixed(0)}% do supply em corretora. O segundo ciclo com a ` +
-        `oferta já no livro tem fôlego curto.`,
+        `${pct(vida.altaDesdeFundo)} desde o fundo de ${vida.diasDesdePico} dias atrás. ` +
+        `Eu lia isso como força e o dado diz o contrário: ressuscitando é a segunda pior fase, ` +
+        `mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto ` +
+        `(p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve.` +
+        (floatAlto
+          ? ` E ${((vida.floatCex ?? 0) * 100).toFixed(0)}% do supply está parado em corretora, ` +
+            `pronto para virar venda.`
+          : ""),
     };
   }
 
   // ------------------------------------------------------------------- long
-  if (vida.estagio === "ressuscitando" && floatBaixo && !forcada) {
+  if (vida.estagio === "exausta") {
     return {
       vies: "long",
-      forca: 2,
-      titulo: "Voltando a subir com o livro seco",
+      forca: floatBaixo ? 3 : 2,
+      titulo: "A que mais quica é a que acabou de derreter",
       porque:
-        `${pct(vida.altaDesdeFundo)} desde o fundo e só ${((vida.floatCex ?? 0) * 100).toFixed(2)}% ` +
-        `do supply em corretora — quase não há oferta pronta para vender. A alta não é a crédito, ` +
-        `então não depende de vendidos para continuar. É o formato que se sustenta.`,
+        `${pct(vida.queda)} do topo de ${vida.diasDesdePico} dias e só ${pct(vida.altaDesdeFundo)} ` +
+        `desde o fundo. Eu lia isso como cadáver e o dado diz que é a MELHOR fase adiante: ` +
+        `mediana de +2,7% em sete dias e +9,2% em catorze, 8,23 pontos acima do resto ` +
+        `(p = 0,000), com 16 de 22 moedas concordando. São ativos que revertem à média com ` +
+        `violência, e vender aqui é apostar contra isso pagando financiamento.` +
+        (floatBaixo
+          ? ` Com só ${((vida.floatCex ?? 0) * 100).toFixed(2)}% do supply em corretora, ` +
+            `quase não há oferta pronta para atrapalhar.`
+          : ""),
     };
   }
 
@@ -411,35 +428,28 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
       forca: 1,
       titulo: "Antes do ciclo, com pouca oferta no livro",
       porque:
-        `Amplitude de só ${vida.amplitude.toFixed(1)}x: o pump ainda não aconteceu. Com ` +
-        `${((vida.floatCex ?? 0) * 100).toFixed(2)}% do supply em corretora, o livro está fino — ` +
-        `a condição de que pouco dinheiro mova muito preço. Não é sinal de que vai acontecer, ` +
-        `é sinal de que pode.`,
+        `Amplitude de só ${vida.amplitude.toFixed(1)}x: o pump não aconteceu. Com ` +
+        `${((vida.floatCex ?? 0) * 100).toFixed(2)}% do supply em corretora o livro está fino, ` +
+        `que é a condição para pouco dinheiro mover muito preço. A fase mede +1,3% em sete dias, ` +
+        `perto da referência — não é sinal de que vai acontecer, é de que pode.`,
     };
   }
 
   // ----------------------------------------------------------------- evitar
-  if (vida.estagio === "exausta") {
+  if (forcada && agora.moveChange > 0) {
     return {
       vies: "evitar",
       forca: 2,
-      titulo: "O ciclo já aconteceu",
+      titulo: "Squeeze em andamento — espere ele acabar",
       porque:
-        `${pct(vida.queda)} do topo, ${vida.diasDesdePico} dias atrás, e ${pct(vida.altaDesdeFundo)} ` +
-        `desde o fundo. Vender aqui é pagar financiamento para capturar o que sobrou; comprar é ` +
-        `apostar num comprador que já teve ${vida.diasDesdePico} dias para aparecer e não apareceu.`,
-    };
-  }
-
-  // Chegar aqui já exclui "exausta": aquele caso saiu na regra anterior.
-  if (forcada && !perpManda) {
-    return {
-      vies: "evitar",
-      forca: 1,
-      titulo: "Squeeze em andamento — o pior momento para vender",
-      porque:
-        `A alta de ${pct(agora.moveChange)} é forçada, e entrar vendido no meio dela é virar o ` +
-        `combustível. O momento de vender é depois que os vendidos acabam, não durante.`,
+        `A alta de ${pct(agora.moveChange)} é ${agora.moveKind}, e entrar vendido no meio dela é ` +
+        `virar o combustível. Isto é sobre QUANDO, não sobre direção: a fase da moeda ` +
+        `(${vida.estagio}) continua valendo, mas o momento de agir é depois que os vendidos ` +
+        `acabam.` +
+        (perpManda
+          ? ` O open interest vale ${agora.perpDominance.toFixed(0)}x a pool à vista, ou seja, ` +
+            `o preço aqui é feito por aposta e não por compra — o estouro pode ir longe.`
+          : ""),
     };
   }
 
@@ -447,9 +457,9 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   return {
     vies: "observar",
     forca: 0,
-    titulo: "Sem combinação que decida",
+    titulo: "Fase sem vantagem medida",
     porque:
-      `${vida.estagio}, sem alta forçada nem saída de baleia. O estágio sozinho não basta: ` +
-      `ele diz onde a moeda está, não o que ela vai fazer.`,
+      `${vida.estagio}: nas 6.236 observações medidas, esta fase não se separou da referência ` +
+      `o bastante para sustentar um lado. O estágio diz onde a moeda está, não o que ela vai fazer.`,
   };
 }

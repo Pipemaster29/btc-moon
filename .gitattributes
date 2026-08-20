@@ -1,0 +1,5 @@
+# O histórico do panorama só cresce, e duas execuções que se sobrepõem gravam
+# linhas diferentes no fim do mesmo arquivo. Sem isto, o git trata como conflito
+# de conteúdo e obriga alguém a escolher um lado — perdendo as linhas do outro.
+# `union` mantém as duas, que é exatamente o certo para um arquivo append-only.
+data/historico-*.jsonl merge=union
