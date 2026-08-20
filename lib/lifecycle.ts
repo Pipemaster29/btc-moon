@@ -27,6 +27,7 @@
 import { fetchCsv, monthlyKlineUrl, dailyKlineUrl, recentDays } from "./datavision";
 import { parseKlines } from "./derivatives";
 import { balancesOf, tokenInfo, toUnits, type Chain } from "./onchain";
+import { circulante, type Circulante } from "./binance";
 import type { WatchedToken } from "./watchlist";
 
 /**
@@ -73,8 +74,22 @@ export interface Vida {
   amplitude: number;
   preco: number;
   dias: number;
-  /** Fração do supply parada em carteira de corretora. Nulo sem contrato. */
+  /** Fração do supply parada em carteira de corretora. Nulo quando não dá para afirmar. */
   floatCex: number | null;
+  /** O contrato lido representa a moeda inteira? Nulo quando não dá para saber. */
+  contratoRepresenta: boolean | null;
+  /** Supply circulante segundo o CoinMarketCap. */
+  circulante: number | null;
+  /** Unlocks detectados na janela de 30 dias. */
+  unlocks: { quando: number; variacao: number }[];
+  /**
+   * Circulante ÷ supply total: quanto da moeda realmente anda.
+   *
+   * É a condição de partida que todas as manipuladas compartilham. Com 27% do
+   * supply circulando, como na BTW, três quartos da moeda são promessa de oferta
+   * futura — e cada unlock converte um pedaço dessa promessa em oferta real.
+   */
+  floatToken: number | null;
   veredito: string;
 }
 
@@ -113,10 +128,59 @@ async function historico(symbol: string) {
   return [...porDia.values()].sort((a, b) => a.time - b.time);
 }
 
+/**
+ * O supply lido no contrato representa o token, ou só um pedaço dele?
+ *
+ * Esta checagem faltava e o buraco era grande. Os dois testes de identificação —
+ * preço batendo com o perpétuo e pool girando — passam tranquilamente num
+ * contrato que é PONTE ou implantação secundária, porque token com ponte negocia
+ * em paridade com o original. O ZEREBRO passou nos dois: o contrato dele na Base
+ * tem 1,15 milhão de tokens enquanto circulam 1.000 milhões, ou seja, o que eu
+ * estava lendo é um milésimo da moeda.
+ *
+ * A consequência não era cosmética. Todo número "% do supply" sai de uma divisão
+ * pelo supply do contrato, e num fragmento essa divisão infla o resultado em
+ * ordens de grandeza. Foi assim que a CAP apareceu com 88,72% do supply em
+ * corretora — era 88,72% de um pedaço, não da moeda.
+ *
+ * O desempate é o circulante do CoinMarketCap, que vem de graça no endpoint de
+ * open interest da Binance. Mas a comparação é de UM LADO SÓ, e errar isso
+ * inverte o sentido:
+ *
+ *   contrato MENOR que o circulante   impossível para o token verdadeiro — não
+ *                                     dá para circular mais do que existe. Logo,
+ *                                     o contrato é ponte ou implantação
+ *                                     secundária, e o que se lê nele é uma
+ *                                     fração da moeda.
+ *   contrato MAIOR que o circulante   normal, e é o próprio objeto de estudo: a
+ *                                     BTW tem 10 bilhões no contrato e 2,7
+ *                                     circulando, ou seja, 73% preso. É a
+ *                                     condição de float pequeno que torna a
+ *                                     manipulação barata.
+ *
+ * Na primeira versão eu cortei os dois lados e suprimi o float de dezenove
+ * moedas — inclusive BTW, AKE e TAG, onde o contrato está certo e o excedente é
+ * justamente a informação que interessa.
+ *
+ * A margem de 10% abaixo de 1 cobre defasagem de atualização do circulante, que
+ * é publicado por terceiro e anda um passo atrás da rede.
+ */
+const COERENTE_MIN = 0.9;
+
+export interface FloatOnChain {
+  /** Fração do supply em corretora. Nulo quando não dá para afirmar. */
+  fracao: number | null;
+  supplyContrato: number;
+  supplyCirculante: number | null;
+  /** supply do contrato ÷ circulante. Longe de 1 = contrato é fragmento. */
+  coerencia: number | null;
+}
+
 async function floatEmCorretora(
   chain: Chain,
   contract: string,
-): Promise<number | null> {
+  circ: Circulante | null,
+): Promise<FloatOnChain | null> {
   try {
     const info = await tokenInfo(chain, contract);
     const supply = toUnits(info.totalSupply, info.decimals);
@@ -125,7 +189,16 @@ async function floatEmCorretora(
     const saldos = await balancesOf(chain, contract, CARTEIRAS_CEX);
     let total = 0;
     for (const v of saldos.values()) total += toUnits(v, info.decimals);
-    return total / supply;
+
+    const coerencia = circ && circ.atual > 0 ? supply / circ.atual : null;
+    const representa = coerencia === null || coerencia >= COERENTE_MIN;
+
+    return {
+      fracao: representa ? total / supply : null,
+      supplyContrato: supply,
+      supplyCirculante: circ?.atual ?? null,
+      coerencia,
+    };
   } catch {
     return null;
   }
@@ -140,10 +213,14 @@ export async function lerVida(
   token: WatchedToken,
   precoVivo: number,
 ): Promise<Vida | null> {
-  const [barras, floatCex] = await Promise.all([
+  const [barras, circ] = await Promise.all([
     historico(token.symbol),
-    token.contract ? floatEmCorretora(token.chain, token.contract) : Promise.resolve(null),
+    circulante(token.symbol).catch(() => null),
   ]);
+  const onchain = token.contract
+    ? await floatEmCorretora(token.chain, token.contract, circ)
+    : null;
+  const floatCex = onchain?.fracao ?? null;
 
   if (barras.length < 10) return null;
 
@@ -196,6 +273,14 @@ export async function lerVida(
     preco,
     dias: barras.length,
     floatCex,
+    contratoRepresenta:
+      onchain?.coerencia == null ? null : onchain.fracao !== null,
+    circulante: circ?.atual ?? null,
+    floatToken:
+      onchain && circ && onchain.supplyContrato > 0
+        ? Math.min(circ.atual / onchain.supplyContrato, 1)
+        : null,
+    unlocks: (circ?.saltos ?? []).map((s) => ({ quando: s.quando, variacao: s.variacao })),
     veredito,
   };
 }
@@ -354,6 +439,15 @@ export interface SinaisAgora {
   oiChange72h: number;
 }
 
+function textoUnlock(u: { quando: number; variacao: number }): string {
+  const dias = Math.round((Date.now() - u.quando) / 86400_000);
+  return (
+    `O supply circulante saltou ${(u.variacao * 100).toFixed(0)}% há ${dias} dia(s) — unlock. ` +
+    `Quem recebeu não tinha o token e passou a ter, e boa parte vende com pressa; ` +
+    `na BTW o salto foi de 23% três dias antes da máxima.`
+  );
+}
+
 export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   const forcada = agora.moveKind === "squeeze" || agora.moveKind === "alavancagem";
 
@@ -380,6 +474,25 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   // "exausta" o p é 0,499. Por isso ele ajusta a força de duas regras em vez de
   // virar regra própria.
   const oiInflando = Number.isFinite(agora.oiChange72h) && agora.oiChange72h >= 0.2;
+
+  // Unlock recente: oferta nova chegando por decreto, não por venda.
+  //
+  // Todas as moedas manipuladas partilham a mesma condição de partida — float
+  // pequeno, maior parte do supply presa. Com o livro fino, pouco dinheiro move
+  // muito preço, e é isso que torna a manipulação barata. O unlock desfaz
+  // exatamente essa condição: o circulante salta, quem recebeu não tinha o
+  // token e passa a ter, e quem recebe de graça vende com pressa.
+  //
+  // Na BTW o circulante subiu 23,1% em 14/08 — três dias antes da máxima e da
+  // queda de 50%. O evento é observável e datável, e não depende de ler carteira
+  // nenhuma: vem do supply circulante publicado a cada dia.
+  //
+  // Fica como AJUSTE DE FORÇA e não como regra própria, pelo mesmo motivo de
+  // sempre: a janela de trinta dias que a Binance devolve dá poucos eventos, e
+  // eu não tenho como medir o efeito com o rigor que os estágios receberam.
+  const unlockRecente = vida.unlocks.find(
+    (u) => u.variacao >= 0.05 && Date.now() - u.quando <= 21 * 86400_000,
+  );
   const perpManda = agora.perpDominance >= 50;
   const floatAlto = vida.floatCex !== null && vida.floatCex >= 0.15;
   const floatBaixo = vida.floatCex !== null && vida.floatCex < 0.02;
@@ -395,7 +508,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     const comSaida = agora.whaleExiting;
     return {
       vies: "short",
-      forca: comSaida ? 3 : 2,
+      forca: comSaida || unlockRecente ? 3 : 2,
       titulo: comSaida
         ? "Máxima fresca com dinheiro grande saindo"
         : "Máxima fresca — o estágio que mais cai",
@@ -406,7 +519,8 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
             `exata da BTW em 19/08, saída às 09h e queda de 50% seis horas depois. `
           : "") +
         `Medido: das oito fases, esta é a de pior retorno adiante — mediana de −8,3% em sete dias, ` +
-        `8,56 pontos abaixo do resto da amostra (p = 0,019), com 8 de 13 moedas concordando.`,
+        `8,56 pontos abaixo do resto da amostra (p = 0,019), com 8 de 13 moedas concordando.` +
+        (unlockRecente ? ` ${textoUnlock(unlockRecente)}` : ""),
     };
   }
 
@@ -424,6 +538,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
         `Eu lia isso como força e o dado diz o contrário: ressuscitando é a segunda pior fase, ` +
         `mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto ` +
         `(p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve.` +
+        (unlockRecente ? ` ${textoUnlock(unlockRecente)}` : "") +
         (oiInflando
           ? ` E o open interest subiu ${(agora.oiChange72h * 100).toFixed(0)}% em 72h: nesta fase, ` +
             `isso separou −6,7 pontos em sete dias (p = 0,026), com 9 de 14 moedas concordando.`
@@ -455,6 +570,20 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
 
   // ------------------------------------------------------------------- long
   if (vida.estagio === "exausta") {
+    // Unlock recente é a única coisa que segura esta regra. A reversão à média
+    // pressupõe que a oferta parou de crescer; com lote novo destravando, ela
+    // não parou.
+    if (unlockRecente) {
+      return {
+        vies: "observar",
+        forca: 1,
+        titulo: "Fase de quicar, mas com oferta nova entrando",
+        porque:
+          `${pct(vida.queda)} do topo, e a fase mede +2,7% em sete dias — normalmente compraria. ` +
+          `${textoUnlock(unlockRecente)} Isso desfaz a premissa: a reversão à média supõe que a ` +
+          `oferta parou de crescer, e ela não parou.`,
+      };
+    }
     return {
       vies: "long",
       forca: floatBaixo ? 3 : 2,

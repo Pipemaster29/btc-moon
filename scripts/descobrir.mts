@@ -15,6 +15,15 @@
  * que o impostor tivesse mercado à vista arbitrado com o perpétuo — momento em
  * que ele deixaria de ser impostor.
  *
+ * O SUPPLY DO CONTRATO NÃO PODE SER MENOR QUE O CIRCULANTE. Este terceiro teste
+ * nasceu de uma falha dos outros dois: token com ponte negocia em paridade com o
+ * original e gira normalmente, então passa nos dois primeiros — mas o contrato
+ * dele guarda uma fração da moeda. O ZEREBRO passou: 1,15 milhão de tokens no
+ * contrato da Base contra 1.000 milhões circulando. Não dá para circular mais do
+ * que existe, e quando isso aparece o contrato é implantação secundária. A
+ * comparação é de um lado só: contrato MAIOR que o circulante é normal e é o
+ * próprio objeto de estudo — significa supply preso.
+ *
  * A POOL TEM QUE GIRAR. O VVV aparece com US$ 775 milhões de liquidez e
  * ZERO de volume em 24 horas; o CYS com US$ 452 milhões, também zero. São pools
  * decorativas — alguém deposita o próprio token contra uma ponta qualquer só

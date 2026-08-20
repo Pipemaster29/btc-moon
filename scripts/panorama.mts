@@ -49,6 +49,10 @@ interface PontoHistorico {
   vies: string | null;
   nota: number;
   floatCex: number | null;
+  /** Circulante ÷ supply total. */
+  floatTk: number | null;
+  /** Maior unlock dos últimos 21 dias, em fração. */
+  unlock: number | null;
 }
 
 const t0 = Date.now();
@@ -89,6 +93,15 @@ const pontos: PontoHistorico[] = linhas.map((r) => ({
   floatCex: r.vida?.floatCex === null || r.vida?.floatCex === undefined
     ? null
     : Number(r.vida.floatCex.toFixed(5)),
+  floatTk: r.vida?.floatToken == null ? null : Number(r.vida.floatToken.toFixed(4)),
+  unlock: (() => {
+    const recentes = (r.vida?.unlocks ?? []).filter(
+      (u) => agora - u.quando <= 21 * 86400_000,
+    );
+    return recentes.length
+      ? Number(Math.max(...recentes.map((u) => u.variacao)).toFixed(4))
+      : null;
+  })(),
 }));
 
 const historico = historicoDoMes(agora);

@@ -56,9 +56,67 @@ async function pegar<T>(caminho: string): Promise<T[]> {
   });
 }
 
-interface RawOi { sumOpenInterest: string; sumOpenInterestValue: string; timestamp: number }
+interface RawOi {
+  sumOpenInterest: string;
+  sumOpenInterestValue: string;
+  timestamp: number;
+  /** Supply circulante segundo o CoinMarketCap. Vem de graça neste endpoint. */
+  CMCCirculatingSupply?: string;
+}
 interface RawRatio { longShortRatio: string; timestamp: number }
 interface RawTaker { buySellRatio: string; timestamp: number }
+
+/**
+ * O supply circulante do símbolo, e como ele andou.
+ *
+ * Vem de graça no mesmo endpoint de open interest, e responde duas perguntas que
+ * nada mais aqui responde.
+ *
+ * A primeira é o TAMANHO DO FLOAT: quanto do token realmente circula. É a
+ * condição que todas as moedas manipuladas compartilham — a BTW tem 2,7 bilhões
+ * circulando de 10 bilhões, 27%. Com o float pequeno, pouco dinheiro move muito
+ * preço, e o resto é promessa de oferta futura.
+ *
+ * A segunda é o UNLOCK. Quando um lote destrava, o circulante SALTA, e isso é
+ * visível: a BTW pulou 23,1% em 14/08, três dias antes da máxima e da queda de
+ * 50%. Quem recebeu não tinha o token e passou a ter, e a primeira coisa que
+ * boa parte faz é vender.
+ *
+ * A janela é de trinta dias — é o que a Binance devolve, e os arquivos
+ * históricos não trazem esta coluna.
+ */
+export interface Circulante {
+  atual: number;
+  /** Saltos de pelo menos 2% na janela, do mais antigo ao mais recente. */
+  saltos: { quando: number; variacao: number; de: number; para: number }[];
+}
+
+export async function circulante(symbol: string): Promise<Circulante | null> {
+  const bruto = await pegar<RawOi>(
+    `/futures/data/openInterestHist?symbol=${symbol}&period=1d&limit=500`,
+  );
+  const serie = bruto
+    .map((r) => ({ t: Number(r.timestamp), c: Number(r.CMCCirculatingSupply ?? 0) }))
+    .filter((x) => x.c > 0)
+    .sort((a, b) => a.t - b.t);
+
+  if (serie.length === 0) return null;
+
+  const saltos: Circulante["saltos"] = [];
+  for (let i = 1; i < serie.length; i++) {
+    const variacao = serie[i].c / serie[i - 1].c - 1;
+    if (Math.abs(variacao) >= 0.02) {
+      saltos.push({
+        quando: serie[i].t,
+        variacao,
+        de: serie[i - 1].c,
+        para: serie[i].c,
+      });
+    }
+  }
+
+  return { atual: serie[serie.length - 1].c, saltos };
+}
 
 /**
  * A série do símbolo, do mais antigo ao mais recente.

@@ -116,6 +116,20 @@ function Row({ row }: { row: PanoramaRow }) {
         {signed(row.change24h)}
       </td>
       <td className="py-2.5 pr-3 text-right tabular-nums">{money(row.liquidityUsd)}</td>
+      <td className="py-2.5 pr-3 text-right">
+        {row.vida?.floatToken != null ? (
+          <span
+            className={`tabular-nums ${row.vida.floatToken <= 0.3 ? "text-[#F0B90B]" : ""}`}
+          >
+            {(row.vida.floatToken * 100).toFixed(0)}%
+          </span>
+        ) : (
+          <span className="text-black/25 dark:text-white/25">—</span>
+        )}
+        {row.vida?.unlocks?.some((u) => Date.now() - u.quando <= 21 * 86400_000 && u.variacao >= 0.05) && (
+          <p className="text-xs text-[#F6465D]">unlock</p>
+        )}
+      </td>
       <td className="py-2.5 pr-3 text-right tabular-nums">{money(row.openInterestUsd)}</td>
       <td className="py-2.5 pr-3 text-right tabular-nums">
         {row.perpDominance > 0 ? `${row.perpDominance.toFixed(0)}x` : "—"}
@@ -265,13 +279,19 @@ export default async function Radar() {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[1050px]">
+          <table className="w-full text-sm min-w-[1150px]">
             <thead className="text-black/45 dark:text-white/45 text-xs">
               <tr>
                 <th className="font-normal pb-2 text-left">Moeda</th>
                 <th className="font-normal pb-2 text-right">Preço</th>
                 <th className="font-normal pb-2 text-right">24h</th>
                 <th className="font-normal pb-2 text-right">Liquidez</th>
+                <th
+                  className="font-normal pb-2 text-right"
+                  title="Circulante ÷ supply total. Float pequeno é a condição que torna a manipulação barata; o resto é promessa de oferta futura."
+                >
+                  Circulando
+                </th>
                 <th className="font-normal pb-2 text-right">Open interest</th>
                 <th className="font-normal pb-2 text-right" title="Open interest dividido pela liquidez à vista">
                   Perp ÷ pool
@@ -302,7 +322,10 @@ export default async function Radar() {
           por nós públicos — nenhuma chave de API envolvida. A coluna
           <span className="font-medium"> perp ÷ pool </span>
           é a mais subestimada: quando o open interest vale dezenas de vezes a liquidez à
-          vista, o preço não é feito por quem compra a moeda, e sim por quem aposta nela.
+          vista, o preço não é feito por quem compra a moeda, e sim por quem aposta nela. A
+          coluna <span className="font-medium">circulando</span> mostra quanto do supply
+          realmente anda — abaixo de 30% o resto é promessa de oferta futura, e cada unlock
+          converte um pedaço dela em oferta real.
           Nada aqui é recomendação de investimento.
         </p>
       </main>
