@@ -23,6 +23,10 @@
 import { fetchCsv, monthlyKlineUrl, dailyKlineUrl, recentDays } from "../lib/datavision";
 import { parseKlines } from "../lib/derivatives";
 import { classificar, type Estagio } from "../lib/lifecycle";
+// A lista CHEIA de propósito, incluindo as aposentadas: para medir a régua,
+// moeda morta é amostra tão boa quanto viva — melhor, até, porque é onde os
+// estágios finais acontecem. Aposentar existe para poupar requisição no que
+// roda de três em três minutos, não para apagar o passado.
 import { WATCHLIST } from "../lib/watchlist";
 
 /** Dias de histórico necessários antes de a classificação valer alguma coisa. */

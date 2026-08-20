@@ -25,7 +25,7 @@ import {
   CHAINS,
 } from "../lib/onchain";
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
-import { WATCHLIST, labelOf, type WatchedToken } from "../lib/watchlist";
+import { ATIVAS, labelOf, type WatchedToken } from "../lib/watchlist";
 
 const STATE = ".cache/wallets.json";
 
@@ -287,12 +287,12 @@ async function report(token: WatchedToken, state: State): Promise<void> {
 
 const wanted = process.argv.slice(2).map((s) => s.toUpperCase());
 const tokens = wanted.length
-  ? WATCHLIST.filter((t) => wanted.includes(t.symbol))
-  : WATCHLIST;
+  ? ATIVAS.filter((t) => wanted.includes(t.symbol))
+  : ATIVAS;
 
 if (tokens.length === 0) {
   console.error(`nenhuma moeda conhecida em: ${wanted.join(", ")}`);
-  console.error(`disponíveis: ${WATCHLIST.map((t) => t.symbol).join(", ")}`);
+  console.error(`disponíveis: ${ATIVAS.map((t) => t.symbol).join(", ")}`);
   process.exit(1);
 }
 

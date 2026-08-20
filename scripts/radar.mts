@@ -23,13 +23,13 @@ import {
 import { cachedCsv } from "./cache.mjs";
 import { clusters, liquidationMap, reconstructPositions } from "../lib/liquidation";
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
-import { WATCHLIST, findToken } from "../lib/watchlist";
+import { ATIVAS, findToken } from "../lib/watchlist";
 
 const CACHE = ".cache/radar";
 const DAYS = 14;
 
 const symbols = process.argv.slice(2).map((s) => s.toUpperCase());
-const targets = symbols.length ? symbols : WATCHLIST.map((t) => t.symbol);
+const targets = symbols.length ? symbols : ATIVAS.map((t) => t.symbol);
 
 const signed = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`;
 const money = (v: number) =>

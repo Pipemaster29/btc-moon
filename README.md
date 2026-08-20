@@ -66,6 +66,24 @@ aplica os dois testes que resolvem isso:
 
 Os dois juntos corrigiram três identificações que o primeiro sozinho errava.
 
+Ticker curto derrota a busca — procurar "C" devolve o mercado inteiro. Para esses,
+`npm run descobrir C=chainbase` busca pelo nome do projeto.
+
+## Aposentar uma moeda
+
+Moeda que morreu sai das análises sem sair da lista: basta preencher
+`aposentada` na entrada dela em `lib/watchlist.ts`. Ela some do painel e do
+monitor e para de consumir requisição, mas o contrato conferido, a rede e o
+histórico continuam ali — e volta apagando uma linha.
+
+A decisão é **sempre manual**. Existe o estágio "exausta" e seria tentador
+aposentar sozinho quem cair nele, mas o backtest mostrou que exausta é
+justamente a fase de melhor retorno adiante: uma moeda que caiu 80% pode estar
+morta ou pode estar na véspera de um segundo ciclo. Quem decide é quem olha.
+
+Os scripts de medição (`backtest`, `parametros`) usam a lista cheia de propósito:
+para medir a régua, moeda morta é amostra tão boa quanto viva.
+
 ## O alerta de oferta chegando ao livro
 
 Vale para **qualquer** moeda, mapeada ou não, e é o único número on-chain nessa

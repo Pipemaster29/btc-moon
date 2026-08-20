@@ -24,7 +24,12 @@
  * tamanho por dia.
  *
  * Rode com: npm run descobrir UAI UB APR ...
- *           npm run descobrir            (usa a lista inteira)
+ *           npm run descobrir C=chainbase     (busca pelo nome do projeto)
+ *           npm run descobrir                 (usa a lista inteira)
+ *
+ * A forma `TICKER=nome` existe porque ticker curto derrota a busca: procurar
+ * "C" no DexScreener devolve o mercado inteiro e nenhum candidato sobrevive à
+ * filtragem. Buscar "chainbase" acha o token na primeira tentativa.
  */
 
 import { liveStats, gateContract } from "../lib/gate";
@@ -58,9 +63,9 @@ interface Candidato {
   pools: number;
 }
 
-async function candidatos(ticker: string): Promise<Candidato[]> {
+async function candidatos(ticker: string, busca = ticker): Promise<Candidato[]> {
   const res = await fetch(
-    `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(ticker)}`,
+    `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(busca)}`,
     { signal: AbortSignal.timeout(20_000) },
   );
   if (!res.ok) return [];
@@ -130,7 +135,12 @@ const LISTA = [
   "BASED", "VELVET", "JCT", "ARC", "EPIC", "B", "HANA", "XNY", "ZEREBRO", "BTW", "CYS",
 ];
 
-const alvos = process.argv.slice(2).length > 0 ? process.argv.slice(2).map((s) => s.toUpperCase().replace("$", "")) : LISTA;
+// `TICKER` ou `TICKER=termo de busca`.
+const pedidos = process.argv.slice(2).map((arg) => {
+  const [tk, nome] = arg.replace("$", "").split("=");
+  return { ticker: tk.toUpperCase(), busca: nome ?? tk.toUpperCase() };
+});
+const alvos = pedidos.length > 0 ? pedidos : LISTA.map((t) => ({ ticker: t, busca: t }));
 
 const usd = (v: number) =>
   v >= 1e9 ? `${(v / 1e9).toFixed(1)}bi` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}mi` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}k` : v.toFixed(0);
@@ -142,11 +152,11 @@ const achados: { ticker: string; chain: string; address: string; liq: number; oi
 const soPerp: string[] = [];
 const nada: string[] = [];
 
-for (const ticker of alvos) {
+for (const { ticker, busca } of alvos) {
   const [perp, bin, cands] = await Promise.all([
     precoPerp(ticker).catch(() => null),
     temBinance(ticker).catch(() => false),
-    candidatos(ticker).catch(() => [] as Candidato[]),
+    candidatos(ticker, busca).catch(() => [] as Candidato[]),
   ]);
 
   const marca = perp ? (bin ? "Gate+Bnc" : perp.fonte === "Gate" ? "Gate" : "Binance") : "—";
@@ -177,7 +187,7 @@ for (const ticker of alvos) {
     const perto = cands[0];
     const giro = perto && perto.liquidityUsd > 0 ? perto.volume24h / perto.liquidityUsd : 0;
     const nota = !perto
-      ? `nenhum par EVM`
+      ? `nenhum par EVM${busca === ticker && ticker.length <= 2 ? " — ticker curto demais, tente TICKER=nome-do-projeto" : ""}`
       : Math.abs(perto.price / perp.price - 1) > TOLERANCIA
         ? `melhor candidato erra ${((perto.price / perp.price - 1) * 100).toFixed(0)}% no preço`
         : perto.liquidityUsd < LIQUIDEZ_MINIMA

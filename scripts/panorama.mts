@@ -17,7 +17,7 @@
  */
 
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
-import { getPanorama } from "../lib/overview";
+import { caidas, getPanorama } from "../lib/overview";
 
 const DIR = "data";
 const ATUAL = `${DIR}/panorama.json`;
@@ -103,3 +103,10 @@ console.log(
 console.log(
   `${ATUAL}: ${mudou ? "atualizado" : "sem mudança"} · ${historico}: +${pontos.length} pontos`,
 );
+if (caidas.length > 0) {
+  console.log(`⚠️ sem dado nesta rodada: ${caidas.join(", ")}`);
+}
+const semVida = linhas.filter((r) => !r.vida).map((r) => r.ticker);
+if (semVida.length > 0) {
+  console.log(`sem histórico suficiente para classificar: ${semVida.join(", ")}`);
+}

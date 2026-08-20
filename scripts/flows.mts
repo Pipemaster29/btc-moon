@@ -35,7 +35,7 @@ import {
   type Transfer,
 } from "../lib/onchain";
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
-import { WATCHLIST, findToken, labelOf, type WatchedToken } from "../lib/watchlist";
+import { ATIVAS, findToken, labelOf, type WatchedToken } from "../lib/watchlist";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
@@ -48,7 +48,7 @@ const wideDays = Number(flag("wide") ?? 2);
 const token = findToken(symbol);
 if (!token?.contract) {
   console.error(`${symbol} não tem contrato configurado.`);
-  console.error(`disponíveis: ${WATCHLIST.filter((t) => t.contract).map((t) => t.symbol).join(", ")}`);
+  console.error(`disponíveis: ${ATIVAS.filter((t) => t.contract).map((t) => t.symbol).join(", ")}`);
   process.exit(1);
 }
 

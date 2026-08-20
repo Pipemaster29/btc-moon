@@ -20,6 +20,8 @@
  * continuam vindo da Gate, e é só para isso que ela serve agora.
  */
 
+import { comLimite } from "./limite";
+
 const BASE = "https://www.binance.com";
 
 export type Period = "5m" | "15m" | "30m" | "1h" | "2h" | "4h";
@@ -39,6 +41,7 @@ export interface BinanceStat {
 }
 
 async function pegar<T>(caminho: string): Promise<T[]> {
+  return comLimite("binance", 8, async () => {
   try {
     const res = await fetch(`${BASE}${caminho}`, {
       signal: AbortSignal.timeout(15_000),
@@ -50,6 +53,7 @@ async function pegar<T>(caminho: string): Promise<T[]> {
   } catch {
     return [];
   }
+  });
 }
 
 interface RawOi { sumOpenInterest: string; sumOpenInterestValue: string; timestamp: number }

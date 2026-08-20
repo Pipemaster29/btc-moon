@@ -22,6 +22,8 @@
  * tamanho absoluto.
  */
 
+import { comLimite } from "./limite";
+
 const BASE = "https://api.gateio.ws/api/v4/futures/usdt";
 
 export type Interval = "5m" | "15m" | "30m" | "1h" | "4h";
@@ -99,6 +101,7 @@ export async function liveStats(
     `${BASE}/contract_stats?contract=${gateContract(symbol)}` +
     `&interval=${interval}&limit=${Math.min(limit, 100)}`;
 
+  return comLimite("gate", 6, async () => {
   try {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(15_000),
@@ -143,4 +146,5 @@ export async function liveStats(
   } catch {
     return [];
   }
+  });
 }

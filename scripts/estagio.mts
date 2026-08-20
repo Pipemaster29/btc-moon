@@ -6,7 +6,7 @@
 
 import { lerVida, lerVies, type Estagio, type Vida, type Vies } from "../lib/lifecycle";
 import { getOverview } from "../lib/overview";
-import { WATCHLIST } from "../lib/watchlist";
+import { ATIVAS } from "../lib/watchlist";
 
 const overview = await getOverview();
 const preco = new Map(overview.map((r) => [r.symbol, r.price]));
@@ -14,7 +14,7 @@ const linha = new Map(overview.map((r) => [r.symbol, r]));
 
 const vidas = (
   await Promise.all(
-    WATCHLIST.map((t) => lerVida(t, preco.get(t.symbol) ?? 0).catch(() => null)),
+    ATIVAS.map((t) => lerVida(t, preco.get(t.symbol) ?? 0).catch(() => null)),
   )
 ).filter((v): v is Vida => v !== null);
 

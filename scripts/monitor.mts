@@ -27,7 +27,7 @@ import {
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
 import { CARTEIRAS_CEX } from "../lib/lifecycle";
 import { currentMove } from "../lib/positioning";
-import { WATCHLIST, labelOf, type WatchedToken } from "../lib/watchlist";
+import { ATIVAS, labelOf, type WatchedToken } from "../lib/watchlist";
 import {
   detect,
   QUIET_MINUTES,
@@ -137,8 +137,8 @@ const pending: Pending[] = [];
 // devolveria um punhado de endereços anônimos.
 //
 // Quando as carteiras de uma moeda forem mapeadas, ela migra de metade sozinha.
-const comCarteiras = WATCHLIST.filter((t) => t.contract && t.wallets.length > 0);
-const soPerpetuo = WATCHLIST.filter((t) => !comCarteiras.includes(t));
+const comCarteiras = ATIVAS.filter((t) => t.contract && t.wallets.length > 0);
+const soPerpetuo = ATIVAS.filter((t) => !comCarteiras.includes(t));
 
 for (const token of comCarteiras) {
   try {
@@ -163,7 +163,7 @@ for (const token of comCarteiras) {
 // completo: log filtrado por tópico aceita faixa de cinco mil blocos, contra
 // quinhentos da varredura aberta. Três horas de BNB Chain saem em cinco
 // chamadas em vez de quarenta e oito.
-const comContrato = WATCHLIST.filter((t) => t.contract);
+const comContrato = ATIVAS.filter((t) => t.contract);
 
 const cexAlerts = await Promise.all(
   comContrato.map((token) =>

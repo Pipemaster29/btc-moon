@@ -15,7 +15,7 @@
 
 import { perpSeries } from "./perp";
 import { depthOn, pairsOfToken } from "./dexscreener";
-import { WATCHLIST, type WatchedToken } from "./watchlist";
+import { ATIVAS, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
 import { readLiveFromStats, type MoveKind } from "./positioning";
 
@@ -175,8 +175,25 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
 }
 
 /** A tabela inteira, já ordenada por quem merece olhar primeiro. */
+/**
+ * Moedas que não devolveram dado na última leitura.
+ *
+ * Existe porque uma moeda sumindo do painel em silêncio é indistinguível de uma
+ * moeda que nunca esteve lá. Foi assim que a Chainbase desapareceu de um retrato
+ * inteiro enquanto funcionava perfeitamente quando consultada sozinha — o teto
+ * de concorrência conserta a causa, isto denuncia quando volta a acontecer.
+ */
+export const caidas: string[] = [];
+
 export async function getOverview(): Promise<OverviewRow[]> {
-  const linhas = await Promise.all(WATCHLIST.map((t) => readOne(t).catch(() => null)));
+  caidas.length = 0;
+  const linhas = await Promise.all(
+    ATIVAS.map(async (t) => {
+      const r = await readOne(t).catch(() => null);
+      if (!r) caidas.push(t.symbol.replace(/USDT$/, ""));
+      return r;
+    }),
+  );
   return linhas
     .filter((r): r is OverviewRow => r !== null)
     .sort((a, b) => b.score - a.score || b.openInterestUsd - a.openInterestUsd);
@@ -196,7 +213,7 @@ export interface PanoramaRow extends OverviewRow {
 
 export async function getPanorama(): Promise<PanoramaRow[]> {
   const linhas = await getOverview();
-  const porSymbol = new Map(WATCHLIST.map((t) => [t.symbol, t]));
+  const porSymbol = new Map(ATIVAS.map((t) => [t.symbol, t]));
 
   return Promise.all(
     linhas.map(async (row) => {

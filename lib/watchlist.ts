@@ -61,6 +61,22 @@ export interface WatchedToken {
   firstBlock: number;
   wallets: WatchedWallet[];
   /**
+   * Quando preenchido, a moeda sai das análises sem sair da lista.
+   *
+   * Aposentar não é o mesmo que apagar, e a diferença importa. Apagar perderia
+   * o contrato conferido, a rede e o histórico já coletado — e se a moeda
+   * voltar a se mexer, tudo teria de ser redescoberto. Aposentada, ela some do
+   * painel e do monitor, para de consumir requisição, e volta apagando uma
+   * linha.
+   *
+   * A decisão é SEMPRE manual. O classificador tem o estágio "exausta", e seria
+   * tentador aposentar sozinho quem cair nele — mas o backtest mostrou que
+   * exausta é justamente a fase de melhor retorno adiante, e uma moeda que caiu
+   * 80% pode estar morta ou pode estar na véspera de um segundo ciclo. Quem
+   * decide isso é quem olha, não a regra.
+   */
+  aposentada?: { desde: string; porque: string };
+  /**
    * Por que esta moeda é acompanhada só pelo perpétuo.
    *
    * Existe porque a explicação estava escrita na página, presa a um símbolo:
@@ -493,6 +509,10 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
   },
   {
+    aposentada: {
+      desde: "2026-08-20",
+      porque: "morreu — indicada manualmente",
+    },
     // liquidez 16k · giro 1.12x/dia · OI 1.5mi · preço bate em 1.1%
     symbol: "CYSUSDT",
     chain: "bsc",
@@ -759,7 +779,42 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
     note: "Só o perpétuo: nenhum par em rede EVM. Sem contrato conferido a leitura on-chain mediria outra moeda.",
   },
+  {
+    // liquidez 33k · giro 0.23x/dia · preço bate em 0,8%
+    symbol: "CLOUSDT",
+    chain: "bsc",
+    contract: "0x81D3A238b02827F62B9f390f947D36d4A5bf89D2",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 875k · giro 16.41x/dia · preço bate em 0,3%
+    symbol: "DOSUSDT",
+    chain: "bsc",
+    contract: "0xB0f09ea9ae0515C3551080D4a745C8115aA30e37",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // Chainbase. O ticker de uma letra derrotou a busca por nome — procurar
+    // "C" no DexScreener devolve o mercado inteiro, e nenhum candidato passava.
+    // Achado buscando "chainbase": preço bate em 0,2%, pool de 759k girando
+    // 0,33x por dia.
+    symbol: "CUSDT",
+    chain: "bsc",
+    contract: "0xc32cc70741c3A8433dCbcB5adE071c299B55FfC8",
+    firstBlock: 0,
+    wallets: [],
+  },
 ];
+
+/**
+ * As moedas que ainda são analisadas.
+ *
+ * Tudo que percorre a lista deve usar isto em vez de `WATCHLIST` direto, senão
+ * aposentar não economiza requisição nenhuma.
+ */
+export const ATIVAS: WatchedToken[] = WATCHLIST.filter((t) => !t.aposentada);
 
 export function findToken(symbol: string): WatchedToken | undefined {
   return WATCHLIST.find((t) => t.symbol === symbol.toUpperCase());

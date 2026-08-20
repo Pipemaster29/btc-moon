@@ -7,6 +7,8 @@
  * que se enxerga se uma moeda pode ou não ser vendida pelo preço da tela.
  */
 
+import { comLimite } from "./limite";
+
 const BASE = "https://api.dexscreener.com/latest/dex";
 
 export interface Pair {
@@ -61,12 +63,14 @@ function normalize(raw: RawPair): Pair {
 }
 
 async function get(path: string): Promise<RawPair[]> {
-  const res = await fetch(`${BASE}/${path}`, {
-    signal: AbortSignal.timeout(20_000),
+  return comLimite("dexscreener", 6, async () => {
+    const res = await fetch(`${BASE}/${path}`, {
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) throw new Error(`DexScreener respondeu ${res.status}`);
+    const body = (await res.json()) as { pairs?: RawPair[] | null };
+    return body.pairs ?? [];
   });
-  if (!res.ok) throw new Error(`DexScreener respondeu ${res.status}`);
-  const body = (await res.json()) as { pairs?: RawPair[] | null };
-  return body.pairs ?? [];
 }
 
 /** Todas as pools de um token, da mais líquida para a menos. */
