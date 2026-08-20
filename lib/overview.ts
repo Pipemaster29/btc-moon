@@ -49,6 +49,8 @@ export interface OverviewRow {
   /** Contas grandes desmontando comprado perto do topo. */
   whaleExiting: boolean;
   whaleExitShare: number;
+  /** Variação do open interest em 72h — o parâmetro que passou no teste. */
+  oiChange72h: number;
 
   /** Quanto isto merece ser olhado agora, de 0 a 100. */
   score: number;
@@ -166,6 +168,7 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
     moveChange: live?.move?.priceChange ?? 0,
     whaleExiting: Boolean(live?.whaleExit?.fragile),
     whaleExitShare: live?.whaleExit?.share ?? 0,
+    oiChange72h: live?.oiChange72h ?? NaN,
   };
 
   return { ...base, ...score(base) };
@@ -210,6 +213,7 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         perpDominance: row.perpDominance,
         accountRatio: row.accountRatio,
         whaleRatio: row.whaleRatio,
+        oiChange72h: row.oiChange72h,
       });
       return { ...row, vida, leitura };
     }),

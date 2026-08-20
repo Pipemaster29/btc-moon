@@ -64,6 +64,7 @@ const leituras = vidas.map((v) => {
       perpDominance: o?.perpDominance ?? 0,
       accountRatio: o?.accountRatio ?? 0,
       whaleRatio: o?.whaleRatio ?? 0,
+      oiChange72h: o?.oiChange72h ?? NaN,
     }),
   };
 });

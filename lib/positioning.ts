@@ -159,6 +159,14 @@ export interface LiveRead {
   move: MoveRead | null;
   /** Nulo quando as contas grandes não estão saindo de nada. */
   whaleExit: WhaleExit | null;
+  /**
+   * Variação do open interest em 72 horas.
+   *
+   * É o único parâmetro que sobreviveu à busca em `npm run parametros`: dentro
+   * das moedas que já saíram do topo, open interest inflando separa −16,3 pontos
+   * percentuais em sete dias, com as sete moedas da amostra concordando.
+   */
+  oiChange72h: number;
   updatedAt: number;
 }
 
@@ -433,6 +441,7 @@ export function readLiveFromStats(stats: LiveStat[]): LiveRead | null {
     longLiqUsd24h: janela.reduce((s, r) => s + r.longLiqUsd, 0),
     shortLiqUsd24h: janela.reduce((s, r) => s + r.shortLiqUsd, 0),
     whaleExit: detectWhaleExit(janela),
+    oiChange72h: variacaoOi(stats, 72),
     move: classifyMove(
       janela[de],
       janela[ate],
@@ -442,6 +451,17 @@ export function readLiveFromStats(stats: LiveStat[]): LiveRead | null {
     ),
     updatedAt: ultimo.time * 1000,
   };
+}
+
+/** Variação do open interest da praça grande nas últimas N horas. */
+function variacaoOi(stats: LiveStat[], horas: number): number {
+  if (stats.length < 2) return NaN;
+  const fim = stats[stats.length - 1];
+  const alvo = fim.time - horas * 3600;
+  const ini = stats.find((s) => s.time >= alvo) ?? stats[0];
+  const a = ini.oiBinance ?? ini.openInterest;
+  const b = fim.oiBinance ?? fim.openInterest;
+  return a > 0 ? b / a - 1 : NaN;
 }
 
 /**

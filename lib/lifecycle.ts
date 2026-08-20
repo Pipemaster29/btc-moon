@@ -350,10 +350,36 @@ export interface SinaisAgora {
   perpDominance: number;
   accountRatio: number;
   whaleRatio: number;
+  /** Variação do open interest em 72 horas. */
+  oiChange72h: number;
 }
 
 export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   const forcada = agora.moveKind === "squeeze" || agora.moveKind === "alavancagem";
+
+  // Open interest inflando: o único parâmetro que sobreviveu à busca.
+  //
+  // Nove candidatos foram testados sobre 4.948 observações com dados de
+  // posicionamento — baleias reduzindo, varejo comprado, agressão vendedora,
+  // divergência. Quase todos morreram: ou o efeito era pequeno demais, ou o p
+  // não sobrevivia à correção por nove tentativas, ou — o caso mais traiçoeiro —
+  // o p era ótimo e a concordância entre moedas era cara ou coroa, sinal de
+  // resultado puxado por duas ou três moedas com muitas observações.
+  //
+  // O que sobrou foi este, e só DENTRO de duas fases:
+  //
+  //   caindo do topo  −16,3 p.p. em sete dias · p = 0,040 · 7 de 7 moedas
+  //   ressuscitando    −6,7 p.p. em sete dias · p = 0,026 · 9 de 14 moedas
+  //
+  // O mecanismo se lê sozinho: uma moeda que já saiu do topo e cujo open
+  // interest ESTÁ CRESCENDO tem gente montando posição nova, alavancada, contra
+  // a tendência. Esse tipo de posição não sustenta preço — ela vira oferta
+  // quando é desmontada.
+  //
+  // Fora dessas duas fases ele não acrescenta: em "no topo" mede 0,8 p.p. e em
+  // "exausta" o p é 0,499. Por isso ele ajusta a força de duas regras em vez de
+  // virar regra própria.
+  const oiInflando = Number.isFinite(agora.oiChange72h) && agora.oiChange72h >= 0.2;
   const perpManda = agora.perpDominance >= 50;
   const floatAlto = vida.floatCex !== null && vida.floatCex >= 0.15;
   const floatBaixo = vida.floatCex !== null && vida.floatCex < 0.02;
@@ -387,19 +413,43 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   if (vida.estagio === "ressuscitando" && podeVender) {
     return {
       vies: "short",
-      forca: floatAlto ? 3 : 2,
-      titulo: floatAlto
-        ? "Segundo ciclo devolvendo, com a oferta já no livro"
-        : "Segundo ciclo devolvendo",
+      forca: oiInflando ? 3 : floatAlto ? 3 : 2,
+      titulo: oiInflando
+        ? "Segundo ciclo devolvendo, e a alavancagem ainda subindo"
+        : floatAlto
+          ? "Segundo ciclo devolvendo, com a oferta já no livro"
+          : "Segundo ciclo devolvendo",
       porque:
         `${pct(vida.altaDesdeFundo)} desde o fundo de ${vida.diasDesdePico} dias atrás. ` +
         `Eu lia isso como força e o dado diz o contrário: ressuscitando é a segunda pior fase, ` +
         `mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto ` +
         `(p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve.` +
+        (oiInflando
+          ? ` E o open interest subiu ${(agora.oiChange72h * 100).toFixed(0)}% em 72h: nesta fase, ` +
+            `isso separou −6,7 pontos em sete dias (p = 0,026), com 9 de 14 moedas concordando.`
+          : "") +
         (floatAlto
           ? ` E ${((vida.floatCex ?? 0) * 100).toFixed(0)}% do supply está parado em corretora, ` +
             `pronto para virar venda.`
           : ""),
+    };
+  }
+
+  // A fase "caindo do topo" sozinha NÃO é de venda — mede +4,7% em sete dias, e
+  // vender ali seria apostar contra a base. Ela só vira venda quando o open
+  // interest está inflando, e aí a diferença é a maior de toda a busca.
+  if (vida.estagio === "caindo do topo" && oiInflando && podeVender) {
+    return {
+      vies: "short",
+      forca: 3,
+      titulo: "Já saiu do topo e ainda está montando alavancagem",
+      porque:
+        `${pct(vida.queda)} do topo de ${vida.diasDesdePico} dias, e o open interest subiu ` +
+        `${(agora.oiChange72h * 100).toFixed(0)}% em 72 horas. Gente montando posição nova contra ` +
+        `a tendência não sustenta preço — vira oferta quando desmonta. É a separação mais forte ` +
+        `de toda a busca: mediana de −11,9% em sete dias contra +4,4% das outras da mesma fase, ` +
+        `16,3 pontos de diferença (p = 0,040), com as 7 moedas da amostra concordando. ` +
+        `Sem o open interest inflando esta fase mede +4,7% e não é de venda.`,
     };
   }
 
