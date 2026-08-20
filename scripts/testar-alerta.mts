@@ -16,11 +16,14 @@
  * Rode com: npm run testar-alerta
  */
 
-import { detect, type DetectInput } from "../lib/alerts";
+import { detect, type AlertKind, type DetectInput } from "../lib/alerts";
 
 interface Caso {
   nome: string;
-  esperado: string;
+  /** O tipo que deve sair, ou nulo quando a regra tem de ficar calada. */
+  esperado: AlertKind | null;
+  /** Por que se espera isso — vale mais que o nome do caso. */
+  porque?: string;
   entrada: DetectInput;
 }
 
@@ -51,7 +54,8 @@ const casos: Caso[] = [
   },
   {
     nome: "float sobe de 0,001% para 0,002% — dobrou, mas não é nada",
-    esperado: "nenhum (o piso absoluto barra)",
+    esperado: null,
+    porque: "o piso absoluto barra",
     entrada: {
       ...base,
       floatCex: { agora: 0.00002, antes: 0.00001, horas: 2, chegadas: [], supply: 1e9 },
@@ -59,7 +63,8 @@ const casos: Caso[] = [
   },
   {
     nome: "float alto sobe 10% — muita moeda, pouca variação",
-    esperado: "nenhum (o piso relativo barra)",
+    esperado: null,
+    porque: "o piso relativo barra",
     entrada: {
       ...base,
       floatCex: { agora: 0.55, antes: 0.5, horas: 2, chegadas: [], supply: 1e9 },
@@ -89,7 +94,7 @@ const casos: Caso[] = [
   },
   {
     nome: "chegada minúscula: 0,0001% do supply e US$ 240",
-    esperado: "nenhum",
+    esperado: null,
     entrada: {
       ...base,
       floatCex: {
@@ -111,7 +116,7 @@ const casos: Caso[] = [
   },
   {
     nome: "primeira leitura da moeda — não há com o que comparar",
-    esperado: "nenhum",
+    esperado: null,
     entrada: {
       ...base,
       floatCex: { agora: 0.4, antes: null, horas: 0, chegadas: [], supply: 1e9 },
@@ -125,12 +130,14 @@ let falhas = 0;
 for (const caso of casos) {
   const alertas = detect(caso.entrada);
   const tipos = alertas.map((a) => a.kind);
-  const esperaNenhum = caso.esperado.startsWith("nenhum");
-  const ok = esperaNenhum ? tipos.length === 0 : tipos.includes(caso.esperado);
+  const ok = caso.esperado === null ? tipos.length === 0 : tipos.includes(caso.esperado);
   if (!ok) falhas++;
 
-  console.log(`${ok ? "ok  " : "FALHA"} ${caso.nome}`);
-  console.log(`     esperado: ${caso.esperado} · saiu: ${tipos.join(", ") || "nenhum"}`);
+  console.log(`${ok ? "ok   " : "FALHA"} ${caso.nome}`);
+  console.log(
+    `     esperado: ${caso.esperado ?? "nenhum"}${caso.porque ? ` (${caso.porque})` : ""} · ` +
+      `saiu: ${tipos.join(", ") || "nenhum"}`,
+  );
   for (const a of alertas) console.log(`     → ${a.title}`);
   console.log("");
 }
