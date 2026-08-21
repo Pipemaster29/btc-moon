@@ -839,6 +839,14 @@ export const WATCHLIST: WatchedToken[] = [
       "saldo lá exige outro adaptador: SPL token guarda saldo em contas separadas em vez de num " +
       "mapa dentro do contrato. O lado dos derivativos vale por inteiro.",
   },
+  {
+    // liquidez 617k · giro 13.29x/dia · preço bate em 1,7%
+    symbol: "HEMIUSDT",
+    chain: "bsc",
+    contract: "0x5fFD0EAdc186AF9512542d0d5e5eAFC65d5aFc5B",
+    firstBlock: 0,
+    wallets: [],
+  },
 ];
 
 /**

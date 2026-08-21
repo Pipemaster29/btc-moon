@@ -120,6 +120,23 @@ export interface Vida {
    * ajuda a decidir ONDE entrar. Não ajuda a decidir SE entrar.
    */
   tecnica: Tecnica | null;
+  /**
+   * O preço em que a leitura se inverte, e no que ela vira.
+   *
+   * Faltava, e a falta era concreta: o painel dizia "comprar" sem dizer até
+   * onde. Como os estágios são definidos por limiares fechados sobre queda desde
+   * o topo e alta desde o fundo, o preço que cruza esses limiares é uma conta,
+   * não um palpite.
+   *
+   * A fronteira que importa é uma só, e ela serve aos dois lados: uma moeda
+   * vira "ressuscitando" quando sobe 80% desde o fundo, e ressuscitando é venda
+   * enquanto exausta é compra. Ou seja, o mesmo preço que encerra a compra é o
+   * que abre a venda — não é um alvo escolhido, é onde a régua muda de lado.
+   *
+   * Isto NÃO é alvo de lucro nem stop. É o ponto em que esta leitura deixa de
+   * valer; o que fazer com a posição continua sendo decisão de quem opera.
+   */
+  virada: { preco: number; para: Estagio; distancia: number } | null;
   veredito: string;
 }
 
@@ -282,13 +299,14 @@ export async function lerVida(
   const amplitude = minimo > 0 ? pico / minimo : 1;
   const diasDesdePico = Math.round((agora - picoTempo) / 86400);
 
-  const { estagio, veredito } = classificar({
+  const metricas = {
     queda,
     altaDesdeFundo,
     amplitude,
     diasDesdePico,
     floatCex,
-  });
+  };
+  const { estagio, veredito } = classificar(metricas);
 
   return {
     symbol: token.symbol,
@@ -315,6 +333,7 @@ export async function lerVida(
     tecnica: lerTecnica(
       barras.map((b) => ({ close: b.close, high: b.high, low: b.low })),
     ),
+    virada: calcularVirada(estagio, metricas, preco, fundo, pico),
     veredito,
   };
 }
@@ -460,6 +479,15 @@ export interface Leitura {
   porque: string;
   /** Quanto a leitura se sustenta, de 0 a 3. */
   forca: number;
+  /**
+   * Onde esta leitura deixa de valer, em português.
+   *
+   * Existe porque uma recomendação sem prazo nem fronteira não é acionável: quem
+   * lê "comprar" precisa saber até quando, e o painel não dizia. Os estágios têm
+   * limiares fechados, então tanto a fronteira de preço quanto o horizonte medido
+   * são conta e não opinião.
+   */
+  ateQuando: string;
 }
 
 export interface SinaisAgora {
@@ -473,6 +501,99 @@ export interface SinaisAgora {
   oiChange72h: number;
   /** Open interest em dólar, para comparar com o tamanho da moeda. */
   openInterestUsd: number;
+}
+
+/**
+ * O preço que muda o estágio, achado pelos mesmos limiares que o definem.
+ *
+ * Só existe para as fases em que a fronteira é acionável. Em "no topo" ou
+ * "caindo do topo" o estágio muda por passagem de TEMPO e não de preço, e
+ * inventar um nível ali seria fingir precisão.
+ */
+function calcularVirada(
+  estagio: Estagio,
+  m: Metricas,
+  preco: number,
+  fundo: number,
+  pico: number,
+): Vida["virada"] {
+  // A fronteira dos 80% desde o fundo separa compra de venda: acima dela a
+  // moeda é "ressuscitando", que mede −1,2% em sete dias; abaixo, se caiu o
+  // bastante, é "exausta", que mede +2,7%.
+  if (estagio === "exausta" && fundo > 0) {
+    const alvo = fundo * 1.8;
+    if (alvo > preco) {
+      return { preco: alvo, para: "ressuscitando", distancia: alvo / preco - 1 };
+    }
+  }
+
+  if (estagio === "ressuscitando" && fundo > 0) {
+    const alvo = fundo * 1.8;
+    if (alvo < preco) {
+      // Abaixo da fronteira ela deixa de ser venda: vira queda longa ou exausta,
+      // conforme o quanto já caiu do topo.
+      const para: Estagio = m.queda <= -0.6 && m.diasDesdePico >= 20 ? "exausta" : "em queda longa";
+      return { preco: alvo, para, distancia: alvo / preco - 1 };
+    }
+  }
+
+  if (estagio === "em queda longa" && fundo > 0) {
+    const alvo = fundo * 1.8;
+    if (alvo > preco) {
+      return { preco: alvo, para: "ressuscitando", distancia: alvo / preco - 1 };
+    }
+  }
+
+  if (estagio === "nunca subiu" && pico > 0) {
+    // Sai de "nunca subiu" quando a amplitude do ciclo passa de 3x. Como o pico
+    // acompanha o preço numa alta, o gatilho é o preço triplicar a mínima.
+    const minimo = m.amplitude > 0 ? pico / m.amplitude : 0;
+    const alvo = minimo * 3;
+    if (alvo > preco) {
+      return { preco: alvo, para: "subindo", distancia: alvo / preco - 1 };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * O horizonte em que o efeito foi medido, e o que ele mediu.
+ *
+ * Sem isto, "comprar" fica sem prazo — e um efeito de sete dias lido como tese
+ * de meses vira outra coisa. Os números vêm do backtest caminhado, e são
+ * medianas do ativo: não têm custo de financiamento nem spread embutidos, e a
+ * dispersão em volta delas é enorme.
+ */
+const HORIZONTE: Partial<Record<Estagio, string>> = {
+  exausta: "a fase mede +2,7% em sete dias e +9,2% em catorze",
+  ressuscitando: "a fase mede −1,2% em sete dias e −4,2% em catorze",
+  "no topo": "a fase mede −8,3% em sete dias",
+  "nunca subiu": "a fase mede +1,3% em sete dias, perto da referência",
+};
+
+function textoAteQuando(vida: Vida): string {
+  const partes: string[] = [];
+
+  const medida = HORIZONTE[vida.estagio];
+  if (medida) partes.push(`O efeito foi medido em sete e catorze dias — ${medida}.`);
+
+  if (vida.virada) {
+    const sobe = vida.virada.distancia > 0;
+    partes.push(
+      `A leitura vira em US$ ${vida.virada.preco.toPrecision(4)}, ` +
+        `${Math.abs(vida.virada.distancia * 100).toFixed(0)}% ${sobe ? "acima" : "abaixo"} daqui: ` +
+        `nesse preço a moeda passa a ser "${vida.virada.para}", e a régua muda de lado. ` +
+        `Não é alvo nem stop — é onde esta leitura deixa de valer.`,
+    );
+  } else {
+    partes.push(
+      `Esta fase muda por passagem de tempo, não por preço, então não há nível que a encerre. ` +
+        `O retrato é refeito a cada trinta minutos e a leitura se corrige sozinha.`,
+    );
+  }
+
+  return partes.join(" ");
 }
 
 function textoUnlock(u: { quando: number; variacao: number }): string {
@@ -573,6 +694,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     return {
       vies: "short",
       forca: comSaida || unlockRecente ? 3 : 2,
+      ateQuando: textoAteQuando(vida),
       titulo: comSaida
         ? "Máxima fresca com dinheiro grande saindo"
         : "Máxima fresca — o estágio que mais cai",
@@ -594,6 +716,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
       return {
         vies: "observar",
         forca: 1,
+        ateQuando: textoAteQuando(vida),
         titulo: "Fase de devolver, mas pequena demais para valer o short",
         porque:
           `${pct(vida.altaDesdeFundo)} desde o fundo, e a fase mede −1,2% em sete dias. Mas com ` +
@@ -607,6 +730,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     return {
       vies: "short",
       forca: grande ? 3 : oiInflando || floatAlto ? 2 : 1,
+      ateQuando: textoAteQuando(vida),
       titulo: grande
         ? "Segundo ciclo devolvendo, e com tamanho para cair"
         : oiInflando
@@ -646,6 +770,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     return {
       vies: "short",
       forca: 3,
+      ateQuando: textoAteQuando(vida),
       titulo: "Já saiu do topo e ainda está montando alavancagem",
       porque:
         `${pct(vida.queda)} do topo de ${vida.diasDesdePico} dias, e o open interest subiu ` +
@@ -666,6 +791,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
       return {
         vies: "observar",
         forca: 1,
+        ateQuando: textoAteQuando(vida),
         titulo: "Fase de quicar, mas com oferta nova entrando",
         porque:
           `${pct(vida.queda)} do topo, e a fase mede +2,7% em sete dias — normalmente compraria. ` +
@@ -676,6 +802,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     return {
       vies: "long",
       forca: floatBaixo ? 3 : 2,
+      ateQuando: textoAteQuando(vida),
       titulo: "A que mais quica é a que acabou de derreter",
       porque:
         `${pct(vida.queda)} do topo de ${vida.diasDesdePico} dias e só ${pct(vida.altaDesdeFundo)} ` +
@@ -694,6 +821,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     return {
       vies: "long",
       forca: 1,
+      ateQuando: textoAteQuando(vida),
       titulo: "Antes do ciclo, com pouca oferta no livro",
       porque:
         `Amplitude de só ${vida.amplitude.toFixed(1)}x: o pump não aconteceu. Com ` +
@@ -708,6 +836,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     return {
       vies: "evitar",
       forca: 2,
+      ateQuando: textoAteQuando(vida),
       titulo: "Squeeze em andamento — espere ele acabar",
       porque:
         `A alta de ${pct(agora.moveChange)} é ${agora.moveKind}, e entrar vendido no meio dela é ` +
@@ -725,6 +854,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   return {
     vies: "observar",
     forca: 0,
+    ateQuando: textoAteQuando(vida),
     titulo: "Fase sem vantagem medida",
     porque:
       `${vida.estagio}: nas 6.236 observações medidas, esta fase não se separou da referência ` +

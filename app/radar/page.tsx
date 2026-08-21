@@ -266,6 +266,11 @@ export default async function Radar() {
                       <p className="text-xs text-black/45 dark:text-white/45 mt-0.5">
                         {r.leitura?.porque}
                       </p>
+                      {r.leitura?.ateQuando && (
+                        <p className="text-xs text-black/60 dark:text-white/60 mt-1 border-l-2 border-black/15 dark:border-white/15 pl-2">
+                          {r.leitura.ateQuando}
+                        </p>
+                      )}
                     </li>
                   ))}
                 </ul>
