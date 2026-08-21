@@ -81,6 +81,15 @@ export interface Vida {
   contratoRepresenta: boolean | null;
   /** Supply circulante segundo o CoinMarketCap. */
   circulante: number | null;
+  /**
+   * Circulante × preço: o tamanho REAL da moeda.
+   *
+   * Não confundir com FDV, que multiplica o supply total e por isso conta como
+   * valor o que ainda nem circula. Numa moeda com 27% de float, os dois números
+   * diferem por quase quatro vezes, e é o market cap que diz quanto de valor
+   * existe para ser destruído.
+   */
+  marketCap: number | null;
   /** Unlocks detectados na janela de 30 dias. */
   unlocks: { quando: number; variacao: number }[];
   /**
@@ -297,6 +306,7 @@ export async function lerVida(
     contratoRepresenta:
       onchain?.coerencia == null ? null : onchain.fracao !== null,
     circulante: circ?.atual ?? null,
+    marketCap: circ ? circ.atual * preco : null,
     floatToken:
       onchain && circ && onchain.supplyContrato > 0
         ? Math.min(circ.atual / onchain.supplyContrato, 1)
@@ -461,6 +471,8 @@ export interface SinaisAgora {
   whaleRatio: number;
   /** Variação do open interest em 72 horas. */
   oiChange72h: number;
+  /** Open interest em dólar, para comparar com o tamanho da moeda. */
+  openInterestUsd: number;
 }
 
 function textoUnlock(u: { quando: number; variacao: number }): string {
@@ -498,6 +510,34 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   // "exausta" o p é 0,499. Por isso ele ajusta a força de duas regras em vez de
   // virar regra própria.
   const oiInflando = Number.isFinite(agora.oiChange72h) && agora.oiChange72h >= 0.2;
+
+  // O tamanho da moeda, que faltava e mudava a resposta.
+  //
+  // A observação veio de fora: "a BULLA dá short mas tem 18 milhões de market
+  // cap, não deve cair quase nada mais". Medido dentro de "ressuscitando", que é
+  // exatamente onde os shorts estavam sendo chamados:
+  //
+  //   market cap ≥ 100 mi   −12,6% em sete dias contra −0,5% do resto da fase
+  //                         −12,2 p.p. · p = 0,000 · 7 de 8 moedas concordando
+  //   market cap ≤ 30 mi    +3,3% contra −1,9%
+  //                         +5,2 p.p. · p = 0,000 · 8 de 12 moedas concordando
+  //
+  // Ou seja: dentro da MESMA fase, as grandes derretem e as pequenas sobem. Os
+  // shorts que eu estava chamando — BULLA com 19 milhões, EVAA com 13,8 — eram
+  // os do lado errado de um efeito forte e consistente. Uma moeda que já caiu
+  // 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco e falta
+  // prêmio.
+  //
+  // Os dois cortes vêm dos limiares testados. A faixa entre 30 e 100 milhões não
+  // foi medida, e por isso não decide nada — nela a leitura cai para o que os
+  // outros sinais disserem.
+  const GRANDE = 100e6;
+  const PEQUENA = 30e6;
+  const mcap = vida.marketCap;
+  const grande = mcap !== null && mcap >= GRANDE;
+  const pequena = mcap !== null && mcap <= PEQUENA;
+  const dinheiro = (v: number) =>
+    v >= 1e9 ? `US$ ${(v / 1e9).toFixed(2)} bi` : `US$ ${(v / 1e6).toFixed(0)} mi`;
 
   // Unlock recente: oferta nova chegando por decreto, não por venda.
   //
@@ -549,19 +589,44 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   }
 
   if (vida.estagio === "ressuscitando" && podeVender) {
+    // Pequena demais: a fase é de queda, mas o tamanho inverte o resultado.
+    if (pequena) {
+      return {
+        vies: "observar",
+        forca: 1,
+        titulo: "Fase de devolver, mas pequena demais para valer o short",
+        porque:
+          `${pct(vida.altaDesdeFundo)} desde o fundo, e a fase mede −1,2% em sete dias. Mas com ` +
+          `${dinheiro(mcap!)} de market cap ela está do lado errado do tamanho: dentro desta mesma ` +
+          `fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos ` +
+          `acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões ` +
+          `não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio.`,
+      };
+    }
+
     return {
       vies: "short",
-      forca: oiInflando ? 3 : floatAlto ? 3 : 2,
-      titulo: oiInflando
-        ? "Segundo ciclo devolvendo, e a alavancagem ainda subindo"
-        : floatAlto
-          ? "Segundo ciclo devolvendo, com a oferta já no livro"
-          : "Segundo ciclo devolvendo",
+      forca: grande ? 3 : oiInflando || floatAlto ? 2 : 1,
+      titulo: grande
+        ? "Segundo ciclo devolvendo, e com tamanho para cair"
+        : oiInflando
+          ? "Segundo ciclo devolvendo, e a alavancagem ainda subindo"
+          : floatAlto
+            ? "Segundo ciclo devolvendo, com a oferta já no livro"
+            : "Segundo ciclo devolvendo",
       porque:
         `${pct(vida.altaDesdeFundo)} desde o fundo de ${vida.diasDesdePico} dias atrás. ` +
-        `Eu lia isso como força e o dado diz o contrário: ressuscitando é a segunda pior fase, ` +
-        `mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto ` +
-        `(p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve.` +
+        `Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, ` +
+        `8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou ` +
+        `é quem devolve.` +
+        (grande
+          ? ` E o tamanho está a favor: com ${dinheiro(mcap!)}, ela cai na faixa que mede −12,6% ` +
+            `em sete dias dentro desta fase, contra −0,5% das menores — 12,2 pontos de diferença ` +
+            `(p = 0,000), com 7 de 8 moedas concordando.`
+          : mcap !== null
+            ? ` O market cap de ${dinheiro(mcap)} fica na faixa entre 30 e 100 milhões, que não foi ` +
+              `medida — o tamanho aqui não decide nada.`
+            : "") +
         (unlockRecente ? ` ${textoUnlock(unlockRecente)}` : "") +
         (oiInflando
           ? ` E o open interest subiu ${(agora.oiChange72h * 100).toFixed(0)}% em 72h: nesta fase, ` +

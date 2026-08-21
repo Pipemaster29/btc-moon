@@ -115,6 +115,9 @@ function Row({ row }: { row: PanoramaRow }) {
       <td className={`py-2.5 pr-3 text-right tabular-nums ${tone(row.change24h)}`}>
         {signed(row.change24h)}
       </td>
+      <td className="py-2.5 pr-3 text-right tabular-nums">
+        {row.vida?.marketCap != null ? money(row.vida.marketCap) : "—"}
+      </td>
       <td className="py-2.5 pr-3 text-right tabular-nums">{money(row.liquidityUsd)}</td>
       <td className="py-2.5 pr-3 text-right">
         {row.vida?.floatToken != null ? (
@@ -281,12 +284,18 @@ export default async function Radar() {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[1150px]">
+          <table className="w-full text-sm min-w-[1250px]">
             <thead className="text-black/45 dark:text-white/45 text-xs">
               <tr>
                 <th className="font-normal pb-2 text-left">Moeda</th>
                 <th className="font-normal pb-2 text-right">Preço</th>
                 <th className="font-normal pb-2 text-right">24h</th>
+                <th
+                  className="font-normal pb-2 text-right"
+                  title="Circulante × preço. Diferente do FDV, que conta como valor o que ainda nem circula."
+                >
+                  Market cap
+                </th>
                 <th className="font-normal pb-2 text-right">Liquidez</th>
                 <th
                   className="font-normal pb-2 text-right"

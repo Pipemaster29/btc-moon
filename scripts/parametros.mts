@@ -24,6 +24,7 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { fetchCsv, monthlyKlineUrl, dailyKlineUrl, metricsUrl, recentDays } from "../lib/datavision";
+import { circulante } from "../lib/binance";
 import { parseKlines, parsePositioning } from "../lib/derivatives";
 import { classificar, type Estagio } from "../lib/lifecycle";
 import { lerTecnica } from "../lib/tecnica";
@@ -39,6 +40,16 @@ const CACHE = ".cache/parametros.json";
 
 interface Dia {
   dia: string;
+  /**
+   * Supply circulante ATUAL, repetido em toda a série.
+   *
+   * É aproximação, e a aproximação tem nome: o circulante histórico não existe
+   * em arquivo, só os trinta dias que a REST devolve. Usar o de hoje para trás
+   * superestima o market cap dos dias anteriores a um unlock — mas unlock é
+   * raro (seis eventos em trinta dias entre quarenta e cinco moedas), e o erro
+   * é de nível, não de ordenação entre moedas, que é o que o teste compara.
+   */
+  circ: number;
   close: number;
   high: number;
   low: number;
@@ -69,6 +80,10 @@ interface Linha {
   rompeu: boolean;
   /** Distância até a resistência mais próxima acima. */
   ateResistencia: number;
+  /** Preço × circulante: o tamanho real da moeda, não o FDV. */
+  mcap: number;
+  /** Open interest em dólar ÷ market cap. */
+  oiSobreMcap: number;
   /** Preço ÷ média de 20 − 1. */
   vsMedia20: number;
   /** Cruzou acima da média de 20 hoje, depois de 10+ dias abaixo. */
@@ -96,6 +111,7 @@ function mesesRecentes(): string[] {
 }
 
 async function coletar(symbol: string): Promise<Dia[]> {
+  const circ = (await circulante(symbol).catch(() => null))?.atual ?? 0;
   const dias = recentDays(DIAS_METRICA);
 
   const [mensais, diarios, metricas] = await Promise.all([
@@ -127,6 +143,7 @@ async function coletar(symbol: string): Promise<Dia[]> {
       const m = porDia.get(dia);
       return {
         dia,
+        circ,
         close: b.close,
         high: b.high,
         low: b.low,
@@ -218,6 +235,11 @@ for (const [symbol, dias] of Object.entries(bruto)) {
       varejo: hoje.varejo,
       taker: hoje.taker,
       doTopo7: max7 > 0 ? preco / max7 - 1 : NaN,
+      mcap: hoje.circ > 0 ? preco * hoje.circ : NaN,
+      oiSobreMcap:
+        hoje.circ > 0 && Number.isFinite(hoje.oi) && preco > 0
+          ? (hoje.oi * preco) / (preco * hoje.circ)
+          : NaN,
       emBaixa: tec?.emBaixa ?? false,
       rompeu: tec?.rompeu ?? false,
       ateResistencia: tec?.ateResistencia ?? NaN,
@@ -307,6 +329,21 @@ const candidatos: Candidato[] = [
     nome: "rompeu e é manipulável",
     descricao: "rompeu a baixa numa moeda de float pequeno — o cruzamento sugerido",
     testa: (l) => l.rompeu && l.dOi3 >= 0.1,
+  },
+  {
+    nome: "market cap acima de 100 mi",
+    descricao: "moeda grande — mais lugar para cair, se a tese estiver certa",
+    testa: (l) => l.mcap >= 100e6,
+  },
+  {
+    nome: "market cap abaixo de 30 mi",
+    descricao: "moeda pequena — pouco espaço para o short capturar",
+    testa: (l) => Number.isFinite(l.mcap) && l.mcap <= 30e6,
+  },
+  {
+    nome: "OI acima de 20% do market cap",
+    descricao: "aposta no perpétuo grande perto do tamanho da moeda",
+    testa: (l) => l.oiSobreMcap >= 0.2,
   },
   {
     nome: "cruzou a média de 20",
@@ -415,6 +452,7 @@ const promissores = candidatos.filter((c) =>
     "baleias reduzindo no topo", "OI inflando", "OI desinflando", "varejo comprado",
     "rompeu tendência de baixa", "esticado da média", "colado na resistência",
     "cruzou a média de 20", "rompeu máxima de 20 dias", "rompeu máxima vindo de baixa",
+    "market cap acima de 100 mi", "market cap abaixo de 30 mi", "OI acima de 20% do market cap",
   ].includes(c.nome),
 );
 

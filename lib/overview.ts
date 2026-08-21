@@ -231,6 +231,7 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         accountRatio: row.accountRatio,
         whaleRatio: row.whaleRatio,
         oiChange72h: row.oiChange72h,
+        openInterestUsd: row.openInterestUsd,
       });
       return { ...row, vida, leitura };
     }),

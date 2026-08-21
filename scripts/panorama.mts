@@ -51,6 +51,8 @@ interface PontoHistorico {
   floatCex: number | null;
   /** Circulante ÷ supply total. */
   floatTk: number | null;
+  /** Circulante × preço — o tamanho real da moeda. */
+  mcap: number | null;
   /** Maior unlock dos últimos 21 dias, em fração. */
   unlock: number | null;
 }
@@ -94,6 +96,7 @@ const pontos: PontoHistorico[] = linhas.map((r) => ({
     ? null
     : Number(r.vida.floatCex.toFixed(5)),
   floatTk: r.vida?.floatToken == null ? null : Number(r.vida.floatToken.toFixed(4)),
+  mcap: r.vida?.marketCap == null ? null : Math.round(r.vida.marketCap),
   unlock: (() => {
     const recentes = (r.vida?.unlocks ?? []).filter(
       (u) => agora - u.quando <= 21 * 86400_000,
