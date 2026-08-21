@@ -847,6 +847,14 @@ export const WATCHLIST: WatchedToken[] = [
     firstBlock: 0,
     wallets: [],
   },
+  {
+    // liquidez 264k · giro 1.00x/dia · preço bate em 0,1%
+    symbol: "TAUSDT",
+    chain: "bsc",
+    contract: "0x539AE81A166E5E80aEd211731563e549c411b140",
+    firstBlock: 0,
+    wallets: [],
+  },
 ];
 
 /**

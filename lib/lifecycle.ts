@@ -652,6 +652,24 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   // Os dois cortes vêm dos limiares testados. A faixa entre 30 e 100 milhões não
   // foi medida, e por isso não decide nada — nela a leitura cai para o que os
   // outros sinais disserem.
+  //
+  // O tamanho NÃO é simétrico, e a mediana escondia isso. Medindo as caudas em
+  // sete dias, que é o que importa numa moeda fácil de empurrar:
+  //
+  //   até 30 mi        21,2% das vezes sobe 20% · 8,5% cai 20% · assimetria 2,51
+  //                    e a cauda de −35% é de só 2,2%
+  //   100 a 300 mi     26,5% sobe 20% · 21,4% CAI 20% · assimetria 1,24
+  //                    e a cauda de −35% é de 9,1%, quatro vezes maior
+  //
+  // Dentro de "exausta", que é a fase de compra, a separação é ainda mais
+  // limpa: até 30 milhões dá 21,0% de altas de 20% contra 3,8% de quedas de
+  // 20% — assimetria de 5,54. Moeda pequena que já caiu é fácil de empurrar
+  // para cima e não tem de onde cair muito mais.
+  //
+  // As duas faixas se separam sozinhas, e cada uma serve a um lado: a de 100 a
+  // 300 milhões é onde vender, a de até 30 é onde comprar. É a mesma medida
+  // mudando de sinal conforme a direção — que é exatamente o oposto de tratar
+  // "market cap baixo" como bom ou ruim em geral.
   const GRANDE = 100e6;
   const PEQUENA = 30e6;
   const mcap = vida.marketCap;
@@ -784,6 +802,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
 
   // ------------------------------------------------------------------- long
   if (vida.estagio === "exausta") {
+    // Pequena e exausta é a melhor assimetria de toda a amostra.
     // Unlock recente é a única coisa que segura esta regra. A reversão à média
     // pressupõe que a oferta parou de crescer; com lote novo destravando, ela
     // não parou.
@@ -801,15 +820,23 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     }
     return {
       vies: "long",
-      forca: floatBaixo ? 3 : 2,
+      forca: pequena || floatBaixo ? 3 : 2,
       ateQuando: textoAteQuando(vida),
-      titulo: "A que mais quica é a que acabou de derreter",
+      titulo: pequena
+        ? "Pequena e derretida — a melhor assimetria da amostra"
+        : "A que mais quica é a que acabou de derreter",
       porque:
         `${pct(vida.queda)} do topo de ${vida.diasDesdePico} dias e só ${pct(vida.altaDesdeFundo)} ` +
         `desde o fundo. Eu lia isso como cadáver e o dado diz que é a MELHOR fase adiante: ` +
         `mediana de +2,7% em sete dias e +9,2% em catorze, 8,23 pontos acima do resto ` +
         `(p = 0,000), com 16 de 22 moedas concordando. São ativos que revertem à média com ` +
         `violência, e vender aqui é apostar contra isso pagando financiamento.` +
+        (pequena
+          ? ` E o tamanho joga a favor: com ${dinheiro(mcap!)}, ela está na faixa em que 21,0% ` +
+            `das semanas sobem mais de 20% contra 3,8% que caem mais de 20% — assimetria de 5,5 ` +
+            `para 1, a melhor da amostra. Moeda pequena que já caiu é fácil de empurrar para cima ` +
+            `e não tem de onde cair muito mais.`
+          : "") +
         (floatBaixo
           ? ` Com só ${((vida.floatCex ?? 0) * 100).toFixed(2)}% do supply em corretora, ` +
             `quase não há oferta pronta para atrapalhar.`

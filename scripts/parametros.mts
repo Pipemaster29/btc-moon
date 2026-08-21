@@ -434,6 +434,60 @@ for (const c of candidatos) console.log(`  ${c.nome.padEnd(28)} ${c.descricao}`)
 // p de 0,02 é mais ou menos o que o acaso entrega de graça — a chance de pelo
 // menos um dos nove parecer significativo por sorte é de 37%. O corte honesto
 // divide o limiar pelo número de tentativas.
+// ------------------------------------------- o tamanho é simétrico?
+//
+// A mediana responde "o que costuma acontecer" e esconde o que interessa numa
+// moeda manipulável: a CAUDA. A hipótese testada aqui é que moeda pequena é
+// fácil de empurrar, então pump grande acontece mais nela — e isso não aparece
+// na mediana, aparece na frequência de movimentos extremos.
+//
+// Se a hipótese valer, moedas pequenas devem mostrar MAIS altas de 20% e 50% em
+// sete dias. E o teste honesto mede as duas caudas: se a de baixo crescer junto,
+// o que existe é volatilidade, não vantagem.
+console.log(`\n--- as caudas por tamanho, em 7 dias ---`);
+console.log(`faixa                    obs   mediana   ≥+20%   ≥+50%   ≤−20%   ≤−35%   assimetria`);
+
+const faixas: [string, (l: Linha) => boolean][] = [
+  ["até 30 mi", (l) => Number.isFinite(l.mcap) && l.mcap <= 30e6],
+  ["30 a 100 mi", (l) => l.mcap > 30e6 && l.mcap <= 100e6],
+  ["100 a 300 mi", (l) => l.mcap > 100e6 && l.mcap <= 300e6],
+  ["acima de 300 mi", (l) => l.mcap > 300e6],
+];
+
+for (const [nome, teste] of faixas) {
+  const rs = comMetrica.filter(teste).map((l) => l.r7).filter((r): r is number => r !== null);
+  if (rs.length < 50) continue;
+  const frac = (f: (r: number) => boolean) => (rs.filter(f).length / rs.length) * 100;
+  const sobe20 = frac((r) => r >= 0.2);
+  const cai20 = frac((r) => r <= -0.2);
+  console.log(
+    `${nome.padEnd(20)} ${String(rs.length).padStart(6)} ${pct(mediana(rs)).padStart(9)} ` +
+      `${sobe20.toFixed(1).padStart(6)}% ${frac((r) => r >= 0.5).toFixed(1).padStart(6)}% ` +
+      `${cai20.toFixed(1).padStart(6)}% ${frac((r) => r <= -0.35).toFixed(1).padStart(6)}% ` +
+      `${(sobe20 / (cai20 || 1)).toFixed(2).padStart(11)}`,
+  );
+}
+
+// E o mesmo corte dentro das fases de compra, que é onde a pergunta se aplica.
+console.log(`\n--- caudas dentro das fases de compra ---`);
+console.log(`fase           faixa                obs   mediana   ≥+20%   ≤−20%   assimetria`);
+for (const est of ["exausta", "nunca subiu"] as Estagio[]) {
+  for (const [nome, teste] of faixas) {
+    const rs = comMetrica
+      .filter((l) => l.estagio === est && teste(l))
+      .map((l) => l.r7)
+      .filter((r): r is number => r !== null);
+    if (rs.length < 40) continue;
+    const frac = (f: (r: number) => boolean) => (rs.filter(f).length / rs.length) * 100;
+    const sobe = frac((r) => r >= 0.2);
+    const cai = frac((r) => r <= -0.2);
+    console.log(
+      `${est.padEnd(14)} ${nome.padEnd(18)} ${String(rs.length).padStart(5)} ${pct(mediana(rs)).padStart(9)} ` +
+        `${sobe.toFixed(1).padStart(6)}% ${cai.toFixed(1).padStart(6)}% ${(sobe / (cai || 1)).toFixed(2).padStart(11)}`,
+    );
+  }
+}
+
 console.log(`\n--- corrigindo para ${candidatos.length} candidatos testados ---`);
 console.log(`limiar de 5% vira ${(0.05 / candidatos.length).toFixed(4)} (Bonferroni)`);
 console.log(`chance de ao menos um dos ${candidatos.length} parecer significativo por acaso: ${((1 - Math.pow(0.95, candidatos.length)) * 100).toFixed(0)}%`);
