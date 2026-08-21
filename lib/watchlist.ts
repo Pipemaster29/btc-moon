@@ -818,6 +818,27 @@ export const WATCHLIST: WatchedToken[] = [
     firstBlock: 0,
     wallets: [],
   },
+  {
+    // Ava AI. Identificada pelos três testes, mas vive na SOLANA: o mint
+    // DKu9kykSfbN5LBfFXtNNDPaX35o4Fv6vJ9FKk7pZpump negocia a US$ 0,0141 contra
+    // US$ 0,01416 do perpétuo — 0,4% de erro — com pool de US$ 1,63 milhão
+    // girando 2,51x por dia. Fica registrado aqui para o dia em que existir
+    // adaptador de Solana; hoje a leitura on-chain é toda EVM.
+    //
+    // Cuidado com os vizinhos, que são três e todos reais: AVAAI é esta;
+    // EVAA é outra moeda, com US$ 2,4 milhões de volume contra US$ 108 milhões
+    // desta; e AVAA não existe. Errar entre elas mede a moeda errada.
+    symbol: "AVAAIUSDT",
+    chain: "solana",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note:
+      "A Ava AI vive na Solana, e a leitura on-chain daqui é de redes EVM. O mint foi " +
+      "identificado (DKu9kyk…pZpump, preço batendo em 0,4% e pool girando 2,5x por dia), mas ler " +
+      "saldo lá exige outro adaptador: SPL token guarda saldo em contas separadas em vez de num " +
+      "mapa dentro do contrato. O lado dos derivativos vale por inteiro.",
+  },
 ];
 
 /**
