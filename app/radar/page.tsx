@@ -223,12 +223,14 @@ export default async function Radar() {
             {snapshot.idadeMinutos >= 1 &&
               ` · ${Math.round(snapshot.idadeMinutos)} min atrás`}
             {snapshot.fonte === "cálculo" && " · calculado agora"}
-            {snapshot.velho && (
-              <span className="text-[#F0B90B]">
+            {snapshot.parado ? (
+              <span className="text-[#F6465D]">
                 {" "}
-                · o retrato parou de ser atualizado, confira o workflow
+                · parado há horas, confira o workflow
               </span>
-            )}
+            ) : snapshot.atrasado ? (
+              <span className="text-[#F0B90B]"> · atrasado</span>
+            ) : null}
           </p>
         </header>
 

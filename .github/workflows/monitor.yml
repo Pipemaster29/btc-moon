@@ -81,6 +81,21 @@ jobs:
       #
       # Uma falha de ciclo não derruba o laço — a rede pode oscilar, e perder um
       # ciclo é muito melhor do que perder a hora inteira.
+      # Um retrato logo de cara: se a execução anterior falhou ou o agendador
+      # pulou uma hora, isto reduz a idade do dado antes mesmo de o laço rodar.
+      - name: Retrato de abertura
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --quiet origin main
+          git checkout --quiet -B main origin/main
+          npm run panorama || exit 0
+          git add data/
+          git diff --cached --quiet && exit 0
+          git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push --quiet origin HEAD:main || echo "abertura perdeu a corrida, o fechamento tenta de novo"
+
       - name: Vigiar por 35 minutos, um ciclo a cada 3
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -100,31 +115,48 @@ jobs:
       # ------------------------------------------------------------------
       # O retrato do panorama.
       #
-      # Roda uma vez por execução, no fim, e não a cada ciclo: o estágio de vida
-      # de uma moeda se mede em dias, e recalcular de três em três minutos
-      # gastaria vinte segundos de rede para produzir o mesmo resultado.
+      # Tirado DUAS vezes: uma ao começar e outra ao terminar o laço. O motivo é
+      # medido — o cron pede duas execuções por hora e o GitHub entrega uma, com
+      # atraso de zero a vinte e oito minutos. Com um retrato por execução, o
+      # intervalo entre atualizações passava de hora e meia; com dois, cai pela
+      # metade sem depender do agendador melhorar.
       #
-      # O `git pull --rebase` antes do push não é zelo excessivo: as duas
-      # execuções da hora se sobrepõem por desenho, e sem ele a segunda a
-      # terminar perderia o push por divergência.
+      # A gravação SINCRONIZA ANTES DE GERAR, e essa ordem é o conserto de um bug
+      # que perdia retratos em silêncio. A versão anterior gerava, commitava e só
+      # então fazia `pull --rebase` — que conflitava em `data/panorama.json`,
+      # porque o `merge=union` do `.gitattributes` só vale para o histórico
+      # append-only, não para um retrato que é reescrito inteiro. Como as
+      # execuções se sobrepõem por desenho, o rebase da segunda falhava nas três
+      # tentativas e o retrato ia embora. Partindo do estado remoto, não há o que
+      # rebasear: cada tentativa regenera em cima do que já está lá.
       - name: Tirar o retrato do panorama
-        if: always()
-        run: npm run panorama || echo "panorama falhou, seguindo"
-
-      - name: Gravar o retrato
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/
-          git diff --cached --quiet && { echo "nada mudou"; exit 0; }
-          git commit -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
+
           for tentativa in 1 2 3; do
-            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
-            echo "push $tentativa falhou, tentando de novo"
+            git fetch --quiet origin main
+            git checkout --quiet -B main origin/main
+
+            npm run panorama || { echo "panorama falhou, seguindo"; exit 0; }
+
+            git add data/
+            if git diff --cached --quiet; then
+              echo "nada mudou"
+              exit 0
+            fi
+
+            git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
+            if git push --quiet origin HEAD:main; then
+              echo "retrato gravado na tentativa $tentativa"
+              exit 0
+            fi
+
+            echo "corrida perdida na tentativa $tentativa, refazendo do zero"
             sleep $((tentativa * 5))
           done
-          echo "não consegui gravar o retrato"
+          echo "não consegui gravar o retrato depois de três tentativas"
 
       - name: Guardar memória
         # Grava mesmo se o laço falhar no meio: perder o retrato faz o ciclo

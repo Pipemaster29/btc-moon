@@ -30,8 +30,21 @@ const RAW =
 
 const CAMINHO = "data/panorama.json";
 
-/** Acima disso o retrato deixa de ser "agora" e a tela avisa. */
-export const VELHO_MINUTOS = 45;
+/**
+ * Quando o retrato deixa de ser "agora", e quando ele está de fato parado.
+ *
+ * Os quarenta e cinco minutos originais eram um chute, e a realidade medida é
+ * outra: o cron pede duas execuções por hora, o GitHub entrega uma, com atraso
+ * de zero a vinte e oito minutos, e o laço leva trinta e cinco. Somando, o
+ * intervalo normal entre retratos chega perto de noventa minutos mesmo com tudo
+ * funcionando — e um aviso que acende quando não há problema treina quem olha a
+ * ignorá-lo.
+ *
+ * Com o retrato de abertura, o intervalo típico cai pela metade. Os cortes abaixo
+ * distinguem atraso de parada: o primeiro é informação, o segundo é chamado.
+ */
+export const ATRASADO_MINUTOS = 100;
+export const PARADO_MINUTOS = 240;
 
 export type Fonte = "github" | "disco" | "cálculo";
 
@@ -41,7 +54,10 @@ export interface Snapshot {
   fonte: Fonte;
   /** Minutos desde que o retrato foi tirado. */
   idadeMinutos: number;
-  velho: boolean;
+  /** Passou do intervalo normal entre execuções. */
+  atrasado: boolean;
+  /** Tempo demais: alguma coisa quebrou. */
+  parado: boolean;
 }
 
 interface Arquivo {
@@ -65,7 +81,8 @@ function montar(arquivo: Arquivo, fonte: Fonte): Snapshot {
     geradoEm: arquivo.geradoEm,
     fonte,
     idadeMinutos,
-    velho: idadeMinutos > VELHO_MINUTOS,
+    atrasado: idadeMinutos > ATRASADO_MINUTOS,
+    parado: idadeMinutos > PARADO_MINUTOS,
   };
 }
 
@@ -99,6 +116,7 @@ export async function getSnapshot(): Promise<Snapshot> {
     geradoEm: Date.now(),
     fonte: "cálculo",
     idadeMinutos: 0,
-    velho: false,
+    atrasado: false,
+    parado: false,
   };
 }
