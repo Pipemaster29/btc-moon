@@ -501,6 +501,14 @@ export interface SinaisAgora {
   oiChange72h: number;
   /** Open interest em dólar, para comparar com o tamanho da moeda. */
   openInterestUsd: number;
+  /**
+   * Quantos dos testes de "ainda há com que empurrar" passaram, e quantos deram
+   * para medir. A compra numa moeda pequena e derretida depende de existir quem
+   * a empurre — a assimetria de 5,5 para 1 é do passado recente, e ela seca
+   * junto com o interesse.
+   */
+  motores: number;
+  motoresMedidos: number;
 }
 
 /**
@@ -802,6 +810,24 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
 
   // ------------------------------------------------------------------- long
   if (vida.estagio === "exausta") {
+    // Sem motor não há assimetria. Uma moeda pequena e derretida sobe porque
+    // alguém a empurra; se não há perpétuo com tamanho, nem livro que gire, nem
+    // oferta fora das corretoras, o que resta é uma moeda barata e parada.
+    if (agora.motoresMedidos > 0 && agora.motores === 0) {
+      return {
+        vies: "observar",
+        forca: 1,
+        ateQuando: textoAteQuando(vida),
+        titulo: "Derretida, mas sem nada que a empurre",
+        porque:
+          `${pct(vida.queda)} do topo, e a fase normalmente compraria. Mas nenhum dos ` +
+          `${agora.motoresMedidos} testes de capacidade passou: sem perpétuo com tamanho, sem pool ` +
+          `que gire, sem oferta fora das corretoras. A assimetria de 5,5 para 1 que sustenta essa ` +
+          `compra é do passado recente destas moedas, e ela seca junto com o interesse — moeda ` +
+          `barata e parada continua barata e parada.`,
+      };
+    }
+
     // Pequena e exausta é a melhor assimetria de toda a amostra.
     // Unlock recente é a única coisa que segura esta regra. A reversão à média
     // pressupõe que a oferta parou de crescer; com lote novo destravando, ela

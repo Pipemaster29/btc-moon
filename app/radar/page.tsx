@@ -171,6 +171,24 @@ function Row({ row }: { row: PanoramaRow }) {
         )}
       </td>
       <td className="py-2.5 pr-3 text-center">
+        {row.motor ? (
+          <span
+            title={row.motor.resumo}
+            className={`tabular-nums text-xs ${
+              row.motor.motores === row.motor.medidos && row.motor.medidos === 3
+                ? "text-[#0ECB81]"
+                : row.motor.motores === 0
+                  ? "text-black/30 dark:text-white/30"
+                  : ""
+            }`}
+          >
+            {row.motor.motores}/{row.motor.medidos}
+          </span>
+        ) : (
+          <span className="text-black/20 dark:text-white/20">—</span>
+        )}
+      </td>
+      <td className="py-2.5 pr-3 text-center">
         {row.whaleExiting ? (
           <span title={`largaram ${(row.whaleExitShare * 100).toFixed(1)}% do livro`}>🐋</span>
         ) : (
@@ -289,7 +307,7 @@ export default async function Radar() {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[1250px]">
+          <table className="w-full text-sm min-w-[1330px]">
             <thead className="text-black/45 dark:text-white/45 text-xs">
               <tr>
                 <th className="font-normal pb-2 text-left">Moeda</th>
@@ -319,6 +337,12 @@ export default async function Radar() {
                   Leitura
                 </th>
                 <th className="font-normal pb-2 text-left">Perna atual</th>
+                <th
+                  className="font-normal pb-2 text-center"
+                  title="Ainda há com que empurrar: perpétuo com tamanho, pool que gire e oferta fora das corretoras. Mede capacidade, não intenção."
+                >
+                  Motor
+                </th>
                 <th className="font-normal pb-2 text-center" title="Contas grandes desmontando comprado perto do topo">
                   🐋
                 </th>
@@ -341,7 +365,12 @@ export default async function Radar() {
           vista, o preço não é feito por quem compra a moeda, e sim por quem aposta nela. A
           coluna <span className="font-medium">circulando</span> mostra quanto do supply
           realmente anda — abaixo de 30% o resto é promessa de oferta futura, e cada unlock
-          converte um pedaço dela em oferta real.
+          converte um pedaço dela em oferta real. A coluna
+          <span className="font-medium"> motor </span>
+          conta quantos dos três testes de capacidade passam — perpétuo com tamanho, pool
+          que gire, oferta fora das corretoras. Ela mede se a moeda AINDA PODE ser
+          empurrada; não mede se alguém vai empurrar, e não distingue um dono com 80% de
+          dez mil donos com 80%, o que exigiria a lista de maiores detentores.
           Nada aqui é recomendação de investimento.
         </p>
       </main>

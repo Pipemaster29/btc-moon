@@ -66,6 +66,8 @@ const leituras = vidas.map((v) => {
       whaleRatio: o?.whaleRatio ?? 0,
       oiChange72h: o?.oiChange72h ?? NaN,
       openInterestUsd: o?.openInterestUsd ?? 0,
+      motores: 0,
+      motoresMedidos: 0,
     }),
   };
 });

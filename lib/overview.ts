@@ -17,6 +17,7 @@ import { perpSeries } from "./perp";
 import { depthOn, pairsOfToken } from "./dexscreener";
 import { ATIVAS, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
+import { lerMotor, type Motor } from "./motor";
 import { readLiveFromStats, type MoveKind } from "./positioning";
 
 export interface OverviewRow {
@@ -209,6 +210,8 @@ export async function getOverview(): Promise<OverviewRow[]> {
 export interface PanoramaRow extends OverviewRow {
   vida: Vida | null;
   leitura: Leitura | null;
+  /** Ainda existe com que empurrar a moeda? */
+  motor: Motor | null;
 }
 
 export async function getPanorama(): Promise<PanoramaRow[]> {
@@ -218,10 +221,20 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
   return Promise.all(
     linhas.map(async (row) => {
       const token = porSymbol.get(row.symbol);
-      if (!token) return { ...row, vida: null, leitura: null };
+      if (!token) return { ...row, vida: null, leitura: null, motor: null };
 
       const vida = await lerVida(token, row.price).catch(() => null);
-      if (!vida) return { ...row, vida: null, leitura: null };
+      if (!vida) return { ...row, vida: null, leitura: null, motor: null };
+
+      const motor = await lerMotor(
+        token.chain,
+        token.contract,
+        vida.circulante,
+        vida.contratoRepresenta !== false,
+        row.openInterestUsd,
+        row.liquidityUsd,
+        row.volume24h,
+      ).catch(() => null);
 
       const leitura = lerVies(vida, {
         moveKind: row.moveKind,
@@ -232,8 +245,10 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         whaleRatio: row.whaleRatio,
         oiChange72h: row.oiChange72h,
         openInterestUsd: row.openInterestUsd,
+        motores: motor?.motores ?? 0,
+        motoresMedidos: motor?.medidos ?? 0,
       });
-      return { ...row, vida, leitura };
+      return { ...row, vida, leitura, motor };
     }),
   );
 }
