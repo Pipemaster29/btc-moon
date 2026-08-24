@@ -928,6 +928,113 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
     note: "Só o perpétuo: o contrato na BNB Chain não responde mais e as pools sumiram — ciclo encerrado. Sem contrato conferido a leitura on-chain mediria outra moeda.",
   },
+  // ------------------------------------------------------------------------
+  // Achadas pela peneira, não por indicação.
+  //
+  // `npm run peneira` mede amplitude do ciclo e open interest sobre market cap
+  // em todos os perpétuos da Binance — 522 medidos em 23 segundos, dois números
+  // por moeda. Cento e doze entram no perfil, e a peneira reconhece 26 das que
+  // já estavam aqui, que é a validação dela.
+  //
+  // As quatro primeiras são o achado que a lista por indicação não produz:
+  // moedas no perfil que AINDA NÃO CAÍRAM. Toda lista feita por reconhecimento
+  // chega depois do estrago — as 26 conhecidas têm mediana de −62,7% do topo.
+  //
+  // O contrato está pendente porque o DexScreener estava fora no momento em que
+  // entraram. Isso é diferente de "não tem par EVM": rodar `npm run descobrir`
+  // de novo resolve, e o script agora distingue busca que falhou de busca que
+  // não achou.
+  // ------------------------------------------------------------------------
+  {
+    // amplitude 6.2x · OI 52% do market cap · 25mi de market cap · −39% do topo há 10 dias
+    symbol: "ACEUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Achada pela peneira: amplitude 6.2x e open interest em 52% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+  },
+  {
+    // amplitude 5.9x · OI 22% do market cap · 21mi de market cap · −21% do topo há 16 dias
+    symbol: "TAKEUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Achada pela peneira: amplitude 5.9x e open interest em 22% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+  },
+  {
+    // amplitude 4.7x · OI 16% do market cap · 79mi de market cap · −27% do topo há 3 dias
+    symbol: "BOMEUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Achada pela peneira: amplitude 4.7x e open interest em 16% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+  },
+  {
+    // amplitude 4.8x · OI 11% do market cap · 67mi de market cap · −9% do topo, topo é hoje
+    symbol: "PROMUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Achada pela peneira: amplitude 4.8x e open interest em 11% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+  },
+  {
+    // amplitude 200.4x · OI 48% do market cap · 21mi de market cap · −99% do topo há 155 dias
+    symbol: "SIRENUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Achada pela peneira: amplitude 200.4x e open interest em 48% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+  },
+  {
+    // amplitude 42.6x · OI 41% do market cap · 52mi de market cap · −82% do topo há 15 dias
+    symbol: "TUTUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Achada pela peneira: amplitude 42.6x e open interest em 41% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+  },
+  {
+    // amplitude 30.3x · OI 37% do market cap · 27mi de market cap · −95% do topo há 28 dias
+    symbol: "BANKUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Achada pela peneira: amplitude 30.3x e open interest em 37% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+  },
+  {
+    // amplitude 9.6x · OI 27% do market cap · 22mi de market cap · −76% do topo há 132 dias
+    symbol: "BLESSUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Achada pela peneira: amplitude 9.6x e open interest em 27% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+  },
+  {
+    // amplitude 35.6x · OI 27% do market cap · 23mi de market cap · −96% do topo há 96 dias
+    symbol: "BSBUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Achada pela peneira: amplitude 35.6x e open interest em 27% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+  },
+  {
+    // amplitude 12.1x · OI 26% do market cap · 27mi de market cap · −90% do topo há 78 dias
+    symbol: "HOMEUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Achada pela peneira: amplitude 12.1x e open interest em 26% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+  },
 ];
 
 /**
