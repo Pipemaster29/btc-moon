@@ -855,6 +855,83 @@ export const WATCHLIST: WatchedToken[] = [
     firstBlock: 0,
     wallets: [],
   },
+  {
+    // liquidez 125k · giro 0.10x/dia · preço bate em 1,9%
+    symbol: "SYNUSDT",
+    chain: "ethereum",
+    contract: "0x0f2D719407FdBeFF09D87557AbB7232601FD9F29",
+    firstBlock: 0,
+    wallets: [],
+  },
+  {
+    // liquidez 6.6mi · giro 0.54x/dia · preço bate em 1,4% — a maior pool das
+    // que entraram nesta leva.
+    symbol: "SKYAIUSDT",
+    chain: "bsc",
+    contract: "0x92aa03137385F18539301349dcfC9EbC923fFb10",
+    firstBlock: 0,
+    wallets: [],
+  },
+  // ------------------------------------------------------------------------
+  // Desta leva, seis ficaram só no perpétuo: a busca por ticker e por nome não
+  // achou par EVM nenhum que passasse nos três testes. Provavelmente vivem em
+  // redes fora do alcance da leitura on-chain daqui, como a Solana.
+  //
+  // A LAB é caso à parte e vale registrar: o contrato dela na BNB Chain é
+  // 0x7ec43Cf65F1663F820427C62A5780b8f2E25593A, e foi com ele que a assinatura
+  // do topo foi medida — saldo somado das corretoras caindo 95% na subida e
+  // devolvendo 1% do supply no dia exato da máxima, 02/06. Hoje ele não responde
+  // mais e as pools sumiram, que é o que acontece quando o ciclo termina de
+  // verdade. O histórico de preço continua servindo ao backtest pelo perpétuo.
+  // ------------------------------------------------------------------------
+  {
+    symbol: "TACUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: nenhum par EVM na busca por ticker nem por nome. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "DEXEUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: nenhum par EVM na busca por ticker nem por nome. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "BEATUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: nenhum par EVM na busca por ticker nem por nome. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "GWEIUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: nenhum par EVM na busca por ticker nem por nome. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "SLXUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: nenhum par EVM na busca por ticker nem por nome. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    symbol: "LABUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: o contrato na BNB Chain não responde mais e as pools sumiram — ciclo encerrado. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
 ];
 
 /**
