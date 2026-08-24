@@ -62,14 +62,48 @@ function normalize(raw: RawPair): Pair {
   };
 }
 
+/**
+ * Uma chamada ao DexScreener, com nova tentativa quando a recusa for temporária.
+ *
+ * A insistência não é zelo: sem ela a BTW apareceu no painel com liquidez zero,
+ * volume zero, FDV zero e domínio do perpétuo zero — um retrato de moeda morta
+ * numa moeda com US$ 1,1 bilhão de market cap e mil negócios por dia na pool.
+ * A pool sempre esteve lá; o que faltou foi a resposta, engolida por um 429 em
+ * meio ao retrato de 68 moedas e devolvida como lista vazia.
+ *
+ * Vazio e falha PRECISAM ser coisas diferentes, e é a quarta vez que essa
+ * confusão custa uma leitura errada aqui. Quando as tentativas se esgotam, esta
+ * função lança — quem chama decide se marca a moeda como caída ou se segue sem
+ * pool, mas ninguém mais recebe silêncio no lugar de dado.
+ */
 async function get(path: string): Promise<RawPair[]> {
   return comLimite("dexscreener", 6, async () => {
-    const res = await fetch(`${BASE}/${path}`, {
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) throw new Error(`DexScreener respondeu ${res.status}`);
-    const body = (await res.json()) as { pairs?: RawPair[] | null };
-    return body.pairs ?? [];
+    let ultimoErro: unknown;
+
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+      if (tentativa > 0) {
+        await new Promise((r) => setTimeout(r, 800 * 2 ** (tentativa - 1)));
+      }
+      try {
+        const res = await fetch(`${BASE}/${path}`, {
+          signal: AbortSignal.timeout(20_000),
+        });
+        // 429 e 5xx passam; 404 e outros 4xx são resposta definitiva.
+        if (res.status !== 429 && res.status < 500 && !res.ok) {
+          throw new Error(`DexScreener respondeu ${res.status}`);
+        }
+        if (!res.ok) {
+          ultimoErro = new Error(`DexScreener respondeu ${res.status}`);
+          continue;
+        }
+        const body = (await res.json()) as { pairs?: RawPair[] | null };
+        return body.pairs ?? [];
+      } catch (e) {
+        ultimoErro = e;
+      }
+    }
+
+    throw ultimoErro instanceof Error ? ultimoErro : new Error("DexScreener não respondeu");
   });
 }
 

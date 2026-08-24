@@ -145,6 +145,63 @@ export async function precoBinance(symbol: string): Promise<number | null> {
   });
 }
 
+export interface Vela {
+  /** Segundos, não milissegundos — igual ao que o parser dos arquivos devolve. */
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  takerBuy: number;
+  delta: number;
+}
+
+/**
+ * As velas do símbolo, ao vivo, direto da praça.
+ *
+ * Existe porque os arquivos do Data Vision têm um BURACO que ninguém enxerga: o
+ * mensal só é publicado quando o mês fecha, e o diário só cobre os últimos dias.
+ * No dia 24 de agosto isso significa 20 dias faltando no meio da série de TODA
+ * moeda — e o histórico chega no código sem nenhum aviso de que falta pedaço.
+ *
+ * O estrago é o pior tipo, porque parece dado bom. A BTW fez a máxima dela em
+ * 0,77888 exatamente dentro do buraco; o ciclo de vida enxergava 0,54489 como
+ * topo, media queda de -23% quando a real era -46%, e datava o topo em 22/08
+ * quando ele foi na semana anterior. O dump inteiro que a gente estudou estava
+ * invisível para a própria classificação de estágio.
+ *
+ * E há moeda que só existe aqui: a DOS estreou no perpétuo em 11/08 e não tem
+ * um único arquivo mensal publicado. Pelo Data Vision ela tinha 4 barras e o
+ * ciclo de vida devolvia nulo; aqui ela tem 14, que é a idade dela.
+ *
+ * São 1500 velas por chamada — mais de quatro anos em diário.
+ */
+export async function velas(symbol: string, interval = "1d", limit = 1500): Promise<Vela[]> {
+  const bruto = await pegar<unknown[]>(
+    `/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${Math.min(limit, 1500)}`,
+  );
+
+  return bruto
+    .map((linha) => {
+      const c = linha as (string | number)[];
+      const volume = Number(c[5]);
+      const takerBuy = Number(c[9]);
+      return {
+        time: Math.floor(Number(c[0]) / 1000),
+        open: Number(c[1]),
+        high: Number(c[2]),
+        low: Number(c[3]),
+        close: Number(c[4]),
+        volume,
+        takerBuy,
+        delta: takerBuy - (volume - takerBuy),
+      };
+    })
+    .filter((v) => Number.isFinite(v.time) && v.close > 0)
+    .sort((a, b) => a.time - b.time);
+}
+
 /**
  * A série do símbolo, do mais antigo ao mais recente.
  *

@@ -27,7 +27,7 @@
 import { fetchCsv, monthlyKlineUrl, dailyKlineUrl, recentDays } from "./datavision";
 import { parseKlines } from "./derivatives";
 import { balancesOf, tokenInfo, toUnits, type Chain } from "./onchain";
-import { circulante, type Circulante } from "./binance";
+import { circulante, velas, type Circulante } from "./binance";
 import { lerTecnica, type Tecnica } from "./tecnica";
 import type { WatchedToken } from "./watchlist";
 
@@ -155,14 +155,32 @@ function mesesRecentes(): string[] {
 }
 
 /**
- * O histórico diário, emendando arquivo mensal com diário.
+ * O histórico diário — ao vivo primeiro, arquivo depois.
  *
- * Os dois são necessários: o mensal só sai depois que o mês fecha, e sem os
- * diários a série termina no último dia 31. A emenda por data resolve a
- * sobreposição sem duplicar vela.
+ * A ORDEM É O CONSERTO. Antes daqui saía só a emenda de arquivo mensal com
+ * arquivo diário, e essa emenda tem um buraco estrutural: o mensal só é
+ * publicado quando o mês FECHA e o diário cobre poucos dias, então todo dia 24
+ * faltam vinte dias no meio da série de todas as moedas — sem nada na estrutura
+ * de dados dizendo que falta.
+ *
+ * A BTW mostrou o tamanho do prejuízo. A máxima dela, 0,77888, caiu exatamente
+ * dentro do buraco: o estágio lia 0,54489 como topo, calculava queda de -23%
+ * quando a real era -46%, e datava o topo três dias atrás quando ele foi na
+ * semana anterior. Todo o dump que a gente passou dias estudando era invisível
+ * para a classificação que deveria estudá-lo. A amplitude saía 32,9x em vez de
+ * 47,0x, e amplitude é metade da assinatura de moeda manipulada.
+ *
+ * Moeda recém-listada nem existia: a DOS estreou no perpétuo em 11/08, não tem
+ * um único arquivo mensal, e devolvia 4 barras — abaixo do mínimo de 10, então
+ * o ciclo de vida inteiro vinha nulo e ela aparecia no painel sem estágio,
+ * sem motor e sem leitura.
+ *
+ * Os arquivos continuam aqui como reserva, para símbolo que a Binance não sirva
+ * ao vivo, e como emenda para o passado além das 1500 velas.
  */
 async function historico(symbol: string) {
-  const [mensais, diarios] = await Promise.all([
+  const [aoVivo, mensais, diarios] = await Promise.all([
+    velas(symbol, "1d", 1500).catch(() => []),
     Promise.all(mesesRecentes().map((m) => fetchCsv(monthlyKlineUrl(symbol, "1d", m)))),
     Promise.all(recentDays(4).map((d) => fetchCsv(dailyKlineUrl(symbol, "1d", d)))),
   ]);
@@ -172,6 +190,10 @@ async function historico(symbol: string) {
     if (!csv) continue;
     for (const bar of parseKlines(csv)) porDia.set(bar.time, bar);
   }
+  // Ao vivo entra por último e manda: onde os dois existem, o da praça é o que
+  // não tem defasagem de publicação.
+  for (const v of aoVivo) porDia.set(v.time, v);
+
   return [...porDia.values()].sort((a, b) => a.time - b.time);
 }
 

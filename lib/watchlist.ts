@@ -470,20 +470,22 @@ export const WATCHLIST: WatchedToken[] = [
     note: "Só o perpétuo: o contrato da Base é fragmento — guarda menos tokens do que o circulante. Descartados os fragmentos, o melhor candidato restante erra 97% no preço, então nenhum contrato mede a moeda inteira.",
   },
   {
-    // liquidez 200k · giro 0.23x/dia · OI 2.5mi · preço bate em 2.3%
+    // sem contrato principal na rede EVM — só fragmento de ponte
     symbol: "USUSDT",
     chain: "bsc",
-    contract: "0x51f1AFC16E154d1601e61EcA21d8Af4897f1e840",
+    contract: "",
     firstBlock: 0,
     wallets: [],
+    note: "Só o perpétuo: o contrato que existe na BSC guarda 23% do circulante. É ponte, e ler nele inflava todo número de % do supply. Nenhum outro candidato EVM passa nos três testes.",
   },
   {
-    // liquidez 3.9mi · giro 1.14x/dia · OI 2.2mi · preço bate em 1.5%
+    // sem contrato principal na rede EVM — só fragmento de ponte
     symbol: "UBUSDT",
     chain: "bsc",
-    contract: "0x40b8129B786D766267A7a118cF8C07E31CDB6Fde",
+    contract: "",
     firstBlock: 0,
     wallets: [],
+    note: "Só o perpétuo: o contrato que existe na BSC guarda 78% do circulante. É ponte, e ler nele inflava todo número de % do supply. Nenhum outro candidato EVM passa nos três testes.",
   },
   {
     // liquidez 15.8mi · giro 0.52x/dia · OI 2.0mi · preço bate em 2.6%
@@ -534,12 +536,13 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
   },
   {
-    // liquidez 67k · giro 1.46x/dia · OI 803k · preço bate em 1.3%
+    // liquidez 27k · giro 0.25x/dia · preço bate em 0.9%
     symbol: "CAPUSDT",
-    chain: "bsc",
+    chain: "ethereum",
     contract: "0x99991c6AAbba5a096f24f250b73580F5179b9999",
     firstBlock: 0,
     wallets: [],
+    note: "Estava na BSC, num contrato com 270 milhões contra 1,56 bilhão circulando — 17% da moeda. O principal está na Ethereum.",
   },
   {
     // liquidez 1.0mi · giro 0.13x/dia · OI 789k · preço bate em 0.3%
@@ -575,12 +578,13 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
   },
   {
-    // liquidez 1.3mi · giro 7.79x/dia · OI 601k · preço bate em 2.1%
+    // sem contrato principal na rede EVM — só fragmento de ponte
     symbol: "ONUSDT",
     chain: "bsc",
-    contract: "0x0e4F6209eD984b21EDEA43acE6e09559eD051D48",
+    contract: "",
     firstBlock: 0,
     wallets: [],
+    note: "Só o perpétuo: o contrato que existe na BSC guarda 69% do circulante. É ponte, e ler nele inflava todo número de % do supply. Nenhum outro candidato EVM passa nos três testes.",
   },
   {
     // liquidez 14k · giro 0.08x/dia · OI 426k · preço bate em 2.8%
@@ -632,12 +636,13 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
   },
   {
-    // liquidez 926k · giro 2.68x/dia · OI 209k · preço bate em 0.3%
+    // sem par EVM — o contrato antigo era fragmento de ponte
     symbol: "STABLEUSDT",
     chain: "bsc",
-    contract: "0x011EBe7d75E2C9D1E0bD0be0bEf5C36f0A90075F",
+    contract: "",
     firstBlock: 0,
     wallets: [],
+    note: "Só o perpétuo: o contrato que estava aqui era fragmento de ponte e nenhum par EVM passa nos três testes. A moeda vive fora do alcance da leitura on-chain daqui.",
   },
   {
     // liquidez 2.0mi · giro 0.38x/dia · OI 191k · preço bate em 0.7%
@@ -788,35 +793,31 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
   },
   {
-    // liquidez 875k · giro 16.41x/dia · preço bate em 0,3%
+    // liquidez 17k · giro 0.36x/dia · preço bate em 0.8% · 200mi de 1bi circulando
     symbol: "DOSUSDT",
-    chain: "bsc",
-    contract: "0xB0f09ea9ae0515C3551080D4a745C8115aA30e37",
+    chain: "ethereum",
+    contract: "0x951f086A127e280724fD93CcC543f65065afEb5E",
     firstBlock: 0,
     wallets: [],
+    note: "Estava na BSC, num contrato com 32,9 milhões de tokens contra 200 milhões circulando — 3% da moeda. A concentração que aparecia ali era a carteira quente da Binance guardando 23,6% DAQUELE contrato, que é 3,9% da moeda. O contrato principal, com 1 bilhão, vive na Ethereum.",
   },
   {
-    // Chainbase. O ticker de uma letra derrotou a busca por nome — procurar
-    // "C" no DexScreener devolve o mercado inteiro, e nenhum candidato passava.
-    // Achado buscando "chainbase": preço bate em 0,2%, pool de 759k girando
-    // 0,33x por dia.
+    // sem contrato principal na rede EVM — só fragmento de ponte
     symbol: "CUSDT",
     chain: "bsc",
-    contract: "0xc32cc70741c3A8433dCbcB5adE071c299B55FfC8",
+    contract: "",
     firstBlock: 0,
     wallets: [],
+    note: "Só o perpétuo: o contrato que existe na BSC guarda 14% do circulante. É ponte, e ler nele inflava todo número de % do supply. Nenhum outro candidato EVM passa nos três testes.",
   },
   {
-    // liquidez 74k · giro 0.55x/dia · preço bate em 0,6%
-    //
-    // Cuidado com o vizinho: existe também POWRUSDT na Binance, que é a
-    // Powerledger — projeto antigo, US$ 0,039 contra US$ 0,093 daqui. São moedas
-    // diferentes com nome parecido, e trocar uma pela outra mediria a errada.
+    // sem par EVM — o contrato antigo era fragmento de ponte
     symbol: "POWERUSDT",
     chain: "bsc",
-    contract: "0x9dC44ae5BE187ECA9e2A67e33f27A4c91cEA1223",
+    contract: "",
     firstBlock: 0,
     wallets: [],
+    note: "Só o perpétuo: o contrato que estava aqui era fragmento de ponte e nenhum par EVM passa nos três testes. A moeda vive fora do alcance da leitura on-chain daqui.",
   },
   {
     // Ava AI. Identificada pelos três testes, mas vive na SOLANA: o mint
@@ -840,12 +841,13 @@ export const WATCHLIST: WatchedToken[] = [
       "mapa dentro do contrato. O lado dos derivativos vale por inteiro.",
   },
   {
-    // liquidez 617k · giro 13.29x/dia · preço bate em 1,7%
+    // liquidez 136k · giro 0.17x/dia · preço bate em 7.0%
     symbol: "HEMIUSDT",
-    chain: "bsc",
-    contract: "0x5fFD0EAdc186AF9512542d0d5e5eAFC65d5aFc5B",
+    chain: "ethereum",
+    contract: "0xEb964A1A6fAB73b8c72A0D15c7337fA4804F484d",
     firstBlock: 0,
     wallets: [],
+    note: "Estava na BSC, num contrato com 783 milhões contra 977 milhões circulando. O principal está na Ethereum. O erro de preço de 7% é alto para o padrão daqui — pool rasa move preço fácil — mas passa e o supply confere.",
   },
   {
     // liquidez 264k · giro 1.00x/dia · preço bate em 0,1%

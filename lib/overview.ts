@@ -127,12 +127,22 @@ function score(row: Omit<OverviewRow, "score" | "reasons">): { score: number; re
 }
 
 async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
+  // A pool que FALHOU e a pool que não existe têm de terminar em lugares
+  // diferentes. Engolir a falha num array vazio pintou a BTW como moeda morta —
+  // liquidez, volume, FDV e domínio do perpétuo todos em zero — com US$ 1,1
+  // bilhão de market cap e a pool negociando normalmente. Agora, quando a moeda
+  // TEM contrato e a consulta não volta, a linha inteira é descartada e a moeda
+  // aparece em `caidas`: some do painel de um jeito que dá para ver.
   const [stats, pairs] = await Promise.all([
     perpSeries(token.symbol, "1h", 100).catch(() => []),
-    token.contract ? pairsOfToken(token.contract).catch(() => []) : Promise.resolve([]),
+    token.contract
+      ? pairsOfToken(token.contract).catch(() => null)
+      : Promise.resolve([] as Awaited<ReturnType<typeof pairsOfToken>>),
   ]);
 
-  const depth = token.contract ? depthOn(pairs, token.chain) : null;
+  if (token.contract && pairs === null) return null;
+
+  const depth = token.contract ? depthOn(pairs ?? [], token.chain) : null;
   const last = stats[stats.length - 1];
 
   // Sem perpétuo e sem pool não há o que mostrar — a moeda saiu do ar.
