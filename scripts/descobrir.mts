@@ -42,6 +42,8 @@
  */
 
 import { liveStats, gateContract } from "../lib/gate";
+import { circulante } from "../lib/binance";
+import { tokenInfo, toUnits } from "../lib/onchain";
 import { fetchCsv, metricsUrl, dailyKlineUrl, recentDays } from "../lib/datavision";
 import { parseKlines } from "../lib/derivatives";
 import type { Chain } from "../lib/onchain";
@@ -62,6 +64,17 @@ const GIRO_MINIMO = 0.01;
 /** Pool menor que isto não dá escala para nada; a moeda vive noutro lugar. */
 const LIQUIDEZ_MINIMA = 10_000;
 
+/**
+ * O supply do contrato não pode ser menor que o circulante.
+ *
+ * Terceiro teste, e ele estava documentado sem estar implementado — o que
+ * custou três identificações erradas na Base. Não dá para circular mais do que
+ * existe, então contrato menor que o circulante é ponte ou implantação
+ * secundária. A margem de 10% cobre a defasagem do circulante, publicado por
+ * terceiro e sempre um passo atrás da rede.
+ */
+const COERENCIA_MINIMA = 0.9;
+
 interface Candidato {
   chain: string;
   address: string;
@@ -72,14 +85,24 @@ interface Candidato {
   pools: number;
 }
 
-async function candidatos(ticker: string, busca = ticker): Promise<Candidato[]> {
-  const res = await fetch(
-    `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(busca)}`,
-    { signal: AbortSignal.timeout(20_000) },
-  );
-  if (!res.ok) return [];
-
-  const body = (await res.json()) as { pairs?: unknown[] };
+/**
+ * Devolve nulo quando a BUSCA falhou, e lista vazia quando ela funcionou e não
+ * achou nada. A diferença importa: tratar rede fora como "esta moeda não tem par
+ * EVM" registraria uma conclusão errada com cara de conclusão certa — foi o que
+ * aconteceu ao reconferir as moedas da Base com o DexScreener fora do ar.
+ */
+async function candidatos(ticker: string, busca = ticker): Promise<Candidato[] | null> {
+  let body: { pairs?: unknown[] };
+  try {
+    const res = await fetch(
+      `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(busca)}`,
+      { signal: AbortSignal.timeout(20_000) },
+    );
+    if (!res.ok) return null;
+    body = (await res.json()) as { pairs?: unknown[] };
+  } catch {
+    return null;
+  }
   const porToken = new Map<string, Candidato>();
 
   for (const raw of body.pairs ?? []) {
@@ -165,8 +188,14 @@ for (const { ticker, busca } of alvos) {
   const [perp, bin, cands] = await Promise.all([
     precoPerp(ticker).catch(() => null),
     temBinance(ticker).catch(() => false),
-    candidatos(ticker, busca).catch(() => [] as Candidato[]),
+    candidatos(ticker, busca).catch(() => null),
   ]);
+
+
+  if (cands === null) {
+    console.log(`${ticker.padEnd(13)} ${"?".padEnd(9)} ${"—".padStart(11)}   BUSCA FALHOU — não é conclusão, é rede fora`);
+    continue;
+  }
 
   const marca = perp ? (bin ? "Gate+Bnc" : perp.fonte === "Gate" ? "Gate" : "Binance") : "—";
 
@@ -189,13 +218,39 @@ for (const { ticker, busca } of alvos) {
     // depositando o próprio token contra si mesmo.
     .sort((a, b) => b.volume24h - a.volume24h);
 
-  const escolhido = batem[0];
+  // Entre os que passam nos dois primeiros testes, o primeiro que também tiver
+  // supply coerente com o circulante. Sem circulante publicado o teste não roda
+  // e o candidato passa — melhor deixar entrar com ressalva do que barrar por
+  // falta de dado de terceiro.
+  const circ = await circulante(`${ticker}USDT`).catch(() => null);
+  let escolhido: (typeof batem)[0] | undefined;
+  let fragmento: (typeof batem)[0] | undefined;
+
+  for (const c of batem) {
+    if (!circ || circ.atual <= 0) {
+      escolhido = c;
+      break;
+    }
+    try {
+      const info = await tokenInfo(c.chain as Chain, c.address);
+      const total = toUnits(info.totalSupply, info.decimals);
+      if (total / circ.atual >= COERENCIA_MINIMA) {
+        escolhido = c;
+        break;
+      }
+      if (!fragmento) fragmento = c;
+    } catch {
+      // Contrato que não responde não serve de qualquer jeito.
+    }
+  }
 
   if (!escolhido) {
     soPerp.push(ticker);
     const perto = cands[0];
     const giro = perto && perto.liquidityUsd > 0 ? perto.volume24h / perto.liquidityUsd : 0;
-    const nota = !perto
+    const nota = fragmento
+      ? `melhor candidato é fragmento — supply do contrato menor que o circulante`
+      : !perto
       ? `nenhum par EVM${busca === ticker && ticker.length <= 2 ? " — ticker curto demais, tente TICKER=nome-do-projeto" : ""}`
       : Math.abs(perto.price / perp.price - 1) > TOLERANCIA
         ? `melhor candidato erra ${((perto.price / perp.price - 1) * 100).toFixed(0)}% no preço`

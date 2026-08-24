@@ -509,10 +509,6 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
   },
   {
-    aposentada: {
-      desde: "2026-08-20",
-      porque: "morreu — indicada manualmente",
-    },
     // liquidez 16k · giro 1.12x/dia · OI 1.5mi · preço bate em 1.1%
     symbol: "CYSUSDT",
     chain: "bsc",
