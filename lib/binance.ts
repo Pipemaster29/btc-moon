@@ -119,6 +119,33 @@ export async function circulante(symbol: string): Promise<Circulante | null> {
 }
 
 /**
+ * O preço do perpétuo agora — uma chamada, sem série.
+ *
+ * Existe porque a identificação de contrato precisa de uma âncora de preço em
+ * que se possa confiar, e a Gate não serve para isso: ela mantém listado
+ * contrato morto. O PORTAL_USDT dela está `in_delisting`, com tamanho zero e
+ * volume zero, marcando 0,0197 parado enquanto a Binance negocia a 0,0168 —
+ * 24% de diferença que não é homônimo, é preço velho. Ancorar nele reprovava o
+ * contrato certo do PORTAL nas três redes em que ele existe.
+ */
+export async function precoBinance(symbol: string): Promise<number | null> {
+  return comLimite("binance", 8, async () => {
+    try {
+      const res = await fetch(`${BASE}/fapi/v1/ticker/price?symbol=${symbol}`, {
+        signal: AbortSignal.timeout(15_000),
+        next: { revalidate: 120 },
+      });
+      if (!res.ok) return null;
+      const dado = await res.json();
+      const preco = Number(dado?.price ?? 0);
+      return preco > 0 ? preco : null;
+    } catch {
+      return null;
+    }
+  });
+}
+
+/**
  * A série do símbolo, do mais antigo ao mais recente.
  *
  * São quatro chamadas em paralelo porque a Binance separa cada medida em seu

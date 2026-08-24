@@ -42,8 +42,9 @@
  */
 
 import { liveStats, gateContract } from "../lib/gate";
-import { circulante } from "../lib/binance";
-import { tokenInfo, toUnits } from "../lib/onchain";
+import { circulante, precoBinance } from "../lib/binance";
+import { CARTEIRAS_CEX } from "../lib/lifecycle";
+import { tokenInfo, toUnits, balancesOf } from "../lib/onchain";
 import { fetchCsv, metricsUrl, dailyKlineUrl, recentDays } from "../lib/datavision";
 import { parseKlines } from "../lib/derivatives";
 import type { Chain } from "../lib/onchain";
@@ -61,8 +62,39 @@ const TOLERANCIA = 0.1;
 /** Volume diário mínimo como fração da pool. Abaixo disso a liquidez é enfeite. */
 const GIRO_MINIMO = 0.01;
 
-/** Pool menor que isto não dá escala para nada; a moeda vive noutro lugar. */
-const LIQUIDEZ_MINIMA = 10_000;
+/**
+ * Pool menor que isto não serve de ESCALA — mas ainda identifica o contrato.
+ *
+ * Eram a mesma coisa e não são. A pool do UAI na BSC tem US$ 8,4 mil e gira
+ * US$ 20 mil por dia: rasa demais para medir profundidade, viva demais para ser
+ * enfeite, e o contrato dela bate o preço do perpétuo com 0,9% de erro e tem
+ * 1 bilhão de tokens, exatamente o supply anunciado. Reprovar o contrato por
+ * causa do tamanho da pool custava a leitura on-chain inteira — carteiras,
+ * concentração, oferta em corretora — para responder uma pergunta que nem era a
+ * que estava sendo feita.
+ *
+ * Quem decide se a pool serve de livro é `temLivro`, no motor, e ele já testa
+ * isso por conta própria. Aqui o número só entra na nota.
+ */
+const LIQUIDEZ_RASA = 10_000;
+
+/**
+ * Volume diário mínimo em dólares, em termos absolutos.
+ *
+ * Este é o piso que sobrou no lugar do de liquidez, e é o mais difícil de
+ * burlar: liquidez se infla depositando o próprio token contra si mesmo, volume
+ * exige contraparte. Abaixo disto o par não negocia o bastante para o preço
+ * dele significar alguma coisa.
+ *
+ * Ficou BAIXO de propósito. Começou em US$ 5 mil e nesse patamar eliminava a
+ * ponta certa do PORTAL: o par da Ethereum gira US$ 3,9 mil por dia contra US$
+ * 110 mil do par da Base — e é na Ethereum que estão os 113 milhões de tokens
+ * em carteira de corretora, contra zero na Base. Peneirar por volume ANTES de
+ * olhar custódia decidia a rede pelo critério errado. O trabalho pesado de
+ * identificação é do teste de preço e do de supply; este piso só existe para
+ * descartar par que não negocia de verdade.
+ */
+const VOLUME_MINIMO = 1_000;
 
 /**
  * O supply do contrato não pode ser menor que o circulante.
@@ -139,12 +171,33 @@ async function candidatos(ticker: string, busca = ticker): Promise<Candidato[] |
   return [...porToken.values()].sort((a, b) => b.volume24h - a.volume24h);
 }
 
-/** O preço de referência: o perpétuo, que é o que estamos lendo. */
+/**
+ * O preço de referência: o perpétuo, que é o que estamos lendo.
+ *
+ * A ORDEM IMPORTA, e ela custou uma identificação errada. A Gate vinha
+ * primeiro, e ela mantém listado contrato que já morreu: o PORTAL_USDT está
+ * `in_delisting`, com tamanho zero e volume zero, marcando um preço parado 24%
+ * abaixo do que a Binance negocia. Ancorado nesse número, o teste de preço
+ * reprovou o contrato certo do PORTAL nas três redes onde ele existe e a moeda
+ * entrou como "só perpétuo" por engano.
+ *
+ * A Binance vem primeiro porque é a praça grande e o preço dela é o que a
+ * arbitragem persegue. A Gate fica de reserva, e só quando estiver viva — o
+ * open interest dela precisa ser maior que zero, que é o mesmo que dizer que
+ * ainda existe alguém posicionado ali.
+ */
 async function precoPerp(ticker: string): Promise<{ price: number; oiUsd: number; fonte: string } | null> {
-  const gate = await liveStats(`${ticker}USDT`, "1h", 3);
-  if (gate.length > 0) {
-    const u = gate[gate.length - 1];
-    return { price: u.price, oiUsd: u.openInterestUsd, fonte: "Gate" };
+  const [bnc, gate] = await Promise.all([
+    precoBinance(`${ticker}USDT`).catch(() => null),
+    liveStats(`${ticker}USDT`, "1h", 3).catch(() => []),
+  ]);
+  const viva = gate.length > 0 && gate[gate.length - 1].openInterestUsd > 0 ? gate[gate.length - 1] : null;
+
+  if (bnc !== null) {
+    return { price: bnc, oiUsd: viva?.openInterestUsd ?? 0, fonte: viva ? "Bnc+Gate" : "Binance" };
+  }
+  if (viva) {
+    return { price: viva.price, oiUsd: viva.openInterestUsd, fonte: "Gate" };
   }
   // Sem a Gate, o fechamento de ontem da Binance ainda serve para o teste de
   // ordem de grandeza, mesmo sem valer para leitura ao vivo.
@@ -176,6 +229,44 @@ const alvos = pedidos.length > 0 ? pedidos : LISTA.map((t) => ({ ticker: t, busc
 
 const usd = (v: number) =>
   v >= 1e9 ? `${(v / 1e9).toFixed(1)}bi` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}mi` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}k` : v.toFixed(0);
+
+/**
+ * O desempate entre redes: manda quem guarda a custódia das corretoras.
+ *
+ * O terceiro teste reprova ponte que trava e cunha, mas não vê ponte que
+ * espelha: o PORTAL declara 1 bilhão de tokens na Ethereum E 1 bilhão na Base,
+ * e as duas passam. Desempatar por volume escolhia a Base, onde a pool é treze
+ * vezes maior — e onde NENHUMA carteira de corretora tem um único token.
+ *
+ * A custódia é o critério certo porque é a pergunta que a leitura on-chain
+ * existe para responder. Na Ethereum, três carteiras de corretora guardam 113
+ * milhões de PORTAL, 13% do circulante, sendo 100 milhões só na fria da
+ * Binance. Medir "oferta em corretora" na Base devolveria zero para sempre — e
+ * zero é exatamente o que um alerta de entrada em corretora nunca dispara.
+ *
+ * Quando nenhuma rede tem custódia — moeda nova, ou corretora que não segrega —
+ * o volume volta a mandar, que é o melhor palpite que sobra.
+ */
+async function desempatar<T extends { chain: string; address: string }>(passaram: T[]): Promise<T | undefined> {
+  if (passaram.length <= 1) return passaram[0];
+
+  const comCustodia = await Promise.all(
+    passaram.map(async (c) => {
+      try {
+        const info = await tokenInfo(c.chain as Chain, c.address);
+        const saldos = await balancesOf(c.chain as Chain, c.address, [...CARTEIRAS_CEX]);
+        let cex = 0;
+        for (const a of CARTEIRAS_CEX) cex += toUnits(saldos.get(a.toLowerCase()) ?? BigInt(0), info.decimals);
+        return { c, cex };
+      } catch {
+        return { c, cex: 0 };
+      }
+    }),
+  );
+
+  const melhor = comCustodia.reduce((a, b) => (b.cex > a.cex ? b : a));
+  return melhor.cex > 0 ? melhor.c : passaram[0];
+}
 
 console.log(`\nticker        perp       preço perp  erro  rede      liquidez   giro     OI   contrato`);
 console.log("-".repeat(120));
@@ -213,36 +304,35 @@ for (const { ticker, busca } of alvos) {
       giro: c.liquidityUsd > 0 ? c.volume24h / c.liquidityUsd : 0,
     }))
     .filter((c) => c.erro <= TOLERANCIA)
-    .filter((c) => c.liquidityUsd >= LIQUIDEZ_MINIMA && c.giro >= GIRO_MINIMO)
+    .filter((c) => c.volume24h >= VOLUME_MINIMO && c.giro >= GIRO_MINIMO)
     // Volume manda na escolha, não liquidez: é o número que não dá para inflar
     // depositando o próprio token contra si mesmo.
     .sort((a, b) => b.volume24h - a.volume24h);
 
-  // Entre os que passam nos dois primeiros testes, o primeiro que também tiver
-  // supply coerente com o circulante. Sem circulante publicado o teste não roda
-  // e o candidato passa — melhor deixar entrar com ressalva do que barrar por
-  // falta de dado de terceiro.
+  // Entre os que passam nos dois primeiros testes, os que também tiverem supply
+  // coerente com o circulante. Sem circulante publicado o teste não roda e o
+  // candidato passa — melhor deixar entrar com ressalva do que barrar por falta
+  // de dado de terceiro.
   const circ = await circulante(`${ticker}USDT`).catch(() => null);
-  let escolhido: (typeof batem)[0] | undefined;
+  const coerentes: typeof batem = [];
   let fragmento: (typeof batem)[0] | undefined;
 
   for (const c of batem) {
     if (!circ || circ.atual <= 0) {
-      escolhido = c;
-      break;
+      coerentes.push(c);
+      continue;
     }
     try {
       const info = await tokenInfo(c.chain as Chain, c.address);
       const total = toUnits(info.totalSupply, info.decimals);
-      if (total / circ.atual >= COERENCIA_MINIMA) {
-        escolhido = c;
-        break;
-      }
-      if (!fragmento) fragmento = c;
+      if (total / circ.atual >= COERENCIA_MINIMA) coerentes.push(c);
+      else if (!fragmento) fragmento = c;
     } catch {
       // Contrato que não responde não serve de qualquer jeito.
     }
   }
+
+  const escolhido = await desempatar(coerentes);
 
   if (!escolhido) {
     soPerp.push(ticker);
@@ -254,8 +344,8 @@ for (const { ticker, busca } of alvos) {
       ? `nenhum par EVM${busca === ticker && ticker.length <= 2 ? " — ticker curto demais, tente TICKER=nome-do-projeto" : ""}`
       : Math.abs(perto.price / perp.price - 1) > TOLERANCIA
         ? `melhor candidato erra ${((perto.price / perp.price - 1) * 100).toFixed(0)}% no preço`
-        : perto.liquidityUsd < LIQUIDEZ_MINIMA
-          ? `pool de apenas ${usd(perto.liquidityUsd)}`
+        : perto.volume24h < VOLUME_MINIMO
+          ? `par sem negociação — ${usd(perto.volume24h)} de volume em 24h`
           : `pool de ${usd(perto.liquidityUsd)} sem giro (${(giro * 100).toFixed(2)}%/dia) — decorativa`;
     console.log(
       `${ticker.padEnd(13)} ${marca.padEnd(9)} ${perp.price.toPrecision(5).padStart(11)}   ` +
@@ -269,7 +359,8 @@ for (const { ticker, busca } of alvos) {
     `${ticker.padEnd(13)} ${marca.padEnd(9)} ${perp.price.toPrecision(5).padStart(11)} ` +
       `${(escolhido.erro * 100).toFixed(1).padStart(4)}%  ${escolhido.chain.padEnd(9)} ` +
       `${usd(escolhido.liquidityUsd).padStart(8)} ${escolhido.giro.toFixed(2).padStart(6)} ` +
-      `${usd(perp.oiUsd).padStart(6)}  ${escolhido.address}`,
+      `${usd(perp.oiUsd).padStart(6)}  ${escolhido.address}` +
+      (escolhido.liquidityUsd < LIQUIDEZ_RASA ? "  (pool rasa: identifica, não mede profundidade)" : ""),
   );
 }
 

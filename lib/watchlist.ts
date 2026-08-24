@@ -667,12 +667,13 @@ export const WATCHLIST: WatchedToken[] = [
   // alta e saída das baleias não dependem de contrato nenhum.
   // ------------------------------------------------------------------------
   {
+    // liquidez 8k · giro 2.41x/dia · OI 1.7mi · preço bate em 0.5%
     symbol: "UAIUSDT",
     chain: "bsc",
-    contract: "",
+    contract: "0x3E5d4f8aee0D9B3082d5f6DA5D6e225D17ba9ea0",
     firstBlock: 0,
     wallets: [],
-    note: "Só o perpétuo: pool de US$ 9 mil. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+    note: "Estava como só perpétuo por causa de uma pool de US$ 8 mil — mas ela gira 2.4x o próprio tamanho por dia e o contrato tem 1 bilhão de tokens, o supply anunciado, com o preço batendo o perpétuo em 0.5%. Pool rasa identifica o contrato; ela só não serve de medida de profundidade.",
   },
   {
     symbol: "APRUSDT",
@@ -680,7 +681,7 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
-    note: "Só o perpétuo: pool de US$ 3 mil. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+    note: "Só o perpétuo: o par EVM negocia US$ 851 por dia. Sem negociação de verdade o preço dele não confirma identidade nenhuma.",
   },
   {
     symbol: "CCUSDT",
@@ -696,7 +697,7 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
-    note: "Só o perpétuo: pool de US$ 2 mil. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+    note: "Só o perpétuo: o par EVM negocia US$ 872 por dia. Sem negociação de verdade o preço dele não confirma identidade nenhuma.",
   },
   {
     symbol: "MAGMAUSDT",
@@ -1037,6 +1038,15 @@ export const WATCHLIST: WatchedToken[] = [
     firstBlock: 0,
     wallets: [],
     note: "Só o perpétuo: nenhum par em rede EVM. Sem contrato conferido a leitura on-chain mediria outra moeda.",
+  },
+  {
+    // liquidez 7k · giro 0.57x/dia · preço bate em 2.0% · 239mi de 1bi circulando
+    symbol: "PORTALUSDT",
+    chain: "ethereum",
+    contract: "0x1Bbe973BeF3a977Fc51CbED703E8ffDEfE001Fed",
+    firstBlock: 0,
+    wallets: [],
+    note: "Existe com 1 bilhão de tokens declarados na Ethereum E na Base — ponte que espelha, que o teste de supply não pega. A Base tem treze vezes mais pool, mas zero tokens em carteira de corretora; na Ethereum são 113 milhões, 13% do circulante, sendo 100 milhões na fria da Binance. A custódia é que decide a rede.",
   },
 ];
 
