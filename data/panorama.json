@@ -1,6 +1,6 @@
 {
-  "geradoEm": 1787602408787,
-  "levouSegundos": 41.503,
+  "geradoEm": 1787604026060,
+  "levouSegundos": 51.373,
   "moedas": [
     {
       "symbol": "CYSUSDT",
@@ -8,15 +8,15 @@
       "chain": "bsc",
       "contract": "0x0C69199C1562233640e0Db5Ce2c399A88eB507C7",
       "hasWallets": false,
-      "price": 0.6426,
-      "change24h": 0.0902,
-      "liquidityUsd": 23989.520000000004,
-      "volume24h": 7574.49,
-      "turnover": 0.3157416238424111,
-      "fdv": 310954333,
+      "price": 0.6411,
+      "change24h": 0.0877,
+      "liquidityUsd": 23994.950000000004,
+      "volume24h": 7565.1900000000005,
+      "turnover": 0.3152825907117956,
+      "fdv": 310239367,
       "openInterestUsd": 11056967.47351986,
       "openInterestBinance": 11056967.47351986,
-      "perpDominance": 460.9082413287076,
+      "perpDominance": 460.803938892136,
       "accountRatio": 0.8674,
       "whaleRatio": 1.4003,
       "moveKind": "squeeze",
@@ -36,27 +36,27 @@
         "pico": 1.84,
         "picoEm": "2026-08-15",
         "diasDesdePico": 10,
-        "queda": -0.6507608695652174,
-        "altaDesdeFundo": 0.4833795013850415,
+        "queda": -0.6515760869565217,
+        "altaDesdeFundo": 0.47991689750692523,
         "amplitude": 15.686274509803923,
-        "preco": 0.6426,
+        "preco": 0.6411,
         "dias": 256,
-        "floatCex": 0.0067519769845673745,
+        "floatCex": 0.0064496161979137965,
         "contratoRepresenta": true,
         "circulante": 160800000,
-        "marketCap": 103330079.99999999,
+        "marketCap": 103088880,
         "floatToken": 0.33232167277992847,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.7695,
-          "ateResistencia": 0.20140515222482436,
-          "vsMedia20": -0.25288261333613293,
+          "ateResistencia": 0.21391386654046363,
+          "vsMedia20": -0.26029651152614175,
           "toposDescendentes": 0
         },
         "virada": null,
-        "veredito": "Topou há 10 dias e já devolveu -65%. A queda é recente, então ainda não dá para saber se foi só desalavancagem ou se a moeda acabou. O que decide é o saldo nas corretoras: se subiu, houve entrega. O float em corretora é 0.68% do supply."
+        "veredito": "Topou há 10 dias e já devolveu -65%. A queda é recente, então ainda não dá para saber se foi só desalavancagem ou se a moeda acabou. O que decide é o saldo nas corretoras: se subiu, houve entrega. O float em corretora é 0.64% do supply."
       },
       "leitura": {
         "vies": "evitar",
@@ -66,9 +66,9 @@
         "porque": "A alta de +15% é squeeze, e entrar vendido no meio dela é virar o combustível. Isto é sobre QUANDO, não sobre direção: a fase da moeda (caindo do topo) continua valendo, mas o momento de agir é depois que os vendidos acabam. O open interest vale 461x a pool à vista, ou seja, o preço aqui é feito por aposta e não por compra — o estouro pode ir longe."
       },
       "motor": {
-        "privado": 0.9795372622304851,
-        "emCorretora": 0.0203175944803296,
-        "emPool": 0.0001451432891853234,
+        "privado": 0.9804459930602799,
+        "emCorretora": 0.019407750761368157,
+        "emPool": 0.00014625617835199004,
         "pools": 6,
         "temPerpetuo": true,
         "temLivro": false,
@@ -85,14 +85,14 @@
       "contract": "0x526526528F35AC738177003b8773B402B8Df8143",
       "hasWallets": false,
       "price": 0.5331,
-      "change24h": -0.0028000000000000004,
-      "liquidityUsd": 18198.87,
-      "volume24h": 6340.449999999999,
-      "turnover": 0.34839800493107537,
+      "change24h": -0.011399999999999999,
+      "liquidityUsd": 18120.539999999997,
+      "volume24h": 6335.929999999999,
+      "turnover": 0.3496545908676011,
       "fdv": 533143771,
       "openInterestUsd": 9944095.00979952,
       "openInterestBinance": 9944095.00979952,
-      "perpDominance": 546.4127723204529,
+      "perpDominance": 548.7747611163642,
       "accountRatio": 0.4758,
       "whaleRatio": 1.4968,
       "moveKind": null,
@@ -102,7 +102,7 @@
       "oiChange72h": -0.22529844679066913,
       "score": 35,
       "reasons": [
-        "perpétuo vale 546x a pool à vista",
+        "perpétuo vale 549x a pool à vista",
         "varejo vendido contra dinheiro grande comprado — risco de squeeze"
       ],
       "vida": {
@@ -127,8 +127,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.679,
-          "ateResistencia": 0.2889141989369779,
-          "vsMedia20": 0.17754878512193506,
+          "ateResistencia": 0.28549791745550945,
+          "vsMedia20": 0.18049347398533877,
           "toposDescendentes": 4
         },
         "virada": {
@@ -149,7 +149,7 @@
         "privado": null,
         "emCorretora": null,
         "emPool": null,
-        "pools": 12,
+        "pools": 10,
         "temPerpetuo": true,
         "temLivro": false,
         "temOferta": null,
@@ -166,13 +166,13 @@
       "hasWallets": false,
       "price": 0.08947,
       "change24h": -0.1794,
-      "liquidityUsd": 31266.01,
-      "volume24h": 5603.710000000001,
-      "turnover": 0.17922689847537313,
+      "liquidityUsd": 31262.569999999996,
+      "volume24h": 5607.410000000001,
+      "turnover": 0.17936497223356881,
       "fdv": 19998334,
       "openInterestUsd": 3275100.84648,
       "openInterestBinance": 3275100.84648,
-      "perpDominance": 104.74956179186279,
+      "perpDominance": 104.76108798732798,
       "accountRatio": 1.7824,
       "whaleRatio": 1.2916,
       "moveKind": "livro vazio",
@@ -197,7 +197,7 @@
         "amplitude": 17.2622641509434,
         "preco": 0.08947,
         "dias": 315,
-        "floatCex": 0.07764939573972758,
+        "floatCex": 0.07763144141256242,
         "contratoRepresenta": true,
         "circulante": 129100000,
         "marketCap": 11550577,
@@ -207,8 +207,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.09477,
-          "ateResistencia": 0.059593023255813726,
-          "vsMedia20": -0.23191206148825638,
+          "ateResistencia": 0.06196772747646784,
+          "vsMedia20": -0.23356379095632773,
           "toposDescendentes": 0
         },
         "virada": {
@@ -226,9 +226,9 @@
         "porque": "em queda longa: nas 6.236 observações medidas, esta fase não se separou da referência o bastante para sustentar um lado. O estágio diz onde a moeda está, não o que ela vai fazer."
       },
       "motor": {
-        "privado": 0.8643051783832688,
-        "emCorretora": 0.13443890310587917,
-        "emPool": 0.0012559185108520525,
+        "privado": 0.8643359406474903,
+        "emCorretora": 0.1344078177377692,
+        "emPool": 0.001256241614740511,
         "pools": 5,
         "temPerpetuo": true,
         "temLivro": false,
@@ -239,20 +239,101 @@
       }
     },
     {
+      "symbol": "HEMIUSDT",
+      "ticker": "HEMI",
+      "chain": "ethereum",
+      "contract": "0xEb964A1A6fAB73b8c72A0D15c7337fA4804F484d",
+      "hasWallets": false,
+      "note": "Estava na BSC, num contrato com 783 milhões contra 977 milhões circulando. O principal está na Ethereum. O erro de preço de 7% é alto para o padrão daqui — pool rasa move preço fácil — mas passa e o supply confere.",
+      "price": 0.007796,
+      "change24h": -0.1539,
+      "liquidityUsd": 130148.23,
+      "volume24h": 21141.7,
+      "turnover": 0.1624432387593746,
+      "fdv": 77967358,
+      "openInterestUsd": 10768490.429312,
+      "openInterestBinance": 10768490.429312,
+      "perpDominance": 82.740198843365,
+      "accountRatio": 0.6168,
+      "whaleRatio": 2.0891,
+      "moveKind": "misto",
+      "moveChange": -0.16523298881946868,
+      "whaleExiting": false,
+      "whaleExitShare": 0,
+      "oiChange72h": -0.1757667852728767,
+      "score": 25,
+      "reasons": [
+        "perpétuo vale 83x a pool",
+        "varejo vendido contra dinheiro grande comprado — risco de squeeze"
+      ],
+      "vida": {
+        "symbol": "HEMIUSDT",
+        "ticker": "HEMI",
+        "estagio": "ressuscitando",
+        "pico": 0.194766,
+        "picoEm": "2025-09-24",
+        "diasDesdePico": 335,
+        "queda": -0.9599724797962683,
+        "altaDesdeFundo": 0.9009997561570351,
+        "amplitude": 47.492318946598395,
+        "preco": 0.007796,
+        "dias": 361,
+        "floatCex": 0.0408888894,
+        "contratoRepresenta": true,
+        "circulante": 977500000,
+        "marketCap": 7620590,
+        "floatToken": 0.09775,
+        "unlocks": [],
+        "tecnica": {
+          "emBaixa": false,
+          "rompeu": false,
+          "resistencia": 0.007949,
+          "ateResistencia": 0.037051532941943854,
+          "vsMedia20": 0.15968560643311558,
+          "toposDescendentes": 0
+        },
+        "virada": {
+          "preco": 0.007381799999999999,
+          "para": "exausta",
+          "distancia": -0.053129810159056046
+        },
+        "veredito": "-96% do topo de 335 dias atrás, mas +90% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 4.09% do supply."
+      },
+      "leitura": {
+        "vies": "observar",
+        "forca": 1,
+        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.007382, 5% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
+        "titulo": "Fase de devolver, mas pequena demais para valer o short",
+        "porque": "+90% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 8 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
+      },
+      "motor": {
+        "privado": null,
+        "emCorretora": null,
+        "emPool": null,
+        "pools": 3,
+        "temPerpetuo": true,
+        "temLivro": true,
+        "temOferta": null,
+        "motores": 2,
+        "medidos": 2,
+        "resumo": "2 de 2 medidos passam · oferta não medida — contrato não representa a moeda"
+      }
+    },
+    {
       "symbol": "ZAMAUSDT",
       "ticker": "ZAMA",
       "chain": "ethereum",
       "contract": "0xA12CC123ba206d4031D1c7f6223D1C2Ec249f4f3",
       "hasWallets": false,
-      "price": 0.06109,
-      "change24h": 0.0487,
-      "liquidityUsd": 575922.22,
-      "volume24h": 1220035.09,
-      "turnover": 2.118402533592123,
-      "fdv": 687469775,
+      "price": 0.06086,
+      "change24h": 0.0385,
+      "liquidityUsd": 575637.36,
+      "volume24h": 1215096.86,
+      "turnover": 2.110872129633838,
+      "fdv": 684889583,
       "openInterestUsd": 9328353.57950654,
       "openInterestBinance": 9328353.57950654,
-      "perpDominance": 16.19724548829969,
+      "perpDominance": 16.205260859904126,
       "accountRatio": 0.9853,
       "whaleRatio": 1.5899,
       "moveKind": "squeeze",
@@ -271,31 +352,31 @@
         "pico": 0.2262,
         "picoEm": "2026-01-09",
         "diasDesdePico": 228,
-        "queda": -0.7299292661361627,
-        "altaDesdeFundo": 2.6912386706948643,
+        "queda": -0.730946065428824,
+        "altaDesdeFundo": 2.6773413897280967,
         "amplitude": 13.667673716012086,
-        "preco": 0.06109,
+        "preco": 0.06086,
         "dias": 228,
-        "floatCex": 0.0008427969016608259,
+        "floatCex": 0.0008480611582805013,
         "contratoRepresenta": true,
         "circulante": 2200000000,
-        "marketCap": 134398000,
+        "marketCap": 133892000,
         "floatToken": 0.19550150906912783,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.0667,
-          "ateResistencia": 0.09290512862526623,
-          "vsMedia20": 0.2730762010054444,
+          "ateResistencia": 0.098846787479407,
+          "vsMedia20": 0.26662841045437946,
           "toposDescendentes": 1
         },
         "virada": {
           "preco": 0.029789999999999997,
           "para": "exausta",
-          "distancia": -0.5123588148633165
+          "distancia": -0.510515938218863
         },
-        "veredito": "-73% do topo de 228 dias atrás, mas +269% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 0.08% do supply."
+        "veredito": "-73% do topo de 228 dias atrás, mas +268% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 0.08% do supply."
       },
       "leitura": {
         "vies": "evitar",
@@ -305,16 +386,16 @@
         "porque": "A alta de +13% é squeeze, e entrar vendido no meio dela é virar o combustível. Isto é sobre QUANDO, não sobre direção: a fase da moeda (ressuscitando) continua valendo, mas o momento de agir é depois que os vendidos acabam."
       },
       "motor": {
-        "privado": 0.9956890516821391,
-        "emCorretora": 0.00431094831786091,
-        "emPool": 0,
-        "pools": 0,
+        "privado": null,
+        "emCorretora": null,
+        "emPool": null,
+        "pools": 4,
         "temPerpetuo": true,
         "temLivro": true,
-        "temOferta": true,
-        "motores": 3,
-        "medidos": 3,
-        "resumo": "perpétuo, livro e oferta — a moeda ainda tem com que ser movida"
+        "temOferta": null,
+        "motores": 2,
+        "medidos": 2,
+        "resumo": "2 de 2 medidos passam · oferta não medida — contrato não representa a moeda"
       }
     },
     {
@@ -323,15 +404,15 @@
       "chain": "ethereum",
       "contract": "0xC477B6dfd26EC2460b3b92de18837Fd476Ea7549",
       "hasWallets": false,
-      "price": 0.002153,
-      "change24h": -0.0242,
-      "liquidityUsd": 15745.849999999999,
-      "volume24h": 195.32,
-      "turnover": 0.012404538338673365,
-      "fdv": 85461886,
+      "price": 0.002179,
+      "change24h": -0.0125,
+      "liquidityUsd": 15806.759999999998,
+      "volume24h": 241.27,
+      "turnover": 0.015263722609820105,
+      "fdv": 86486746,
       "openInterestUsd": 5244586.891488,
       "openInterestBinance": 5244586.891488,
-      "perpDominance": 333.0774071573145,
+      "perpDominance": 331.7939218086439,
       "accountRatio": 2.0377,
       "whaleRatio": 1.6743,
       "moveKind": null,
@@ -341,7 +422,7 @@
       "oiChange72h": -0.014689498084361818,
       "score": 25,
       "reasons": [
-        "perpétuo vale 333x a pool à vista",
+        "perpétuo vale 332x a pool à vista",
         "pool quase sem giro"
       ],
       "vida": {
@@ -351,38 +432,38 @@
         "pico": 0.012636,
         "picoEm": "2025-11-10",
         "diasDesdePico": 288,
-        "queda": -0.8296138018360241,
-        "altaDesdeFundo": 1.0563514804202483,
+        "queda": -0.8275561886672997,
+        "altaDesdeFundo": 1.081184336198663,
         "amplitude": 12.068767908309455,
-        "preco": 0.002153,
+        "preco": 0.002179,
         "dias": 288,
         "floatCex": 0,
         "contratoRepresenta": true,
         "circulante": 11493687500,
-        "marketCap": 24745909.1875,
+        "marketCap": 25044745.0625,
         "floatToken": 0.289634225555596,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.002172,
-          "ateResistencia": 0.0800596718050719,
-          "vsMedia20": -0.3243288646977789,
+          "ateResistencia": 0.07471548738248401,
+          "vsMedia20": -0.3210830421929588,
           "toposDescendentes": 1
         },
         "virada": {
           "preco": 0.0018846,
           "para": "exausta",
-          "distancia": -0.12466326056665122
+          "distancia": -0.1351078476365305
         },
-        "veredito": "-83% do topo de 288 dias atrás, mas +106% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 0.00% do supply."
+        "veredito": "-83% do topo de 288 dias atrás, mas +108% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 0.00% do supply."
       },
       "leitura": {
         "vies": "observar",
         "forca": 1,
-        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.001885, 12% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
+        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.001885, 14% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
         "titulo": "Fase de devolver, mas pequena demais para valer o short",
-        "porque": "+106% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 25 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
+        "porque": "+108% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 25 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
       },
       "motor": {
         "privado": null,
@@ -445,9 +526,9 @@
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
-          "resistencia": 0.07248,
-          "ateResistencia": 0.0019353055017969911,
-          "vsMedia20": -0.07714289359204984,
+          "resistencia": 0.08326,
+          "ateResistencia": 0.14841379310344838,
+          "vsMedia20": -0.07519612220167116,
           "toposDescendentes": 0
         },
         "virada": {
@@ -539,16 +620,16 @@
         "porque": "Amplitude de só 2.4x: o pump não aconteceu. Com 0.57% do supply em corretora o livro está fino, que é a condição para pouco dinheiro mover muito preço. A fase mede +1,3% em sete dias, perto da referência — não é sinal de que vai acontecer, é de que pode."
       },
       "motor": {
-        "privado": null,
-        "emCorretora": null,
-        "emPool": null,
-        "pools": 3,
+        "privado": 0.971381658278665,
+        "emCorretora": 0.028618341721335,
+        "emPool": 0,
+        "pools": 0,
         "temPerpetuo": true,
         "temLivro": true,
-        "temOferta": null,
-        "motores": 2,
-        "medidos": 2,
-        "resumo": "2 de 2 medidos passam · oferta não medida — contrato não representa a moeda"
+        "temOferta": true,
+        "motores": 3,
+        "medidos": 3,
+        "resumo": "perpétuo, livro e oferta — a moeda ainda tem com que ser movida"
       }
     },
     {
@@ -600,8 +681,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.056,
-          "ateResistencia": 0.12880467647651672,
-          "vsMedia20": -0.14054311576941414,
+          "ateResistencia": 0.14052953156822823,
+          "vsMedia20": -0.14900254779277977,
           "toposDescendentes": 1
         },
         "virada": {
@@ -632,101 +713,21 @@
       }
     },
     {
-      "symbol": "PROMUSDT",
-      "ticker": "PROM",
-      "chain": "bsc",
-      "contract": "0xaF53d56ff99f1322515E54FdDE93FF8b3b7DAFd5",
-      "hasWallets": false,
-      "note": "Achada pela peneira: amplitude 4.8x e open interest em 11% do market cap. Contrato conferido na BSC — preço bate com o perpétuo com 0.1% de erro e a pool gira 3.2x o próprio tamanho por dia.",
-      "price": 3.72,
-      "change24h": 0.2847,
-      "liquidityUsd": 104111.36,
-      "volume24h": 378819.05000000005,
-      "turnover": 3.638594770061596,
-      "fdv": 71731733,
-      "openInterestUsd": 14562678.63643152,
-      "openInterestBinance": 14562678.63643152,
-      "perpDominance": 139.87598122271692,
-      "accountRatio": 0.7164,
-      "whaleRatio": 1.1018,
-      "moveKind": "misto",
-      "moveChange": 0.4388808818770653,
-      "whaleExiting": false,
-      "whaleExitShare": 0,
-      "oiChange72h": 0.4016210029319416,
-      "score": 20,
-      "reasons": [
-        "perpétuo vale 140x a pool à vista"
-      ],
-      "vida": {
-        "symbol": "PROMUSDT",
-        "ticker": "PROM",
-        "estagio": "ressuscitando",
-        "pico": 12.35,
-        "picoEm": "2025-09-16",
-        "diasDesdePico": 343,
-        "queda": -0.6987854251012146,
-        "altaDesdeFundo": 3.4391408114558475,
-        "amplitude": 14.737470167064439,
-        "preco": 3.72,
-        "dias": 587,
-        "floatCex": 0.00037620818705,
-        "contratoRepresenta": true,
-        "circulante": 18250000,
-        "marketCap": 67890000,
-        "floatToken": 0.9125,
-        "unlocks": [],
-        "tecnica": {
-          "emBaixa": false,
-          "rompeu": false,
-          "resistencia": 5.283,
-          "ateResistencia": 0.4224555735056543,
-          "vsMedia20": 0.6118742269383501,
-          "toposDescendentes": 0
-        },
-        "virada": {
-          "preco": 1.5084,
-          "para": "exausta",
-          "distancia": -0.594516129032258
-        },
-        "veredito": "-70% do topo de 343 dias atrás, mas +344% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 0.04% do supply."
-      },
-      "leitura": {
-        "vies": "short",
-        "forca": 2,
-        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 1.508, 59% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
-        "titulo": "Segundo ciclo devolvendo, e a alavancagem ainda subindo",
-        "porque": "+344% desde o fundo de 343 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. O market cap de US$ 68 mi fica na faixa entre 30 e 100 milhões, que não foi medida — o tamanho aqui não decide nada. E o open interest subiu 40% em 72h: nesta fase, isso separou −6,7 pontos em sete dias (p = 0,026), com 9 de 14 moedas concordando."
-      },
-      "motor": {
-        "privado": 0.9985943391750686,
-        "emCorretora": 0.0004122829447123288,
-        "emPool": 0.000993377880219178,
-        "pools": 8,
-        "temPerpetuo": true,
-        "temLivro": true,
-        "temOferta": true,
-        "motores": 3,
-        "medidos": 3,
-        "resumo": "perpétuo, livro e oferta — a moeda ainda tem com que ser movida"
-      }
-    },
-    {
       "symbol": "UAIUSDT",
       "ticker": "UAI",
       "chain": "bsc",
       "contract": "0x3E5d4f8aee0D9B3082d5f6DA5D6e225D17ba9ea0",
       "hasWallets": false,
       "note": "Estava como só perpétuo por causa de uma pool de US$ 8 mil — mas ela gira 2.4x o próprio tamanho por dia e o contrato tem 1 bilhão de tokens, o supply anunciado, com o preço batendo o perpétuo em 0.5%. Pool rasa identifica o contrato; ela só não serve de medida de profundidade.",
-      "price": 0.3561,
-      "change24h": 0.2757,
-      "liquidityUsd": 8539.45,
-      "volume24h": 20566.26,
-      "turnover": 2.408382272863006,
-      "fdv": 356124731,
+      "price": 0.3584,
+      "change24h": 0.2809,
+      "liquidityUsd": 8563.7,
+      "volume24h": 20635.48,
+      "turnover": 2.409645363569485,
+      "fdv": 358449825,
       "openInterestUsd": 10176858.15585486,
       "openInterestBinance": 10176858.15585486,
-      "perpDominance": 1191.7463250976186,
+      "perpDominance": 1188.371633272401,
       "accountRatio": 0.7715,
       "whaleRatio": 1.3651,
       "moveKind": "misto",
@@ -736,7 +737,7 @@
       "oiChange72h": 0.7635292388507484,
       "score": 20,
       "reasons": [
-        "perpétuo vale 1192x a pool à vista"
+        "perpétuo vale 1188x a pool à vista"
       ],
       "vida": {
         "symbol": "UAIUSDT",
@@ -745,44 +746,44 @@
         "pico": 0.637,
         "picoEm": "2026-03-19",
         "diasDesdePico": 159,
-        "queda": -0.44097331240188375,
-        "altaDesdeFundo": 1.0571923743500866,
+        "queda": -0.43736263736263736,
+        "altaDesdeFundo": 1.070479491623339,
         "amplitude": 28.954545454545457,
-        "preco": 0.3561,
+        "preco": 0.3584,
         "dias": 292,
-        "floatCex": 0.0072489786110399995,
+        "floatCex": 0.007046162282866,
         "contratoRepresenta": true,
         "circulante": 239000000,
-        "marketCap": 85107900,
+        "marketCap": 85657600,
         "floatToken": 0.239,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.3648,
-          "ateResistencia": 0.027316248943959343,
-          "vsMedia20": 0.3428630854463288,
+          "ateResistencia": 0.009966777408637828,
+          "vsMedia20": 0.36435748281332625,
           "toposDescendentes": 1
         },
         "virada": {
           "preco": 0.31158,
           "para": "em queda longa",
-          "distancia": -0.1250210614995788
+          "distancia": -0.13063616071428563
         },
-        "veredito": "-44% do topo de 159 dias atrás, mas +106% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 0.72% do supply."
+        "veredito": "-44% do topo de 159 dias atrás, mas +107% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 0.70% do supply."
       },
       "leitura": {
         "vies": "short",
         "forca": 2,
         "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.3116, 13% abaixo daqui: nesse preço a moeda passa a ser \"em queda longa\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
         "titulo": "Segundo ciclo devolvendo, e a alavancagem ainda subindo",
-        "porque": "+106% desde o fundo de 159 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. O market cap de US$ 85 mi fica na faixa entre 30 e 100 milhões, que não foi medida — o tamanho aqui não decide nada. E o open interest subiu 76% em 72h: nesta fase, isso separou −6,7 pontos em sete dias (p = 0,026), com 9 de 14 moedas concordando."
+        "porque": "+107% desde o fundo de 159 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. O market cap de US$ 86 mi fica na faixa entre 30 e 100 milhões, que não foi medida — o tamanho aqui não decide nada. E o open interest subiu 76% em 72h: nesta fase, isso separou −6,7 pontos em sete dias (p = 0,026), com 9 de 14 moedas concordando."
       },
       "motor": {
-        "privado": 0.9696272225591507,
-        "emCorretora": 0.030330454439497907,
-        "emPool": 0.00004232300135146444,
-        "pools": 2,
+        "privado": 0.9705181494440753,
+        "emCorretora": 0.02948185055592468,
+        "emPool": 0,
+        "pools": 0,
         "temPerpetuo": true,
         "temLivro": false,
         "temOferta": true,
@@ -844,9 +845,9 @@
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
-          "resistencia": 0.19,
-          "ateResistencia": 0.11633372502937722,
-          "vsMedia20": -0.7295665437905174,
+          "resistencia": 0.16694,
+          "ateResistencia": 0.00023966446974243993,
+          "vsMedia20": -0.734740422285619,
           "toposDescendentes": 0
         },
         "virada": {
@@ -874,6 +875,85 @@
         "motores": 1,
         "medidos": 2,
         "resumo": "1 de 2 medidos · pool sem giro, oferta não medida — contrato não representa a moeda"
+      }
+    },
+    {
+      "symbol": "BULLAUSDT",
+      "ticker": "BULLA",
+      "chain": "bsc",
+      "contract": "0x595E21b20E78674F8a64C1566A20b2b316Bc3511",
+      "hasWallets": false,
+      "price": 0.01643,
+      "change24h": -0.0161,
+      "liquidityUsd": 55802.450000000004,
+      "volume24h": 27223.94,
+      "turnover": 0.4878628088910074,
+      "fdv": 16433018,
+      "openInterestUsd": 5734233.01136145,
+      "openInterestBinance": 5734233.01136145,
+      "perpDominance": 102.75952061892353,
+      "accountRatio": 2.6284,
+      "whaleRatio": 1.2201,
+      "moveKind": null,
+      "moveChange": 0,
+      "whaleExiting": false,
+      "whaleExitShare": 0,
+      "oiChange72h": -0.09428818172125575,
+      "score": 20,
+      "reasons": [
+        "perpétuo vale 103x a pool à vista"
+      ],
+      "vida": {
+        "symbol": "BULLAUSDT",
+        "ticker": "BULLA",
+        "estagio": "ressuscitando",
+        "pico": 0.48,
+        "picoEm": "2026-02-01",
+        "diasDesdePico": 205,
+        "queda": -0.9657708333333334,
+        "altaDesdeFundo": 3.2965481171548117,
+        "amplitude": 125.52301255230124,
+        "preco": 0.01643,
+        "dias": 417,
+        "floatCex": 0.9081318772616961,
+        "contratoRepresenta": true,
+        "circulante": 1000000000,
+        "marketCap": 16430000,
+        "floatToken": 1,
+        "unlocks": [],
+        "tecnica": {
+          "emBaixa": false,
+          "rompeu": false,
+          "resistencia": 0.01718,
+          "ateResistencia": 0.04336207943641446,
+          "vsMedia20": -0.0055442148111461975,
+          "toposDescendentes": 1
+        },
+        "virada": {
+          "preco": 0.006883200000000001,
+          "para": "exausta",
+          "distancia": -0.5810590383444918
+        },
+        "veredito": "-97% do topo de 205 dias atrás, mas +330% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 90.81% do supply."
+      },
+      "leitura": {
+        "vies": "observar",
+        "forca": 1,
+        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.006883, 58% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
+        "titulo": "Fase de devolver, mas pequena demais para valer o short",
+        "porque": "+330% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 16 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
+      },
+      "motor": {
+        "privado": 0.09051116172048691,
+        "emCorretora": 0.9081318772616961,
+        "emPool": 0.0013569610178169997,
+        "pools": 7,
+        "temPerpetuo": true,
+        "temLivro": true,
+        "temOferta": false,
+        "motores": 2,
+        "medidos": 3,
+        "resumo": "2 de 3 medidos · só 9% do circulante fora de corretora"
       }
     },
     {
@@ -914,7 +994,7 @@
         "amplitude": 47.036656802947036,
         "preco": 0.44213823,
         "dias": 82,
-        "floatCex": 0.0332525710112008,
+        "floatCex": 0.0332525958216042,
         "contratoRepresenta": true,
         "circulante": 2708142280,
         "marketCap": 1197373234.2673645,
@@ -929,8 +1009,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.77888,
-          "ateResistencia": 0.7665683828532548,
-          "vsMedia20": 0.384466592560494,
+          "ateResistencia": 0.7412143431994993,
+          "vsMedia20": 0.4032115890746997,
           "toposDescendentes": 0
         },
         "virada": null,
@@ -944,10 +1024,10 @@
         "porque": "caindo do topo: nas 6.236 observações medidas, esta fase não se separou da referência o bastante para sustentar um lado. O estágio diz onde a moeda está, não o que ela vai fazer."
       },
       "motor": {
-        "privado": 0.877212614504136,
-        "emCorretora": 0.12278738549586397,
-        "emPool": 0,
-        "pools": 0,
+        "privado": 0.8771774558961186,
+        "emCorretora": 0.12278747710997001,
+        "emPool": 0.00003506699391141296,
+        "pools": 6,
         "temPerpetuo": true,
         "temLivro": false,
         "temOferta": true,
@@ -995,22 +1075,22 @@
         "amplitude": 5.111974110032362,
         "preco": 0.06973802999999999,
         "dias": 59,
-        "floatCex": 0,
-        "contratoRepresenta": true,
+        "floatCex": null,
+        "contratoRepresenta": null,
         "circulante": 1560000000,
         "marketCap": 108791326.79999998,
-        "floatToken": 0.156,
+        "floatToken": null,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.07577,
-          "ateResistencia": 0.08927544565842438,
-          "vsMedia20": 0.23544717468718646,
+          "ateResistencia": 0.09273146812806465,
+          "vsMedia20": 0.2317804325620645,
           "toposDescendentes": 1
         },
         "virada": null,
-        "veredito": "A -12% do topo, sem direção definida. O float em corretora é 0.00% do supply."
+        "veredito": "A -12% do topo, sem direção definida."
       },
       "leitura": {
         "vies": "observar",
@@ -1020,16 +1100,16 @@
         "porque": "de lado: nas 6.236 observações medidas, esta fase não se separou da referência o bastante para sustentar um lado. O estágio diz onde a moeda está, não o que ela vai fazer."
       },
       "motor": {
-        "privado": 1,
-        "emCorretora": 0,
-        "emPool": 0,
-        "pools": 0,
+        "privado": null,
+        "emCorretora": null,
+        "emPool": null,
+        "pools": 1,
         "temPerpetuo": true,
         "temLivro": false,
-        "temOferta": true,
-        "motores": 2,
-        "medidos": 3,
-        "resumo": "2 de 3 medidos · pool sem giro"
+        "temOferta": null,
+        "motores": 1,
+        "medidos": 2,
+        "resumo": "1 de 2 medidos · pool sem giro, oferta não medida — contrato não representa a moeda"
       }
     },
     {
@@ -1081,8 +1161,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.001154,
-          "ateResistencia": 0.03220035778175312,
-          "vsMedia20": 0.30215764493492125,
+          "ateResistencia": 0.024320965737617772,
+          "vsMedia20": 0.31151739512575616,
           "toposDescendentes": 0
         },
         "virada": {
@@ -1161,8 +1241,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.2677,
-          "ateResistencia": 0.023865983324409035,
-          "vsMedia20": -0.09605105759191235,
+          "ateResistencia": 0.019149503178893523,
+          "vsMedia20": -0.09205762134789697,
           "toposDescendentes": 1
         },
         "virada": {
@@ -1190,86 +1270,6 @@
         "motores": 1,
         "medidos": 2,
         "resumo": "1 de 2 medidos · pool sem giro, oferta não medida — contrato não representa a moeda"
-      }
-    },
-    {
-      "symbol": "HEMIUSDT",
-      "ticker": "HEMI",
-      "chain": "ethereum",
-      "contract": "0xEb964A1A6fAB73b8c72A0D15c7337fA4804F484d",
-      "hasWallets": false,
-      "note": "Estava na BSC, num contrato com 783 milhões contra 977 milhões circulando. O principal está na Ethereum. O erro de preço de 7% é alto para o padrão daqui — pool rasa move preço fácil — mas passa e o supply confere.",
-      "price": 0.007744,
-      "change24h": 0,
-      "liquidityUsd": 0,
-      "volume24h": 0,
-      "turnover": 0,
-      "fdv": 0,
-      "openInterestUsd": 10768490.429312,
-      "openInterestBinance": 10768490.429312,
-      "perpDominance": 0,
-      "accountRatio": 0.6168,
-      "whaleRatio": 2.0891,
-      "moveKind": "misto",
-      "moveChange": -0.16523298881946868,
-      "whaleExiting": false,
-      "whaleExitShare": 0,
-      "oiChange72h": -0.1757667852728767,
-      "score": 15,
-      "reasons": [
-        "varejo vendido contra dinheiro grande comprado — risco de squeeze"
-      ],
-      "vida": {
-        "symbol": "HEMIUSDT",
-        "ticker": "HEMI",
-        "estagio": "ressuscitando",
-        "pico": 0.194766,
-        "picoEm": "2025-09-24",
-        "diasDesdePico": 335,
-        "queda": -0.9602394668473964,
-        "altaDesdeFundo": 0.8883199219702513,
-        "amplitude": 47.492318946598395,
-        "preco": 0.007744,
-        "dias": 361,
-        "floatCex": 0.0408888894,
-        "contratoRepresenta": true,
-        "circulante": 977500000,
-        "marketCap": 7569760,
-        "floatToken": 0.09775,
-        "unlocks": [],
-        "tecnica": {
-          "emBaixa": false,
-          "rompeu": false,
-          "resistencia": 0.007949,
-          "ateResistencia": 0.030063496177271,
-          "vsMedia20": 0.16709391045272715,
-          "toposDescendentes": 0
-        },
-        "virada": {
-          "preco": 0.007381799999999999,
-          "para": "exausta",
-          "distancia": -0.04677169421487615
-        },
-        "veredito": "-96% do topo de 335 dias atrás, mas +89% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 4.09% do supply."
-      },
-      "leitura": {
-        "vies": "observar",
-        "forca": 1,
-        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.007382, 5% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
-        "titulo": "Fase de devolver, mas pequena demais para valer o short",
-        "porque": "+89% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 8 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
-      },
-      "motor": {
-        "privado": 0.5816993411764706,
-        "emCorretora": 0.4183006588235294,
-        "emPool": 0,
-        "pools": 0,
-        "temPerpetuo": true,
-        "temLivro": false,
-        "temOferta": true,
-        "motores": 2,
-        "medidos": 3,
-        "resumo": "2 de 3 medidos · pool sem giro"
       }
     },
     {
@@ -1321,8 +1321,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.1252,
-          "ateResistencia": 0.023461129731055408,
-          "vsMedia20": 0.20913498366634897,
+          "ateResistencia": 0.002321671603554565,
+          "vsMedia20": 0.23306400264559435,
           "toposDescendentes": 3
         },
         "virada": {
@@ -1400,8 +1400,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.1125,
-          "ateResistencia": 0.017179023508137492,
-          "vsMedia20": 0.013377313542239477,
+          "ateResistencia": 0.018099547511312153,
+          "vsMedia20": 0.012507444907682963,
           "toposDescendentes": 2
         },
         "virada": {
@@ -1437,15 +1437,15 @@
       "chain": "ethereum",
       "contract": "0x94314a14Df63779c99C0764a30e0CD22fA78fC0E",
       "hasWallets": false,
-      "price": 0.3352,
-      "change24h": -0.0144,
-      "liquidityUsd": 148384.35,
-      "volume24h": 9388.71,
-      "turnover": 0.06327291254097887,
-      "fdv": 11265319,
+      "price": 0.3385,
+      "change24h": -0.0109,
+      "liquidityUsd": 148631.28,
+      "volume24h": 9471.2,
+      "turnover": 0.06372279105717182,
+      "fdv": 11376238,
       "openInterestUsd": 3401710.85076072,
       "openInterestBinance": 3401710.85076072,
-      "perpDominance": 22.92499748633006,
+      "perpDominance": 22.886910822275905,
       "accountRatio": 0.6126,
       "whaleRatio": 1.6852,
       "moveKind": null,
@@ -1464,36 +1464,36 @@
         "pico": 3.222,
         "picoEm": "2025-08-20",
         "diasDesdePico": 370,
-        "queda": -0.8959652389819988,
-        "altaDesdeFundo": 0.7531380753138075,
+        "queda": -0.8949410304158907,
+        "altaDesdeFundo": 0.770397489539749,
         "amplitude": 16.851464435146443,
-        "preco": 0.3352,
+        "preco": 0.3385,
         "dias": 530,
         "floatCex": 0.2976190476190476,
         "contratoRepresenta": true,
         "circulante": 33600000,
-        "marketCap": 11262720,
+        "marketCap": 11373600,
         "floatToken": 1,
         "unlocks": [],
         "tecnica": {
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.3354,
-          "ateResistencia": 0.006602641056422609,
-          "vsMedia20": -0.3332733039189204,
+          "ateResistencia": 0.008115419296663706,
+          "vsMedia20": -0.33424048986452704,
           "toposDescendentes": 2
         },
         "virada": {
           "preco": 0.34416,
           "para": "ressuscitando",
-          "distancia": 0.02673031026252981
+          "distancia": 0.01672082717872958
         },
-        "veredito": "-90% do topo de 370 dias, com +75% desde o fundo. Nem morreu nem voltou. O float em corretora é 29.76% do supply."
+        "veredito": "-89% do topo de 370 dias, com +77% desde o fundo. Nem morreu nem voltou. O float em corretora é 29.76% do supply."
       },
       "leitura": {
         "vies": "observar",
         "forca": 0,
-        "ateQuando": "A leitura vira em US$ 0.3442, 3% acima daqui: nesse preço a moeda passa a ser \"ressuscitando\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
+        "ateQuando": "A leitura vira em US$ 0.3442, 2% acima daqui: nesse preço a moeda passa a ser \"ressuscitando\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
         "titulo": "Fase sem vantagem medida",
         "porque": "em queda longa: nas 6.236 observações medidas, esta fase não se separou da referência o bastante para sustentar um lado. O estágio diz onde a moeda está, não o que ela vai fazer."
       },
@@ -1568,8 +1568,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.2805,
-          "ateResistencia": 1.1879875195007803,
-          "vsMedia20": -0.8749902488493643,
+          "ateResistencia": 1.174418604651163,
+          "vsMedia20": -0.8742150629899762,
           "toposDescendentes": 1
         },
         "virada": {
@@ -1648,8 +1648,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.016791,
-          "ateResistencia": 0.05424750423808633,
-          "vsMedia20": -0.4619765697839394,
+          "ateResistencia": 0.05763416477702177,
+          "vsMedia20": -0.4636531786049104,
           "toposDescendentes": 0
         },
         "virada": {
@@ -1717,7 +1717,7 @@
         "amplitude": 116.17828418230563,
         "preco": 0.058146930000000006,
         "dias": 469,
-        "floatCex": 0.097565637285388,
+        "floatCex": 0.097085238740115,
         "contratoRepresenta": true,
         "circulante": 1000000000,
         "marketCap": 58146930.00000001,
@@ -1727,8 +1727,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.06008,
-          "ateResistencia": 0.03568350284433719,
-          "vsMedia20": -0.26948747009192797,
+          "ateResistencia": 0.030354999142514272,
+          "vsMedia20": -0.2658482845451684,
           "toposDescendentes": 1
         },
         "virada": {
@@ -1736,7 +1736,7 @@
           "para": "exausta",
           "distancia": -0.29636869908695107
         },
-        "veredito": "-93% do topo de 111 dias atrás, mas +156% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 9.76% do supply."
+        "veredito": "-93% do topo de 111 dias atrás, mas +156% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 9.71% do supply."
       },
       "leitura": {
         "vies": "short",
@@ -1746,10 +1746,10 @@
         "porque": "+156% desde o fundo de 111 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. O market cap de US$ 58 mi fica na faixa entre 30 e 100 milhões, que não foi medida — o tamanho aqui não decide nada."
       },
       "motor": {
-        "privado": 0.902434362714612,
-        "emCorretora": 0.097565637285388,
-        "emPool": 0,
-        "pools": 0,
+        "privado": 0.844357394096356,
+        "emCorretora": 0.097085238740115,
+        "emPool": 0.058557367163529016,
+        "pools": 16,
         "temPerpetuo": true,
         "temLivro": false,
         "temOferta": true,
@@ -1812,8 +1812,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.06188,
-          "ateResistencia": 0.0463307406154887,
-          "vsMedia20": 0.11276271473460397,
+          "ateResistencia": 0.05095108695652173,
+          "vsMedia20": 0.10814167952723297,
           "toposDescendentes": 1
         },
         "virada": {
@@ -1880,15 +1880,15 @@
       "chain": "bsc",
       "contract": "0xFf7d6A96ae471BbCD7713aF9CB1fEeB16cf56B41",
       "hasWallets": false,
-      "price": 0.2171,
-      "change24h": -0.067,
-      "liquidityUsd": 1157595.89,
-      "volume24h": 24379.079999999998,
-      "turnover": 0.021060095505349454,
-      "fdv": 217118026,
+      "price": 0.2165,
+      "change24h": -0.0795,
+      "liquidityUsd": 1154838.8499999996,
+      "volume24h": 24116.9,
+      "turnover": 0.020883346624509566,
+      "fdv": 216573406,
       "openInterestUsd": 7851388.95,
       "openInterestBinance": 7851388.95,
-      "perpDominance": 6.782495530456662,
+      "perpDominance": 6.798687929489039,
       "accountRatio": 0.992,
       "whaleRatio": 1.7064,
       "moveKind": null,
@@ -1907,23 +1907,23 @@
         "pico": 0.27896,
         "picoEm": "2026-08-13",
         "diasDesdePico": 12,
-        "queda": -0.22175222254086613,
-        "altaDesdeFundo": 0.18945868945868938,
+        "queda": -0.22390306854029252,
+        "altaDesdeFundo": 0.18617137847907084,
         "amplitude": 7.240072670646249,
-        "preco": 0.2171,
+        "preco": 0.2165,
         "dias": 522,
         "floatCex": 0.012376979540954998,
         "contratoRepresenta": true,
         "circulante": 301666666,
-        "marketCap": 65491833.188599996,
+        "marketCap": 65310833.189,
         "floatToken": 0.301666666,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.21899,
-          "ateResistencia": 0.01337343822304482,
-          "vsMedia20": 0.13197663759461498,
+          "ateResistencia": 0.0050484189269814905,
+          "vsMedia20": 0.1408181910997437,
           "toposDescendentes": 1
         },
         "virada": null,
@@ -1937,10 +1937,10 @@
         "porque": "de lado: nas 6.236 observações medidas, esta fase não se separou da referência o bastante para sustentar um lado. O estágio diz onde a moeda está, não o que ela vai fazer."
       },
       "motor": {
-        "privado": 0.9589713384475996,
+        "privado": 0.9422276184482478,
         "emCorretora": 0.04102866155240035,
-        "emPool": 0,
-        "pools": 0,
+        "emPool": 0.016743719999351866,
+        "pools": 11,
         "temPerpetuo": true,
         "temLivro": false,
         "temOferta": true,
@@ -1956,14 +1956,14 @@
       "contract": "0xE3225e11Cab122F1a126A28997788E5230838ab9",
       "hasWallets": false,
       "price": 0.007035,
-      "change24h": -0.0371,
-      "liquidityUsd": 754931.7799999999,
-      "volume24h": 23595.629999999997,
-      "turnover": 0.031255314221902274,
+      "change24h": -0.0404,
+      "liquidityUsd": 754942.69,
+      "volume24h": 23493.96,
+      "turnover": 0.031120190063698743,
       "fdv": 70354377,
       "openInterestUsd": 4180614.1852746,
       "openInterestBinance": 4180614.1852746,
-      "perpDominance": 5.537737708266302,
+      "perpDominance": 5.537657680048005,
       "accountRatio": 3.5725,
       "whaleRatio": 1.4794,
       "moveKind": null,
@@ -1997,8 +1997,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.007128,
-          "ateResistencia": 0.007064142413111041,
-          "vsMedia20": -0.01812405928988081,
+          "ateResistencia": 0.007348784624081395,
+          "vsMedia20": -0.018387886606876513,
           "toposDescendentes": 1
         },
         "virada": {
@@ -2016,9 +2016,9 @@
         "porque": "+346% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 18 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
       },
       "motor": {
-        "privado": 0.9185802304496776,
+        "privado": 0.9185806001907213,
         "emCorretora": 0.0398513641790536,
-        "emPool": 0.0415684053712688,
+        "emPool": 0.0415680356302252,
         "pools": 7,
         "temPerpetuo": true,
         "temLivro": false,
@@ -2034,15 +2034,15 @@
       "chain": "bsc",
       "contract": "0x2c3a8Ee94dDD97244a93Bc48298f97d2C412F7Db",
       "hasWallets": true,
-      "price": 0.008813,
-      "change24h": 0.0334,
-      "liquidityUsd": 1555542.45,
-      "volume24h": 894995.5599999999,
-      "turnover": 0.5753591359721492,
-      "fdv": 881393463,
+      "price": 0.00884091,
+      "change24h": 0,
+      "liquidityUsd": 0,
+      "volume24h": 0,
+      "turnover": 0,
+      "fdv": 0,
       "openInterestUsd": 31719692.79627837,
       "openInterestBinance": 31719692.79627837,
-      "perpDominance": 20.391402880891082,
+      "perpDominance": 0,
       "accountRatio": 0.6728,
       "whaleRatio": 0.8727,
       "moveKind": null,
@@ -2059,50 +2059,50 @@
         "pico": 0.0163,
         "picoEm": "2026-08-14",
         "diasDesdePico": 11,
-        "queda": -0.4593251533742331,
-        "altaDesdeFundo": 0.09288194444444442,
+        "queda": -0.4576128834355827,
+        "altaDesdeFundo": 0.0963430059523811,
         "amplitude": 94.27414690572584,
-        "preco": 0.008813,
+        "preco": 0.00884091,
         "dias": 333,
-        "floatCex": 0.031939586271230426,
+        "floatCex": 0.03193873947002033,
         "contratoRepresenta": true,
         "circulante": 22796250000,
-        "marketCap": 200903351.25,
+        "marketCap": 201539594.5875,
         "floatToken": 0.2279625,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.0163,
-          "ateResistencia": 0.8455615942028984,
-          "vsMedia20": 0.2689636940176807,
+          "ateResistencia": 0.853747298987831,
+          "vsMedia20": 0.26371431117294186,
           "toposDescendentes": 0
         },
         "virada": {
           "preco": 0.0145152,
           "para": "ressuscitando",
-          "distancia": 0.6470214455917396
+          "distancia": 0.6418219391442737
         },
-        "veredito": "-46% do topo de 11 dias, com +9% desde o fundo. Nem morreu nem voltou. O float em corretora é 3.19% do supply."
+        "veredito": "-46% do topo de 11 dias, com +10% desde o fundo. Nem morreu nem voltou. O float em corretora é 3.19% do supply."
       },
       "leitura": {
         "vies": "observar",
         "forca": 0,
-        "ateQuando": "A leitura vira em US$ 0.01452, 65% acima daqui: nesse preço a moeda passa a ser \"ressuscitando\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
+        "ateQuando": "A leitura vira em US$ 0.01452, 64% acima daqui: nesse preço a moeda passa a ser \"ressuscitando\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
         "titulo": "Fase sem vantagem medida",
         "porque": "em queda longa: nas 6.236 observações medidas, esta fase não se separou da referência o bastante para sustentar um lado. O estágio diz onde a moeda está, não o que ela vai fazer."
       },
       "motor": {
-        "privado": 0.857508741271129,
-        "emCorretora": 0.140108948933401,
-        "emPool": 0.002382309795470045,
-        "pools": 8,
+        "privado": 0.8575081697190386,
+        "emCorretora": 0.14010523428204344,
+        "emPool": 0.0023865959989178924,
+        "pools": 7,
         "temPerpetuo": true,
-        "temLivro": true,
+        "temLivro": false,
         "temOferta": true,
-        "motores": 3,
+        "motores": 2,
         "medidos": 3,
-        "resumo": "perpétuo, livro e oferta — a moeda ainda tem com que ser movida"
+        "resumo": "2 de 3 medidos · pool sem giro"
       }
     },
     {
@@ -2152,8 +2152,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.07244,
-          "ateResistencia": 0.03146803360387307,
-          "vsMedia20": 0.0409456404935713,
+          "ateResistencia": 0.02912345503622693,
+          "vsMedia20": 0.043193455402331216,
           "toposDescendentes": 0
         },
         "virada": {
@@ -2189,15 +2189,15 @@
       "chain": "base",
       "contract": "0xacfE6019Ed1A7Dc6f7B508C02d1b04ec88cC21bf",
       "hasWallets": false,
-      "price": 16.61,
-      "change24h": -0.006500000000000001,
-      "liquidityUsd": 16295714.39,
-      "volume24h": 7600032.339999997,
-      "turnover": 0.46638227438889207,
-      "fdv": 1343258737,
+      "price": 16.76,
+      "change24h": 0.011000000000000001,
+      "liquidityUsd": 16300144.76,
+      "volume24h": 7546951.01,
+      "turnover": 0.4629990175620992,
+      "fdv": 1355705880,
       "openInterestUsd": 15514939.9808,
       "openInterestBinance": 15514939.9808,
-      "perpDominance": 0.9520871322045795,
+      "perpDominance": 0.9518283554679302,
       "accountRatio": 0.8129,
       "whaleRatio": 0.5969,
       "moveKind": null,
@@ -2214,27 +2214,27 @@
         "pico": 21.536,
         "picoEm": "2026-06-03",
         "diasDesdePico": 83,
-        "queda": -0.22873328380386337,
-        "altaDesdeFundo": 0.6945521322179147,
+        "queda": -0.22176820208023773,
+        "altaDesdeFundo": 0.709855131605795,
         "amplitude": 23.5881708652793,
-        "preco": 16.61,
+        "preco": 16.76,
         "dias": 573,
-        "floatCex": 0.0004080040342106808,
+        "floatCex": 0.00040800349480905895,
         "contratoRepresenta": true,
         "circulante": 47801513.53908452,
-        "marketCap": 793983139.8841938,
-        "floatToken": 0.4167609781193084,
+        "marketCap": 801153366.9150566,
+        "floatToken": 0.41676042714057127,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 17.838,
-          "ateResistencia": 0.0721240533717995,
-          "vsMedia20": 0.266161865986835,
+          "ateResistencia": 0.05920076004987829,
+          "vsMedia20": 0.28062110998315726,
           "toposDescendentes": 0
         },
         "virada": null,
-        "veredito": "A -23% do topo, sem direção definida. O float em corretora é 0.04% do supply."
+        "veredito": "A -22% do topo, sem direção definida. O float em corretora é 0.04% do supply."
       },
       "leitura": {
         "vies": "observar",
@@ -2254,6 +2254,84 @@
         "motores": 2,
         "medidos": 2,
         "resumo": "2 de 2 medidos passam · oferta não medida — contrato não representa a moeda"
+      }
+    },
+    {
+      "symbol": "PROMUSDT",
+      "ticker": "PROM",
+      "chain": "bsc",
+      "contract": "0xaF53d56ff99f1322515E54FdDE93FF8b3b7DAFd5",
+      "hasWallets": false,
+      "note": "Achada pela peneira: amplitude 4.8x e open interest em 11% do market cap. Contrato conferido na BSC — preço bate com o perpétuo com 0.1% de erro e a pool gira 3.2x o próprio tamanho por dia.",
+      "price": 3.7372753299999992,
+      "change24h": 0,
+      "liquidityUsd": 0,
+      "volume24h": 0,
+      "turnover": 0,
+      "fdv": 0,
+      "openInterestUsd": 14562678.63643152,
+      "openInterestBinance": 14562678.63643152,
+      "perpDominance": 0,
+      "accountRatio": 0.7164,
+      "whaleRatio": 1.1018,
+      "moveKind": "misto",
+      "moveChange": 0.4388808818770653,
+      "whaleExiting": false,
+      "whaleExitShare": 0,
+      "oiChange72h": 0.4016210029319416,
+      "score": 0,
+      "reasons": [],
+      "vida": {
+        "symbol": "PROMUSDT",
+        "ticker": "PROM",
+        "estagio": "ressuscitando",
+        "pico": 12.35,
+        "picoEm": "2025-09-16",
+        "diasDesdePico": 343,
+        "queda": -0.6973866129554657,
+        "altaDesdeFundo": 3.45975576372315,
+        "amplitude": 14.737470167064439,
+        "preco": 3.7372753299999992,
+        "dias": 587,
+        "floatCex": 0.00037620818705,
+        "contratoRepresenta": true,
+        "circulante": 18250000,
+        "marketCap": 68205274.77249998,
+        "floatToken": 0.9125,
+        "unlocks": [],
+        "tecnica": {
+          "emBaixa": false,
+          "rompeu": false,
+          "resistencia": 5.283,
+          "ateResistencia": 0.41559485530546625,
+          "vsMedia20": 0.6190538166200297,
+          "toposDescendentes": 0
+        },
+        "virada": {
+          "preco": 1.5084,
+          "para": "exausta",
+          "distancia": -0.5963904537908369
+        },
+        "veredito": "-70% do topo de 343 dias atrás, mas +346% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 0.04% do supply."
+      },
+      "leitura": {
+        "vies": "short",
+        "forca": 2,
+        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 1.508, 60% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
+        "titulo": "Segundo ciclo devolvendo, e a alavancagem ainda subindo",
+        "porque": "+346% desde o fundo de 343 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. O market cap de US$ 68 mi fica na faixa entre 30 e 100 milhões, que não foi medida — o tamanho aqui não decide nada. E o open interest subiu 40% em 72h: nesta fase, isso separou −6,7 pontos em sete dias (p = 0,026), com 9 de 14 moedas concordando."
+      },
+      "motor": {
+        "privado": 0.9985958125599452,
+        "emCorretora": 0.0004122829447123288,
+        "emPool": 0.0009919044953424659,
+        "pools": 8,
+        "temPerpetuo": true,
+        "temLivro": false,
+        "temOferta": true,
+        "motores": 2,
+        "medidos": 3,
+        "resumo": "2 de 3 medidos · pool sem giro"
       }
     },
     {
@@ -2312,8 +2390,8 @@
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.09489,
-          "ateResistencia": 0.35848246241947046,
-          "vsMedia20": -0.2932164973489295,
+          "ateResistencia": 0.3517094017094018,
+          "vsMedia20": -0.2898007496547643,
           "toposDescendentes": 5
         },
         "virada": {
@@ -2350,15 +2428,15 @@
       "contract": "0x58D97B57BB95320F9a05dC918Aef65434969c2B2",
       "hasWallets": false,
       "note": "O contrato da Base guardava uma fração do circulante — era implantação secundária, e toda leitura de % do supply em cima dele nascia inflada. O contrato principal vive na Ethereum.",
-      "price": 2.5716,
-      "change24h": 0,
-      "liquidityUsd": 0,
-      "volume24h": 0,
-      "turnover": 0,
-      "fdv": 0,
+      "price": 2.6,
+      "change24h": -0.049100000000000005,
+      "liquidityUsd": 1087376.3599999996,
+      "volume24h": 297081.05,
+      "turnover": 0.2732090386809587,
+      "fdv": 2602575193,
       "openInterestUsd": 13780479.46596,
       "openInterestBinance": 13780479.46596,
-      "perpDominance": 0,
+      "perpDominance": 12.673146090797857,
       "accountRatio": 1.0978,
       "whaleRatio": 2.7394,
       "moveKind": "desalavancagem",
@@ -2375,50 +2453,50 @@
         "pico": 4.195,
         "picoEm": "2025-01-17",
         "diasDesdePico": 585,
-        "queda": -0.386984505363528,
-        "altaDesdeFundo": 3.8871151653363745,
+        "queda": -0.38021454112038144,
+        "altaDesdeFundo": 3.941087039148613,
         "amplitude": 7.972253895857089,
-        "preco": 2.5716,
+        "preco": 2.6,
         "dias": 636,
-        "floatCex": 0.005662994197590756,
-        "contratoRepresenta": true,
+        "floatCex": null,
+        "contratoRepresenta": null,
         "circulante": 518034312.4008555,
-        "marketCap": 1332177037.77004,
-        "floatToken": 0.5180343125039277,
+        "marketCap": 1346889212.2422242,
+        "floatToken": null,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 2.75,
-          "ateResistencia": 0.05809926894959583,
-          "vsMedia20": 0.23396123396123425,
+          "ateResistencia": 0.05283307810107196,
+          "vsMedia20": 0.23975081578166724,
           "toposDescendentes": 2
         },
         "virada": {
           "preco": 0.94716,
           "para": "em queda longa",
-          "distancia": -0.6316845543630425
+          "distancia": -0.6357076923076923
         },
-        "veredito": "-39% do topo de 585 dias atrás, mas +389% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 0.57% do supply."
+        "veredito": "-38% do topo de 585 dias atrás, mas +394% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor."
       },
       "leitura": {
         "vies": "short",
         "forca": 3,
-        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.9472, 63% abaixo daqui: nesse preço a moeda passa a ser \"em queda longa\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
+        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.9472, 64% abaixo daqui: nesse preço a moeda passa a ser \"em queda longa\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
         "titulo": "Segundo ciclo devolvendo, e com tamanho para cair",
-        "porque": "+389% desde o fundo de 585 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. E o tamanho está a favor: com US$ 1.33 bi, ela cai na faixa que mede −12,6% em sete dias dentro desta fase, contra −0,5% das menores — 12,2 pontos de diferença (p = 0,000), com 7 de 8 moedas concordando."
+        "porque": "+394% desde o fundo de 585 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. E o tamanho está a favor: com US$ 1.35 bi, ela cai na faixa que mede −12,6% em sete dias dentro desta fase, contra −0,5% das menores — 12,2 pontos de diferença (p = 0,000), com 7 de 8 moedas concordando."
       },
       "motor": {
-        "privado": 0.989068302888628,
-        "emCorretora": 0.010931697111371977,
+        "privado": 0.9890853847556282,
+        "emCorretora": 0.010914615244371722,
         "emPool": 0,
         "pools": 0,
         "temPerpetuo": true,
-        "temLivro": false,
+        "temLivro": true,
         "temOferta": true,
-        "motores": 2,
+        "motores": 3,
         "medidos": 3,
-        "resumo": "2 de 3 medidos · pool sem giro"
+        "resumo": "perpétuo, livro e oferta — a moeda ainda tem com que ser movida"
       }
     },
     {
@@ -2468,8 +2546,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.25998,
-          "ateResistencia": 0.019129753038024333,
-          "vsMedia20": -0.21926884879646202,
+          "ateResistencia": 0.008065141527723751,
+          "vsMedia20": -0.21103752084066252,
           "toposDescendentes": 1
         },
         "virada": {
@@ -2551,8 +2629,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.2425,
-          "ateResistencia": 0.12680637516844007,
-          "vsMedia20": 0.31021487864942143,
+          "ateResistencia": 0.12795943997395232,
+          "vsMedia20": 0.30896316162793913,
           "toposDescendentes": 1
         },
         "virada": {
@@ -2619,7 +2697,7 @@
         "amplitude": 200.44375,
         "preco": 0.02803,
         "dias": 521,
-        "floatCex": 0.400021594889356,
+        "floatCex": 0.40001999579935704,
         "contratoRepresenta": true,
         "circulante": 723808432.6061441,
         "marketCap": 20288350.36595022,
@@ -2648,10 +2726,10 @@
         "porque": "-99% do topo de 156 dias e só +17% desde o fundo. Eu lia isso como cadáver e o dado diz que é a MELHOR fase adiante: mediana de +2,7% em sete dias e +9,2% em catorze, 8,23 pontos acima do resto (p = 0,000), com 16 de 22 moedas concordando. São ativos que revertem à média com violência, e vender aqui é apostar contra isso pagando financiamento. E o tamanho joga a favor: com US$ 20 mi, ela está na faixa em que 21,0% das semanas sobem mais de 20% contra 3,8% que caem mais de 20% — assimetria de 5,5 para 1, a melhor da amostra. Moeda pequena que já caiu é fácil de empurrar para cima e não tem de onde cair muito mais."
       },
       "motor": {
-        "privado": 0.44733775282357713,
-        "emCorretora": 0.5526622471764229,
-        "emPool": 0,
-        "pools": 0,
+        "privado": 0.40824563827027827,
+        "emCorretora": 0.5526600379040147,
+        "emPool": 0.039094323825706975,
+        "pools": 12,
         "temPerpetuo": true,
         "temLivro": false,
         "temOferta": true,
@@ -2707,8 +2785,8 @@
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.03766,
-          "ateResistencia": 0.07970183486238525,
-          "vsMedia20": -0.0807142386505898,
+          "ateResistencia": 0.07661520869068039,
+          "vsMedia20": -0.07820014493708427,
           "toposDescendentes": 2
         },
         "virada": {
@@ -2785,8 +2863,8 @@
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 2.506,
-          "ateResistencia": 0.3415417558886509,
-          "vsMedia20": -0.07309085495955925,
+          "ateResistencia": 0.3273305084745761,
+          "vsMedia20": -0.0636314040569359,
           "toposDescendentes": 3
         },
         "virada": {
@@ -2868,8 +2946,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.2206,
-          "ateResistencia": 0.05499760879961735,
-          "vsMedia20": -0.16071285221160814,
+          "ateResistencia": 0.06108706108706108,
+          "vsMedia20": -0.16532840854344,
           "toposDescendentes": 0
         },
         "virada": {
@@ -2946,8 +3024,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.06374,
-          "ateResistencia": 0.02180185957037528,
-          "vsMedia20": 0.09512565504770731,
+          "ateResistencia": 0.02163808302612602,
+          "vsMedia20": 0.09529159790737696,
           "toposDescendentes": 0
         },
         "virada": {
@@ -3024,8 +3102,8 @@
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.1456,
-          "ateResistencia": 0.06823184152604544,
-          "vsMedia20": -0.11392816512270432,
+          "ateResistencia": 0.06045156591405676,
+          "vsMedia20": -0.1077173030056865,
           "toposDescendentes": 4
         },
         "virada": {
@@ -3102,8 +3180,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.011661,
-          "ateResistencia": 0.8297505099639102,
-          "vsMedia20": -0.19920083434904434,
+          "ateResistencia": 0.8598086124401911,
+          "vsMedia20": -0.21163312649704835,
           "toposDescendentes": 1
         },
         "virada": {
@@ -3180,8 +3258,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.0724,
-          "ateResistencia": 0.007094171651133907,
-          "vsMedia20": -0.014544008992337432,
+          "ateResistencia": 0.006954102920723182,
+          "vsMedia20": -0.014413685804952614,
           "toposDescendentes": 1
         },
         "virada": {
@@ -3217,15 +3295,15 @@
       "chain": "bsc",
       "contract": "0xed9Ae3DEF8d6F052971Bb8b6d1975FF267Cf9aaD",
       "hasWallets": false,
-      "price": 0.01278,
-      "change24h": -0.0174,
-      "liquidityUsd": 832249.24,
-      "volume24h": 84101.18999999999,
-      "turnover": 0.10105288891582526,
-      "fdv": 127868864,
+      "price": 0.012865,
+      "change24h": 0,
+      "liquidityUsd": 0,
+      "volume24h": 0,
+      "turnover": 0,
+      "fdv": 0,
       "openInterestUsd": 6803575.20397,
       "openInterestBinance": 6803575.20397,
-      "perpDominance": 8.174925102929503,
+      "perpDominance": 0,
       "accountRatio": 1.8369,
       "whaleRatio": 1.4685,
       "moveKind": null,
@@ -3242,50 +3320,50 @@
         "pico": 0.03791,
         "picoEm": "2025-10-26",
         "diasDesdePico": 303,
-        "queda": -0.6628857821155367,
-        "altaDesdeFundo": 2.122404104568776,
+        "queda": -0.6606436296491691,
+        "altaDesdeFundo": 2.143171268018568,
         "amplitude": 9.262154898607378,
-        "preco": 0.01278,
+        "preco": 0.012865,
         "dias": 308,
         "floatCex": 0.08962787304809561,
         "contratoRepresenta": true,
         "circulante": 1228000000,
-        "marketCap": 15693840,
+        "marketCap": 15798220,
         "floatToken": 0.1228,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.013043,
-          "ateResistencia": 0.016126519164848974,
-          "vsMedia20": -0.10610945911126268,
+          "ateResistencia": 0.013678402113934895,
+          "vsMedia20": -0.10404734963878493,
           "toposDescendentes": 1
         },
         "virada": {
           "preco": 0.0073674000000000005,
           "para": "exausta",
-          "distancia": -0.4235211267605633
+          "distancia": -0.42732996502137577
         },
-        "veredito": "-66% do topo de 303 dias atrás, mas +212% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 8.96% do supply."
+        "veredito": "-66% do topo de 303 dias atrás, mas +214% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 8.96% do supply."
       },
       "leitura": {
         "vies": "observar",
         "forca": 1,
-        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.007367, 42% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
+        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.007367, 43% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
         "titulo": "Fase de devolver, mas pequena demais para valer o short",
-        "porque": "+212% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 16 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
+        "porque": "+214% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 16 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
       },
       "motor": {
-        "privado": 0.24016413438375647,
+        "privado": 0.24016992551161642,
         "emCorretora": 0.7298686730300945,
-        "emPool": 0.029967192586149025,
+        "emPool": 0.029961401458289086,
         "pools": 6,
         "temPerpetuo": true,
-        "temLivro": true,
+        "temLivro": false,
         "temOferta": false,
-        "motores": 2,
+        "motores": 1,
         "medidos": 3,
-        "resumo": "2 de 3 medidos · só 24% do circulante fora de corretora"
+        "resumo": "1 de 3 medidos · pool sem giro, só 24% do circulante fora de corretora"
       }
     },
     {
@@ -3294,15 +3372,15 @@
       "chain": "bsc",
       "contract": "0x208bF3E7dA9639f1Eaefa2DE78c23396B0682025",
       "hasWallets": false,
-      "price": 0.0008158,
-      "change24h": -0.0823,
-      "liquidityUsd": 2282797.55,
-      "volume24h": 854820.7599999999,
-      "turnover": 0.3744619228279792,
-      "fdv": 330730358,
+      "price": 0.0008162,
+      "change24h": -0.0812,
+      "liquidityUsd": 2284915.08,
+      "volume24h": 850379.5199999999,
+      "turnover": 0.37217117058022126,
+      "fdv": 330875666,
       "openInterestUsd": 6437621.081952,
       "openInterestBinance": 6437621.081952,
-      "perpDominance": 2.8200578198237514,
+      "perpDominance": 2.8174443498145236,
       "accountRatio": 2.3636,
       "whaleRatio": 1.3977,
       "moveKind": null,
@@ -3319,29 +3397,29 @@
         "pico": 0.0022264,
         "picoEm": "2026-05-04",
         "diasDesdePico": 113,
-        "queda": -0.6335788717211642,
-        "altaDesdeFundo": 1.5256965944272447,
+        "queda": -0.633399209486166,
+        "altaDesdeFundo": 1.5269349845201239,
         "amplitude": 18.29416598192276,
-        "preco": 0.0008158,
+        "preco": 0.0008162,
         "dias": 396,
         "floatCex": 0.03200294305867639,
         "contratoRepresenta": true,
         "circulante": 108404572594,
-        "marketCap": 88436450.3221852,
+        "marketCap": 88479812.1512228,
         "floatToken": 0.26741417598958805,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.0008342,
-          "ateResistencia": 0.021052631578947434,
-          "vsMedia20": -0.24074160122670862,
+          "ateResistencia": 0.019804400977994963,
+          "vsMedia20": -0.23984759780689502,
           "toposDescendentes": 0
         },
         "virada": {
           "preco": 0.0005814,
           "para": "exausta",
-          "distancia": -0.2873253248345182
+          "distancia": -0.2876745895613819
         },
         "veredito": "-63% do topo de 113 dias atrás, mas +153% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 3.20% do supply."
       },
@@ -3353,9 +3431,9 @@
         "porque": "+153% desde o fundo de 113 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. O market cap de US$ 88 mi fica na faixa entre 30 e 100 milhões, que não foi medida — o tamanho aqui não decide nada."
       },
       "motor": {
-        "privado": 0.8667456506857052,
+        "privado": 0.8667404194543757,
         "emCorretora": 0.1196755667131216,
-        "emPool": 0.013578782601173197,
+        "emPool": 0.013584013832502646,
         "pools": 6,
         "temPerpetuo": true,
         "temLivro": true,
@@ -3371,15 +3449,15 @@
       "chain": "bsc",
       "contract": "0x539AE81A166E5E80aEd211731563e549c411b140",
       "hasWallets": false,
-      "price": 0.055069999999999994,
-      "change24h": 0,
-      "liquidityUsd": 0,
-      "volume24h": 0,
-      "turnover": 0,
-      "fdv": 0,
+      "price": 0.05508,
+      "change24h": 0.0441,
+      "liquidityUsd": 253607.76,
+      "volume24h": 480019.17000000004,
+      "turnover": 1.8927621536501882,
+      "fdv": 51295500,
       "openInterestUsd": 6157586.73698,
       "openInterestBinance": 6157586.73698,
-      "perpDominance": 0,
+      "perpDominance": 24.279961847303092,
       "accountRatio": 2.268,
       "whaleRatio": 1.8668,
       "moveKind": null,
@@ -3396,15 +3474,15 @@
         "pico": 0.38446,
         "picoEm": "2025-09-02",
         "diasDesdePico": 357,
-        "queda": -0.8567601310929616,
-        "altaDesdeFundo": 2.3194695599758886,
+        "queda": -0.8567341205847162,
+        "altaDesdeFundo": 2.32007233273056,
         "amplitude": 23.17420132610006,
-        "preco": 0.055069999999999994,
+        "preco": 0.05508,
         "dias": 400,
         "floatCex": 0.14191793467555677,
         "contratoRepresenta": true,
         "circulante": 371319768,
-        "marketCap": 20448579.623759996,
+        "marketCap": 20452292.82144,
         "floatToken": 0.39871802799529565,
         "unlocks": [
           {
@@ -3427,7 +3505,7 @@
         "virada": {
           "preco": 0.029862000000000003,
           "para": "exausta",
-          "distancia": -0.4577446885781731
+          "distancia": -0.4578431372549019
         },
         "veredito": "-86% do topo de 357 dias atrás, mas +232% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 14.19% do supply."
       },
@@ -3439,16 +3517,16 @@
         "porque": "+232% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 20 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
       },
       "motor": {
-        "privado": 0.6381884237723104,
+        "privado": 0.6381900696933674,
         "emCorretora": 0.3559355853285651,
-        "emPool": 0.005875990899124445,
+        "emPool": 0.00587434497806753,
         "pools": 6,
         "temPerpetuo": true,
-        "temLivro": false,
+        "temLivro": true,
         "temOferta": true,
-        "motores": 2,
+        "motores": 3,
         "medidos": 3,
-        "resumo": "2 de 3 medidos · pool sem giro"
+        "resumo": "perpétuo, livro e oferta — a moeda ainda tem com que ser movida"
       }
     },
     {
@@ -3507,8 +3585,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.009298,
-          "ateResistencia": 0.03783904453622067,
-          "vsMedia20": -0.24346508024303026,
+          "ateResistencia": 0.033455596309881264,
+          "vsMedia20": -0.24037808013306272,
           "toposDescendentes": 1
         },
         "virada": {
@@ -3585,8 +3663,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.13073,
-          "ateResistencia": 0.3790084388185655,
-          "vsMedia20": -0.2633689216280479,
+          "ateResistencia": 0.3748028183825851,
+          "vsMedia20": -0.2611987553269598,
           "toposDescendentes": 1
         },
         "virada": {
@@ -3614,83 +3692,6 @@
         "motores": 1,
         "medidos": 2,
         "resumo": "1 de 2 medidos · pool sem giro, oferta não medida — contrato não representa a moeda"
-      }
-    },
-    {
-      "symbol": "BULLAUSDT",
-      "ticker": "BULLA",
-      "chain": "bsc",
-      "contract": "0x595E21b20E78674F8a64C1566A20b2b316Bc3511",
-      "hasWallets": false,
-      "price": 0.01649495,
-      "change24h": 0,
-      "liquidityUsd": 0,
-      "volume24h": 0,
-      "turnover": 0,
-      "fdv": 0,
-      "openInterestUsd": 5734233.01136145,
-      "openInterestBinance": 5734233.01136145,
-      "perpDominance": 0,
-      "accountRatio": 2.6284,
-      "whaleRatio": 1.2201,
-      "moveKind": null,
-      "moveChange": 0,
-      "whaleExiting": false,
-      "whaleExitShare": 0,
-      "oiChange72h": -0.09428818172125575,
-      "score": 0,
-      "reasons": [],
-      "vida": {
-        "symbol": "BULLAUSDT",
-        "ticker": "BULLA",
-        "estagio": "ressuscitando",
-        "pico": 0.48,
-        "picoEm": "2026-02-01",
-        "diasDesdePico": 205,
-        "queda": -0.9656355208333334,
-        "altaDesdeFundo": 3.313532949790795,
-        "amplitude": 125.52301255230124,
-        "preco": 0.01649495,
-        "dias": 417,
-        "floatCex": 0.908128804573627,
-        "contratoRepresenta": true,
-        "circulante": 1000000000,
-        "marketCap": 16494950.000000002,
-        "floatToken": 1,
-        "unlocks": [],
-        "tecnica": {
-          "emBaixa": false,
-          "rompeu": false,
-          "resistencia": 0.01718,
-          "ateResistencia": 0.04361559956262906,
-          "vsMedia20": -0.005773783640140917,
-          "toposDescendentes": 1
-        },
-        "virada": {
-          "preco": 0.006883200000000001,
-          "para": "exausta",
-          "distancia": -0.5827086471920193
-        },
-        "veredito": "-97% do topo de 205 dias atrás, mas +331% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 90.81% do supply."
-      },
-      "leitura": {
-        "vies": "observar",
-        "forca": 1,
-        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.006883, 58% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
-        "titulo": "Fase de devolver, mas pequena demais para valer o short",
-        "porque": "+331% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 16 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
-      },
-      "motor": {
-        "privado": 0.09052094835700401,
-        "emCorretora": 0.908128804573627,
-        "emPool": 0.0013502470693689999,
-        "pools": 7,
-        "temPerpetuo": true,
-        "temLivro": false,
-        "temOferta": false,
-        "motores": 1,
-        "medidos": 3,
-        "resumo": "1 de 3 medidos · pool sem giro, só 9% do circulante fora de corretora"
       }
     },
     {
@@ -3740,8 +3741,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.030744,
-          "ateResistencia": 0.07121951219512201,
-          "vsMedia20": -0.08739685517592266,
+          "ateResistencia": 0.07798036465638147,
+          "vsMedia20": -0.09286089155361887,
           "toposDescendentes": 1
         },
         "virada": {
@@ -3818,8 +3819,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.10471,
-          "ateResistencia": 0.035502373417721556,
-          "vsMedia20": -0.030340224770818103,
+          "ateResistencia": 0.03294860412350786,
+          "vsMedia20": -0.028059426730523196,
           "toposDescendentes": 0
         },
         "virada": null,
@@ -3897,8 +3898,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.0224,
-          "ateResistencia": 0.011606376733053425,
-          "vsMedia20": 0.0018618350952519513,
+          "ateResistencia": 0.01073910296904601,
+          "vsMedia20": 0.002678393687677527,
           "toposDescendentes": 0
         },
         "virada": {
@@ -3975,8 +3976,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.03941,
-          "ateResistencia": 0.05270187247909819,
-          "vsMedia20": -0.03906301135685486,
+          "ateResistencia": 0.05188704425345647,
+          "vsMedia20": -0.03835442745564066,
           "toposDescendentes": 0
         },
         "virada": {
@@ -4012,15 +4013,15 @@
       "chain": "bsc",
       "contract": "0x6261963EbE9Ff014aAd10eCc3b0238D4D04E8353",
       "hasWallets": false,
-      "price": 0.01689,
-      "change24h": -0.0377,
-      "liquidityUsd": 1030092.3300000001,
-      "volume24h": 891045.3200000001,
-      "turnover": 0.8650150030725886,
-      "fdv": 16898043,
+      "price": 0.01692,
+      "change24h": -0.0365,
+      "liquidityUsd": 1030960.4400000001,
+      "volume24h": 889628.28,
+      "turnover": 0.8629121404503164,
+      "fdv": 16923733,
       "openInterestUsd": 5189221.22775,
       "openInterestBinance": 5189221.22775,
-      "perpDominance": 5.037627285070649,
+      "perpDominance": 5.0333854010440975,
       "accountRatio": 2.3047,
       "whaleRatio": 1.7053,
       "moveKind": null,
@@ -4037,44 +4038,44 @@
         "pico": 0.23799,
         "picoEm": "2025-09-26",
         "diasDesdePico": 333,
-        "queda": -0.9290306315391403,
-        "altaDesdeFundo": 1.4128571428571428,
+        "queda": -0.9289045758225135,
+        "altaDesdeFundo": 1.4171428571428573,
         "amplitude": 33.99857142857143,
-        "preco": 0.01689,
+        "preco": 0.01692,
         "dias": 333,
         "floatCex": 0.155266222893829,
         "contratoRepresenta": true,
         "circulante": 675136847.2025257,
-        "marketCap": 11403061.34925066,
+        "marketCap": 11423315.454666736,
         "floatToken": 0.6751368472025258,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.02023,
-          "ateResistencia": 0.1949202598936799,
-          "vsMedia20": -0.4006973574753535,
+          "ateResistencia": 0.19280660377358494,
+          "vsMedia20": -0.39966726841527733,
           "toposDescendentes": 0
         },
         "virada": {
           "preco": 0.0126,
           "para": "exausta",
-          "distancia": -0.25399644760213136
+          "distancia": -0.25531914893617025
         },
-        "veredito": "-93% do topo de 333 dias atrás, mas +141% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 15.53% do supply."
+        "veredito": "-93% do topo de 333 dias atrás, mas +142% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 15.53% do supply."
       },
       "leitura": {
         "vies": "observar",
         "forca": 1,
-        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.01260, 25% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
+        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.01260, 26% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
         "titulo": "Fase de devolver, mas pequena demais para valer o short",
-        "porque": "+141% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 11 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
+        "porque": "+142% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 11 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
       },
       "motor": {
-        "privado": 0.770022590920367,
+        "privado": 0.7199893682664803,
         "emCorretora": 0.22997740907963307,
-        "emPool": 0,
-        "pools": 0,
+        "emPool": 0.05003322265388661,
+        "pools": 6,
         "temPerpetuo": true,
         "temLivro": true,
         "temOferta": true,
@@ -4089,15 +4090,15 @@
       "chain": "bsc",
       "contract": "0xaa036928c9c0Df07d525B55ea8EE690Bb5a628C1",
       "hasWallets": false,
-      "price": 0.7299,
-      "change24h": 0,
-      "liquidityUsd": 0,
-      "volume24h": 0,
-      "turnover": 0,
-      "fdv": 0,
+      "price": 0.7288,
+      "change24h": 0.0146,
+      "liquidityUsd": 260990.00000000006,
+      "volume24h": 218804.30999999997,
+      "turnover": 0.8383628108356639,
+      "fdv": 21865122,
       "openInterestUsd": 5007373.62543,
       "openInterestBinance": 5007373.62543,
-      "perpDominance": 0,
+      "perpDominance": 19.186074659680443,
       "accountRatio": 2.2852,
       "whaleRatio": 1.5376,
       "moveKind": null,
@@ -4114,29 +4115,29 @@
         "pico": 13.7668,
         "picoEm": "2025-10-27",
         "diasDesdePico": 302,
-        "queda": -0.9469811430397769,
-        "altaDesdeFundo": 1.6609551585854905,
+        "queda": -0.9470610454136037,
+        "altaDesdeFundo": 1.6569449507838137,
         "amplitude": 50.18884433102443,
-        "preco": 0.7299,
+        "preco": 0.7288,
         "dias": 326,
         "floatCex": 0.1812031947662,
         "contratoRepresenta": true,
         "circulante": 17854337.9,
-        "marketCap": 13031881.23321,
+        "marketCap": 13012241.46152,
         "floatToken": 0.5951445966666666,
         "unlocks": [],
         "tecnica": {
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.8399,
-          "ateResistencia": 0.15434304562946677,
-          "vsMedia20": -0.08879148403256121,
+          "ateResistencia": 0.15086325020553581,
+          "vsMedia20": -0.08616220683437503,
           "toposDescendentes": 4
         },
         "virada": {
           "preco": 0.49374,
           "para": "exausta",
-          "distancia": -0.32355117139334155
+          "distancia": -0.32253018660812294
         },
         "veredito": "-95% do topo de 302 dias atrás, mas +166% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 18.12% do supply."
       },
@@ -4148,16 +4149,16 @@
         "porque": "+166% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 13 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
       },
       "motor": {
-        "privado": 0.6839854302737264,
+        "privado": 0.683999078824648,
         "emCorretora": 0.3044691924972474,
-        "emPool": 0.01154537722902623,
+        "emPool": 0.011531728678104607,
         "pools": 8,
         "temPerpetuo": true,
-        "temLivro": false,
+        "temLivro": true,
         "temOferta": true,
-        "motores": 2,
+        "motores": 3,
         "medidos": 3,
-        "resumo": "2 de 3 medidos · pool sem giro"
+        "resumo": "perpétuo, livro e oferta — a moeda ainda tem com que ser movida"
       }
     },
     {
@@ -4207,8 +4208,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.12821,
-          "ateResistencia": 0.07118389172027717,
-          "vsMedia20": -0.06804175085748077,
+          "ateResistencia": 0.06966460871016178,
+          "vsMedia20": -0.06677982201390542,
           "toposDescendentes": 1
         },
         "virada": {
@@ -4275,18 +4276,18 @@
         "amplitude": 398.07092198581563,
         "preco": 0.01635,
         "dias": 908,
-        "floatCex": 0.113294077755428,
-        "contratoRepresenta": true,
+        "floatCex": null,
+        "contratoRepresenta": null,
         "circulante": 873791795.3811152,
         "marketCap": 14286495.854481233,
-        "floatToken": 0.8737917953811152,
+        "floatToken": null,
         "unlocks": [],
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
-          "resistencia": 0.01771,
-          "ateResistencia": 0.06815440289505426,
-          "vsMedia20": 0.35076785205100003,
+          "resistencia": 0.01645,
+          "ateResistencia": 0.007965686274509665,
+          "vsMedia20": 0.33099539208090367,
           "toposDescendentes": 0
         },
         "virada": {
@@ -4294,7 +4295,7 @@
           "para": "exausta",
           "distancia": -0.22385321100917432
         },
-        "veredito": "-99% do topo de 898 dias atrás, mas +132% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 11.33% do supply."
+        "veredito": "-99% do topo de 898 dias atrás, mas +132% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor."
       },
       "leitura": {
         "vies": "observar",
@@ -4304,9 +4305,9 @@
         "porque": "+132% desde o fundo, e a fase mede −1,2% em sete dias. Mas com US$ 14 mi de market cap ela está do lado errado do tamanho: dentro desta mesma fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio."
       },
       "motor": {
-        "privado": 0.8701155656239538,
+        "privado": 0.8701165737476644,
         "emCorretora": 0.12965797842724464,
-        "emPool": 0.0002264559488015039,
+        "emPool": 0.00022544782509096277,
         "pools": 1,
         "temPerpetuo": true,
         "temLivro": false,
@@ -4363,8 +4364,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.05562,
-          "ateResistencia": 0.0158904109589042,
-          "vsMedia20": -0.047710156018993644,
+          "ateResistencia": 0.01440817070946565,
+          "vsMedia20": -0.04638502878411055,
           "toposDescendentes": 0
         },
         "virada": {
@@ -4441,8 +4442,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.22927,
-          "ateResistencia": 0.05678727817469453,
-          "vsMedia20": 0.010277401358833593,
+          "ateResistencia": 0.06094400740397976,
+          "vsMedia20": 0.006518382584111304,
           "toposDescendentes": 2
         },
         "virada": {
@@ -4519,8 +4520,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.009397,
-          "ateResistencia": 0.04064230343300124,
-          "vsMedia20": -0.18962213776423675,
+          "ateResistencia": 0.03868685752183065,
+          "vsMedia20": -0.18815843787576958,
           "toposDescendentes": 0
         },
         "virada": {
@@ -4556,15 +4557,15 @@
       "chain": "bsc",
       "contract": "0x5dBde81fcE337FF4bcaaEe4Ca3466C00aeCaE274",
       "hasWallets": false,
-      "price": 0.015061,
-      "change24h": 0,
-      "liquidityUsd": 0,
-      "volume24h": 0,
-      "turnover": 0,
-      "fdv": 0,
+      "price": 0.01503,
+      "change24h": -0.017,
+      "liquidityUsd": 1266137.9000000001,
+      "volume24h": 1488251.92,
+      "turnover": 1.175426404975319,
+      "fdv": 75153007,
       "openInterestUsd": 3495669.787336,
       "openInterestBinance": 3495669.787336,
-      "perpDominance": 0,
+      "perpDominance": 2.760891832821685,
       "accountRatio": 2.6036,
       "whaleRatio": 1.7251,
       "moveKind": null,
@@ -4581,15 +4582,15 @@
         "pico": 0.0386,
         "picoEm": "2025-05-27",
         "diasDesdePico": 455,
-        "queda": -0.6098186528497409,
-        "altaDesdeFundo": 10.123338257016249,
+        "queda": -0.6106217616580312,
+        "altaDesdeFundo": 10.100443131462335,
         "amplitude": 28.508124076809455,
-        "preco": 0.015061,
+        "preco": 0.01503,
         "dias": 462,
         "floatCex": 0.0353437399823032,
         "contratoRepresenta": true,
         "circulante": 3087161121.18,
-        "marketCap": 46495733.646091975,
+        "marketCap": 46400031.651335396,
         "floatToken": 0.617432224236,
         "unlocks": [
           {
@@ -4601,35 +4602,35 @@
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.015288,
-          "ateResistencia": 0.014196629958869611,
-          "vsMedia20": -0.017148073286822663,
+          "ateResistencia": 0.01540913921360243,
+          "vsMedia20": -0.018264095826188043,
           "toposDescendentes": 2
         },
         "virada": {
           "preco": 0.0024372,
           "para": "exausta",
-          "distancia": -0.8381780758249784
+          "distancia": -0.8378443113772455
         },
-        "veredito": "-61% do topo de 455 dias atrás, mas +1012% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 3.53% do supply."
+        "veredito": "-61% do topo de 455 dias atrás, mas +1010% desde o fundo. Alguém está comprando de novo. Segundo ciclo costuma ser mais curto e mais violento que o primeiro, porque o float que sobrou é menor. O float em corretora é 3.53% do supply."
       },
       "leitura": {
         "vies": "short",
         "forca": 1,
         "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −1,2% em sete dias e −4,2% em catorze. A leitura vira em US$ 0.002437, 84% abaixo daqui: nesse preço a moeda passa a ser \"exausta\", e a régua muda de lado. Não é alvo nem stop — é onde esta leitura deixa de valer.",
         "titulo": "Segundo ciclo devolvendo",
-        "porque": "+1012% desde o fundo de 455 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. O market cap de US$ 46 mi fica na faixa entre 30 e 100 milhões, que não foi medida — o tamanho aqui não decide nada. O supply circulante saltou 6% há 16 dia(s) — unlock. Quem recebeu não tinha o token e passou a ter, e boa parte vende com pressa; na BTW o salto foi de 23% três dias antes da máxima."
+        "porque": "+1010% desde o fundo de 455 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. O market cap de US$ 46 mi fica na faixa entre 30 e 100 milhões, que não foi medida — o tamanho aqui não decide nada. O supply circulante saltou 6% há 16 dia(s) — unlock. Quem recebeu não tinha o token e passou a ter, e boa parte vende com pressa; na BTW o salto foi de 23% três dias antes da máxima."
       },
       "motor": {
-        "privado": 0.9290947422707712,
+        "privado": 0.9427568912101455,
         "emCorretora": 0.05724310878985453,
-        "emPool": 0.013662148939374327,
-        "pools": 8,
+        "emPool": 0,
+        "pools": 0,
         "temPerpetuo": true,
-        "temLivro": false,
+        "temLivro": true,
         "temOferta": true,
-        "motores": 2,
+        "motores": 3,
         "medidos": 3,
-        "resumo": "2 de 3 medidos · pool sem giro"
+        "resumo": "perpétuo, livro e oferta — a moeda ainda tem com que ser movida"
       }
     },
     {
@@ -4684,8 +4685,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.06934,
-          "ateResistencia": 0.0349253731343282,
-          "vsMedia20": 0.05135145737711366,
+          "ateResistencia": 0.033229026970645226,
+          "vsMedia20": 0.05298667880062147,
           "toposDescendentes": 0
         },
         "virada": {
@@ -4779,8 +4780,8 @@
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.002855,
-          "ateResistencia": 0.4800414722654225,
-          "vsMedia20": -0.2873898668242856,
+          "ateResistencia": 0.4633521271143002,
+          "vsMedia20": -0.27955539964180853,
           "toposDescendentes": 2
         },
         "virada": {
@@ -4857,8 +4858,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.0837,
-          "ateResistencia": 0.028002947678702927,
-          "vsMedia20": -0.08134424768276938,
+          "ateResistencia": 0.025107164727495412,
+          "vsMedia20": -0.07886869507338601,
           "toposDescendentes": 1
         },
         "virada": {
@@ -4934,9 +4935,9 @@
         "tecnica": {
           "emBaixa": false,
           "rompeu": false,
-          "resistencia": 0.2331,
-          "ateResistencia": 0.055228610230873665,
-          "vsMedia20": -0.2790234668233298,
+          "resistencia": 0.2207,
+          "ateResistencia": 0.0009070294784581101,
+          "vsMedia20": -0.2802820119463395,
           "toposDescendentes": 0
         },
         "virada": null,
@@ -5009,8 +5010,8 @@
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.02701,
-          "ateResistencia": 0.19513274336283182,
-          "vsMedia20": -0.043285003704095604,
+          "ateResistencia": 0.1851689337428697,
+          "vsMedia20": -0.03562965470548396,
           "toposDescendentes": 2
         },
         "virada": {
@@ -5087,8 +5088,8 @@
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.08098,
-          "ateResistencia": 0.22289338568408334,
-          "vsMedia20": -0.1038332713062895,
+          "ateResistencia": 0.21719525026303899,
+          "vsMedia20": -0.09982681171185792,
           "toposDescendentes": 3
         },
         "virada": {
@@ -5165,8 +5166,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.08348,
-          "ateResistencia": 0.02191210674501165,
-          "vsMedia20": 0.13164420186460135,
+          "ateResistencia": 0.017552413456850324,
+          "vsMedia20": 0.13621727177668985,
           "toposDescendentes": 0
         },
         "virada": {
@@ -5203,14 +5204,14 @@
       "contract": "0x0F0df6cB17ee5E883eddFEf9153fC6036BDB4e37",
       "hasWallets": false,
       "price": 0.02423,
-      "change24h": -0.0105,
-      "liquidityUsd": 2011519.5299999998,
-      "volume24h": 1348551.0799999998,
-      "turnover": 0.6704141122606948,
-      "fdv": 60593379,
+      "change24h": -0.0132,
+      "liquidityUsd": 2011873.2499999998,
+      "volume24h": 1357262.2699999998,
+      "turnover": 0.6746261326353437,
+      "fdv": 60577885,
       "openInterestUsd": 2194799.73267,
       "openInterestBinance": 2194799.73267,
-      "perpDominance": 1.0911152986270036,
+      "perpDominance": 1.0909234628324622,
       "accountRatio": 3.2699,
       "whaleRatio": 1.8045,
       "moveKind": null,
@@ -5232,7 +5233,7 @@
         "amplitude": 68.29073482428115,
         "preco": 0.02423,
         "dias": 364,
-        "floatCex": 0.029026905145250935,
+        "floatCex": 0.029038136960691366,
         "contratoRepresenta": true,
         "circulante": 2500000000,
         "marketCap": 60575000.00000001,
@@ -5242,8 +5243,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.024314,
-          "ateResistencia": 0.002515152764606343,
-          "vsMedia20": -0.06675619568375224,
+          "ateResistencia": 0.0011941527691989862,
+          "vsMedia20": -0.06558238054287424,
           "toposDescendentes": 1
         },
         "virada": {
@@ -5261,9 +5262,9 @@
         "porque": "+868% desde o fundo de 312 dias atrás. Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, 8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou é quem devolve. O market cap de US$ 61 mi fica na faixa entre 30 e 100 milhões, que não foi medida — o tamanho aqui não decide nada."
       },
       "motor": {
-        "privado": 0.954108647046218,
-        "emCorretora": 0.029024184849426,
-        "emPool": 0.016867168104356,
+        "privado": 0.95407937015417,
+        "emCorretora": 0.0290354156122616,
+        "emPool": 0.016885214233568403,
         "pools": 10,
         "temPerpetuo": true,
         "temLivro": true,
