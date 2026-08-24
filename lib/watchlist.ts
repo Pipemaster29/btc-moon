@@ -461,12 +461,13 @@ export const WATCHLIST: WatchedToken[] = [
   // Regerar com: npm run descobrir
   // ------------------------------------------------------------------------
   {
-    // liquidez 4.5mi · giro 1.61x/dia · OI 4.0mi · preço bate em 0.1%
+    // OI pelo perpétuo · sem contrato principal conferido
     symbol: "VELVETUSDT",
     chain: "base",
-    contract: "0xbF927b841994731C573BDF09ceB0c6B0Aa887cDd",
+    contract: "",
     firstBlock: 0,
     wallets: [],
+    note: "Só o perpétuo: o contrato da Base é fragmento — guarda menos tokens do que o circulante. Descartados os fragmentos, o melhor candidato restante erra 97% no preço, então nenhum contrato mede a moeda inteira.",
   },
   {
     // liquidez 200k · giro 0.23x/dia · OI 2.5mi · preço bate em 2.3%
@@ -549,12 +550,13 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
   },
   {
-    // liquidez 52k · giro 0.09x/dia · OI 678k · preço bate em 1.0%
+    // OI pelo perpétuo · sem contrato principal conferido
     symbol: "ZEREBROUSDT",
     chain: "base",
-    contract: "0xD2e92077ad4d7d50D7d60be13FffE3FB52cc0B9f",
+    contract: "",
     firstBlock: 0,
     wallets: [],
+    note: "Só o perpétuo: o contrato da Base guarda 1.15 milhão de tokens contra 1.000 milhões circulando. É implantação secundária — foi o caso que fez nascer o terceiro teste.",
   },
   {
     // liquidez 17k · giro 1.26x/dia · OI 670k · preço bate em 1.0%
@@ -597,12 +599,13 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
   },
   {
-    // liquidez 1.7mi · giro 1.35x/dia · OI 410k · preço bate em 0.6%
+    // liquidez 1.1mi · giro 0.35x/dia · OI 673k · preço bate em 0.6%
     symbol: "MORPHOUSDT",
-    chain: "base",
-    contract: "0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842",
+    chain: "ethereum",
+    contract: "0x58D97B57BB95320F9a05dC918Aef65434969c2B2",
     firstBlock: 0,
     wallets: [],
+    note: "O contrato da Base guardava uma fração do circulante — era implantação secundária, e toda leitura de % do supply em cima dele nascia inflada. O contrato principal vive na Ethereum.",
   },
   {
     // liquidez 143k · giro 0.21x/dia · OI 388k · preço bate em 1.5%
@@ -952,7 +955,7 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
-    note: "Achada pela peneira: amplitude 6.2x e open interest em 52% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+    note: "Só o perpétuo: melhor candidato erra 39% no preço. Sem contrato conferido a leitura on-chain mediria outra moeda.",
   },
   {
     // amplitude 5.9x · OI 22% do market cap · 21mi de market cap · −21% do topo há 16 dias
@@ -961,7 +964,7 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
-    note: "Achada pela peneira: amplitude 5.9x e open interest em 22% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+    note: "Só o perpétuo: nenhum par em rede EVM. Sem contrato conferido a leitura on-chain mediria outra moeda.",
   },
   {
     // amplitude 4.7x · OI 16% do market cap · 79mi de market cap · −27% do topo há 3 dias
@@ -970,25 +973,25 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
-    note: "Achada pela peneira: amplitude 4.7x e open interest em 16% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+    note: "Só o perpétuo: nenhum par em rede EVM — o BOME vive na Solana, fora do alcance da leitura on-chain daqui.",
   },
   {
     // amplitude 4.8x · OI 11% do market cap · 67mi de market cap · −9% do topo, topo é hoje
     symbol: "PROMUSDT",
     chain: "bsc",
-    contract: "",
+    contract: "0xaF53d56ff99f1322515E54FdDE93FF8b3b7DAFd5",
     firstBlock: 0,
     wallets: [],
-    note: "Achada pela peneira: amplitude 4.8x e open interest em 11% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+    note: "Achada pela peneira: amplitude 4.8x e open interest em 11% do market cap. Contrato conferido na BSC — preço bate com o perpétuo com 0.1% de erro e a pool gira 3.2x o próprio tamanho por dia.",
   },
   {
     // amplitude 200.4x · OI 48% do market cap · 21mi de market cap · −99% do topo há 155 dias
     symbol: "SIRENUSDT",
     chain: "bsc",
-    contract: "",
+    contract: "0x997A58129890bBdA032231A52eD1ddC845fc18e1",
     firstBlock: 0,
     wallets: [],
-    note: "Achada pela peneira: amplitude 200.4x e open interest em 48% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+    note: "Achada pela peneira: amplitude 200.4x e open interest em 48% do market cap. Contrato conferido na BSC — preço bate com o perpétuo com 1.2% de erro e a pool de US$ 2.3 milhões gira.",
   },
   {
     // amplitude 42.6x · OI 41% do market cap · 52mi de market cap · −82% do topo há 15 dias
@@ -997,7 +1000,7 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
-    note: "Achada pela peneira: amplitude 42.6x e open interest em 41% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+    note: "Só o perpétuo: nenhum par em rede EVM. Sem contrato conferido a leitura on-chain mediria outra moeda.",
   },
   {
     // amplitude 30.3x · OI 37% do market cap · 27mi de market cap · −95% do topo há 28 dias
@@ -1006,7 +1009,7 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
-    note: "Achada pela peneira: amplitude 30.3x e open interest em 37% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+    note: "Só o perpétuo: nenhum par em rede EVM. Sem contrato conferido a leitura on-chain mediria outra moeda.",
   },
   {
     // amplitude 9.6x · OI 27% do market cap · 22mi de market cap · −76% do topo há 132 dias
@@ -1015,7 +1018,7 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
-    note: "Achada pela peneira: amplitude 9.6x e open interest em 27% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+    note: "Só o perpétuo: o melhor candidato é fragmento — o contrato guarda menos tokens do que o circulante, então é implantação secundária e mediria uma fração da moeda.",
   },
   {
     // amplitude 35.6x · OI 27% do market cap · 23mi de market cap · −96% do topo há 96 dias
@@ -1024,7 +1027,7 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
-    note: "Achada pela peneira: amplitude 35.6x e open interest em 27% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+    note: "Só o perpétuo: o melhor candidato é fragmento — o contrato guarda menos tokens do que o circulante, então é implantação secundária e mediria uma fração da moeda.",
   },
   {
     // amplitude 12.1x · OI 26% do market cap · 27mi de market cap · −90% do topo há 78 dias
@@ -1033,7 +1036,7 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "",
     firstBlock: 0,
     wallets: [],
-    note: "Achada pela peneira: amplitude 12.1x e open interest em 26% do market cap. Contrato pendente — a busca no DexScreener falhou por rede, o que não é o mesmo que não existir par EVM.",
+    note: "Só o perpétuo: nenhum par em rede EVM. Sem contrato conferido a leitura on-chain mediria outra moeda.",
   },
 ];
 
