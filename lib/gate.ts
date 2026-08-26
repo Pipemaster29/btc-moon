@@ -148,3 +148,43 @@ export async function liveStats(
   }
   });
 }
+
+/**
+ * As velas diárias da Gate, para a moeda que a Binance não lista.
+ *
+ * O ciclo de vida inteiro sai do histórico do perpétuo, e ele vinha só da
+ * Binance — arquivo ou ao vivo, sempre Binance. Moeda que negocia só na Gate
+ * ficava sem histórico nenhum e caía fora da classificação em silêncio: o BP
+ * aparecia no painel sem estágio, sem motor e sem leitura, e a única pista era
+ * uma linha de "sem histórico suficiente" no fim da execução.
+ *
+ * A Gate devolve `sum` em dólares e `v` em contratos; o agressor comprador ela
+ * não separa, então `takerBuy` e `delta` saem zerados. Nenhum dos dois entra na
+ * classificação de estágio, que é o que esta série existe para alimentar.
+ */
+export async function velasGate(symbol: string, limit = 200) {
+  try {
+    const res = await fetch(
+      `${BASE}/candlesticks?contract=${gateContract(symbol)}&interval=1d&limit=${Math.min(limit, 2000)}`,
+      { signal: AbortSignal.timeout(15_000), next: { revalidate: 300 } },
+    );
+    if (!res.ok) return [];
+    const bruto = (await res.json()) as { t: number; o: string; h: string; l: string; c: string; v: number }[];
+    if (!Array.isArray(bruto)) return [];
+    return bruto
+      .map((k) => ({
+        time: Number(k.t),
+        open: Number(k.o),
+        high: Number(k.h),
+        low: Number(k.l),
+        close: Number(k.c),
+        volume: Number(k.v) || 0,
+        takerBuy: 0,
+        delta: 0,
+      }))
+      .filter((v) => Number.isFinite(v.time) && v.close > 0)
+      .sort((a, b) => a.time - b.time);
+  } catch {
+    return [];
+  }
+}

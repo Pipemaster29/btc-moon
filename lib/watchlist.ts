@@ -1050,6 +1050,24 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
     note: "Existe com 1 bilhão de tokens declarados na Ethereum E na Base — ponte que espelha, que o teste de supply não pega. A Base tem treze vezes mais pool, mas zero tokens em carteira de corretora; na Ethereum são 113 milhões, 13% do circulante, sendo 100 milhões na fria da Binance. A custódia é que decide a rede.",
   },
+  {
+    // multichain de verdade: BSC 221mi + Ethereum 192mi de 333mi circulando
+    symbol: "BTRUSDT",
+    chain: "bsc",
+    contract: "",
+    firstBlock: 0,
+    wallets: [],
+    note: "Só o perpétuo: o BTR está partido entre três redes e nenhuma guarda a moeda inteira. A BSC tem 221 milhões e a Ethereum 192, contra 333 milhões circulando — ler qualquer uma delas mediria dois terços ou menos. A implantação com o supply cheio, 1 bilhão, está na Solana, fora do alcance daqui.",
+  },
+  {
+    // sem perpétuo em lugar nenhum — só leitura à vista e on-chain
+    symbol: "BINARENSHENG",
+    chain: "bsc",
+    contract: "0x924fa68a0FC644485b8df8AbfA0A41C2e7744444",
+    firstBlock: 0,
+    wallets: [],
+    note: "Não tem perpétuo na Binance nem na Gate, então metade do sistema não se aplica: sem open interest não há posicionamento, não há saída de baleia e não há estágio de ciclo, que sai do histórico do derivativo. O que dá para ler é o lado à vista — pool de US$ 7,8 milhões girando US$ 1,2 milhão por dia — e o on-chain do contrato na BSC.",
+  },
 ];
 
 /**

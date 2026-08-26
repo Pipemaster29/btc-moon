@@ -26,7 +26,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { fetchCsv, monthlyKlineUrl, dailyKlineUrl, metricsUrl, recentDays } from "../lib/datavision";
 import { circulante } from "../lib/binance";
 import { parseKlines, parsePositioning } from "../lib/derivatives";
-import { classificar, type Estagio } from "../lib/lifecycle";
+import { classificar, DIAS_DA_JANELA, type Estagio } from "../lib/lifecycle";
 import { lerTecnica } from "../lib/tecnica";
 // A lista CHEIA de propósito, incluindo as aposentadas: para medir a régua,
 // moeda morta é amostra tão boa quanto viva — melhor, até, porque é onde os
@@ -183,8 +183,10 @@ for (const [symbol, dias] of Object.entries(bruto)) {
   if (dias.length < AQUECIMENTO + 20) continue;
 
   for (let i = AQUECIMENTO; i < dias.length - 1; i++) {
-    const ate = dias.slice(0, i + 1);
-    const hoje = ate[i];
+    // A mesma janela corrida que `lerVida` enxerga ao vivo. Medir parâmetro numa
+    // janela que cresce sem limite calibra um classificador que não existe.
+    const ate = dias.slice(Math.max(0, i + 1 - DIAS_DA_JANELA), i + 1);
+    const hoje = ate[ate.length - 1];
     const preco = hoje.close;
 
     let pico = ate[0].high;
@@ -198,11 +200,11 @@ for (const [symbol, dias] of Object.entries(bruto)) {
       queda: preco / pico - 1,
       altaDesdeFundo: fundo > 0 ? preco / fundo - 1 : 0,
       amplitude: minimo > 0 ? pico / minimo : 1,
-      diasDesdePico: i - picoI,
+      diasDesdePico: ate.length - 1 - picoI,
       floatCex: null,
     });
 
-    const tres = ate[i - 3];
+    const tres = dias[i - 3];
     const max7 = Math.max(...ate.slice(-7).map((x) => x.high));
     const velas = ate.map((x) => ({ close: x.close, high: x.high, low: x.low }));
     const tec = lerTecnica(velas);

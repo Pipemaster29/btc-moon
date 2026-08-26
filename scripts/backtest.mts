@@ -21,8 +21,9 @@
  */
 
 import { fetchCsv, monthlyKlineUrl, dailyKlineUrl, recentDays } from "../lib/datavision";
+import { velas } from "../lib/binance";
 import { parseKlines } from "../lib/derivatives";
-import { classificar, type Estagio } from "../lib/lifecycle";
+import { classificar, DIAS_DA_JANELA, type Estagio } from "../lib/lifecycle";
 // A lista CHEIA de propósito, incluindo as aposentadas: para medir a régua,
 // moeda morta é amostra tão boa quanto viva — melhor, até, porque é onde os
 // estágios finais acontecem. Aposentar existe para poupar requisição no que
@@ -50,7 +51,8 @@ function mesesRecentes(): string[] {
 }
 
 async function barras(symbol: string) {
-  const [m, d] = await Promise.all([
+  const [aoVivo, m, d] = await Promise.all([
+    velas(symbol, "1d", MESES * 31).catch(() => []),
     Promise.all(mesesRecentes().map((x) => fetchCsv(monthlyKlineUrl(symbol, "1d", x)))),
     Promise.all(recentDays(4).map((x) => fetchCsv(dailyKlineUrl(symbol, "1d", x)))),
   ]);
@@ -59,6 +61,7 @@ async function barras(symbol: string) {
     if (!csv) continue;
     for (const b of parseKlines(csv)) porDia.set(b.time, b);
   }
+  for (const v of aoVivo) porDia.set(v.time, v);
   return [...porDia.values()].sort((a, b) => a.time - b.time);
 }
 
@@ -84,8 +87,12 @@ for (const symbol of SIMBOLOS) {
   }
 
   for (let i = AQUECIMENTO; i < b.length - 1; i++) {
-    const ate = b.slice(0, i + 1);
-    const preco = ate[i].close;
+    // A MESMA JANELA QUE RODA AO VIVO, e isto não é detalhe. `lerVida` enxerga
+    // seis meses corridos; medir a régua numa janela que cresce sem limite
+    // valida um classificador diferente do que está no ar — com topo mais
+    // antigo, queda mais funda e amplitude maior em toda observação.
+    const ate = b.slice(Math.max(0, i + 1 - DIAS_DA_JANELA), i + 1);
+    const preco = ate[ate.length - 1].close;
 
     let pico = ate[0].high;
     let picoI = 0;
@@ -103,13 +110,13 @@ for (const symbol of SIMBOLOS) {
       queda: preco / pico - 1,
       altaDesdeFundo: fundo > 0 ? preco / fundo - 1 : 0,
       amplitude: minimo > 0 ? pico / minimo : 1,
-      diasDesdePico: i - picoI,
+      diasDesdePico: ate.length - 1 - picoI,
       floatCex: null,
     });
 
     observacoes.push({
       symbol,
-      dia: new Date(ate[i].time * 1000).toISOString().slice(0, 10),
+      dia: new Date(ate[ate.length - 1].time * 1000).toISOString().slice(0, 10),
       estagio,
       retornos: HORIZONTES.map((h) =>
         i + h < b.length ? b[i + h].close / preco - 1 : null,

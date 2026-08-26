@@ -28,6 +28,7 @@ import { fetchCsv, monthlyKlineUrl, dailyKlineUrl, recentDays } from "./datavisi
 import { parseKlines } from "./derivatives";
 import { balancesOf, tokenInfo, toUnits, type Chain } from "./onchain";
 import { circulante, velas, type Circulante } from "./binance";
+import { velasGate } from "./gate";
 import { lerTecnica, type Tecnica } from "./tecnica";
 import type { WatchedToken } from "./watchlist";
 
@@ -142,6 +143,30 @@ export interface Vida {
 
 const MESES = 6;
 
+/**
+ * O CICLO TEM PRAZO DE VALIDADE, e esquecer disso quebrou a leitura inteira.
+ *
+ * Ao trocar os arquivos pela leitura ao vivo eu ganhei 1500 velas — mais de
+ * quatro anos — e deixei todas entrarem. O efeito foi silencioso e devastador:
+ * o "topo" de cada moeda virou a máxima histórica dela, e a queda passou a ser
+ * medida contra um preço de 2023. A ARC apareceu como "ressuscitando" com topo
+ * de 580 dias atrás; a ACE, com 978; a PORTAL, com 898 e -99%. Como
+ * ressuscitando carrega viés de VENDA, o painel passou a recomendar short em
+ * trinta e quatro moedas de uma vez, várias delas moedas que despencaram há
+ * dois anos e meio e desde então só existem de lado.
+ *
+ * Pior: a amplitude, que é metade da assinatura de moeda manipulada, passou a
+ * ser medida na mesma janela absurda. A ACE saiu com 281,8x e a PORTAL com
+ * 398,1x contra a mediana de 13,5x com que os limiares foram calibrados. Todo
+ * limiar do sistema foi medido sobre SEIS MESES, e comparar número de quatro
+ * anos com régua de seis meses não é conservadorismo — é outro experimento.
+ *
+ * Então a janela volta a ser a da calibração. O que a leitura ao vivo entrega e
+ * os arquivos não entregavam continua valendo, e era esse o ponto: o buraco de
+ * vinte dias no mês corrente, e a moeda recém-listada que arquivo nenhum cobre.
+ */
+export const DIAS_DA_JANELA = MESES * 30;
+
 function mesesRecentes(): string[] {
   const out: string[] = [];
   const cursor = new Date();
@@ -180,7 +205,7 @@ function mesesRecentes(): string[] {
  */
 async function historico(symbol: string) {
   const [aoVivo, mensais, diarios] = await Promise.all([
-    velas(symbol, "1d", 1500).catch(() => []),
+    velas(symbol, "1d", DIAS_DA_JANELA).catch(() => []),
     Promise.all(mesesRecentes().map((m) => fetchCsv(monthlyKlineUrl(symbol, "1d", m)))),
     Promise.all(recentDays(4).map((d) => fetchCsv(dailyKlineUrl(symbol, "1d", d)))),
   ]);
@@ -194,7 +219,15 @@ async function historico(symbol: string) {
   // não tem defasagem de publicação.
   for (const v of aoVivo) porDia.set(v.time, v);
 
-  return [...porDia.values()].sort((a, b) => a.time - b.time);
+  // A Gate entra só quando a Binance não deu nada: é a praça pequena, e usá-la
+  // por cima da grande trocaria bom por pior. Mas moeda que só existe lá — o BP
+  // é o caso — ficava sem histórico nenhum e saía da classificação calada.
+  if (porDia.size === 0) {
+    for (const v of await velasGate(symbol, DIAS_DA_JANELA).catch(() => [])) porDia.set(v.time, v);
+  }
+
+  const corte = Math.floor(Date.now() / 1000) - DIAS_DA_JANELA * 86_400;
+  return [...porDia.values()].filter((b) => b.time >= corte).sort((a, b) => a.time - b.time);
 }
 
 /**
@@ -468,15 +501,31 @@ export function classificar(m: Metricas): { estagio: Estagio; veredito: string }
  *
  * O raciocínio original era narrativo: moeda exausta já foi distribuída, logo
  * não sobe; moeda ressuscitando encontrou comprador, logo sobe. Soa certo e é
- * falso. Em 6.236 observações de 38 moedas, caminhando dia a dia e medindo sete
- * dias à frente:
+ * falso — a medição inverteu os dois.
  *
- *   EXAUSTA        +8,23 pontos percentuais acima do resto · p = 0,000
- *                  16 de 22 moedas sobem · mediana +2,7% em 7d, +9,2% em 14d
- *   RESSUSCITANDO  −8,37 pontos percentuais abaixo do resto · p = 0,000
- *                  17 de 27 moedas caem · mediana −1,2% em 7d, −4,2% em 14d
- *   NO TOPO        −8,56 pontos percentuais abaixo do resto · p = 0,019
- *                  8 de 13 moedas caem · mediana −8,3% em 7d
+ * Só que a PRIMEIRA medição estava medindo outra coisa. Ela caminhava sobre uma
+ * janela CRESCENTE, olhando todo o histórico disponível até cada dia, enquanto
+ * `lerVida` sempre enxergou seis meses corridos. São classificadores
+ * diferentes: numa janela que cresce, o topo fica mais antigo, a queda mais
+ * funda e a amplitude maior em toda observação. Validar um e publicar o outro é
+ * o tipo de erro que não deixa rastro nenhum no código.
+ *
+ * Refeita sobre 12.060 observações de 64 moedas, na MESMA janela de seis meses
+ * que roda ao vivo, medindo sete dias à frente:
+ *
+ *   RESSUSCITANDO  −4,29 p.p. abaixo do resto · p = 0,000 · 27 de 42 moedas caem
+ *                  mediana −1,5% em 7d, −3,5% em 14d          SOBREVIVEU
+ *   EXAUSTA        +2,01 p.p. acima do resto  · p = 0,060 · 26 de 44 moedas sobem
+ *                  mediana +0,4% em 7d, +3,0% em 14d          NÃO SOBREVIVEU
+ *   NO TOPO        −3,08 p.p. abaixo do resto · p = 0,187 · 16 de 26 moedas caem
+ *                  mediana −3,5% em 7d                        NÃO SOBREVIVEU
+ *
+ * Das três, uma. E as outras duas eram justamente as que enchiam o painel: com
+ * "exausta" comprando e "no topo" vendendo, quase toda moeda da lista recebia
+ * um lado. Agora "exausta" só compra quando a ASSIMETRIA a sustenta — moeda
+ * pequena e derretida sobe 20% em 21,0% das semanas contra 3,8% que caem 20%,
+ * 5,6 para 1 sobre 690 observações — e "no topo" só vende quando o dinheiro
+ * grande está saindo de verdade.
  *
  * O mecanismo, visto depois: estas moedas revertem à média com violência. A que
  * acabou de derreter é a que mais quica, e a que já quicou 200% é a que
@@ -649,8 +698,12 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   //
   // O que sobrou foi este, e só DENTRO de duas fases:
   //
-  //   caindo do topo  −16,3 p.p. em sete dias · p = 0,040 · 7 de 7 moedas
-  //   ressuscitando    −6,7 p.p. em sete dias · p = 0,026 · 9 de 14 moedas
+  //   caindo do topo  −14,7 p.p. em sete dias · p = 0,052 · 7 de 7 moedas
+  //   ressuscitando    −5,9 p.p. em sete dias · p = 0,015 · 10 de 15 moedas
+  //
+  // NENHUM dos dois passa no limiar corrigido para vinte candidatos (0,0025).
+  // Por isso os dois ajustam FORÇA e nenhum decide sozinho — o de "caindo do
+  // topo", que antes abria short por conta própria, deixou de abrir.
   //
   // O mecanismo se lê sozinho: uma moeda que já saiu do topo e cujo open
   // interest ESTÁ CRESCENDO tem gente montando posição nova, alavancada, contra
@@ -737,28 +790,85 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   const podeVender = !(forcada && agora.moveChange > 0);
 
   // ------------------------------------------------------------------ short
-  if (vida.estagio === "no topo" && podeVender) {
-    const comSaida = agora.whaleExiting;
+  //
+  // "NO TOPO" DEIXOU DE SER REGRA DE VENDA, e a razão é constrangedora: ela
+  // nunca tinha sido medida na janela que roda ao vivo. O número que sustentava
+  // a regra — −8,56 p.p. com p = 0,019 — saiu de um backtest de janela CRESCENTE,
+  // enquanto `lerVida` sempre enxergou seis meses corridos. Refeito na janela
+  // certa, sobre 12.060 observações, o estágio mede −3,08 p.p. com p = 0,187:
+  // dentro do que o acaso produz. Com 26 moedas, 10 sobem e 16 caem.
+  //
+  // Uma máxima fresca continua sendo o lugar onde a saída das baleias importa —
+  // foi a sequência da BTW em 19/08 — mas isso é o alerta de `whale-exit`
+  // fazendo o trabalho dele, com evidência própria. A FASE sozinha não sustenta
+  // um short, e fingir que sustenta foi o que encheu o painel de venda.
+  if (vida.estagio === "no topo" && agora.whaleExiting && podeVender) {
     return {
       vies: "short",
-      forca: comSaida || unlockRecente ? 3 : 2,
+      forca: 2,
       ateQuando: textoAteQuando(vida),
-      titulo: comSaida
-        ? "Máxima fresca com dinheiro grande saindo"
-        : "Máxima fresca — o estágio que mais cai",
+      titulo: "Máxima fresca com dinheiro grande saindo",
       porque:
-        `Topo de ${vida.diasDesdePico} dia(s), preço a ${pct(vida.queda)} dele. ` +
-        (comSaida
-          ? `As contas grandes estão desmontando comprado com o preço ainda em cima — a sequência ` +
-            `exata da BTW em 19/08, saída às 09h e queda de 50% seis horas depois. `
-          : "") +
-        `Medido: das oito fases, esta é a de pior retorno adiante — mediana de −8,3% em sete dias, ` +
-        `8,56 pontos abaixo do resto da amostra (p = 0,019), com 8 de 13 moedas concordando.` +
+        `Topo de ${vida.diasDesdePico} dia(s), preço a ${pct(vida.queda)} dele, e as contas ` +
+        `grandes estão desmontando comprado com o preço ainda em cima — a sequência exata da BTW ` +
+        `em 19/08, saída às 09h e queda de 50% seis horas depois. O que vale aqui é a SAÍDA, não ` +
+        `a fase: medida na janela de seis meses que roda ao vivo, "no topo" separa −3,1 pontos em ` +
+        `sete dias com p = 0,187, ou seja, dentro do acaso.` +
+        (unlockRecente ? ` ${textoUnlock(unlockRecente)}` : ""),
+    };
+  }
+
+  if (vida.estagio === "no topo") {
+    return {
+      vies: "observar",
+      forca: 1,
+      ateQuando: textoAteQuando(vida),
+      titulo: "Máxima fresca, mas sem saída de dinheiro grande",
+      porque:
+        `Topo de ${vida.diasDesdePico} dia(s), preço a ${pct(vida.queda)} dele. Esta fase já foi ` +
+        `regra de venda aqui, e não é: o número que a sustentava vinha de uma janela de medição ` +
+        `que não era a que roda ao vivo. Refeita na janela certa, ela mede −3,1 pontos em sete ` +
+        `dias com p = 0,187 — dentro do acaso, com 10 de 26 moedas subindo. O que vira venda é o ` +
+        `dinheiro grande começar a sair, e ele ainda não começou.` +
         (unlockRecente ? ` ${textoUnlock(unlockRecente)}` : ""),
     };
   }
 
   if (vida.estagio === "ressuscitando" && podeVender) {
+    // A IDADE DO TOPO INVERTE A FASE, e a observação veio de fora: "recomendou
+    // short em moeda que já caiu faz tempo". Medido dentro de "ressuscitando",
+    // sobre 1.872 observações, separando pela distância até a máxima:
+    //
+    //   até 45 dias    −4,7% em 7d · 27,2% das semanas caem 20% · 16 de 21 caem
+    //   45 a 90        −4,1%       · 22,2%                      · 16 de 24
+    //   90 a 135       −1,6%       · 12,6%                      · 14 de 23
+    //   acima de 135   +3,2%       · 11,6% caem, 21,9% SOBEM    ·  7 de 15
+    //
+    // A escada é monotônica nas quatro faixas, que é evidência bem melhor do que
+    // um corte único achado por busca. E a última faixa não é só fraca: ela
+    // muda de sinal. Uma moeda cujo topo ficou para trás há mais de quatro meses
+    // e mesmo assim quicou 80% do fundo não está devolvendo alta recente — ela
+    // já devolveu tudo o que tinha, e o que sobrou é uma base.
+    //
+    // Vender ali é pagar financiamento para apostar contra uma moeda que já
+    // caiu. Era exatamente a queixa, e o dado dá razão a ela.
+    const TOPO_VELHO = 135;
+    if (vida.diasDesdePico > TOPO_VELHO) {
+      return {
+        vies: "observar",
+        forca: 1,
+        ateQuando: textoAteQuando(vida),
+        titulo: "Já quicou, mas o topo é velho demais para vender",
+        porque:
+          `${pct(vida.altaDesdeFundo)} desde o fundo, e a fase normalmente venderia. Mas o topo ` +
+          `dela ficou para trás há ${vida.diasDesdePico} dias, e a idade do topo inverte esta ` +
+          `fase: dentro dela, com topo acima de 135 dias a mediana vira +3,2% em sete dias, com ` +
+          `21,9% das semanas subindo mais de 20% contra 11,6% caindo mais de 20% — e só 7 de 15 ` +
+          `moedas caindo. Contra −4,7% e 16 de 21 quando o topo tem menos de 45 dias. Quem caiu ` +
+          `faz tempo já devolveu; o que sobrou é base, não distribuição.`,
+      };
+    }
+
     // Pequena demais: a fase é de queda, mas o tamanho inverte o resultado.
     if (pequena) {
       return {
@@ -767,17 +877,18 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
         ateQuando: textoAteQuando(vida),
         titulo: "Fase de devolver, mas pequena demais para valer o short",
         porque:
-          `${pct(vida.altaDesdeFundo)} desde o fundo, e a fase mede −1,2% em sete dias. Mas com ` +
+          `${pct(vida.altaDesdeFundo)} desde o fundo, e a fase mede −1,5% em sete dias. Mas com ` +
           `${dinheiro(mcap!)} de market cap ela está do lado errado do tamanho: dentro desta mesma ` +
-          `fase, moedas abaixo de 30 milhões medem +3,3% contra −1,9% das demais — 5,2 pontos ` +
-          `acima (p = 0,000), com 8 de 12 moedas concordando. Quem já caiu 90% e vale 19 milhões ` +
-          `não tem de onde tirar mais 30%: sobra risco de squeeze e falta prêmio.`,
+          `fase, moedas abaixo de 30 milhões medem +1,7% contra −1,9% das demais — 3,6 pontos ` +
+          `acima (p = 0,000), ainda que a concordância entre moedas seja fraca, 7 de 13. Quem já ` +
+          `caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e ` +
+          `falta prêmio.`,
       };
     }
 
     return {
       vies: "short",
-      forca: grande ? 3 : oiInflando || floatAlto ? 2 : 1,
+      forca: grande || vida.diasDesdePico <= 45 ? 3 : oiInflando || floatAlto ? 2 : 1,
       ateQuando: textoAteQuando(vida),
       titulo: grande
         ? "Segundo ciclo devolvendo, e com tamanho para cair"
@@ -787,14 +898,21 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
             ? "Segundo ciclo devolvendo, com a oferta já no livro"
             : "Segundo ciclo devolvendo",
       porque:
-        `${pct(vida.altaDesdeFundo)} desde o fundo de ${vida.diasDesdePico} dias atrás. ` +
-        `Ressuscitando é a segunda pior fase: mediana de −1,2% em sete dias e −4,2% em catorze, ` +
-        `8,37 pontos abaixo do resto (p = 0,000), com 17 de 27 moedas concordando. Quem já quicou ` +
-        `é quem devolve.` +
+        `${pct(vida.altaDesdeFundo)} desde o fundo, com o topo a ${vida.diasDesdePico} dias. ` +
+        `Ressuscitando é a pior fase, e a ÚNICA que sobreviveu à remedição na janela de seis ` +
+        `meses que roda ao vivo: mediana de −1,5% em sete dias e −3,5% em catorze, 4,29 pontos ` +
+        `abaixo do resto sobre 12.060 observações (p = 0,000), com 27 de 42 moedas concordando. ` +
+        `Quem já quicou é quem devolve.` +
+        (vida.diasDesdePico <= 45
+          ? ` E o topo é fresco, que é onde a fase morde mais: com menos de 45 dias desde a ` +
+            `máxima ela mede −4,7% em sete dias e 27,2% das semanas caem mais de 20%, contra ` +
+            `+3,2% quando o topo passa de 135 dias.`
+          : "") +
         (grande
-          ? ` E o tamanho está a favor: com ${dinheiro(mcap!)}, ela cai na faixa que mede −12,6% ` +
-            `em sete dias dentro desta fase, contra −0,5% das menores — 12,2 pontos de diferença ` +
-            `(p = 0,000), com 7 de 8 moedas concordando.`
+          ? ` E o tamanho está a favor, que é o refinamento mais forte de toda a busca: com ` +
+            `${dinheiro(mcap!)}, ela cai na faixa que mede −14,1% em sete dias dentro desta fase, ` +
+            `contra −1,0% das menores — 13,0 pontos de diferença (p = 0,000), com 6 de 7 moedas ` +
+            `concordando.`
           : mcap !== null
             ? ` O market cap de ${dinheiro(mcap)} fica na faixa entre 30 e 100 milhões, que não foi ` +
               `medida — o tamanho aqui não decide nada.`
@@ -802,7 +920,8 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
         (unlockRecente ? ` ${textoUnlock(unlockRecente)}` : "") +
         (oiInflando
           ? ` E o open interest subiu ${(agora.oiChange72h * 100).toFixed(0)}% em 72h: nesta fase, ` +
-            `isso separou −6,7 pontos em sete dias (p = 0,026), com 9 de 14 moedas concordando.`
+            `isso separou −5,9 pontos em sete dias (p = 0,015), com 10 de 15 moedas concordando — ` +
+            `abaixo do limiar corrigido de 0,0025, então ajusta a força e não decide sozinho.`
           : "") +
         (floatAlto
           ? ` E ${((vida.floatCex ?? 0) * 100).toFixed(0)}% do supply está parado em corretora, ` +
@@ -811,22 +930,32 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     };
   }
 
-  // A fase "caindo do topo" sozinha NÃO é de venda — mede +4,7% em sete dias, e
-  // vender ali seria apostar contra a base. Ela só vira venda quando o open
-  // interest está inflando, e aí a diferença é a maior de toda a busca.
-  if (vida.estagio === "caindo do topo" && oiInflando && podeVender) {
+  // "CAINDO DO TOPO + OI INFLANDO" DEIXOU DE ABRIR SHORT SOZINHO.
+  //
+  // Era a separação mais forte de toda a busca e continua sendo a mais bonita:
+  // −10,4% em sete dias contra +4,2% das outras da mesma fase, 14,7 pontos, com
+  // as SETE moedas da amostra concordando. Unanimidade entre moedas é o teste
+  // que mais candidato mata aqui, e este passou.
+  //
+  // Mas são 54 observações e o p é 0,052 — contra um limiar corrigido de 0,0025
+  // para os vinte candidatos testados. Abrir uma venda com força 3 em cima
+  // disso era dar a um sinal de amostra pequena o mesmo peso do único que
+  // sobreviveu à correção. Ele volta a ser o que a evidência sustenta: um
+  // aviso, com o número dito por inteiro, para quem opera decidir.
+  if (vida.estagio === "caindo do topo" && oiInflando) {
     return {
-      vies: "short",
-      forca: 3,
+      vies: "observar",
+      forca: 2,
       ateQuando: textoAteQuando(vida),
       titulo: "Já saiu do topo e ainda está montando alavancagem",
       porque:
         `${pct(vida.queda)} do topo de ${vida.diasDesdePico} dias, e o open interest subiu ` +
         `${(agora.oiChange72h * 100).toFixed(0)}% em 72 horas. Gente montando posição nova contra ` +
         `a tendência não sustenta preço — vira oferta quando desmonta. É a separação mais forte ` +
-        `de toda a busca: mediana de −11,9% em sete dias contra +4,4% das outras da mesma fase, ` +
-        `16,3 pontos de diferença (p = 0,040), com as 7 moedas da amostra concordando. ` +
-        `Sem o open interest inflando esta fase mede +4,7% e não é de venda.`,
+        `da busca: −10,4% em sete dias contra +4,2% das outras da mesma fase, 14,7 pontos, com as ` +
+        `7 moedas da amostra concordando. Mas são 54 observações e p = 0,052, acima do limiar ` +
+        `corrigido de 0,0025 — sinal para vigiar, não o bastante para abrir venda. Sem o open ` +
+        `interest inflando esta fase mede +1,9% e não é de venda de jeito nenhum.`,
     };
   }
 
@@ -866,25 +995,51 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
           `oferta parou de crescer, e ela não parou.`,
       };
     }
+    // A COMPRA AGORA DEPENDE DO TAMANHO, e não mais da fase sozinha.
+    //
+    // "Exausta" era a regra de compra do sistema inteiro, sustentada por
+    // +8,23 p.p. com p = 0,000. Remedida na janela de seis meses que roda ao
+    // vivo, ela mede +2,01 p.p. com p = 0,060 — nem no limiar simples de 5% ela
+    // entra, quanto mais no corrigido. Com 44 moedas, 26 sobem e 18 caem.
+    //
+    // O que sobrevive à remedição não é a mediana: é a ASSIMETRIA, e só na
+    // faixa pequena. Moeda exausta abaixo de 30 milhões sobe mais de 20% em
+    // 21,0% das semanas contra 3,8% que caem mais de 20% — 5,6 para 1, sobre
+    // 690 observações. Isso é uma afirmação diferente e mais honesta do que
+    // "sobe mais": é sobre o FORMATO do resultado, não sobre o meio dele. Quem
+    // compra aqui compra a cauda, e a cauda existe.
+    //
+    // Acima de 30 milhões a assimetria some junto com a vantagem, e a fase
+    // volta a ser só descrição.
+    if (!pequena) {
+      return {
+        vies: "observar",
+        forca: 1,
+        ateQuando: textoAteQuando(vida),
+        titulo: "Derretida, mas sem o tamanho que dá a assimetria",
+        porque:
+          `${pct(vida.queda)} do topo de ${vida.diasDesdePico} dias e só ${pct(vida.altaDesdeFundo)} ` +
+          `desde o fundo. Esta fase já foi a regra de compra do sistema, e a remedição na janela ` +
+          `de seis meses que roda ao vivo derrubou o número: +2,0 pontos em sete dias com ` +
+          `p = 0,060, com 26 de 44 moedas subindo — não passa nem no limiar simples. O que ` +
+          `sobrevive é a assimetria, e ela só aparece abaixo de 30 milhões de market cap` +
+          (mcap !== null ? `; esta tem ${dinheiro(mcap)}` : "") + `.`,
+      };
+    }
+
     return {
       vies: "long",
-      forca: pequena || floatBaixo ? 3 : 2,
+      forca: floatBaixo ? 3 : 2,
       ateQuando: textoAteQuando(vida),
-      titulo: pequena
-        ? "Pequena e derretida — a melhor assimetria da amostra"
-        : "A que mais quica é a que acabou de derreter",
+      titulo: "Pequena e derretida — a assimetria que sobreviveu à remedição",
       porque:
         `${pct(vida.queda)} do topo de ${vida.diasDesdePico} dias e só ${pct(vida.altaDesdeFundo)} ` +
-        `desde o fundo. Eu lia isso como cadáver e o dado diz que é a MELHOR fase adiante: ` +
-        `mediana de +2,7% em sete dias e +9,2% em catorze, 8,23 pontos acima do resto ` +
-        `(p = 0,000), com 16 de 22 moedas concordando. São ativos que revertem à média com ` +
-        `violência, e vender aqui é apostar contra isso pagando financiamento.` +
-        (pequena
-          ? ` E o tamanho joga a favor: com ${dinheiro(mcap!)}, ela está na faixa em que 21,0% ` +
-            `das semanas sobem mais de 20% contra 3,8% que caem mais de 20% — assimetria de 5,5 ` +
-            `para 1, a melhor da amostra. Moeda pequena que já caiu é fácil de empurrar para cima ` +
-            `e não tem de onde cair muito mais.`
-          : "") +
+        `desde o fundo, com ${dinheiro(mcap!)} de market cap. O que sustenta esta compra NÃO é a ` +
+        `mediana da fase — remedida na janela certa ela mede +2,0 pontos com p = 0,060 e não passa. ` +
+        `É a assimetria: nesta faixa, 21,0% das semanas sobem mais de 20% contra 3,8% que caem ` +
+        `mais de 20%, 5,6 para 1 sobre 690 observações. Moeda pequena que já derreteu é fácil de ` +
+        `empurrar para cima e não tem de onde cair muito mais. Compra-se a cauda, e ela é ` +
+        `desigual a favor.` +
         (floatBaixo
           ? ` Com só ${((vida.floatCex ?? 0) * 100).toFixed(2)}% do supply em corretora, ` +
             `quase não há oferta pronta para atrapalhar.`
@@ -932,7 +1087,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     ateQuando: textoAteQuando(vida),
     titulo: "Fase sem vantagem medida",
     porque:
-      `${vida.estagio}: nas 6.236 observações medidas, esta fase não se separou da referência ` +
+      `${vida.estagio}: nas 12.060 observações medidas, esta fase não se separou da referência ` +
       `o bastante para sustentar um lado. O estágio diz onde a moeda está, não o que ela vai fazer.`,
   };
 }
