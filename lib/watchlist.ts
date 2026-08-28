@@ -1068,6 +1068,15 @@ export const WATCHLIST: WatchedToken[] = [
     wallets: [],
     note: "Não tem perpétuo na Binance nem na Gate, então metade do sistema não se aplica: sem open interest não há posicionamento, não há saída de baleia e não há estágio de ciclo, que sai do histórico do derivativo. O que dá para ler é o lado à vista — pool de US$ 7,8 milhões girando US$ 1,2 milhão por dia — e o on-chain do contrato na BSC.",
   },
+  {
+    // +767% em 90 dias · OI 39.8mi na Binance · pool 1.9mi · 25.1% em corretora
+    symbol: "龙虾USDT",
+    chain: "bsc",
+    contract: "0xeCCBb861c0dda7eFd964010085488B69317e4444",
+    firstBlock: 0,
+    wallets: [],
+    note: "Lagosta. Leitura completa dos dois lados: perpétuo na Binance com US$ 39,8 milhões de open interest, e o contrato na BSC guardando o bilhão inteiro do supply. A oferta em corretora é a quarta maior da lista — 25,1% do supply contra mediana de 3,2%, sendo 22,5% só na carteira quente da Binance. Todo o supply circula, então market cap e FDV são o mesmo número.",
+  },
 ];
 
 /**

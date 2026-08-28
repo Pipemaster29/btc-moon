@@ -1,7 +1,84 @@
 {
-  "geradoEm": 1787915482664,
-  "levouSegundos": 42.458,
+  "geradoEm": 1787915479833,
+  "levouSegundos": 36.945,
   "moedas": [
+    {
+      "symbol": "龙虾USDT",
+      "ticker": "龙虾",
+      "chain": "bsc",
+      "contract": "0xeCCBb861c0dda7eFd964010085488B69317e4444",
+      "hasWallets": false,
+      "note": "Lagosta. Perpétuo só na Gate, então o histórico e o open interest vêm de lá — a Binance não lista. On-chain é leitura cheia: o contrato guarda o bilhão inteiro e 25,1% dele está parado em carteira de corretora, 22,5% só na quente da Binance. Sem circulante publicado, o market cap não é calculável e as regras de tamanho ficam de fora; o que aparece é FDV.",
+      "price": 0.0565,
+      "change24h": 0.8386,
+      "liquidityUsd": 1939478.7000000002,
+      "volume24h": 5645712.8,
+      "turnover": 2.910943440626597,
+      "fdv": 56508739,
+      "openInterestUsd": 39804443.00325,
+      "openInterestBinance": 39804443.00325,
+      "perpDominance": 20.523268960494384,
+      "accountRatio": 0.5708,
+      "whaleRatio": 1.6022,
+      "moveKind": "squeeze",
+      "moveChange": 0.7730155679415722,
+      "whaleExiting": false,
+      "whaleExitShare": 0,
+      "oiChange72h": 0.23958476483232438,
+      "score": 40,
+      "reasons": [
+        "alta forçada de 77%",
+        "varejo vendido contra dinheiro grande comprado — risco de squeeze"
+      ],
+      "vida": {
+        "symbol": "龙虾USDT",
+        "ticker": "龙虾",
+        "estagio": "no topo",
+        "pico": 0.0595,
+        "picoEm": "2026-08-28",
+        "diasDesdePico": 0,
+        "queda": -0.05042016806722682,
+        "altaDesdeFundo": 0,
+        "amplitude": 11.424731182795698,
+        "preco": 0.0565,
+        "dias": 171,
+        "floatCex": 0.25082747476933404,
+        "contratoRepresenta": true,
+        "circulante": 1000000000,
+        "marketCap": 56500000,
+        "floatToken": 1,
+        "unlocks": [],
+        "tecnica": {
+          "emBaixa": false,
+          "rompeu": false,
+          "resistencia": null,
+          "ateResistencia": null,
+          "vsMedia20": 1.1866484619523403,
+          "toposDescendentes": 1
+        },
+        "virada": null,
+        "veredito": "Máxima há menos de um dia e o preço a -5% dela. É onde a distribuição acontece, se for acontecer — o lugar de olhar a saída das baleias e o retorno da oferta para as corretoras. O float em corretora é 25.08% do supply."
+      },
+      "leitura": {
+        "vies": "observar",
+        "forca": 1,
+        "ateQuando": "O efeito foi medido em sete e catorze dias — a fase mede −8,3% em sete dias. Esta fase muda por passagem de tempo, não por preço, então não há nível que a encerre. O retrato é refeito a cada trinta minutos e a leitura se corrige sozinha.",
+        "titulo": "Máxima fresca, mas sem saída de dinheiro grande",
+        "porque": "Topo de 0 dia(s), preço a -5% dele. Esta fase já foi regra de venda aqui, e não é: o número que a sustentava vinha de uma janela de medição que não era a que roda ao vivo. Refeita na janela certa, ela mede −3,1 pontos em sete dias com p = 0,187 — dentro do acaso, com 10 de 26 moedas subindo. O que vira venda é o dinheiro grande começar a sair, e ele ainda não começou."
+      },
+      "motor": {
+        "privado": 0.732521752204338,
+        "emCorretora": 0.25082747476933404,
+        "emPool": 0.016650773026328,
+        "pools": 15,
+        "temPerpetuo": true,
+        "temLivro": true,
+        "temOferta": true,
+        "motores": 3,
+        "medidos": 3,
+        "resumo": "perpétuo, livro e oferta — a moeda ainda tem com que ser movida"
+      }
+    },
     {
       "symbol": "BTWUSDT",
       "ticker": "BTW",
@@ -373,8 +450,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.1166,
-          "ateResistencia": 0.06000000000000005,
-          "vsMedia20": 0.02225733004971886,
+          "ateResistencia": 0.060964513193812575,
+          "vsMedia20": 0.021375464684014744,
           "toposDescendentes": 0
         },
         "virada": {
@@ -453,8 +530,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.20048,
-          "ateResistencia": 0.20473529235021926,
-          "vsMedia20": 2.4317708440741588,
+          "ateResistencia": 0.20451814467676033,
+          "vsMedia20": 2.4322833427849666,
           "toposDescendentes": 1
         },
         "virada": {
@@ -532,8 +609,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.00975,
-          "ateResistencia": 0.2195121951219512,
-          "vsMedia20": 0.038449923528781405,
+          "ateResistencia": 0.2185976752905887,
+          "vsMedia20": 0.039188754785352886,
           "toposDescendentes": 1
         },
         "virada": {
@@ -551,9 +628,9 @@
         "porque": "A alta de +28% é squeeze, e entrar vendido no meio dela é virar o combustível. Isto é sobre QUANDO, não sobre direção: a fase da moeda (em queda longa) continua valendo, mas o momento de agir é depois que os vendidos acabam."
       },
       "motor": {
-        "privado": 0.8548356082135645,
+        "privado": 0.8548395679758476,
         "emCorretora": 0.14053895527970175,
-        "emPool": 0.0046254365067337835,
+        "emPool": 0.004621476744450645,
         "pools": 9,
         "temPerpetuo": true,
         "temLivro": true,
@@ -857,8 +934,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.016,
-          "ateResistencia": 0.41230470474004766,
-          "vsMedia20": 0.5302738662074089,
+          "ateResistencia": 0.4120554231753595,
+          "vsMedia20": 0.5305233441617647,
           "toposDescendentes": 0
         },
         "virada": null,
@@ -933,8 +1010,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.07577,
-          "ateResistencia": 0.09068662732114574,
-          "vsMedia20": 0.09448111795566638,
+          "ateResistencia": 0.09052964881980441,
+          "vsMedia20": 0.09463004245866413,
           "toposDescendentes": 1
         },
         "virada": null,
@@ -1088,8 +1165,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.01718,
-          "ateResistencia": 0.026529636711281057,
-          "vsMedia20": -0.011695371160472479,
+          "ateResistencia": 0.02689778840406465,
+          "vsMedia20": -0.012032184247435018,
           "toposDescendentes": 1
         },
         "virada": {
@@ -1400,8 +1477,8 @@
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.3733,
-          "ateResistencia": 0.08865558471857704,
-          "vsMedia20": -0.05878154893430154,
+          "ateResistencia": 0.08833819241982499,
+          "vsMedia20": -0.05851998243302592,
           "toposDescendentes": 2
         },
         "virada": {
@@ -1480,8 +1557,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.31009,
-          "ateResistencia": 0.22275236593059922,
-          "vsMedia20": -0.09359781977393544,
+          "ateResistencia": 0.2229452595046535,
+          "vsMedia20": -0.09373430717460329,
           "toposDescendentes": 1
         },
         "virada": {
@@ -1560,8 +1637,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.0015699,
-          "ateResistencia": 0.5543564356435642,
-          "vsMedia20": 0.06653713344385892,
+          "ateResistencia": 0.554972266244057,
+          "vsMedia20": 0.06613725883607735,
           "toposDescendentes": 0
         },
         "virada": null,
@@ -1804,8 +1881,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.06408,
-          "ateResistencia": 0.04364820846905526,
-          "vsMedia20": 0.054149641177076546,
+          "ateResistencia": 0.04347826086956519,
+          "vsMedia20": 0.054312276274110616,
           "toposDescendentes": 5
         },
         "virada": {
@@ -1901,8 +1978,8 @@
           "emBaixa": true,
           "rompeu": false,
           "resistencia": 0.002855,
-          "ateResistencia": 0.09303215926493102,
-          "vsMedia20": -0.04727166618033274,
+          "ateResistencia": 0.09386973180076619,
+          "vsMedia20": -0.04796644172898057,
           "toposDescendentes": 2
         },
         "virada": {
@@ -1981,8 +2058,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.02966,
-          "ateResistencia": 0.030935001737921297,
-          "vsMedia20": -0.021728042435989026,
+          "ateResistencia": 0.030576789437108953,
+          "vsMedia20": -0.021404648157908324,
           "toposDescendentes": 1
         },
         "virada": {
@@ -2060,8 +2137,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.25973,
-          "ateResistencia": 0.07353062742828809,
-          "vsMedia20": 0.12563739903971438,
+          "ateResistencia": 0.07459660736450147,
+          "vsMedia20": 0.1245835737283878,
           "toposDescendentes": 1
         },
         "virada": null,
@@ -2373,8 +2450,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.4152,
-          "ateResistencia": 2.311004784688995,
-          "vsMedia20": -0.7863204171352622,
+          "ateResistencia": 2.308366533864542,
+          "vsMedia20": -0.7861518407129409,
           "toposDescendentes": 1
         },
         "virada": {
@@ -2451,8 +2528,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 2.9364,
-          "ateResistencia": 0.10949897982316936,
-          "vsMedia20": 0.18172624190426423,
+          "ateResistencia": 0.10941514281396403,
+          "vsMedia20": 0.18181026649669696,
           "toposDescendentes": 0
         },
         "virada": {
@@ -2529,8 +2606,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.017497,
-          "ateResistencia": 0.00234876260311645,
-          "vsMedia20": -0.21728115506630652,
+          "ateResistencia": 0.0014881804132560461,
+          "vsMedia20": -0.21663490640062777,
           "toposDescendentes": 1
         },
         "virada": {
@@ -2846,8 +2923,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.52985,
-          "ateResistencia": 0.26199833273788276,
-          "vsMedia20": 0.8339026286592877,
+          "ateResistencia": 0.26202839176829285,
+          "vsMedia20": 0.8338629538629541,
           "toposDescendentes": 0
         },
         "virada": {
@@ -3084,8 +3161,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.2206,
-          "ateResistencia": 0.0734793187347933,
-          "vsMedia20": -0.1838598860183882,
+          "ateResistencia": 0.07400194741966892,
+          "vsMedia20": -0.18424083561698268,
           "toposDescendentes": 1
         },
         "virada": {
@@ -3162,8 +3239,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 2.124,
-          "ateResistencia": 0.08700102354145356,
-          "vsMedia20": 0.0017173762591955466,
+          "ateResistencia": 0.08867247565351111,
+          "vsMedia20": 0.00025634452704426103,
           "toposDescendentes": 4
         },
         "virada": {
@@ -3410,8 +3487,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.011799,
-          "ateResistencia": 0.08516508783224497,
-          "vsMedia20": 0.10568196262870244,
+          "ateResistencia": 0.08426759786803917,
+          "vsMedia20": 0.10654654166073496,
           "toposDescendentes": 1
         },
         "virada": {
@@ -3488,8 +3565,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.07566,
-          "ateResistencia": 0.034171678512848525,
-          "vsMedia20": 0.0015538047681957767,
+          "ateResistencia": 0.03431305536568696,
+          "vsMedia20": 0.0014237603701778845,
           "toposDescendentes": 0
         },
         "virada": {
@@ -3565,8 +3642,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.05503,
-          "ateResistencia": 0.0071376281112738305,
-          "vsMedia20": 0.12052170703197107,
+          "ateResistencia": 0.007690899102728466,
+          "vsMedia20": 0.11994093700973107,
           "toposDescendentes": 0
         },
         "virada": null,
@@ -3716,8 +3793,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.013043,
-          "ateResistencia": 0.08537904635100291,
-          "vsMedia20": -0.13528099589839515,
+          "ateResistencia": 0.08555971702039122,
+          "vsMedia20": -0.13541869049931976,
           "toposDescendentes": 1
         },
         "virada": {
@@ -3793,8 +3870,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.000968,
-          "ateResistencia": 0.1747572815533982,
-          "vsMedia20": -0.1645120405576681,
+          "ateResistencia": 0.17618469015795868,
+          "vsMedia20": -0.16548367471101222,
           "toposDescendentes": 0
         },
         "virada": {
@@ -3953,8 +4030,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.03282,
-          "ateResistencia": 0.658413340070743,
-          "vsMedia20": -0.2369237887755693,
+          "ateResistencia": 0.6575757575757575,
+          "vsMedia20": -0.23655292076344714,
           "toposDescendentes": 0
         },
         "virada": {
@@ -3972,9 +4049,9 @@
         "porque": "-63% do topo, e a fase mede +2,7% em sete dias — normalmente compraria. O supply circulante saltou 46% há 1 dia(s) — unlock. Quem recebeu não tinha o token e passou a ter, e boa parte vende com pressa; na BTW o salto foi de 23% três dias antes da máxima. Isso desfaz a premissa: a reversão à média supõe que a oferta parou de crescer, e ela não parou."
       },
       "motor": {
-        "privado": 0.8094562629134471,
+        "privado": 0.8094683039926285,
         "emCorretora": 0.15887561255751945,
-        "emPool": 0.031668124529033455,
+        "emPool": 0.0316560834498521,
         "pools": 5,
         "temPerpetuo": true,
         "temLivro": true,
@@ -4031,8 +4108,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.042285,
-          "ateResistencia": 0.0182286649971104,
-          "vsMedia20": 0.04076809527509151,
+          "ateResistencia": 0.018253184675030676,
+          "vsMedia20": 0.04074433758340934,
           "toposDescendentes": 0
         },
         "virada": {
@@ -4114,8 +4191,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.025055,
-          "ateResistencia": 0.03413405976556061,
-          "vsMedia20": 0.08799669487548512,
+          "ateResistencia": 0.03332371014970925,
+          "vsMedia20": 0.08880347023269586,
           "toposDescendentes": 0
         },
         "virada": {
@@ -4192,8 +4269,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.09737,
-          "ateResistencia": 0.0015428924089693208,
-          "vsMedia20": -0.05773573567752499,
+          "ateResistencia": 0.0016459212015225155,
+          "vsMedia20": -0.057828090698947676,
           "toposDescendentes": 1
         },
         "virada": {
@@ -4425,8 +4502,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.13688,
-          "ateResistencia": 0.029327718453902918,
-          "vsMedia20": 0.06173775923671121,
+          "ateResistencia": 0.02917293233082696,
+          "vsMedia20": 0.06188896473810068,
           "toposDescendentes": 2
         },
         "virada": {
@@ -4824,8 +4901,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.02777,
-          "ateResistencia": 0.023590121636564598,
-          "vsMedia20": 0.14291732490784637,
+          "ateResistencia": 0.024345260051641393,
+          "vsMedia20": 0.14212289090640984,
           "toposDescendentes": 2
         },
         "virada": {
@@ -4862,14 +4939,14 @@
       "contract": "0x0F0df6cB17ee5E883eddFEf9153fC6036BDB4e37",
       "hasWallets": false,
       "price": 0.02978,
-      "change24h": 0.198,
-      "liquidityUsd": 2240976.699999999,
-      "volume24h": 4136988.34,
-      "turnover": 1.8460648609153332,
-      "fdv": 297857120,
+      "change24h": 0.19820000000000002,
+      "liquidityUsd": 2240865.5999999987,
+      "volume24h": 4137925.48,
+      "turnover": 1.8465745915328444,
+      "fdv": 297896732,
       "openInterestUsd": 3467648.26464,
       "openInterestBinance": 3467648.26464,
-      "perpDominance": 1.5473825607557643,
+      "perpDominance": 1.5474592785216579,
       "accountRatio": 1.5183,
       "whaleRatio": 1.38,
       "moveKind": "misto",
@@ -4901,8 +4978,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.030096,
-          "ateResistencia": 0.007498660953401348,
-          "vsMedia20": 0.16181927082928182,
+          "ateResistencia": 0.008173656706418342,
+          "vsMedia20": 0.16108656419192213,
           "toposDescendentes": 1
         },
         "virada": {
@@ -5062,8 +5139,8 @@
           "emBaixa": false,
           "rompeu": false,
           "resistencia": 0.009397,
-          "ateResistencia": 0.051118568232662254,
-          "vsMedia20": -0.20148983775238172,
+          "ateResistencia": 0.05135377041843836,
+          "vsMedia20": -0.20166134470669694,
           "toposDescendentes": 0
         },
         "virada": null,
