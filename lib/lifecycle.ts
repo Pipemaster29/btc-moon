@@ -644,11 +644,16 @@ function calcularVirada(
  * medianas do ativo: não têm custo de financiamento nem spread embutidos, e a
  * dispersão em volta delas é enorme.
  */
+// Números da remedição na janela de seis meses que roda ao vivo — os antigos
+// vinham do backtest de janela crescente e diziam quase o dobro em toda linha.
 const HORIZONTE: Partial<Record<Estagio, string>> = {
-  exausta: "a fase mede +2,7% em sete dias e +9,2% em catorze",
-  ressuscitando: "a fase mede −1,2% em sete dias e −4,2% em catorze",
-  "no topo": "a fase mede −8,3% em sete dias",
-  "nunca subiu": "a fase mede +1,3% em sete dias, perto da referência",
+  exausta: "a fase mede +0,4% em sete dias e +3,0% em catorze",
+  ressuscitando: "a fase mede −1,5% em sete dias e −3,5% em catorze",
+  "no topo": "a fase mede −3,5% em sete dias, dentro do acaso",
+  "nunca subiu": "a fase mede +1,0% em sete dias, perto da referência",
+  "caindo do topo": "a fase mede +1,9% em sete dias — não é fase de venda",
+  "em queda longa": "a fase mede +1,6% em sete dias",
+  "de lado": "a fase mede +1,1% em sete dias",
 };
 
 function textoAteQuando(vida: Vida): string {
@@ -818,7 +823,14 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     };
   }
 
-  if (vida.estagio === "no topo") {
+  // O `podeVender` PRECISA estar aqui, e a falta dele engolia o aviso mais
+  // importante que este arquivo tem para dar. Sem ele, uma moeda "no topo" no
+  // meio de um squeeze caía neste retorno e saía como "observar — sem saída de
+  // dinheiro grande", enquanto a regra de tempo lá embaixo, que existe
+  // justamente para gritar "não venda agora", nunca era alcançada. Foi visto na
+  // 龙虾 subindo 90% com o open interest dobrando: a tela dizia "observar" onde
+  // devia dizer "evitar".
+  if (vida.estagio === "no topo" && podeVender) {
     return {
       vies: "observar",
       forca: 1,
