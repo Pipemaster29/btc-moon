@@ -367,19 +367,23 @@ async function vigiarCorretoras(
   // e o outro lado não responde nada que interesse aqui.
   const subiu = anterior ? agora - anterior.fracao : 0;
   const chegadas: FloatCex["chegadas"] = [];
+  let parcial = false;
 
   if (subiu >= 0.0005) {
     const janela = blocosPara(token.chain, 3);
     const alvos = new Set(CARTEIRAS_CEX.map((a) => a.toLowerCase()));
 
     try {
-      const { transfers } = await scanTransfers({
+      const { transfers, failed } = await scanTransfers({
         chain: token.chain,
         token: token.contract,
         fromBlock: Math.max(head - janela, 0),
         toBlock: head,
         receiving: CARTEIRAS_CEX,
       });
+      // Faixa que falhou significa chegada que não foi vista. O alerta de salto
+      // de saldo não depende disto e continua saindo; o de origem, sim.
+      if (failed > 0) parcial = true;
 
       for (const t of transfers) {
         // Movimento entre duas carteiras da mesma corretora não é oferta nova
@@ -395,6 +399,7 @@ async function vigiarCorretoras(
       }
     } catch {
       // Sem os logs sobra o saldo, que ainda responde a pergunta principal.
+      parcial = true;
     }
   }
 
@@ -413,6 +418,7 @@ async function vigiarCorretoras(
       antes: anterior?.fracao ?? null,
       horas,
       chegadas,
+      parcial,
       supply,
     },
   }).filter((alert) => {

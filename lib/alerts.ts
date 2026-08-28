@@ -210,6 +210,21 @@ export interface FloatCex {
     toLabel: string;
     block: number;
   }[];
+  /**
+   * A varredura de quem enviou ficou incompleta?
+   *
+   * Existe porque `scanTransfers` conta as faixas que falharam e ninguém lia
+   * essa contagem. Faixa perdida some sem rastro, e a lista de chegadas volta
+   * MENOR do que a realidade — o que faz um depósito grande passar sem alerta,
+   * já que `cex-inflow` só percorre o que foi encontrado. Duas execuções do
+   * mesmo rastreamento, minutos uma da outra, devolveram 413 e 179
+   * transferências para a mesma janela de 24h; a diferença era faixa falhando.
+   *
+   * O salto de saldo continua completo — ele são duas chamadas de RPC, não uma
+   * varredura — e é ele que garante que o evento não passe calado. Esta marca
+   * serve para o texto não afirmar de onde veio quando não dá para saber.
+   */
+  parcial?: boolean;
   /** Supply total, para converter fração em moeda. */
   supply: number;
 }
@@ -743,7 +758,11 @@ export function detect(input: DetectInput): Alert[] {
             `de ${units(cex.antes * cex.supply)} para ${units(cex.agora * cex.supply)}. ` +
             `Essa oferta não estava disponível para venda e agora está. É a virada que antecedeu ` +
             `o topo do LAB — lá foi 1% do supply voltando em um dia, e o preço caiu de US$ 14 ` +
-            `para US$ 0,89 nos dias seguintes.`,
+            `para US$ 0,89 nos dias seguintes.` +
+            (cex.parcial
+              ? ` ⚠️ A varredura de quem enviou ficou incompleta nesta rodada, então a origem ` +
+                `pode estar faltando — o salto do saldo, esse, é medida cheia.`
+              : ""),
           valueUsd: emPontos * cex.supply * priceUsd,
           addresses: [],
         });

@@ -211,7 +211,7 @@ else {
     // são só as transferências que tocam carteira de corretora.
     const topo = await blockNumber(token.chain as Chain);
     const janela = blocosPara(token.chain as Chain, 24);
-    const { transfers: movs } = await scanTransfers({
+    const { transfers: movs, failed } = await scanTransfers({
       chain: token.chain as Chain,
       token: token.contract,
       fromBlock: topo - janela,
@@ -229,6 +229,12 @@ else {
       if (q * p >= 50_000) grandes.push({ de: m.from, para: m.to, qtd: q });
     }
     console.log(`\nfluxo para corretora, últimas 24h:`);
+    if (failed > 0) {
+      // Sem isto o número mente com cara de medida. Duas execuções minutos uma
+      // da outra devolveram 413 e 179 transferências para a MESMA janela, e a
+      // diferença eram faixas que falharam em silêncio.
+      console.log(`   ⚠️ ${failed} faixa(s) falharam — os números abaixo são PISO, não medida.`);
+    }
     console.log(`   entrou ${Math.round(entrou).toLocaleString("pt-BR")} (${usd(entrou * p)}) · saiu ${Math.round(saiu).toLocaleString("pt-BR")} (${usd(saiu * p)}) · líquido ${entrou - saiu >= 0 ? "+" : ""}${Math.round(entrou - saiu).toLocaleString("pt-BR")} (${usd(Math.abs(entrou - saiu) * p)} ${entrou - saiu >= 0 ? "chegando" : "saindo"})`);
     console.log(`   ${movs.length.toLocaleString("pt-BR")} transferências tocando corretora na janela · ${grandes.length} acima de US$ 50 mil`);
     for (const g of grandes.sort((a, b) => b.qtd - a.qtd).slice(0, 8)) {
