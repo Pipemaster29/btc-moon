@@ -18,11 +18,26 @@
 
 const filas = new Map<string, { emVoo: number; teto: number; espera: (() => void)[] }>();
 
+/**
+ * O teto vale por SERVIÇO, e quem chega primeiro o define.
+ *
+ * Chamar o mesmo serviço com tetos diferentes não é aceito em silêncio: o maior
+ * ganha e passa a valer para todos. Ignorar o segundo valor deixaria o
+ * comportamento depender da ordem em que os módulos são carregados, que é o
+ * tipo de coisa que muda sozinha num refactor e ninguém percebe.
+ */
 export function comLimite<T>(servico: string, teto: number, tarefa: () => Promise<T>): Promise<T> {
   let fila = filas.get(servico);
   if (!fila) {
     fila = { emVoo: 0, teto, espera: [] };
     filas.set(servico, fila);
+  } else if (teto > fila.teto) {
+    // As vagas que acabaram de existir são liberadas agora. Contar pela
+    // diferença, e não por `emVoo`, é o que evita soltar demais: quem é
+    // liberado só incrementa `emVoo` no microtask seguinte.
+    const novas = teto - fila.teto;
+    fila.teto = teto;
+    for (let i = 0; i < novas; i++) fila.espera.shift()?.();
   }
 
   const executar = async (): Promise<T> => {

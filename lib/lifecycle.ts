@@ -40,14 +40,84 @@ import type { WatchedToken } from "./watchlist";
  * qualquer moeda está em corretora — na BNB Chain, na Base ou na Ethereum —
  * sem conhecer nenhuma carteira do projeto. É o único número on-chain
  * disponível para as quarenta moedas cujos donos ainda não foram mapeados.
+ *
+ * ---------------------------------------------------------------------------
+ * A LISTA ESTAVA CEGA NA ETHEREUM, e o erro não era pequeno.
+ *
+ * As seis originais foram levantadas olhando a BNB Chain, onde a BTW vive. Três
+ * delas nunca aparecem na Ethereum, e das que aparecem só a fria da Binance
+ * carrega volume — as carteiras QUENTES, que é por onde a oferta chega ao livro,
+ * ficaram todas de fora. Como "oferta em corretora" é uma soma sobre esta lista,
+ * o que faltava saía direto do resultado:
+ *
+ *   PORTAL   11,56% medido · 59,59% real   (a fria guarda 11,6%, a quente 22,1%)
+ *   EPIC     29,76% · 57,81%
+ *   SYN      11,15% · 25,22%
+ *   HEMI      3,67% ·  7,24%
+ *   RE        0,08% ·  1,53%
+ *   BASED     0,00% ·  1,57%   — zero absoluto virando "nenhuma oferta no livro"
+ *
+ * Isso não é cosmético: `floatAlto` dispara em 15% e `floatBaixo` em 2%, então
+ * PORTAL e EPIC estavam do lado errado do primeiro limiar e BASED e RE do lado
+ * errado do segundo — que é o que dá FORÇA 3 a uma compra. Na BNB Chain o
+ * buraco era menor mas existia: faltava a Gate, que aparece em vinte e duas das
+ * trinta e três moedas com contrato.
+ *
+ * ---------------------------------------------------------------------------
+ * COMO CADA UMA FOI CONFERIDA, sem depender de rótulo de terceiro.
+ *
+ * O projeto inteiro desconfia de nome de carteira vindo de fora, e com razão.
+ * Então o teste aqui é on-chain e é este: TESOURARIA GUARDA O PRÓPRIO TOKEN,
+ * CORRETORA GUARDA O DE TODO MUNDO. Contando em quantas moedas NÃO RELACIONADAS
+ * da watchlist o mesmo endereço aparece com pelo menos 0,05% do supply, uma
+ * carteira de projeto marca 1 e uma custódia marca vários. Medido sobre as 33
+ * moedas com contrato, nenhum candidato ficou abaixo de 2 — e o pior deles ainda
+ * bate uma das seis que já estavam na lista, que aparece em 1.
+ *
+ * Quatro delas têm prova mais forte ainda, tirada do grafo de transferências da
+ * própria HEI: transacionam DIRETAMENTE com a fria da Binance (0xF977…), que é
+ * o endereço mais conhecido da rede.
+ *
+ * O que este teste NÃO separa é corretora de formador de mercado, porque os dois
+ * guardam moeda dos outros. Para a pergunta que esta lista responde — quanto do
+ * supply está pousado contra um livro, pronto para virar venda — os dois contam
+ * igual, então a distinção não muda o número.
  */
 export const CARTEIRAS_CEX = [
-  "0xF977814e90dA44bFA03b6295A0616a897441aceC",
-  "0x73D8bD54F7Cf5FAb43fE4Ef40A62D390644946Db",
-  "0x7FcBd9d429932A11884Cb5CE9c61055b369F56F7",
-  "0x26209d9f0Dc3aC0129C3FB1bADaBFeb9eE728c66",
-  "0x1AB4973a48dc892Cd9971ECE8e01DcC7688f8F23",
-  "0x4982085C9e2F89F2eCb8131Eca71aFAD896e89CB",
+  // ------------------------------------------------- as seis originais
+  "0xF977814e90dA44bFA03b6295A0616a897441aceC", // fria da Binance · 6 moedas, BSC+ETH
+  "0x73D8bD54F7Cf5FAb43fE4Ef40A62D390644946Db", // 18 moedas, BSC
+  "0x7FcBd9d429932A11884Cb5CE9c61055b369F56F7", // 1 moeda, BSC
+  "0x26209d9f0Dc3aC0129C3FB1bADaBFeb9eE728c66", // 5 moedas, BSC+ETH
+  "0x1AB4973a48dc892Cd9971ECE8e01DcC7688f8F23", // 8 moedas, BSC+ETH
+  "0x4982085C9e2F89F2eCb8131Eca71aFAD896e89CB", // 15 moedas, BSC
+
+  // --------------------------------- o aglomerado da Binance na Ethereum
+  //
+  // Os três primeiros trocam token com a fria 0xF977 o tempo todo: na HEI são
+  // 90 transferências nos dois sentidos com um, e 17 e 16 só de ida com os
+  // outros dois — carteira quente varrendo para a fria, que é o desenho padrão.
+  // O quarto recebeu 15,79 milhões de HEI da fria numa transferência única e
+  // carrega 3,04 BILHÕES de USDT, o que não é saldo de projeto nenhum.
+  "0x28C6c06298d514Db089934071355E5743bf21d60", // 7 moedas · 18,0 mi de transações
+  "0xDFd5293D8e347dFe59E90eFd55b2956a1343963d", // 6 moedas · 15,1 mi de transações
+  "0x21a31Ee1afC51d94C2eFcCAa2092aD1028285549", // 6 moedas · 15,7 mi de transações
+  "0x5a52E96BAcdaBb82fd05763E25335261B270Efcb", // 3 moedas · 3,04 bi de USDT
+
+  // ----------------------------------------- as outras custódias grandes
+  //
+  // Sem ligação direta com a Binance, e não faz falta: cada uma guarda pedaço
+  // de várias moedas sem relação entre si, que é a assinatura de custódia. A
+  // primeira é a mais presente da lista inteira — 22 das 33 moedas, nas TRÊS
+  // redes —, e a última é uma varredora: 1,2 milhão de transações e quase nada
+  // parado, o padrão de quem recolhe depósito e repassa.
+  "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe", // 22 moedas, BSC+Base+ETH
+  "0x58edF78281334335EfFa23101bBe3371b6a36A51", // 6 moedas · 1,2 mi de transações
+  "0xA023f08c70A23aBc7EdFc5B6b5E171d78dFc947e", // 4 moedas · 116 mil ETH
+  "0x9642b23Ed1E01Df1092B92641051881a322F5D4E", // 4 moedas · 3,4 mi de transações
+  "0xCFFAd3200574698b78f32232aa9D63eABD290703", // 3 moedas · 78 mi de USDT
+  "0x43684d03D81d3a4C70da68feBdd61029d426F042", // 3 moedas · 123 mi de USDT
+  "0x3cc936b795A188F0e246cBB2D74C5Bd190aeCF18", // 2 moedas · 140 mi de USDT
 ];
 
 export type Estagio =
@@ -80,6 +150,17 @@ export interface Vida {
   floatCex: number | null;
   /** O contrato lido representa a moeda inteira? Nulo quando não dá para saber. */
   contratoRepresenta: boolean | null;
+  /**
+   * Supply do contrato ÷ circulante: QUANTO da moeda o contrato cobre.
+   *
+   * `contratoRepresenta` é o mesmo número virado em sim ou não pelo corte de
+   * 90%, e sozinho ele mente por omissão: um contrato que guarda um milésimo da
+   * moeda e outro que guarda 89% dela saem os dois como `false`, e a tela dizia
+   * "o contrato não representa a moeda" nos dois casos. São situações
+   * completamente diferentes, e quem lê precisa da diferença para decidir se o
+   * número suprimido faria falta.
+   */
+  coberturaContrato: number | null;
   /** Supply circulante segundo o CoinMarketCap. */
   circulante: number | null;
   /**
@@ -378,6 +459,7 @@ export async function lerVida(
     floatCex,
     contratoRepresenta:
       onchain?.coerencia == null ? null : onchain.fracao !== null,
+    coberturaContrato: onchain?.coerencia ?? null,
     circulante: circ?.atual ?? null,
     marketCap: circ ? circ.atual * preco : null,
     floatToken:

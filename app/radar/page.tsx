@@ -97,7 +97,21 @@ function Score({ value }: { value: number }) {
   );
 }
 
-function Row({ row }: { row: PanoramaRow }) {
+/**
+ * `referencia` é o instante do retrato, não o de agora.
+ *
+ * Era `Date.now()` chamado dentro da linha, o que dava duas coisas erradas de
+ * uma vez: o lint reprovava a impureza no render, e a conta media a idade do
+ * unlock contra o momento em que a página é servida — que, com o retrato
+ * guardado e o cache de cinco minutos, pode estar horas à frente dos dados que
+ * a própria linha mostra. A janela tem de ser medida a partir de quando os
+ * `unlocks` foram lidos.
+ */
+function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
+  const unlockRecente = row.vida?.unlocks?.some(
+    (u) => referencia - u.quando <= 21 * 86400_000 && u.variacao >= 0.05,
+  );
+
   return (
     <tr className="border-t border-black/5 dark:border-white/5 hover:bg-black/[0.02] dark:hover:bg-white/[0.03]">
       <td className="py-2.5 pr-3">
@@ -129,9 +143,7 @@ function Row({ row }: { row: PanoramaRow }) {
         ) : (
           <span className="text-black/25 dark:text-white/25">—</span>
         )}
-        {row.vida?.unlocks?.some((u) => Date.now() - u.quando <= 21 * 86400_000 && u.variacao >= 0.05) && (
-          <p className="text-xs text-[#F6465D]">unlock</p>
-        )}
+        {unlockRecente && <p className="text-xs text-[#F6465D]">unlock</p>}
       </td>
       <td className="py-2.5 pr-3 text-right tabular-nums">{money(row.openInterestUsd)}</td>
       <td className="py-2.5 pr-3 text-right tabular-nums">
@@ -233,8 +245,11 @@ export default async function Radar() {
             tamanho, que colocaria em cima justamente as que não estão fazendo nada.
             Clique numa moeda para o retrato completo.
           </p>
+          {/* Duas idades, porque são dois relógios: preço e posicionamento se
+              refazem em segundos, estágio de vida custa dez arquivos por moeda.
+              Mostrar uma idade só estava errando a de metade dos números. */}
           <p className="text-xs text-black/40 dark:text-white/40">
-            Retrato de{" "}
+            Estágio e leitura de{" "}
             {new Date(snapshot.geradoEm).toLocaleString("pt-BR", {
               day: "2-digit",
               month: "2-digit",
@@ -242,17 +257,35 @@ export default async function Radar() {
               minute: "2-digit",
             })}
             {snapshot.idadeMinutos >= 1 &&
-              ` · ${Math.round(snapshot.idadeMinutos)} min atrás`}
+              ` · ${
+                snapshot.idadeMinutos >= 120
+                  ? `${Math.round(snapshot.idadeMinutos / 60)} h atrás`
+                  : `${Math.round(snapshot.idadeMinutos)} min atrás`
+              }`}
             {snapshot.fonte === "cálculo" && " · calculado agora"}
+            {/* O aviso de workflow parado continua aparecendo mesmo com a camada
+                viva por cima: uma coisa é o preço estar fresco, outra é o
+                retrato ter parado de ser tirado. Esconder a segunda porque a
+                primeira foi resolvida deixaria o workflow quebrado em silêncio. */}
             {snapshot.parado ? (
-              <span className="text-[#F6465D]">
-                {" "}
-                · parado há horas, confira o workflow
-              </span>
+              <span className="text-[#F6465D]"> · parado há horas, confira o workflow</span>
             ) : snapshot.atrasado ? (
               <span className="text-[#F0B90B]"> · atrasado</span>
             ) : null}
+            {snapshot.vivoEm !== null && snapshot.fonte !== "cálculo" && (
+              <span className="text-[#0ECB81]">
+                {" "}
+                · preço, open interest e posicionamento refeitos agora
+              </span>
+            )}
           </p>
+          {snapshot.novas.length > 0 && (
+            <p className="text-xs text-black/40 dark:text-white/40">
+              {snapshot.novas.join(", ")} {snapshot.novas.length === 1 ? "entrou" : "entraram"} na
+              lista depois do último retrato: aparecem com preço e posicionamento, sem estágio nem
+              leitura, até o workflow rodar de novo.
+            </p>
+          )}
         </header>
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -351,7 +384,7 @@ export default async function Radar() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <Row key={row.symbol} row={row} />
+                <Row key={row.symbol} row={row} referencia={snapshot.geradoEm} />
               ))}
             </tbody>
           </table>

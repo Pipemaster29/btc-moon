@@ -69,6 +69,15 @@ Os dois juntos corrigiram três identificações que o primeiro sozinho errava.
 Ticker curto derrota a busca — procurar "C" devolve o mercado inteiro. Para esses,
 `npm run descobrir C=chainbase` busca pelo nome do projeto.
 
+**Quando não há pool nenhuma, quem identifica é a custódia.** A HEI não tem par
+em DEX alguma: os dois testes não têm em que rodar, e a busca por ticker devolve
+três "Heima" na Solana com US$ 195 milhões de liquidez declarada, US$ 115 mil de
+volume e 38% de erro no preço — pool decorativa clássica. O que resolveu foi
+olhar quem guarda: na Ethereum a carteira fria da Binance carrega 30 milhões
+redondos do contrato, e na BNB Chain, onde o mesmo endereço existe, todas as
+carteiras de corretora estão zeradas. Corretora não custodia a moeda errada, e
+esse teste vale para qualquer moeda que negocie só em livro central.
+
 ## Aposentar uma moeda
 
 Moeda que morreu sai das análises sem sair da lista: basta preencher
@@ -97,10 +106,19 @@ decorativa mente. A **transferência** é o evento: chega com minutos de vida e
 nomeia quem enviou.
 
 A ordem entre as duas foi decidida por medição, não por gosto: varrer três horas
-da BNB Chain filtrando as seis carteiras levou 377 segundos numa moeda só, e ler
-o saldo custa duas chamadas. Então o saldo decide se vale procurar quem enviou —
+da BNB Chain filtrando as carteiras levou 377 segundos numa moeda só, e ler o
+saldo custa uma chamada. Então o saldo decide se vale procurar quem enviou —
 e na maioria dos ciclos não vale, porque nada chegou. O ciclo completo das 42
 moedas leva 31 segundos.
+
+A lista de carteiras tinha um buraco que só aparecia na Ethereum: as seis
+originais foram levantadas na BNB Chain, e lá as carteiras QUENTES — por onde a
+oferta chega ao livro — ficaram todas de fora. O PORTAL marcava 11,6% e são
+59,6%, o EPIC 29,8% e são 57,8%, o BASED marcava ZERO. São dezessete agora, e
+cada uma passou por um teste que não depende de rótulo de terceiro nenhum:
+tesouraria guarda o próprio token, custódia guarda o de todo mundo, então conta-se
+em quantas moedas **não relacionadas** da lista o mesmo endereço aparece com
+saldo. A mais presente aparece em 22 das 33.
 
 ## Alertas
 
@@ -127,6 +145,18 @@ camadas — GitHub raw (fresco sem deploy), disco (congelado no build), cálculo
 vivo (caro, mas nunca falha) — e mostra na tela quando o retrato foi tirado.
 Dado velho apresentado como atual é pior do que dado ausente. Resultado: 20,9s
 para 0,10s.
+
+As três camadas cobriam o arquivo SUMIR e não cobriam o arquivo ESTAR VELHO, que
+é o que de fato acontece: o cron pede duas execuções por hora e o GitHub entrega
+de duas a cinco por dia, então os retratos saem em pares separados por cinco a
+dez horas. Como o disco sempre responde, a camada de cálculo nunca era alcançada
+e a página servia preço de horas atrás. Agora, quando o retrato passa do prazo, a
+**camada barata é refeita por cima dele**: preço, open interest, posicionamento,
+perna atual e nota são duas requisições por moeda e voltam em quatro segundos; o
+estágio de vida, que custa dez arquivos por moeda, continua vindo do retrato. São
+duas idades diferentes e a tela mostra as duas — juntá-las numa só estava errando
+a de metade dos números. De quebra, moeda recém-adicionada à lista aparece na
+hora, sem estágio, em vez de esperar a próxima execução do workflow.
 
 Cada execução também acrescenta uma linha por moeda a
 `data/historico-AAAA-MM.jsonl`. É essa série que responde a pergunta que hoje

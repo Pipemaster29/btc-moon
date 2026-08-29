@@ -23,7 +23,7 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { getPanorama, type PanoramaRow } from "./overview";
+import { getOverview, getPanorama, type PanoramaRow } from "./overview";
 
 const RAW =
   "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main/data/panorama.json";
@@ -58,6 +58,17 @@ export interface Snapshot {
   atrasado: boolean;
   /** Tempo demais: alguma coisa quebrou. */
   parado: boolean;
+  /**
+   * Quando a camada barata foi refeita por cima do retrato guardado, se foi.
+   *
+   * Preço, open interest, posicionamento e nota são duas requisições por moeda
+   * e voltam em segundos; estágio de vida e leitura são dez arquivos por moeda e
+   * não cabem numa função serverless. São dois relógios diferentes no mesmo
+   * objeto, e juntá-los num só seria mentir sobre a idade de metade dos números.
+   */
+  vivoEm: number | null;
+  /** Moedas que estavam na lista e não existiam no retrato guardado. */
+  novas: string[];
 }
 
 interface Arquivo {
@@ -83,30 +94,120 @@ function montar(arquivo: Arquivo, fonte: Fonte): Snapshot {
     idadeMinutos,
     atrasado: idadeMinutos > ATRASADO_MINUTOS,
     parado: idadeMinutos > PARADO_MINUTOS,
+    vivoEm: null,
+    novas: [],
+  };
+}
+
+/**
+ * Quanto tempo vale a pena esperar pela camada viva.
+ *
+ * Se ela não voltar a tempo, a página sai com o retrato guardado em vez de
+ * estourar o limite da função serverless. Perder o refresco é aceitável; não
+ * abrir a página não é.
+ */
+const ORCAMENTO_VIVO_MS = 7_000;
+
+/**
+ * O retrato guardado com a camada barata refeita por cima.
+ *
+ * ISTO É O CONSERTO DE UM PROBLEMA QUE ESTAVA ACONTECENDO, e não uma precaução.
+ * As três camadas foram desenhadas para o caso de o arquivo SUMIR, e nenhuma
+ * delas cobria o caso de ele ESTAR VELHO — que é o que acontece na prática. O
+ * cron do workflow pede duas execuções por hora e o GitHub entrega de duas a
+ * cinco por DIA: medido no histórico de commits, os retratos saem em pares
+ * separados por cinco a dez horas. Como o disco sempre responde, a camada de
+ * cálculo nunca era alcançada, e a página servia preço de dez horas atrás com
+ * um aviso em letra pequena.
+ *
+ * O que dá para refazer barato é justamente o que envelhece rápido: preço, open
+ * interest, posicionamento, perna atual e nota são duas requisições por moeda. O
+ * que não dá é o estágio de vida — seis meses de histórico, dez arquivos por
+ * moeda, vinte segundos. Então as duas metades passam a ter idades diferentes e
+ * declaradas, em vez de uma idade só que estava errada para metade dos números.
+ *
+ * De quebra, moeda recém-adicionada à watchlist aparece na hora em vez de
+ * esperar a próxima execução do workflow — ela entra sem estágio e sem leitura,
+ * que é o honesto: esses dois ainda não foram calculados para ela.
+ */
+async function refrescar(base: Snapshot): Promise<Snapshot> {
+  // O `catch` fica NA promessa, não na corrida: se o orçamento vencer primeiro
+  // e o `getOverview` falhar depois, a corrida já terminou e a rejeição viraria
+  // um unhandled rejection — que no Node derruba o processo.
+  const viva = getOverview().catch(() => null);
+  const vivas = await Promise.race([
+    viva,
+    new Promise<null>((r) => setTimeout(() => r(null), ORCAMENTO_VIVO_MS)),
+  ]);
+
+  if (!vivas || vivas.length === 0) return base;
+
+  const guardadas = new Map(base.moedas.map((m) => [m.symbol, m]));
+  const novas: string[] = [];
+
+  const moedas: PanoramaRow[] = vivas.map((viva) => {
+    const antiga = guardadas.get(viva.symbol);
+    if (!antiga) {
+      novas.push(viva.ticker);
+      return { ...viva, vida: null, leitura: null, motor: null };
+    }
+    // A linha viva manda em tudo que ela mede; o que ela não mede vem do
+    // retrato. Espalhar nesta ordem é o que garante que nenhum campo velho
+    // sobreviva por cima de um novo.
+    return { ...antiga, ...viva, vida: antiga.vida, leitura: antiga.leitura, motor: antiga.motor };
+  });
+
+  // Moeda que existe no retrato e não voltou na passada viva CONTINUA na tela,
+  // com os números do retrato. Descartá-la faria uma requisição perdida apagar
+  // uma moeda do painel — que é a falha que o próprio `caidas` existe para
+  // denunciar, e seria absurdo reintroduzi-la aqui.
+  const vistas = new Set(vivas.map((v) => v.symbol));
+  for (const antiga of base.moedas) {
+    if (!vistas.has(antiga.symbol)) moedas.push(antiga);
+  }
+
+  return {
+    ...base,
+    moedas: moedas.sort((a, b) => b.score - a.score || b.openInterestUsd - a.openInterestUsd),
+    vivoEm: Date.now(),
+    novas,
   };
 }
 
 export async function getSnapshot(): Promise<Snapshot> {
+  let guardado: Snapshot | null = null;
+
   // 1. o repositório
   try {
     const res = await fetch(RAW, {
-      signal: AbortSignal.timeout(8_000),
+      // Quatro segundos, não oito: são 250 KB de arquivo estático vindo de CDN,
+      // e o que vem depois — refazer a camada viva — precisa do orçamento. Se o
+      // GitHub demorar mais do que isso, o disco responde na hora e a camada
+      // viva conserta o que nele estiver velho.
+      signal: AbortSignal.timeout(4_000),
       next: { revalidate: 120 },
     });
     if (res.ok) {
       const dado = await res.json();
-      if (valido(dado)) return montar(dado, "github");
+      if (valido(dado)) guardado = montar(dado, "github");
     }
   } catch {
     // Cai para a próxima camada.
   }
 
   // 2. o disco
-  try {
-    const dado = JSON.parse(await readFile(CAMINHO, "utf8"));
-    if (valido(dado)) return montar(dado, "disco");
-  } catch {
-    // Cai para a próxima camada.
+  if (!guardado) {
+    try {
+      const dado = JSON.parse(await readFile(CAMINHO, "utf8"));
+      if (valido(dado)) guardado = montar(dado, "disco");
+    } catch {
+      // Cai para a próxima camada.
+    }
+  }
+
+  // 2b. o retrato existe mas passou da hora: refaz o que é barato por cima.
+  if (guardado) {
+    return guardado.atrasado ? refrescar(guardado) : guardado;
   }
 
   // 3. na mão
@@ -118,5 +219,7 @@ export async function getSnapshot(): Promise<Snapshot> {
     idadeMinutos: 0,
     atrasado: false,
     parado: false,
+    vivoEm: Date.now(),
+    novas: [],
   };
 }

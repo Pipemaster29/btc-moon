@@ -24,6 +24,7 @@ import {
   type Chain,
 } from "./onchain";
 import { depthOn, pairsOfToken } from "./dexscreener";
+import { precoBinance } from "./binance";
 import { findToken, labelOf, type WalletRole, type WatchedToken } from "./watchlist";
 
 /** Abaixo disso a carteira não paga nem uma transferência. */
@@ -83,6 +84,14 @@ export interface RadarSnapshot {
   explorer: string;
   supply: number;
   priceUsd: number;
+  /**
+   * De onde saiu o preço.
+   *
+   * Existe porque as duas origens não valem o mesmo e a tela precisa dizer qual
+   * é: o preço da pool é o que a rede realmente pratica; o do perpétuo é o que
+   * uma corretora marca, e para moeda sem pool é o único que existe.
+   */
+  priceSource: "pool" | "perpétuo" | "nenhum";
   liquidityUsd: number;
   volume24h: number;
   pools: number;
@@ -124,16 +133,37 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
   const config = CHAINS[token.chain];
   const addresses = token.wallets.map((w) => w.address);
 
-  const [info, head, pairs, balances, gasBalances] = await Promise.all([
+  const [info, head, pairs, balances, gasBalances, perpPrice] = await Promise.all([
     tokenInfo(token.chain, token.contract),
     blockNumber(token.chain),
     pairsOfToken(token.contract),
     balancesOf(token.chain, token.contract, addresses),
     gasOf(token.chain, addresses),
+    // Emenda para moeda que não tem pool. Sem ela o painel inteiro nascia
+    // zerado — ver o comentário sobre a origem do preço logo abaixo.
+    precoBinance(token.symbol).catch(() => null),
   ]);
 
   const depth = depthOn(pairs, token.chain);
-  const price = depth?.priceUsd ?? 0;
+
+  // O PREÇO NÃO PODE DEPENDER SÓ DA POOL, e isto era um buraco silencioso.
+  //
+  // Tudo em dólar nesta página sai de uma multiplicação por `price`, e `price`
+  // vinha exclusivamente do DexScreener. Moeda com contrato de verdade mas sem
+  // par em DEX — a HEI é isso: 72 milhões de tokens na Ethereum, negociada só em
+  // corretora — caía com preço 0. E aí o valor de cada carteira era US$ 0, o FDV
+  // era US$ 0, o piso de "transferência grande" nunca era alcançado porque toda
+  // transferência valia zero, e a página mostrava um retrato de moeda sem
+  // valor nenhum. Nada disso aparecia como erro.
+  //
+  // O perpétuo cobre o caso: é onde essas moedas negociam. A pool continua
+  // mandando quando existe, porque é o preço que a própria rede pratica.
+  const price = depth?.priceUsd || perpPrice || 0;
+  const priceSource: RadarSnapshot["priceSource"] = depth?.priceUsd
+    ? "pool"
+    : perpPrice
+      ? "perpétuo"
+      : "nenhum";
   const supply = toUnits(info.totalSupply, info.decimals);
 
   // Contrato não paga o próprio gás — quem o chama paga. O sinal de paralisia
@@ -246,6 +276,7 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
     explorer: config.explorer,
     supply,
     priceUsd: price,
+    priceSource,
     liquidityUsd: depth?.liquidityUsd ?? 0,
     volume24h: depth?.volume24h ?? 0,
     pools: depth?.pairs ?? 0,
@@ -258,7 +289,14 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
     bigTransfers,
     transfersScanned: scanned,
     windowHours,
-    alerts: buildAlerts(token, wallets, sellable, price, depth?.liquidityUsd ?? 0),
+    alerts: buildAlerts(
+      token,
+      wallets,
+      sellable,
+      price,
+      depth?.liquidityUsd ?? 0,
+      config.gasSymbol,
+    ),
     takenAt: Date.now(),
   };
 }
@@ -269,6 +307,9 @@ function buildAlerts(
   sellable: number,
   price: number,
   liquidityUsd: number,
+  /** O ativo que paga gás nesta rede. Era "BNB" cravado no texto, e o painel
+   *  dizia isso na Ethereum e na Base, onde quem paga é ETH. */
+  gasSymbol: string,
 ): Alert[] {
   const alerts: Alert[] = [];
   const money = (v: number) =>
@@ -285,7 +326,7 @@ function buildAlerts(
       title: `${armed.length} carteira${armed.length > 1 ? "s" : ""} parada${armed.length > 1 ? "s" : ""} com gás disponível`,
       detail:
         `${armed.map((w) => w.label).join(", ")} — somando ${money(armed.reduce((s, w) => s + w.valueUsd, 0))}. ` +
-        `Tem BNB para pagar transação, então pode mover a qualquer momento. ` +
+        `Tem ${gasSymbol} para pagar transação, então pode mover a qualquer momento. ` +
         `Abastecer é o passo obrigatório antes de vender, e costuma preceder a venda em minutos.`,
     });
   }
@@ -296,7 +337,7 @@ function buildAlerts(
       level: "info",
       title: `${money(stuck.reduce((s, w) => s + w.valueUsd, 0))} imobilizados por falta de gás`,
       detail:
-        `${stuck.length} carteiras comuns com saldo e sem BNB. Não conseguem mover nada ` +
+        `${stuck.length} carteiras comuns com saldo e sem ${gasSymbol}. Não conseguem mover nada ` +
         `até alguém abastecê-las — é o que este painel vigia.`,
     });
   }
