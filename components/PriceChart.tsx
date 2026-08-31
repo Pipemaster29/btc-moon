@@ -21,6 +21,7 @@ import {
   MARKET_EVENTS,
   eventTime,
 } from "@/lib/events";
+import { fasesEntre, grudarNasVelas } from "@/lib/lua";
 const TIMEFRAME_LABELS: { value: Timeframe; label: string }[] = [
   { value: "1h", label: "1H" },
   { value: "4h", label: "4H" },
@@ -32,6 +33,16 @@ const TIMEFRAME_LABELS: { value: Timeframe; label: string }[] = [
 
 const UP_COLOR = "#0ECB81";
 const DOWN_COLOR = "#F6465D";
+/** Tinta neutra da lua: ela não é um lado do mercado e não deve parecer um. */
+const MOON_COLOR = "#898781";
+
+/**
+ * Acima disto os marcadores de lua viram uma cerca.
+ *
+ * São 12,4 lunações por ano — cento e oitenta na série diária inteira. O corte
+ * é em velas visíveis, e não em dias, para valer igual nos quatro timeframes.
+ */
+const MAX_VELAS_COM_LUA = 400;
 
 /** Referência estável para o estado vazio, para não refazer efeitos a cada render. */
 const EMPTY_CANDLES: Candle[] = [];
@@ -68,6 +79,7 @@ export default function PriceChart() {
   const [timeframe, setTimeframe] = useState<Timeframe>("1d");
   const [logScale, setLogScale] = useState(true);
   const [showEvents, setShowEvents] = useState(true);
+  const [showMoons, setShowMoons] = useState(false);
 
   // Resultado e erro carregam junto o timeframe a que pertencem, de modo que
   // "carregando" seja estado derivado em vez de um setState dentro do efeito.
@@ -286,9 +298,37 @@ export default function PriceChart() {
           }))
         : [];
 
+      // As luas só entram quando o gráfico está perto o bastante para elas
+      // caberem. São 12,4 por ano: a série diária inteira desde 2011 teria mais
+      // de cento e oitenta, empilhadas em cima do preço, e a biblioteca as
+      // desenharia todas. É por isso que a legenda manda aproximar.
+      const passo = TIMEFRAME_SECONDS[timeframe];
+      const cabem = showMoons && (to - from) / passo <= MAX_VELAS_COM_LUA;
+      const moonMarkers: SeriesMarker<Time>[] = cabem
+        ? grudarNasVelas(
+            fasesEntre(from, to),
+            candles.map((c) => c.time),
+            passo,
+          ).map((f) => ({
+            time: f.time as UTCTimestamp,
+            position: "aboveBar" as const,
+            // A cor não distingue nada aqui de propósito: quem separa nova de
+            // cheia é o glifo, que continua legível impresso e sem cor.
+            color: MOON_COLOR,
+            // `size: 0` apaga a forma e deixa só o texto. Sem isso a biblioteca
+            // desenha um círculo cinza E o emoji em cima dele — dois símbolos
+            // para a mesma coisa, e o círculo ainda parecia a fase errada.
+            size: 0,
+            shape: "circle" as const,
+            text: f.fase === "nova" ? "🌑" : "🌕",
+          }))
+        : [];
+
       // A biblioteca exige os marcadores em ordem cronológica.
       plugin.setMarkers(
-        [...eventMarkers].sort((a, b) => Number(a.time) - Number(b.time)),
+        [...eventMarkers, ...moonMarkers].sort(
+          (a, b) => Number(a.time) - Number(b.time),
+        ),
       );
     };
 
@@ -296,7 +336,7 @@ export default function PriceChart() {
     const timeScale = chart.timeScale();
     timeScale.subscribeVisibleTimeRangeChange(render);
     return () => timeScale.unsubscribeVisibleTimeRangeChange(render);
-  }, [candles, showEvents]);
+  }, [candles, showEvents, showMoons, timeframe]);
 
 
 
@@ -347,6 +387,19 @@ export default function PriceChart() {
           >
             ▲ Eventos
           </button>
+
+          <button
+            onClick={() => setShowMoons((on) => !on)}
+            aria-pressed={showMoons}
+            title="Marca lua nova e lua cheia — aparecem ao aproximar o gráfico"
+            className={`px-2 py-1 text-xs rounded-md border transition-colors ${
+              showMoons
+                ? "border-current text-black/60 dark:text-white/60"
+                : "border-transparent opacity-40 hover:opacity-70"
+            }`}
+          >
+            🌕 Lua
+          </button>
         </div>
       </div>
 
@@ -371,8 +424,10 @@ export default function PriceChart() {
           {new Date(candles[0].time * 1000).toLocaleDateString("pt-BR")} até{" "}
           {new Date(
             candles[candles.length - 1].time * 1000,
-          ).toLocaleDateString("pt-BR")}{" "}
-          · aproxime o gráfico para ver as fases da lua
+          ).toLocaleDateString("pt-BR")}
+          {showMoons
+            ? " · 🌑 lua nova e 🌕 lua cheia aparecem com menos de 400 velas na tela — aproxime"
+            : ""}
         </p>
       )}
     </section>

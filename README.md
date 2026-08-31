@@ -27,14 +27,45 @@ Porque as duas coisas se parecem no gráfico e têm consequências opostas.
 
 ## As duas telas
 
-**`/`** — o gráfico do bitcoin, com os eventos que moveram o mercado marcados.
-É a referência de contexto, não o objeto de estudo.
+**`/`** — o gráfico do bitcoin, com os eventos que moveram o mercado marcados, e
+embaixo dele a **liquidez projetada**. É a referência de contexto, não o objeto
+de estudo.
+
+O botão 🌕 marca lua nova e lua cheia, e os marcadores aparecem quando há menos
+de 400 velas na tela — 12,4 lunações por ano viram uma cerca no histórico
+inteiro. A conta não vem de API nenhuma: sai da fórmula do Meeus e erra no
+máximo quatro minutos contra as efemérides do Observatório Naval dos EUA. É
+ornamento, e fica desligado por padrão: não há nada aqui que sustente a lua
+mexendo no preço.
 
 **`/radar`** — a triagem: todas as moedas vigiadas numa tabela, ordenadas por
 quanto merecem atenção agora. Duas requisições por moeda, quarenta e duas moedas
 em menos de um segundo. Clicar numa abre **`/radar/[moeda]`** com o retrato
 completo: estrutura do supply, carteira por carteira, transferências grandes,
 posicionamento, mapa de liquidação e o estágio do ciclo.
+
+## A liquidez projetada
+
+Balanço do Fed menos a conta do Tesouro menos o reverse repo é o dinheiro que de
+fato circula, e a tese conhecida diz que ele chega aos ativos de risco um
+trimestre depois. As três séries vêm do FRED, sem chave — só é preciso um
+user-agent que se identifique, porque o padrão do Node leva 503.
+
+**O painel mede a própria tese em vez de só desenhá-la, e o resultado desmente a
+leitura fácil.** Em NÍVEL, no lead de 13 semanas e na janela de dois anos, o
+ajuste é 0,71 — parece forte e não é: são duas séries que subiram no período, e
+na janela longa o ajuste é 0,72 em zero semanas contra 0,68 em vinte e seis. Se
+não muda com a defasagem, não existe defasagem; existe tendência compartilhada.
+Em VARIAÇÃO semanal, que a tendência não falseia, o ajuste no lead de 13 semanas
+é **−0,004 em 770 semanas**. Fora da amostra foi −0,09 entre 2017 e 2020, +0,78
+entre 2020 e 2023 e −0,02 de 2023 para cá, e o ajuste móvel de 52 semanas já
+oscilou de +0,89 a −0,82.
+
+Por isso o painel mostra as três coisas lado a lado — o número bonito, o número
+honesto e a série que mostra quando a relação inverteu. O lead fica **fixo** em
+um trimestre justamente para não ser escolhido pelo que se ajusta melhor: o
+melhor lead se mexe de 15 para 19 para 1 semana conforme a janela, que é como se
+reconhece um ajuste que não existe.
 
 ## O ciclo, em quatro estágios
 

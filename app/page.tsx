@@ -1,8 +1,10 @@
 import Link from "next/link";
 import LivePrice from "@/components/LivePrice";
 import LivePriceProvider from "@/components/LivePriceProvider";
+import LiquidityPanel from "@/components/LiquidityPanel";
 import PriceChart from "@/components/PriceChart";
 import { getBitcoinAnalysis } from "@/lib/bitcoin";
+import { getLiquidez } from "@/lib/liquidez";
 
 function formatUsd(value: number): string {
   return value.toLocaleString("en-US", {
@@ -33,7 +35,10 @@ function StatCard({
 }
 
 export default async function Home() {
-  const analysis = await getBitcoinAnalysis();
+  // O painel de liquidez lê o FRED e pode voltar nulo quando ele está fora; a
+  // página inteira não pode depender disso, então as duas leituras correm em
+  // paralelo e a de liquidez tem direito a falhar sozinha.
+  const [analysis, liquidez] = await Promise.all([getBitcoinAnalysis(), getLiquidez()]);
 
   const rsiSignal =
     analysis.rsi14 >= 70
@@ -95,6 +100,8 @@ Radar de moedas manipuladas →
             </p>
             <p className="text-xl font-semibold mt-1">{trendSignal}</p>
           </section>
+
+          {liquidez && <LiquidityPanel dados={liquidez} />}
 
           <footer className="text-xs text-black/40 dark:text-white/40">
             Preços via API pública da Bitstamp, com histórico desde 2011. Não é
