@@ -17,6 +17,7 @@ import { perpSeries } from "./perp";
 import { depthOn, pairsOfToken } from "./dexscreener";
 import { ATIVAS, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
+import { concentracaoDe } from "./detentores";
 import { lerMotor, type Motor } from "./motor";
 import { readLiveFromStats, type MoveKind } from "./positioning";
 
@@ -149,7 +150,24 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
   if (!last && !depth) return null;
 
   const live = readLiveFromStats(stats);
-  const price = depth?.priceUsd || last?.price || 0;
+
+  // O PREÇO DA POOL PRECISA DE UM FREIO, e a falta dele já contaminou a série.
+  //
+  // O JCT foi gravado no histórico a 2,938e-27 — quinze ordens de grandeza
+  // abaixo do preço dele — porque uma pool devolveu isso ao DexScreener e o
+  // número entrou sem exame. Uma linha dessas vira −100% de retorno e sozinha
+  // envenena qualquer medida sobre a série.
+  //
+  // O árbitro é o perpétuo, pelo mesmo motivo que ele arbitra a identificação de
+  // contrato em `descobrir`: é a praça grande, e entre o mesmo ativo a
+  // arbitragem não deixa a diferença passar de um dígito percentual. Cem vezes é
+  // um corte muito frouxo de propósito — não serve para pegar pool rasa
+  // desalinhada, serve para pegar lixo.
+  const precoPool = depth?.priceUsd ?? 0;
+  const precoPerp = last?.price ?? 0;
+  const poolAbsurda =
+    precoPool > 0 && precoPerp > 0 && (precoPool / precoPerp > 100 || precoPerp / precoPool > 100);
+  const price = (poolAbsurda ? 0 : precoPool) || precoPerp || 0;
   const liquidityUsd = depth?.liquidityUsd ?? 0;
   // A praça grande manda; a Gate só cobre quem a Binance não lista. E agora vem
   // ao vivo em vez do arquivo de ontem: o bloqueio por região era do host
@@ -244,6 +262,7 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         row.openInterestUsd,
         row.liquidityUsd,
         row.volume24h,
+        await concentracaoDe(token.symbol),
         vida.coberturaContrato,
       ).catch(() => null);
 
@@ -258,6 +277,7 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         openInterestUsd: row.openInterestUsd,
         motores: motor?.motores ?? 0,
         motoresMedidos: motor?.medidos ?? 0,
+        concentracao: motor?.concentracao ?? null,
       });
       return { ...row, vida, leitura, motor };
     }),

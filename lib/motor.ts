@@ -21,21 +21,43 @@
  *              Quando quase tudo já está em corretora, a distribuição
  *              aconteceu — foi o caso da BLUAI, com só 24,9% em mãos privadas.
  *
- * O QUE ISTO NÃO MEDE, e a distinção importa: concentração. "Fora de corretora"
- * não separa um dono com 80% de dez mil donos com 80%, e são situações opostas —
- * a primeira tem operador, a segunda tem público. Saber qual é exige a lista de
- * maiores detentores, que nenhum nó público entrega e que só sairia varrendo a
- * distribuição inicial de cada moeda, uma a uma. Enquanto isso não existe, este
- * módulo mede CAPACIDADE, não intenção.
+ * A CONCENTRAÇÃO ERA O BURACO DESTE ARQUIVO, e ele estava anotado aqui como
+ * impossível: "fora de corretora" não separa um dono com 80% de dez mil donos
+ * com 80%, e são situações opostas — a primeira tem operador, a segunda tem
+ * público. A ressalva dizia que saber qual é exigiria a lista de maiores
+ * detentores, que nó público não entrega.
+ *
+ * Ela agora entra, por outro caminho: a gênese. Nas primeiras horas de vida do
+ * token não existe mercado, e as poucas transferências que existem são a
+ * distribuição inicial — `npm run genese` varre essa janela e segue o rastro até
+ * quem segura hoje. É barato onde a varredura da vida inteira é impossível: as
+ * 34 moedas com contrato somam 167 milhões de logs.
+ *
+ * O custo de não ter isso era real e mensurável. No JCT, seis endereços seguram
+ * 99,9% do supply; este módulo lia esse mesmo número como munição intacta e o
+ * painel emitiu COMPRA. Agora a concentração é descontada antes do teste de
+ * oferta, e uma moeda com dono reprova em vez de passar.
+ *
+ * O que continua fora: quantos donos existem de verdade. Endereço de gênese
+ * esvaziado diz que o supply foi adiante, não que ele se pulverizou. Este módulo
+ * mede CAPACIDADE, não intenção.
  */
 
 import { pairsOfToken } from "./dexscreener";
 import { balancesOf, tokenInfo, toUnits, type Chain } from "./onchain";
 import { CARTEIRAS_CEX } from "./lifecycle";
+import { CONCENTRADA } from "./detentores";
 
 export interface Motor {
   /** Fração do circulante fora de corretoras e fora das pools. */
   privado: number | null;
+  /**
+   * Fração do supply que os donos da gênese ainda seguram. Nulo quando a moeda
+   * nunca foi varrida por `npm run genese`.
+   */
+  concentracao: number | null;
+  /** `privado` menos o que está concentrado: a oferta que é mesmo de público. */
+  privadoPublico: number | null;
   /** Circulante parado em carteira de corretora. */
   emCorretora: number | null;
   /** Circulante dentro das pools de liquidez. */
@@ -71,6 +93,20 @@ export async function lerMotor(
   openInterestUsd: number,
   liquidityUsd: number,
   volume24h: number,
+  /**
+   * Fração do supply ainda nas mãos de quem a recebeu na gênese.
+   *
+   * ESTE PARÂMETRO CONSERTA UM FALSO POSITIVO QUE O ARQUIVO PREVIA E NÃO
+   * MEDIA. O teste de oferta pergunta quanto do circulante está fora das
+   * corretoras e trata um número alto como munição intacta. No JCT esse número
+   * é ~100% — e são SEIS endereços segurando 99,9%. O painel leu isso como
+   * moeda cheia de oferta livre e emitiu COMPRA; a moeda depois imprimiu preço
+   * de 2,9e-27.
+   *
+   * Com a concentração descontada, "privado" volta a significar o que ele diz
+   * significar: supply em mãos que não são de um operador só.
+   */
+  concentracao: number | null = null,
   /**
    * Supply do contrato ÷ circulante, quando se sabe.
    *
@@ -116,10 +152,16 @@ export async function lerMotor(
     }
   }
 
+  // A oferta que é de PÚBLICO, e não do dono. Sem varredura de gênese não há o
+  // que descontar e o número fica como antes — com a ressalva no resumo, porque
+  // "não medi a concentração" e "a concentração é baixa" não são a mesma coisa.
+  const privadoPublico =
+    privado === null ? null : concentracao === null ? privado : Math.max(0, privado - concentracao);
+
   // Nulo quando não deu para medir, e isso NÃO conta como reprovado. Tratar
   // "não consegui ver" como "não tem" reprovaria em massa as moedas cujo
   // contrato é fragmento — que é uma limitação da leitura, não da moeda.
-  const temOferta = privado === null ? null : privado >= PRIVADO_MINIMO;
+  const temOferta = privadoPublico === null ? null : privadoPublico >= PRIVADO_MINIMO;
 
   const testes = [temPerpetuo, temLivro, temOferta];
   const medidos = testes.filter((t) => t !== null).length;
@@ -129,7 +171,15 @@ export async function lerMotor(
   if (!temPerpetuo) faltas.push("sem perpétuo relevante");
   if (!temLivro) faltas.push(giro < GIRO_MINIMO ? "pool sem giro" : "pool pequena demais");
   if (temOferta === false) {
-    faltas.push(`só ${((privado ?? 0) * 100).toFixed(0)}% do circulante fora de corretora`);
+    faltas.push(
+      concentracao !== null && concentracao >= CONCENTRADA
+        ? `${(concentracao * 100).toFixed(0)}% do supply ainda está com quem o recebeu na gênese — ` +
+          `é dono, não float`
+        : `só ${((privadoPublico ?? 0) * 100).toFixed(0)}% do circulante fora de corretora`,
+    );
+  }
+  if (concentracao === null && privado !== null) {
+    faltas.push("concentração não varrida — rode `npm run genese`");
   }
   if (temOferta === null) {
     faltas.push(
@@ -142,6 +192,8 @@ export async function lerMotor(
 
   return {
     privado,
+    concentracao,
+    privadoPublico,
     emCorretora,
     emPool,
     pools,

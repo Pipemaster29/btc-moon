@@ -67,6 +67,56 @@ um trimestre justamente para não ser escolhido pelo que se ajusta melhor: o
 melhor lead se mexe de 15 para 19 para 1 semana conforme a janela, que é como se
 reconhece um ajuste que não existe.
 
+## O placar do próprio painel
+
+Todo parâmetro daqui foi medido sobre ARQUIVO de preço, reconstruindo o que o
+classificador TERIA dito. Nada media o que ele REALMENTE disse — e o
+`data/historico-AAAA-MM.jsonl` guardava 21 mil emissões ao vivo que nunca foram
+lidas de volta. `npm run placar` lê.
+
+O resultado, sobre 21.127 emissões de 72 moedas entre 20/08 e 01/09:
+
+| viés | separa da referência | moedas que concordam |
+| --- | --- | --- |
+| short | −0,00 p.p. | 51% |
+| long | +0,07 p.p. | 48% |
+| evitar | −0,35 p.p. | 40% |
+| observar | +0,01 p.p. | 53% |
+
+**Nenhum viés separou de nada.** A referência — todas as moedas, todo o período —
+é −0,45% em 24h, e os quatro vieses medem isso. Concordância de 50% entre moedas
+é cara ou coroa.
+
+Doze dias num regime de queda não é amostra para condenar o painel, e o placar
+diz isso na tela. Mas enquanto for assim, o que está no radar é DESCRIÇÃO do
+estado das moedas, não recomendação — e é assim que a página passa a apresentá-lo.
+
+O que separou mais do que o viés foi o ESTÁGIO: "caindo do topo" mede −1,82 p.p.
+abaixo da referência em 1.619 observações, e "nota 60+" mede −5,27 p.p. — só que
+em 45 observações e 2 de 5 moedas, que é pouco para afirmar.
+
+## Concentração: a moeda tem dono ou tem público?
+
+O `lib/motor.ts` trazia a ressalva escrita desde sempre: "fora de corretora" não
+separa um dono com 80% de dez mil donos com 80%, e são situações opostas. E dizia
+que resolver isso exigiria a lista de maiores detentores, que nó público não
+entrega.
+
+O custo de não ter isso era concreto. **No JCT, seis endereços seguram 99,9% do
+supply** — e o motor lia esse mesmo 99,9% como munição intacta, o que fez o painel
+emitir COMPRA. A moeda imprimiu preço de 2,9e-27 dias depois.
+
+A saída é a gênese, e ela é barata: nas primeiras horas do token não existe
+mercado, e as poucas transferências que existem são a distribuição. Varrer a vida
+inteira das 34 moedas com contrato somaria 167 milhões de logs; a janela da gênese
+cabe em minutos. `npm run genese` faz isso e grava em `data/detentores.json`; o
+motor desconta a concentração antes de julgar a oferta, e o viés de compra deixa
+de sair em moeda com dono.
+
+Medido até agora: JCT 99,9% · CAP 84,5% · ZAMA 70,6% · HEMI 53,1% · MORPHO 51,6%
+· PORTAL 8,5%. Só rodava na BNB Chain antes — a Ethereum entrou junto com os nós
+de arquivo consertados.
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.
@@ -201,6 +251,8 @@ Sem ele, cada retrato dispararia um deploy novo.
 
 | comando | o que faz |
 | --- | --- |
+| `npm run placar` | lê o histórico de emissões e mede se o painel acertou |
+| `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |

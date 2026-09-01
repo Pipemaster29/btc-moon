@@ -662,6 +662,10 @@ export interface SinaisAgora {
    */
   motores: number;
   motoresMedidos: number;
+  /**
+   * Fração do supply ainda com quem a recebeu na gênese. Nulo quando não varrida.
+   */
+  concentracao: number | null;
 }
 
 /**
@@ -1070,6 +1074,35 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
           `que gire, sem oferta fora das corretoras. A assimetria de 5,5 para 1 que sustenta essa ` +
           `compra é do passado recente destas moedas, e ela seca junto com o interesse — moeda ` +
           `barata e parada continua barata e parada.`,
+      };
+    }
+
+    // MOEDA COM DONO NÃO QUICA, e esta é a única regra deste arquivo que não
+    // vem de medição — vem de mecânica, e vale dizer isso em voz alta.
+    //
+    // A compra em "exausta" se apoia numa assimetria: moeda pequena e derretida
+    // sobe 20% em 21% das semanas contra 3,8% que caem 20%. Essa conta pressupõe
+    // um float público que possa ser empurrado. Com 99,9% do supply em seis
+    // endereços — o caso medido do JCT — não existe esse público: existe um dono,
+    // e a cauda para cima depende inteiramente de ele querer.
+    //
+    // Não há amostra para medir isso: a concentração passou a ser lida agora, e
+    // são seis moedas varridas. Então a regra é conservadora e só REMOVE uma
+    // compra, nunca abre uma venda. O painel emitiu COMPRA no JCT e a moeda
+    // imprimiu preço de 2,9e-27 dias depois.
+    if (agora.concentracao !== null && agora.concentracao >= 0.5) {
+      return {
+        vies: "observar",
+        forca: 1,
+        ateQuando: textoAteQuando(vida),
+        titulo: "Derretida, mas o supply tem dono",
+        porque:
+          `${pct(vida.queda)} do topo, e a fase normalmente compraria. Mas ` +
+          `${(agora.concentracao * 100).toFixed(0)}% do supply ainda está com quem o recebeu na ` +
+          `distribuição inicial — isso não é float, é dono. A assimetria que sustenta esta compra ` +
+          `supõe um público que possa empurrar o preço, e aqui esse público não existe: quem ` +
+          `decide se a moeda sobe é quem tem tudo. Esta ressalva é mecânica, não medida — a ` +
+          `concentração passou a ser lida agora e não há amostra para calibrá-la.`,
       };
     }
 

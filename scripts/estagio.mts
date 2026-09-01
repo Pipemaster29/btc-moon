@@ -68,6 +68,7 @@ const leituras = vidas.map((v) => {
       openInterestUsd: o?.openInterestUsd ?? 0,
       motores: 0,
       motoresMedidos: 0,
+      concentracao: null,
     }),
   };
 });

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { PanoramaRow } from "@/lib/overview";
 import { getSnapshot } from "@/lib/snapshot";
+import { getPlacar } from "@/lib/placar";
 import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
 
@@ -145,6 +146,20 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
         )}
         {unlockRecente && <p className="text-xs text-[#F6465D]">unlock</p>}
       </td>
+      <td className="py-2.5 pr-3 text-right">
+        {row.motor?.concentracao == null ? (
+          <span className="text-black/25 dark:text-white/25" title="Nunca varrida — npm run genese">
+            —
+          </span>
+        ) : (
+          <span
+            className={`tabular-nums ${row.motor.concentracao >= 0.5 ? "text-[#C42B3E] dark:text-[#F6465D]" : ""}`}
+            title={`${(row.motor.concentracao * 100).toFixed(1)}% do supply ainda está com quem o recebeu na gênese`}
+          >
+            {(row.motor.concentracao * 100).toFixed(0)}%
+          </span>
+        )}
+      </td>
       <td className="py-2.5 pr-3 text-right tabular-nums">{money(row.openInterestUsd)}</td>
       <td className="py-2.5 pr-3 text-right tabular-nums">
         {row.perpDominance > 0 ? `${row.perpDominance.toFixed(0)}x` : "—"}
@@ -215,7 +230,7 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
 }
 
 export default async function Radar() {
-  const snapshot = await getSnapshot();
+  const [snapshot, placar] = await Promise.all([getSnapshot(), getPlacar()]);
   const rows = snapshot.moedas;
   const comCarteiras = rows.filter((r) => r.hasWallets).length;
 
@@ -288,6 +303,49 @@ export default async function Radar() {
           )}
         </header>
 
+        {/* O painel dizendo o que a própria régua já acertou. Vem ANTES das
+            recomendações de propósito: quem lê "vender" precisa saber, na mesma
+            tela, que o viés ainda não separou de nada. */}
+        {placar && (
+          <section className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold">O placar do próprio painel</h2>
+              <span className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+                {placar.emissoes.toLocaleString("pt-BR")} emissões · {placar.moedas} moedas ·{" "}
+                {placar.janela.de.slice(0, 10)} a {placar.janela.ate.slice(0, 10)}
+              </span>
+            </div>
+            <p className="text-xs text-black/55 dark:text-white/55 mt-1.5">
+              Cada viés que esteve nesta tela, comparado com o que o preço fez{" "}
+              {placar.horizonte}h depois. A referência — todas as moedas, todo o período —
+              é {(placar.referencia * 100).toFixed(2)}%, e é dela que a distância importa:
+              numa semana de queda geral um viés negativo não errou, apenas descreveu o
+              mercado.
+            </p>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2.5 text-xs tabular-nums">
+              {placar.vereditos.map((v) => (
+                <span key={v.vies} className="flex items-baseline gap-1.5">
+                  <span className="font-medium">{v.vies}</span>
+                  <span className={v.passa ? "text-[#0a7d43] dark:text-[#0ECB81]" : "text-black/45 dark:text-white/45"}>
+                    {v.delta >= 0 ? "+" : "−"}
+                    {Math.abs(v.delta * 100).toFixed(2)} p.p.
+                  </span>
+                  <span className="text-black/35 dark:text-white/35">
+                    {(v.concordancia * 100).toFixed(0)}% das moedas
+                  </span>
+                </span>
+              ))}
+            </div>
+            {placar.vereditos.every((v) => !v.passa) && (
+              <p className="text-xs text-[#C42B3E] dark:text-[#F6465D] mt-2">
+                Nenhum viés separou da referência com concordância entre moedas nesta janela.
+                Trate o que está abaixo como descrição do estado das moedas, não como
+                recomendação.
+              </p>
+            )}
+          </section>
+        )}
+
         <div className="grid gap-4 lg:grid-cols-2">
           {[
             { titulo: "Candidatas a vender", lista: vender, tom: "border-[#F6465D]/40 bg-[#F6465D]/5" },
@@ -340,7 +398,7 @@ export default async function Radar() {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[1330px]">
+          <table className="w-full text-sm min-w-[1400px]">
             <thead className="text-black/45 dark:text-white/45 text-xs">
               <tr>
                 <th className="font-normal pb-2 text-left">Moeda</th>
@@ -358,6 +416,12 @@ export default async function Radar() {
                   title="Circulante ÷ supply total. Float pequeno é a condição que torna a manipulação barata; o resto é promessa de oferta futura."
                 >
                   Circulando
+                </th>
+                <th
+                  className="font-normal pb-2 text-right"
+                  title="Quanto do supply ainda está com quem o recebeu na distribuição inicial. Acima de 50% a moeda tem dono, não float — e aí supply fora de corretora não é munição livre."
+                >
+                  Dono
                 </th>
                 <th className="font-normal pb-2 text-right">Open interest</th>
                 <th className="font-normal pb-2 text-right" title="Open interest dividido pela liquidez à vista">

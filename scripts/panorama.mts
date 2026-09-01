@@ -78,7 +78,11 @@ if (mudou) {
   await writeFile(ATUAL, `${JSON.stringify(snapshot, null, 2)}\n`);
 }
 
-const pontos: PontoHistorico[] = linhas.map((r) => ({
+// Linha sem preço não entra no histórico. A série existe para ser medida
+// depois, e um zero ali vira divisão por zero em toda conta de retorno.
+const comPreco = linhas.filter((r) => r.price > 0);
+
+const pontos: PontoHistorico[] = comPreco.map((r) => ({
   t: Math.floor(agora / 1000),
   s: r.ticker,
   preco: Number(r.price.toPrecision(6)),

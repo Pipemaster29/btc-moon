@@ -50,6 +50,8 @@ import {
   type Chain,
 } from "../lib/onchain";
 import { ATIVAS, findToken, type WatchedToken } from "../lib/watchlist";
+import type { Arquivo, Detentores, DonoDaGenese } from "../lib/detentores";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 /** Quantos blocos varrer a partir do nascimento, sem filtro. */
 const JANELA = 20_000;
@@ -112,11 +114,11 @@ async function blocoDeNascimento(chain: Chain, address: string, topo: number): P
   return alto;
 }
 
-async function mapear(token: WatchedToken) {
+async function mapear(token: WatchedToken): Promise<Detentores | null> {
   const config = CHAINS[token.chain];
   if (config.archiveState.length === 0) {
     console.log(`${token.symbol}: ${token.chain} não tem nó de arquivo para estado`);
-    return;
+    return null;
   }
 
   const head = await blockNumber(token.chain);
@@ -160,7 +162,14 @@ async function mapear(token: WatchedToken) {
 
   if (candidatos.length === 0) {
     console.log("nenhum endereço recebeu mais de 0,5% do supply nesta janela");
-    return;
+    // Zero concentração É um resultado, e vale gravar: quer dizer que ninguém
+    // ficou com pedaço grande na distribuição. Descartar isso faria a moeda
+    // parecer "nunca medida", que é outra coisa.
+    return {
+      symbol: token.symbol, chain: token.chain, nascimento,
+      nasceuEm: quando.toISOString(), transferencias: transfers.length,
+      faixasPerdidas: failed, donos: [], concentracao: 0, medidoEm: Date.now(),
+    };
   }
 
   // Segue o rastro enquanto os donos da gênese estiverem vazios.
@@ -209,10 +218,12 @@ async function mapear(token: WatchedToken) {
     gasOf(token.chain, enderecos),
   ]);
 
+  const donos: DonoDaGenese[] = [];
   console.log(`\nendereço                                      recebeu    hoje   %supply  contrato   gás`);
   for (const [addr, inicial] of candidatos) {
     const hoje = toUnits(agora.get(addr) ?? BigInt(0), info.decimals);
     const contrato = await isContract(token.chain, addr);
+    donos.push({ endereco: addr, recebeu: inicial / supply, hoje: hoje / supply, contrato });
     console.log(
       `${addr}  ${(inicial / supply * 100).toFixed(2).padStart(8)}% ` +
         `${(hoje / supply * 100).toFixed(2).padStart(7)}% ${(hoje / 1e6).toFixed(0).padStart(8)}M ` +
@@ -227,6 +238,13 @@ async function mapear(token: WatchedToken) {
   console.log(
     `\nos ${candidatos.length} maiores da gênese ainda seguram ${(aindaTem / supply * 100).toFixed(1)}% do supply`,
   );
+
+  return {
+    symbol: token.symbol, chain: token.chain, nascimento,
+    nasceuEm: quando.toISOString(), transferencias: transfers.length,
+    faixasPerdidas: failed, donos, concentracao: aindaTem / supply,
+    medidoEm: Date.now(),
+  };
 }
 
 const pedidos = process.argv.slice(2).map((s) => s.toUpperCase());
@@ -234,6 +252,24 @@ const alvos = pedidos.length
   ? pedidos.map((p) => findToken(p) ?? findToken(`${p}USDT`)).filter((t): t is WatchedToken => Boolean(t))
   : ATIVAS.filter((t) => t.contract && CHAINS[t.chain].archiveState.length > 0);
 
+// O arquivo é ACUMULATIVO: cada execução acrescenta ou atualiza as moedas que
+// pediu e não toca nas demais. Uma varredura completa custa horas, então
+// reescrever tudo a cada vez apagaria trabalho caro por engano.
+const CAMINHO = "data/detentores.json";
+const arquivo: Arquivo = await readFile(CAMINHO, "utf8")
+  .then((t) => JSON.parse(t) as Arquivo)
+  .catch(() => ({ moedas: {} }));
+
 for (const token of alvos) {
-  await mapear(token).catch((e: Error) => console.log(`${token.symbol}: ${e.message.slice(0, 70)}`));
+  const achado = await mapear(token).catch((e: Error) => {
+    console.log(`${token.symbol}: ${e.message.slice(0, 70)}`);
+    return null;
+  });
+  if (achado) {
+    arquivo.moedas[token.symbol] = achado;
+    await mkdir("data", { recursive: true });
+    // Grava a cada moeda, e não no fim: a varredura leva horas e cair no meio
+    // dela não pode custar o que já foi lido.
+    await writeFile(CAMINHO, `${JSON.stringify(arquivo, null, 2)}\n`);
+  }
 }

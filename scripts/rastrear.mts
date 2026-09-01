@@ -258,6 +258,7 @@ if (vida) {
     perpDominance: fundo && fundo.liquidityUsd > 0 ? oi / fundo.liquidityUsd : 0,
     motores: motor?.motores ?? 0,
     motoresMedidos: motor?.medidos ?? 0,
+    concentracao: motor?.concentracao ?? null,
     accountRatio: ultimo?.accountRatio ?? 0,
     whaleRatio: ultimo?.whaleRatio ?? 0,
     openInterestUsd: oi,
