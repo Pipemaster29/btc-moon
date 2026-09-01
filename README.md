@@ -27,14 +27,45 @@ Porque as duas coisas se parecem no gráfico e têm consequências opostas.
 
 ## As duas telas
 
-**`/`** — o gráfico do bitcoin, com os eventos que moveram o mercado marcados.
-É a referência de contexto, não o objeto de estudo.
+**`/`** — o gráfico do bitcoin, com os eventos que moveram o mercado marcados, e
+embaixo dele a **liquidez projetada**. É a referência de contexto, não o objeto
+de estudo.
+
+O botão 🌕 marca lua nova e lua cheia, e os marcadores aparecem quando há menos
+de 400 velas na tela — 12,4 lunações por ano viram uma cerca no histórico
+inteiro. A conta não vem de API nenhuma: sai da fórmula do Meeus e erra no
+máximo quatro minutos contra as efemérides do Observatório Naval dos EUA. É
+ornamento, e fica desligado por padrão: não há nada aqui que sustente a lua
+mexendo no preço.
 
 **`/radar`** — a triagem: todas as moedas vigiadas numa tabela, ordenadas por
 quanto merecem atenção agora. Duas requisições por moeda, quarenta e duas moedas
 em menos de um segundo. Clicar numa abre **`/radar/[moeda]`** com o retrato
 completo: estrutura do supply, carteira por carteira, transferências grandes,
 posicionamento, mapa de liquidação e o estágio do ciclo.
+
+## A liquidez projetada
+
+Balanço do Fed menos a conta do Tesouro menos o reverse repo é o dinheiro que de
+fato circula, e a tese conhecida diz que ele chega aos ativos de risco um
+trimestre depois. As três séries vêm do FRED, sem chave — só é preciso um
+user-agent que se identifique, porque o padrão do Node leva 503.
+
+**O painel mede a própria tese em vez de só desenhá-la, e o resultado desmente a
+leitura fácil.** Em NÍVEL, no lead de 13 semanas e na janela de dois anos, o
+ajuste é 0,71 — parece forte e não é: são duas séries que subiram no período, e
+na janela longa o ajuste é 0,72 em zero semanas contra 0,68 em vinte e seis. Se
+não muda com a defasagem, não existe defasagem; existe tendência compartilhada.
+Em VARIAÇÃO semanal, que a tendência não falseia, o ajuste no lead de 13 semanas
+é **−0,004 em 770 semanas**. Fora da amostra foi −0,09 entre 2017 e 2020, +0,78
+entre 2020 e 2023 e −0,02 de 2023 para cá, e o ajuste móvel de 52 semanas já
+oscilou de +0,89 a −0,82.
+
+Por isso o painel mostra as três coisas lado a lado — o número bonito, o número
+honesto e a série que mostra quando a relação inverteu. O lead fica **fixo** em
+um trimestre justamente para não ser escolhido pelo que se ajusta melhor: o
+melhor lead se mexe de 15 para 19 para 1 semana conforme a janela, que é como se
+reconhece um ajuste que não existe.
 
 ## O ciclo, em quatro estágios
 
@@ -69,6 +100,15 @@ Os dois juntos corrigiram três identificações que o primeiro sozinho errava.
 Ticker curto derrota a busca — procurar "C" devolve o mercado inteiro. Para esses,
 `npm run descobrir C=chainbase` busca pelo nome do projeto.
 
+**Quando não há pool nenhuma, quem identifica é a custódia.** A HEI não tem par
+em DEX alguma: os dois testes não têm em que rodar, e a busca por ticker devolve
+três "Heima" na Solana com US$ 195 milhões de liquidez declarada, US$ 115 mil de
+volume e 38% de erro no preço — pool decorativa clássica. O que resolveu foi
+olhar quem guarda: na Ethereum a carteira fria da Binance carrega 30 milhões
+redondos do contrato, e na BNB Chain, onde o mesmo endereço existe, todas as
+carteiras de corretora estão zeradas. Corretora não custodia a moeda errada, e
+esse teste vale para qualquer moeda que negocie só em livro central.
+
 ## Aposentar uma moeda
 
 Moeda que morreu sai das análises sem sair da lista: basta preencher
@@ -97,10 +137,19 @@ decorativa mente. A **transferência** é o evento: chega com minutos de vida e
 nomeia quem enviou.
 
 A ordem entre as duas foi decidida por medição, não por gosto: varrer três horas
-da BNB Chain filtrando as seis carteiras levou 377 segundos numa moeda só, e ler
-o saldo custa duas chamadas. Então o saldo decide se vale procurar quem enviou —
+da BNB Chain filtrando as carteiras levou 377 segundos numa moeda só, e ler o
+saldo custa uma chamada. Então o saldo decide se vale procurar quem enviou —
 e na maioria dos ciclos não vale, porque nada chegou. O ciclo completo das 42
 moedas leva 31 segundos.
+
+A lista de carteiras tinha um buraco que só aparecia na Ethereum: as seis
+originais foram levantadas na BNB Chain, e lá as carteiras QUENTES — por onde a
+oferta chega ao livro — ficaram todas de fora. O PORTAL marcava 11,6% e são
+59,6%, o EPIC 29,8% e são 57,8%, o BASED marcava ZERO. São dezessete agora, e
+cada uma passou por um teste que não depende de rótulo de terceiro nenhum:
+tesouraria guarda o próprio token, custódia guarda o de todo mundo, então conta-se
+em quantas moedas **não relacionadas** da lista o mesmo endereço aparece com
+saldo. A mais presente aparece em 22 das 33.
 
 ## Alertas
 
@@ -127,6 +176,18 @@ camadas — GitHub raw (fresco sem deploy), disco (congelado no build), cálculo
 vivo (caro, mas nunca falha) — e mostra na tela quando o retrato foi tirado.
 Dado velho apresentado como atual é pior do que dado ausente. Resultado: 20,9s
 para 0,10s.
+
+As três camadas cobriam o arquivo SUMIR e não cobriam o arquivo ESTAR VELHO, que
+é o que de fato acontece: o cron pede duas execuções por hora e o GitHub entrega
+de duas a cinco por dia, então os retratos saem em pares separados por cinco a
+dez horas. Como o disco sempre responde, a camada de cálculo nunca era alcançada
+e a página servia preço de horas atrás. Agora, quando o retrato passa do prazo, a
+**camada barata é refeita por cima dele**: preço, open interest, posicionamento,
+perna atual e nota são duas requisições por moeda e voltam em quatro segundos; o
+estágio de vida, que custa dez arquivos por moeda, continua vindo do retrato. São
+duas idades diferentes e a tela mostra as duas — juntá-las numa só estava errando
+a de metade dos números. De quebra, moeda recém-adicionada à lista aparece na
+hora, sem estágio, em vez de esperar a próxima execução do workflow.
 
 Cada execução também acrescenta uma linha por moeda a
 `data/historico-AAAA-MM.jsonl`. É essa série que responde a pergunta que hoje

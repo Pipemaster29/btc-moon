@@ -244,6 +244,7 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         row.openInterestUsd,
         row.liquidityUsd,
         row.volume24h,
+        vida.coberturaContrato,
       ).catch(() => null);
 
       const leitura = lerVies(vida, {

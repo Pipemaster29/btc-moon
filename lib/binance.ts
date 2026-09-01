@@ -40,8 +40,30 @@ export interface BinanceStat {
   takerRatio: number;
 }
 
+/**
+ * Quantas requisições simultâneas à Binance.
+ *
+ * Era 8, copiado do teto do Data Vision — e os dois não têm nada a ver. O do
+ * Data Vision existe porque o servidor de arquivos DEMORA sob carga e a demora
+ * vira lista vazia; a API REST da Binance conta peso por minuto, e cada um
+ * destes caminhos pesa 1 contra um orçamento de 2.400.
+ *
+ * O custo do teto baixo era concreto: são quatro caminhos por moeda, 288
+ * requisições no ciclo das 72 moedas, e a 8 por vez isso levava 7,1 segundos —
+ * mais do que o retrato inteiro tem de orçamento numa função serverless.
+ *
+ * Medido, as mesmas 288 requisições: 7,1s a 8 · 3,1s a 16 · 2,1s a 24 · 1,7s a
+ * 32. ZERO erro em todos, e — o que decide — o mesmo conjunto de 12 respostas
+ * vazias nos quatro, que são símbolos que a Binance de fato não serve. Se o
+ * teto mais alto estivesse atropelando o limite, esse número subiria.
+ *
+ * 24 fica onde a curva já achatou, com folga contra o ponto em que aparecer
+ * recusa.
+ */
+const TETO_BINANCE = 24;
+
 async function pegar<T>(caminho: string): Promise<T[]> {
-  return comLimite("binance", 8, async () => {
+  return comLimite("binance", TETO_BINANCE, async () => {
   try {
     const res = await fetch(`${BASE}${caminho}`, {
       signal: AbortSignal.timeout(15_000),
@@ -129,7 +151,7 @@ export async function circulante(symbol: string): Promise<Circulante | null> {
  * contrato certo do PORTAL nas três redes em que ele existe.
  */
 export async function precoBinance(symbol: string): Promise<number | null> {
-  return comLimite("binance", 8, async () => {
+  return comLimite("binance", TETO_BINANCE, async () => {
     try {
       const res = await fetch(`${BASE}/fapi/v1/ticker/price?symbol=${symbol}`, {
         signal: AbortSignal.timeout(15_000),

@@ -25,6 +25,7 @@ import {
   CHAINS,
 } from "../lib/onchain";
 import { depthOn, pairsOfToken } from "../lib/dexscreener";
+import { precoBinance } from "../lib/binance";
 import { CARTEIRAS_CEX } from "../lib/lifecycle";
 import { currentMove } from "../lib/positioning";
 import { ATIVAS, labelOf, type WatchedToken } from "../lib/watchlist";
@@ -74,6 +75,20 @@ interface State {
    * de verdade fica em `data/historico-AAAA-MM.jsonl`, gravada pelo panorama.
    */
   floatCex?: Record<string, { time: number; fracao: number }>;
+  /**
+   * Quantas carteiras de corretora a leitura anterior somava.
+   *
+   * Existe porque a comparação de `floatCex` é entre duas somas, e mudar a
+   * LISTA muda a soma sem que nada tenha se movido na rede. Quando as onze
+   * carteiras que faltavam entraram, o PORTAL passou de 11,6% para 59,6% e o
+   * EPIC de 29,8% para 57,8% no mesmo instante — a regra teria lido isso como
+   * meio supply chegando ao livro e disparado alerta em todas as moedas da
+   * Ethereum de uma vez, cada uma puxando uma varredura de três horas de log.
+   *
+   * Com o tamanho guardado, a primeira leitura depois de a lista mudar vira
+   * marco zero em vez de evento — que é o que ela é.
+   */
+  carteirasCex?: number;
   /** fingerprint → quando foi enviado, em segundos. */
   fired: Record<string, number>;
   lastBlock: number;
@@ -159,20 +174,35 @@ for (const token of comCarteiras) {
 // qualquer rede EVM, então dá para medir quanto do supply está pousado num
 // livro de vendas sem conhecer nenhuma carteira do projeto.
 //
-// A varredura é FILTRADA por essas seis carteiras, o que muda o custo por
-// completo: log filtrado por tópico aceita faixa de cinco mil blocos, contra
-// quinhentos da varredura aberta. Três horas de BNB Chain saem em cinco
-// chamadas em vez de quarenta e oito.
+// A varredura é FILTRADA por essas carteiras, o que muda o custo por completo:
+// log filtrado por tópico aceita faixa de cinco mil blocos, contra quinhentos
+// da varredura aberta. Três horas de BNB Chain saem em cinco chamadas em vez de
+// quarenta e oito. E o custo não cresce com o tamanho da lista — os endereços
+// entram como alternativa dentro do MESMO tópico, numa consulta só.
 const comContrato = ATIVAS.filter((t) => t.contract);
+
+// A lista de carteiras mudou desde a última execução? Decidido UMA VEZ, aqui,
+// e não dentro de `vigiarCorretoras`: as moedas rodam em paralelo, e gravar o
+// tamanho novo lá dentro faria a primeira a terminar convencer as demais de que
+// nada mudou — cada uma comparando a soma velha com a lista nova.
+const listaCexMudou = state.carteirasCex !== CARTEIRAS_CEX.length;
+if (listaCexMudou && state.carteirasCex !== undefined) {
+  console.log(
+    `lista de carteiras de corretora foi de ${state.carteirasCex} para ${CARTEIRAS_CEX.length}: ` +
+      `esta rodada vira marco zero do float, sem alerta de salto`,
+  );
+}
 
 const cexAlerts = await Promise.all(
   comContrato.map((token) =>
-    vigiarCorretoras(token, state, now).catch((error: Error) => {
+    vigiarCorretoras(token, state, now, listaCexMudou).catch((error: Error) => {
       console.error(`${token.symbol} (corretoras): ${error.message}`);
       return [] as Alert[];
     }),
   ),
 );
+
+state.carteirasCex = CARTEIRAS_CEX.length;
 
 for (const [i, alerts] of cexAlerts.entries()) {
   const explorer = CHAINS[comContrato[i].chain].explorer;
@@ -331,28 +361,34 @@ async function vigiarCorretoras(
   token: WatchedToken,
   state: State,
   now: number,
+  /** A lista de carteiras mudou desde a última execução? Então não há com que comparar. */
+  listaMudou: boolean,
 ): Promise<Alert[]> {
   const config = CHAINS[token.chain];
   if (config.endpoints.length === 0) return [];
 
-  const [info, head, pairs] = await Promise.all([
+  const [info, head, pairs, perpPrice] = await Promise.all([
     tokenInfo(token.chain, token.contract),
     blockNumber(token.chain),
     pairsOfToken(token.contract).catch(() => []),
+    // Moeda com contrato e sem pool — a HEI é uma — tinha preço zero aqui, e o
+    // alerta saía anunciando "US$ 0 chegando na corretora".
+    precoBinance(token.symbol).catch(() => null),
   ]);
 
   const supply = toUnits(info.totalSupply, info.decimals);
   if (!(supply > 0)) return [];
 
   const depth = depthOn(pairs, token.chain);
-  const price = depth?.priceUsd ?? 0;
+  const price = depth?.priceUsd || perpPrice || 0;
 
   const saldos = await balancesOf(token.chain, token.contract, CARTEIRAS_CEX);
   let emCorretora = 0;
   for (const v of saldos.values()) emCorretora += toUnits(v, info.decimals);
   const agora = emCorretora / supply;
 
-  const anterior = state.floatCex?.[token.symbol];
+  // Leitura tirada com outra lista de carteiras não é comparável com esta.
+  const anterior = listaMudou ? undefined : state.floatCex?.[token.symbol];
   const horas = anterior ? (now - anterior.time) / 3600 : 0;
 
   // A varredura de log só acontece quando o saldo REALMENTE subiu.

@@ -76,6 +76,12 @@ function short(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
+/** Uma fração do supply. Devolve travessão quando não há denominador — dividir
+ *  por zero imprimia "NaN%" na tela. */
+function pct(parte: number, todo: number): string {
+  return todo > 0 ? `${((parte / todo) * 100).toFixed(2)}%` : "—";
+}
+
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
@@ -140,7 +146,7 @@ function SupplyBar({ snapshot }: { snapshot: RadarSnapshot }) {
 
       <p className="text-sm mt-4 pt-4 border-t border-black/10 dark:border-white/10">
         <strong>Oferta destravada: {units(snapshot.sellable)}</strong> (
-        {((snapshot.sellable / snapshot.supply) * 100).toFixed(2)}% ·{" "}
+        {pct(snapshot.sellable, snapshot.supply)} ·{" "}
         {money(snapshot.sellable * snapshot.priceUsd)}) — é este o volume que o preço
         precisaria absorver, e não o supply.
       </p>
@@ -156,8 +162,8 @@ function Wallets({ snapshot }: { snapshot: RadarSnapshot }) {
       <h2 className="font-semibold text-lg">Carteiras vigiadas</h2>
       <p className="text-sm text-black/60 dark:text-white/60 mt-1">
         {snapshot.wallets.length} endereços cobrindo{" "}
-        {((snapshot.mapped / snapshot.supply) * 100).toFixed(2)}% do supply. A coluna de
-        gás é o que decide se o saldo pode virar venda hoje.
+        {pct(snapshot.mapped, snapshot.supply)} do supply. A coluna de gás é o que decide
+        se o saldo pode virar venda hoje.
       </p>
 
       <div className="mt-4 overflow-x-auto">
@@ -385,9 +391,15 @@ export default async function Page({
           <div className="flex flex-col gap-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Stat
-                label="Preço à vista"
-                value={`US$ ${snapshot.priceUsd.toPrecision(4)}`}
-                hint={`${snapshot.pools} ${snapshot.pools === 1 ? "pool" : "pools"} na ${CHAIN_LABEL[snapshot.chain]}`}
+                label={snapshot.priceSource === "perpétuo" ? "Preço do perpétuo" : "Preço à vista"}
+                value={snapshot.priceUsd > 0 ? `US$ ${snapshot.priceUsd.toPrecision(4)}` : "—"}
+                hint={
+                  snapshot.priceSource === "pool"
+                    ? `${snapshot.pools} ${snapshot.pools === 1 ? "pool" : "pools"} na ${CHAIN_LABEL[snapshot.chain]}`
+                    : snapshot.priceSource === "perpétuo"
+                      ? `nenhuma pool na ${CHAIN_LABEL[snapshot.chain]} — a moeda negocia em corretora`
+                      : "sem pool e sem perpétuo: os valores em dólar não existem"
+                }
               />
               <Stat
                 label="Valor de todo o supply"
@@ -432,7 +444,17 @@ export default async function Page({
             )}
 
             <SupplyBar snapshot={snapshot} />
-            <Wallets snapshot={snapshot} />
+            {/* Sem carteira mapeada a tabela saía com cabeçalho e nenhuma linha,
+                que se lê como "não achei nada" em vez de "não procurei". */}
+            {snapshot.wallets.length > 0 ? (
+              <Wallets snapshot={snapshot} />
+            ) : (
+              <p className="text-sm text-black/50 dark:text-white/50">
+                Nenhuma carteira mapeada nesta moeda: a leitura on-chain cobre preço,
+                supply, oferta em corretora e transferências grandes, mas não sabe quem é
+                quem. Mapear exige levantar os endereços um a um.
+              </p>
+            )}
             <Transfers snapshot={snapshot} />
           </div>
         ) : (

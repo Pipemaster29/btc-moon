@@ -71,6 +71,14 @@ export async function lerMotor(
   openInterestUsd: number,
   liquidityUsd: number,
   volume24h: number,
+  /**
+   * Supply do contrato ÷ circulante, quando se sabe.
+   *
+   * Só entra no texto, e entra porque o texto estava enganando: "contrato não
+   * representa a moeda" era dito igual para um fragmento de um milésimo e para
+   * um contrato que guarda 89% do circulante e fica um ponto abaixo do corte.
+   */
+  cobertura: number | null = null,
 ): Promise<Motor> {
   const temPerpetuo = openInterestUsd >= OI_MINIMO;
   const giro = liquidityUsd > 0 ? volume24h / liquidityUsd : 0;
@@ -123,7 +131,14 @@ export async function lerMotor(
   if (temOferta === false) {
     faltas.push(`só ${((privado ?? 0) * 100).toFixed(0)}% do circulante fora de corretora`);
   }
-  if (temOferta === null) faltas.push("oferta não medida — contrato não representa a moeda");
+  if (temOferta === null) {
+    faltas.push(
+      cobertura !== null && cobertura < 1
+        ? `oferta não medida — o contrato guarda ${(cobertura * 100).toFixed(0)}% do circulante, ` +
+          `abaixo do corte de 90%`
+        : "oferta não medida — contrato não representa a moeda",
+    );
+  }
 
   return {
     privado,

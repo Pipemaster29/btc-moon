@@ -443,6 +443,237 @@ export const WATCHLIST: WatchedToken[] = [
       },
     ],
   },
+  {
+    // Heima (HEI), na Ethereum — o token que era Litentry até o swap.
+    //
+    // A IDENTIFICAÇÃO NÃO PODE SER A DE SEMPRE, e vale explicar por quê: a HEI
+    // não tem pool em DEX nenhuma. Os dois testes do `descobrir` — preço à vista
+    // batendo com o perpétuo, pool girando — não têm em que rodar. Buscar "HEI"
+    // no DexScreener devolve três "Heima" na Solana com US$ 195 milhões de
+    // liquidez declarada e cento e quinze mil dólares de volume, marcando 0,1954
+    // contra 0,1416 do perpétuo: 38% de erro. São exatamente as pools decorativas
+    // que o terceiro teste existe para reprovar, e escolher a de maior liquidez
+    // teria medido a moeda errada pela quarta vez neste projeto.
+    //
+    // O que identificou o contrato foi a CUSTÓDIA, que é o mesmo critério que
+    // resolveu o PORTAL. Na Ethereum, a carteira fria da Binance guarda 30
+    // milhões de HEI redondos deste contrato; na BNB Chain, onde o mesmo
+    // endereço de contrato também existe, TODAS as carteiras de corretora estão
+    // zeradas. Binance custodiando trinta milhões de um contrato é prova de que
+    // é ele que ela entrega quando alguém saca HEIUSDT — não há como custodiar
+    // a moeda errada. O símbolo (HEI), o nome (Heima) e os 18 decimais foram
+    // lidos no contrato.
+    //
+    // A ESCALA: 72,26 milhões no contrato contra 81,47 milhões circulando, ou
+    // seja, a Ethereum guarda 88,7% da moeda — o resto vive na cadeia própria da
+    // Heima e 0,71 milhão na BNB Chain. Isso fica UM PONTO abaixo do corte de
+    // coerência de 90%, então `floatCex` e o teste de oferta do motor saem nulos
+    // nela. É conservador e está certo assim: o corte não foi afrouxado para
+    // caber uma moeda. Quem quiser o número tem ele aqui embaixo, medido carteira
+    // a carteira, que é melhor do que a soma cega da lista de corretoras.
+    //
+    // O SUPPLY DO CONTRATO SE MEXE, e isso é raro na lista: são 2.128 emissões
+    // somando 86,75 milhões e 230 queimas somando 14,40 milhões — é uma ponte,
+    // cunhando quando entra e queimando quando sai. Comparar supply de hoje com
+    // o de semana passada mede fluxo de ponte, não emissão nova.
+    symbol: "HEIUSDT",
+    chain: "ethereum",
+    contract: "0xf8f173e20e15f3B6cB686FB64724d370689de083",
+    // Bloco em que o contrato passou a existir, por busca binária sobre
+    // `eth_getCode` — 09/01/2025. A primeira transferência é 33 mil blocos
+    // depois; o bloco do código é o piso seguro para qualquer varredura.
+    firstBlock: 21590157,
+    // As carteiras abaixo cobrem 95% do supply do contrato, levantadas varrendo
+    // as 34.903 transferências desde o bloco de criação e conferindo cada saldo
+    // ao vivo. O que sobra fora do mapa é cauda: cerca de 4.500 endereços com
+    // menos de 0,3% cada.
+    //
+    // O retrato que elas desenham é de concentração extrema: 87% do supply do
+    // contrato está em carteira de corretora, e 51% só entre a fria da Binance e
+    // a carteira que recebeu 15,79 milhões dela. Não é oferta de projeto à
+    // espera de unlock — é moeda já entregue, parada contra o livro.
+    wallets: [
+      // ------------------------------------------------- o lado da Binance
+      {
+        address: "0xF977814e90dA44bFA03b6295A0616a897441aceC",
+        // 30 milhões redondos, 41,5% do supply. É a maior posição isolada da
+        // moeda e a prova de identidade do contrato.
+        label: "Binance (fria) · 41,5%",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x5a52E96BAcdaBb82fd05763E25335261B270Efcb",
+        // Recebeu 15,79 milhões DIRETO da fria numa transferência única, e não
+        // moveu nada desde então. É o movimento mais recente e mais pesado do
+        // histórico da moeda — 21,9% do supply trocando de carteira dentro da
+        // mesma custódia. Carrega 3,04 bilhões de USDT, então não é cliente:
+        // é infraestrutura de corretora.
+        label: "Binance · recebeu 15,79M da fria",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x28C6c06298d514Db089934071355E5743bf21d60",
+        // A quente. Troca com a fria o tempo todo: 90 transferências nos dois
+        // sentidos, 141 milhões recebidos e 165 milhões devolvidos ao longo da
+        // vida do token. É por aqui que a oferta chega ao livro.
+        label: "Binance (quente)",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0xDFd5293D8e347dFe59E90eFd55b2956a1343963d",
+        // 17 transferências, todas de ida para a fria — varredura de depósito.
+        label: "Binance (quente 2)",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x21a31Ee1afC51d94C2eFcCAa2092aD1028285549",
+        label: "Binance (quente 3)",
+        role: "exchange",
+        verified: true,
+      },
+
+      // --------------------------------------------- as outras corretoras
+      {
+        address: "0x3cc936b795A188F0e246cBB2D74C5Bd190aeCF18",
+        // 295 entradas pequenas e 10 saídas grandes, sempre para a mesma
+        // carteira quente: é a coletora de depósitos de uma corretora.
+        label: "corretora · coletora de depósito",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x43684d03D81d3a4C70da68feBdd61029d426F042",
+        // 1,5 milhão exato, recebido da carteira quente da Binance e parado
+        // desde então. 53 mil ETH de saldo próprio.
+        label: "corretora · 1,5M parado",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x9642b23Ed1E01Df1092B92641051881a322F5D4E",
+        label: "corretora (quente)",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe",
+        // A custódia mais presente da watchlist inteira: aparece em 22 das 33
+        // moedas com contrato, nas três redes.
+        label: "corretora · 22 moedas da lista",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x58edF78281334335EfFa23101bBe3371b6a36A51",
+        label: "corretora · varredora",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x1AB4973a48dc892Cd9971ECE8e01DcC7688f8F23",
+        label: "Bitget (quente)",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0x26209d9f0Dc3aC0129C3FB1bADaBFeb9eE728c66",
+        label: "Bitget (fria)",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0xa023f08c70A23aBc7EdFc5B6b5E171d78dFc947e",
+        label: "corretora · custódia",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0xCFFAd3200574698b78f32232aa9D63eABD290703",
+        label: "corretora · custódia",
+        role: "exchange",
+        verified: true,
+      },
+
+      // ------------------------------------------------- de onde sai a oferta
+      {
+        address: "0xf2eb2aA3727187EDd69285Ce7e7fDfE2E494ABce",
+        // A DISTRIBUIDORA, e é o endereço mais importante desta moeda apesar de
+        // estar zerado agora. Recebeu as três emissões grandes — 38,42 milhões
+        // na largada, 0,80 milhão em agosto de 2025 e 10,55 milhões depois — e
+        // mandou CADA UMA para a carteira quente da Binance em minutos. Não
+        // guarda nada; ela é o cano entre a ponte e o livro.
+        //
+        // O padrão dá o alerta de graça: token novo caindo aqui é oferta a
+        // caminho do livro, com poucos blocos de aviso. Saldo zero não é
+        // ausência de informação — é o estado normal dela.
+        label: "distribuidora · cano da ponte para a Binance",
+        role: "treasury",
+        verified: true,
+      },
+      {
+        address: "0x623D52547EF666f8f2B66309e423a44240154a5C",
+        // Primeiro destino do mint de 38,42 milhões, repassado à distribuidora
+        // dezoito blocos depois. Zerado desde então.
+        label: "primeiro destino do mint (repassa)",
+        role: "treasury",
+        verified: true,
+      },
+      {
+        address: "0x5fC8d718e3602fa399fc380C05dE047b5f7B4c11",
+        // Contrato: recebeu 4,84 milhões emitidos em janeiro de 2025, segurou
+        // por 3,4 milhões de blocos e soltou tudo de uma vez. Fica na lista
+        // zerado de propósito — se encher de novo, um lote voltou a destravar.
+        label: "contrato que soltou 4,84M",
+        role: "lock",
+        verified: true,
+      },
+
+      // ---------------------------------------------- o par que faz o mercado
+      //
+      // Estas duas trocam milhões entre si o tempo todo e com mais ninguém do
+      // tamanho delas: a segunda empurra lotes de 1 a 4 milhões para a primeira
+      // e recebe de volta em pedaços redondos. É o desenho de um formador de
+      // mercado com uma carteira de estoque e uma de operação.
+      {
+        address: "0xB0A3a2b60E969AFd26561429aa4c1444c57E4411",
+        // O estoque: 3,62 milhões, 5,0% do supply, e 5.077 ETH de gás próprio.
+        label: "estoque de formador de mercado · 5,0%",
+        role: "operational",
+        verified: true,
+      },
+      {
+        address: "0xaB782bc7D4a2b306825de5A7730034F8F63ee1bc",
+        // A operação: 863 entradas, 964 saídas, 864 mil transações e 0,26 ETH.
+        // Carrega token entre o estoque e o livro, que é a definição de router
+        // aqui.
+        label: "roteador do formador de mercado",
+        role: "router",
+        verified: true,
+      },
+
+      // ------------------------------------------------------- o resto grande
+      {
+        address: "0x360C15d7F56F29E310d61d67c660c05b406f3041",
+        // Recebeu 261.944 numa emissão de fevereiro de 2025 e nunca moveu o
+        // token. Tem gás e já assinou sete transações, então não está travada —
+        // está parada por escolha.
+        label: "261k parados desde a emissão",
+        role: "operational",
+        verified: true,
+      },
+      {
+        address: "0x916Ed5586bB328E0eC1a428af060dC3D10919d84",
+        // Recebeu quase tudo de uma carteira quente da Binance, em dois saques.
+        label: "354k sacados da Binance",
+        role: "operational",
+        verified: true,
+      },
+    ],
+  },
   // ------------------------------------------------------------------------
   // A lista de moedas manipuladas.
   //

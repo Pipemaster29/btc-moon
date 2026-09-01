@@ -66,19 +66,53 @@ export const CHAINS: Record<Chain, ChainConfig> = {
     secondsPerBlock: 0.45,
     explorer: "https://bscscan.com",
   },
+  // A Ethereum tinha o pior conjunto de endpoints do arquivo, e os dois defeitos
+  // eram invisíveis de fora. Vale registrar os dois, porque o segundo é o modo
+  // de falha que este projeto mais teme.
+  //
+  // `rpc.flashbots.net` NÃO ACEITA `eth_call` — devolve "rpc method is not
+  // whitelisted" para qualquer chamada de contrato. Como o rodízio de `callRpc`
+  // é cego, um terço de toda leitura de saldo, símbolo ou supply da rede caía
+  // nele, errava, esperava a espera progressiva e só então tentava outro. Não
+  // aparecia como falha porque a troca de endpoint escondia o custo.
+  //
+  // Pior: ele devolve LISTA VAZIA para `eth_getLogs` fora dos ~8.192 blocos mais
+  // recentes. Medido: 18.706 transferências de USDT numa janela de 200 blocos a
+  // 8 mil de profundidade, e ZERO na mesma janela a 12 mil. Não é erro, é
+  // silêncio — e `prunedDepth` dizia 20.000, então varredura nenhuma na faixa de
+  // 8 a 20 mil blocos tinha como saber que estava lendo o vazio. É exatamente a
+  // confusão entre "não achei" e "não consegui" que já custou quatro leituras
+  // erradas aqui.
+  //
+  // `ethereum-rpc.publicnode.com` recusa `eth_getLogs` em QUALQUER faixa
+  // ("Archive requests require a personal token") e também qualquer estado
+  // antigo. Serve bem o bloco mais recente, e é só para isso que ele fica.
+  //
+  // Os três de arquivo abaixo foram conferidos um contra o outro em quatro
+  // janelas do histórico da HEI: 0, 160, 55 e 276 logs, os três de acordo em
+  // todas. Nó que mente devolveria zero em alguma.
   ethereum: {
     gasSymbol: "ETH",
     endpoints: [
       "https://ethereum-rpc.publicnode.com",
+      "https://rpc.mevblocker.io",
       "https://eth.drpc.org",
-      "https://rpc.flashbots.net",
+      "https://eth.api.onfinality.io/public",
     ],
-    // Não procurei nó de arquivo gratuito aqui; sem isso a reconstrução
-    // histórica não roda nesta rede, e `balanceAt` falha com mensagem clara.
-    archiveLog: [],
-    archiveState: [],
-    maxLogSpan: 5000,
-    prunedDepth: 20_000,
+    archiveLog: [
+      "https://rpc.mevblocker.io",
+      "https://eth.api.onfinality.io/public",
+      // O drpc entra por último: serve arquivo, mas o plano gratuito estoura o
+      // tempo em faixa movimentada.
+      "https://eth.drpc.org",
+    ],
+    archiveState: ["https://rpc.mevblocker.io", "https://eth.drpc.org"],
+    // Os dois primeiros recusam faixa acima de 10 mil blocos; o onfinality
+    // aceita mais, mas o teto tem de caber no mais restrito do rodízio.
+    maxLogSpan: 10_000,
+    // Só vale quando `archiveLog` está vazio, e não está mais. Fica no valor
+    // real dos nós comuns, que é a janela do flashbots.
+    prunedDepth: 8_000,
     secondsPerBlock: 12,
     explorer: "https://etherscan.io",
   },
@@ -201,6 +235,19 @@ async function rpc(chain: Chain, method: string, params: unknown[]): Promise<unk
   return callRpc(pool, method, params, pool.length * 2);
 }
 
+/**
+ * Os nós que servem log, que não são os mesmos que servem estado.
+ *
+ * A distinção existia só dentro de `scanTransfers`, e a falta dela em
+ * `transfersBetween` era um buraco de verdade: na Ethereum o primeiro endpoint
+ * da lista comum recusa `eth_getLogs` sempre, e o rodízio cego pagava uma
+ * tentativa perdida por faixa. Agora as duas varreduras entram pela mesma porta.
+ */
+function logPool(chain: Chain): string[] {
+  const config = CHAINS[chain];
+  return config.archiveLog.length > 0 ? config.archiveLog : config.endpoints;
+}
+
 /** Endereço de 20 bytes no formato de 32 bytes usado nos tópicos de evento. */
 export function padAddress(address: string): string {
   return `0x${address.toLowerCase().slice(2).padStart(64, "0")}`;
@@ -227,6 +274,98 @@ async function call(chain: Chain, to: string, data: string): Promise<string> {
   return (await rpc(chain, "eth_call", [{ to, data }, "latest"])) as string;
 }
 
+// --------------------------------------------------------------- multicall
+//
+// Uma requisição no lugar de N, e o ganho não é de velocidade — é de leitura
+// que chega.
+//
+// Ler o saldo de dezessete carteiras de corretora custava dezessete `eth_call`.
+// Vezes trinta e três moedas, vezes duas passagens (o float da vida e o motor),
+// dá mais de mil chamadas por retrato — em nós públicos gratuitos, que é onde
+// a demora vira tempo esgotado e o tempo esgotado vira saldo zero. O modo de
+// falha é o de sempre aqui: some sem erro, e zero se lê como "não tem".
+//
+// O Multicall3 está no MESMO endereço em toda rede EVM, o que é justamente o
+// que torna isto barato de manter. Se ele não estiver lá, ou o nó recusar, cada
+// função cai sozinha no caminho antigo.
+
+/** Multicall3 — mesmo endereço na BNB Chain, na Base e na Ethereum. */
+const MULTICALL3 = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
+/**
+ * Quantas chamadas cabem numa só. Cem é conservador de propósito: a resposta
+ * inteira trafega numa resposta JSON-RPC, e nó público corta resposta grande
+ * antes de recusar o pedido.
+ */
+const MULTICALL_LOTE = 100;
+
+const hexWord = (n: number): string => n.toString(16).padStart(64, "0");
+
+/**
+ * `aggregate3((address,bool,bytes)[])` codificado à mão.
+ *
+ * Sem biblioteca de ABI porque é a única chamada estruturada do projeto inteiro,
+ * e trazer uma dependência de dois megabytes para codificar uma tupla seria
+ * pagar caro por pouco.
+ */
+function encodeAggregate3(calls: { target: string; data: string }[]): string {
+  const itens = calls.map((c) => {
+    const bytes = c.data.slice(2);
+    const preenchido = bytes.padEnd(Math.ceil(bytes.length / 64) * 64, "0");
+    // (address target, bool allowFailure, bytes callData): o terceiro campo é
+    // dinâmico, então guarda um deslocamento fixo de 96 bytes daqui.
+    return (
+      padAddress(c.target).slice(2) + hexWord(1) + hexWord(96) + hexWord(bytes.length / 2) + preenchido
+    );
+  });
+
+  let deslocamento = 32 * itens.length;
+  let cabeca = "";
+  for (const item of itens) {
+    cabeca += hexWord(deslocamento);
+    deslocamento += item.length / 2;
+  }
+
+  // 0x82ad56cb = aggregate3; o primeiro word é o deslocamento do array.
+  return `0x82ad56cb${hexWord(32)}${hexWord(itens.length)}${cabeca}${itens.join("")}`;
+}
+
+/** Devolve o retorno de cada chamada, ou nulo para a que reverteu. */
+function decodeAggregate3(hex: string, esperados: number): (string | null)[] {
+  const raw = hex.slice(2);
+  const total = Number(BigInt(`0x${raw.slice(64, 128)}`));
+  if (total !== esperados) throw new Error("multicall devolveu outra quantidade");
+
+  const out: (string | null)[] = [];
+  for (let i = 0; i < total; i++) {
+    const inicio = Number(BigInt(`0x${raw.slice(128 + i * 64, 192 + i * 64)}`)) * 2 + 128;
+    const ok = BigInt(`0x${raw.slice(inicio, inicio + 64)}`) === BigInt(1);
+    const dados = Number(BigInt(`0x${raw.slice(inicio + 64, inicio + 128)}`)) * 2 + inicio;
+    const tamanho = Number(BigInt(`0x${raw.slice(dados, dados + 64)}`));
+    const corpo = raw.slice(dados + 64, dados + 64 + tamanho * 2);
+    out.push(ok && corpo.length > 0 ? `0x${corpo}` : null);
+  }
+  return out;
+}
+
+/**
+ * Roda as chamadas em lote. Lança se o Multicall3 não responder — quem chama
+ * decide se cai para o caminho de uma requisição por item.
+ */
+async function multicall(
+  chain: Chain,
+  calls: { target: string; data: string }[],
+): Promise<(string | null)[]> {
+  const out: (string | null)[] = [];
+  for (let i = 0; i < calls.length; i += MULTICALL_LOTE) {
+    const lote = calls.slice(i, i + MULTICALL_LOTE);
+    const hex = await call(chain, MULTICALL3, encodeAggregate3(lote));
+    if (!hex || hex === "0x") throw new Error("Multicall3 não respondeu nesta rede");
+    out.push(...decodeAggregate3(hex, lote.length));
+  }
+  return out;
+}
+
 // ------------------------------------------------------------------- ERC-20
 
 export interface TokenInfo {
@@ -247,11 +386,27 @@ function decodeString(hex: string): string {
 }
 
 export async function tokenInfo(chain: Chain, address: string): Promise<TokenInfo> {
-  const [symbol, decimals, supply] = await Promise.all([
-    call(chain, address, "0x95d89b41"),
-    call(chain, address, "0x313ce567"),
-    call(chain, address, "0x18160ddd"),
-  ]);
+  const SELETORES = ["0x95d89b41", "0x313ce567", "0x18160ddd"];
+
+  let symbol: string | null = null;
+  let decimals: string | null = null;
+  let supply: string | null = null;
+
+  try {
+    [symbol, decimals, supply] = await multicall(
+      chain,
+      SELETORES.map((data) => ({ target: address, data })),
+    );
+  } catch {
+    // Sem lote, três requisições — e um contrato que não responde continua
+    // estourando aqui, como antes.
+  }
+
+  if (symbol === null || decimals === null || supply === null) {
+    [symbol, decimals, supply] = await Promise.all(
+      SELETORES.map((data) => call(chain, address, data)),
+    );
+  }
 
   return {
     address,
@@ -261,40 +416,80 @@ export async function tokenInfo(chain: Chain, address: string): Promise<TokenInf
   };
 }
 
-/** Saldo do token para vários endereços, no bloco mais recente. */
+/**
+ * Saldo do token para vários endereços, no bloco mais recente.
+ *
+ * Uma requisição para o conjunto todo, via Multicall3. Só cai para uma por
+ * endereço quando o lote falha, que é o que acontece em rede sem o contrato.
+ */
 export async function balancesOf(
   chain: Chain,
   token: string,
   holders: string[],
 ): Promise<Map<string, bigint>> {
-  const entries = await Promise.all(
-    holders.map(async (holder) => {
-      const data = `0x70a08231${padAddress(holder).slice(2)}`;
-      return [holder.toLowerCase(), BigInt(await call(chain, token, data))] as const;
-    }),
-  );
-  return new Map(entries);
+  if (holders.length === 0) return new Map();
+
+  const dados = holders.map((holder) => ({
+    target: token,
+    data: `0x70a08231${padAddress(holder).slice(2)}`,
+  }));
+
+  try {
+    const retornos = await multicall(chain, dados);
+    return new Map(
+      holders.map(
+        (holder, i) => [holder.toLowerCase(), BigInt(retornos[i] ?? "0x0")] as const,
+      ),
+    );
+  } catch {
+    const entries = await Promise.all(
+      holders.map(async (holder, i) => {
+        return [holder.toLowerCase(), BigInt(await call(chain, token, dados[i].data))] as const;
+      }),
+    );
+    return new Map(entries);
+  }
 }
 
 /**
- * Saldo de BNB de vários endereços, em unidades inteiras (wei).
+ * Saldo do ativo de gás de vários endereços, em unidades inteiras (wei).
  *
- * Interessa como combustível, não como riqueza: sem BNB uma carteira não paga
- * gás, e portanto não consegue mover token nenhum por mais que segure. Uma
- * carteira cheia de token e vazia de BNB está travada, e o momento em que
+ * Interessa como combustível, não como riqueza: sem gás uma carteira não paga
+ * transação, e portanto não consegue mover token nenhum por mais que segure. Uma
+ * carteira cheia de token e vazia de gás está travada, e o momento em que
  * alguém a abastece é o aviso de que vão movimentá-la.
+ *
+ * O próprio Multicall3 expõe `getEthBalance`, então o lote também serve aqui.
  */
 export async function gasOf(
   chain: Chain,
   addresses: string[],
 ): Promise<Map<string, bigint>> {
-  const entries = await Promise.all(
-    addresses.map(async (address) => {
-      const wei = (await rpc(chain, "eth_getBalance", [address, "latest"])) as string;
-      return [address.toLowerCase(), BigInt(wei)] as const;
-    }),
-  );
-  return new Map(entries);
+  if (addresses.length === 0) return new Map();
+
+  try {
+    // 0x4d2301cc = getEthBalance(address), no próprio Multicall3.
+    const retornos = await multicall(
+      chain,
+      addresses.map((address) => ({
+        target: MULTICALL3,
+        data: `0x4d2301cc${padAddress(address).slice(2)}`,
+      })),
+    );
+    return new Map(
+      addresses.map(
+        (address, i) => [address.toLowerCase(), BigInt(retornos[i] ?? "0x0")] as const,
+      ),
+    );
+  } catch {
+    const entries = await Promise.all(
+      addresses.map(async (address) => {
+        const wei = (await rpc(chain, "eth_getBalance", [address, "latest"])) as string;
+        return [address.toLowerCase(), BigInt(wei)] as const;
+      }),
+    );
+    return new Map(entries);
+  }
 }
 
 /** Distingue carteira de contrato — trocas usam ambos, e o rótulo muda a leitura. */
@@ -335,18 +530,24 @@ export async function transfersBetween(
 ): Promise<Transfer[]> {
   const out: Transfer[] = [];
   const span = CHAINS[chain].maxLogSpan;
+  const pool = logPool(chain);
 
   for (let start = fromBlock; start <= toBlock; start += span) {
     const end = Math.min(start + span - 1, toBlock);
 
-    const logs = (await rpc(chain, "eth_getLogs", [
-      {
-        fromBlock: `0x${start.toString(16)}`,
-        toBlock: `0x${end.toString(16)}`,
-        address: token,
-        topics: [TRANSFER_TOPIC],
-      },
-    ])) as RawLog[];
+    const logs = (await callRpc(
+      pool,
+      "eth_getLogs",
+      [
+        {
+          fromBlock: `0x${start.toString(16)}`,
+          toBlock: `0x${end.toString(16)}`,
+          address: token,
+          topics: [TRANSFER_TOPIC],
+        },
+      ],
+      pool.length * 2,
+    )) as RawLog[];
 
     for (const log of logs) {
       const transfer = decodeTransfer(log);
@@ -459,7 +660,7 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
         // desperdiça tudo o que já foi lido.
         try {
           const logs = (await callRpc(
-            config.archiveLog.length ? config.archiveLog : config.endpoints,
+            logPool(chain),
             "eth_getLogs",
             [
               {
