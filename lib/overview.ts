@@ -18,6 +18,7 @@ import { depthOn, pairsOfToken } from "./dexscreener";
 import { ATIVAS, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
 import { concentracaoDe } from "./detentores";
+import { lerEstudo } from "./estudo";
 import { lerMotor, type Motor } from "./motor";
 import { readLiveFromStats, type MoveKind } from "./positioning";
 
@@ -251,7 +252,10 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
       const token = porSymbol.get(row.symbol);
       if (!token) return { ...row, vida: null, leitura: null, motor: null };
 
-      const vida = await lerVida(token, row.price).catch(() => null);
+      const [vida, estudo] = await Promise.all([
+        lerVida(token, row.price).catch(() => null),
+        lerEstudo(token.symbol),
+      ]);
       if (!vida) return { ...row, vida: null, leitura: null, motor: null };
 
       const motor = await lerMotor(
@@ -278,6 +282,10 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         motores: motor?.motores ?? 0,
         motoresMedidos: motor?.medidos ?? 0,
         concentracao: motor?.concentracao ?? null,
+        perfil: estudo?.perfil ?? null,
+        perfilR: estudo?.melhorLag?.r ?? null,
+        perfilLag: estudo?.melhorLag?.lag ?? null,
+        perfilSigmas: estudo?.melhorLag?.sigmas ?? null,
       });
       return { ...row, vida, leitura, motor };
     }),

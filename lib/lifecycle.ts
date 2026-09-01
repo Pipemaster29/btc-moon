@@ -666,6 +666,20 @@ export interface SinaisAgora {
    * Fração do supply ainda com quem a recebeu na gênese. Nulo quando não varrida.
    */
   concentracao: number | null;
+  /**
+   * Como ESTA moeda se move, medido nela: devolve o movimento, continua, ou não
+   * tem memória. Nulo quando `npm run estudar` nunca rodou nela.
+   *
+   * Entra porque as duas regras direcionais deste arquivo são, no fundo, APOSTAS
+   * DE REVERSÃO — "ressuscitando" vende quem quicou, "exausta" compra quem
+   * derreteu — e as duas foram calibradas no conjunto. Numa moeda cuja série
+   * mede continuação, elas apostam contra o comportamento medido dela.
+   */
+  perfil: "devolve" | "continua" | "sem memória" | null;
+  /** A defasagem que sustenta o perfil, para o texto poder citar o número. */
+  perfilR: number | null;
+  perfilLag: number | null;
+  perfilSigmas: number | null;
 }
 
 /**
@@ -772,6 +786,40 @@ function textoUnlock(u: { quando: number; variacao: number }): string {
     `O supply circulante saltou ${(u.variacao * 100).toFixed(0)}% há ${dias} dia(s) — unlock. ` +
     `Quem recebeu não tinha o token e passou a ter, e boa parte vende com pressa; ` +
     `na BTW o salto foi de 23% três dias antes da máxima.`
+  );
+}
+
+/**
+ * A moeda contradiz a aposta que a fase está fazendo?
+ *
+ * As duas regras direcionais deste arquivo são apostas de REVERSÃO: vender quem
+ * quicou 80% do fundo, comprar quem derreteu 60% do topo. As duas foram medidas
+ * no CONJUNTO, sobre 12.060 observações de 64 moedas.
+ *
+ * Mas as moedas não são iguais nisso, e agora dá para medir: das 69 estudadas,
+ * 16 devolvem o movimento, 8 CONTINUAM e 45 não têm memória nenhuma. Numa que
+ * continua — a SLX mede r = +0,38 em um dia, 3,6σ — apostar na reversão é
+ * apostar contra o único dado que existe sobre ela.
+ *
+ * O freio só REMOVE direção, nunca abre uma. Não há amostra para o contrário: o
+ * estudo mede a série de preço da moeda, não o retorno das recomendações nela.
+ */
+function contradizAFase(agora: SinaisAgora): boolean {
+  return (
+    agora.perfil === "continua" &&
+    agora.perfilSigmas !== null &&
+    agora.perfilSigmas >= 2.73
+  );
+}
+
+function textoContradiz(agora: SinaisAgora): string {
+  return (
+    `Mas esta moeda CONTINUA o movimento em vez de devolvê-lo: o retorno de um dia se ` +
+    `estende por ${agora.perfilLag} dia(s) com r = ${(agora.perfilR ?? 0).toFixed(2)}, ` +
+    `${(agora.perfilSigmas ?? 0).toFixed(1)}σ depois de corrigir pelas oito defasagens testadas. ` +
+    `Esta fase é uma aposta de reversão calibrada no conjunto das 64 moedas, e na série desta ` +
+    `moeda a reversão não aparece — aparece o oposto. Quando a régua do grupo e a medida da ` +
+    `moeda discordam, a direção sai.`
   );
 }
 
@@ -933,6 +981,16 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   }
 
   if (vida.estagio === "ressuscitando" && podeVender) {
+    if (contradizAFase(agora)) {
+      return {
+        vies: "observar",
+        forca: 1,
+        ateQuando: textoAteQuando(vida),
+        titulo: "Fase de devolver, numa moeda que continua",
+        porque: `${pct(vida.altaDesdeFundo)} desde o fundo, e a fase venderia. ${textoContradiz(agora)}`,
+      };
+    }
+
     // A IDADE DO TOPO INVERTE A FASE, e a observação veio de fora: "recomendou
     // short em moeda que já caiu faz tempo". Medido dentro de "ressuscitando",
     // sobre 1.872 observações, separando pela distância até a máxima:
@@ -1074,6 +1132,18 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
           `que gire, sem oferta fora das corretoras. A assimetria de 5,5 para 1 que sustenta essa ` +
           `compra é do passado recente destas moedas, e ela seca junto com o interesse — moeda ` +
           `barata e parada continua barata e parada.`,
+      };
+    }
+
+    if (contradizAFase(agora)) {
+      return {
+        vies: "observar",
+        forca: 1,
+        ateQuando: textoAteQuando(vida),
+        titulo: "Fase de quicar, numa moeda que continua caindo",
+        porque:
+          `${pct(vida.queda)} do topo, e a fase compraria. ${textoContradiz(agora)} ` +
+          `Comprar o fundo de uma moeda que estende o movimento é o pior lado desta medida.`,
       };
     }
 

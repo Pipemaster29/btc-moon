@@ -29,6 +29,16 @@ export interface Placar {
   /** Mediana de TODAS as observações: sem ela nenhum viés significa nada. */
   referencia: number;
   vereditos: Veredito[];
+  /**
+   * O placar dentro de cada moeda, contra a mediana dela mesma.
+   *
+   * O agregado esconde o que interessa para operar: um viés pode separar em
+   * cinco moedas e inverter em outras cinco, e o total dá zero.
+   */
+  porMoeda?: Record<
+    string,
+    { n: number; refMoeda: number; vieses: Record<string, { n: number; delta: number }> }
+  >;
 }
 
 export async function getPlacar(): Promise<Placar | null> {

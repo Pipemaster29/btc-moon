@@ -171,6 +171,62 @@ porGrupo(
 );
 
 /**
+ * O placar POR MOEDA.
+ *
+ * O agregado esconde o que interessa para operar: um viés que não separa no
+ * conjunto pode separar em cinco moedas e inverter em outras cinco, e o total
+ * dá zero. Quem escolhe uma moeda precisa saber se o painel acerta NELA.
+ *
+ * A ressalva é grande e vale repetir: são doze dias, e por moeda isso vira
+ * poucas dezenas de emissões por viés. Nada aqui sustenta afirmação sozinho —
+ * serve para saber onde olhar quando a amostra crescer.
+ */
+const placarPorMoeda: Record<
+  string,
+  { n: number; refMoeda: number; vieses: Record<string, { n: number; delta: number }> }
+> = {};
+
+const obsPorMoeda = new Map<string, Obs[]>();
+for (const o of obs) {
+  const l = obsPorMoeda.get(o.s) ?? [];
+  l.push(o);
+  obsPorMoeda.set(o.s, l);
+}
+
+for (const [s2, meus] of obsPorMoeda) {
+  if (meus.length < 20) continue;
+  // A referência de CADA moeda é ela mesma: comparar o viés dela com a mediana
+  // do grupo mistura "o painel acertou" com "esta moeda andou diferente".
+  const refMoeda = mediana(meus.map((o) => o.fwd));
+  const vieses: Record<string, { n: number; delta: number }> = {};
+  for (const v of ["short", "long", "evitar", "observar"]) {
+    const g = meus.filter((o) => o.vies === v);
+    if (g.length < 10) continue;
+    const med = mediana(g.map((o) => o.fwd));
+    vieses[v] = { n: g.length, delta: v === "short" ? refMoeda - med : med - refMoeda };
+  }
+  if (Object.keys(vieses).length) placarPorMoeda[s2] = { n: meus.length, refMoeda, vieses };
+}
+
+console.log("=== por moeda: o painel acerta NESTA? (separação contra a própria mediana) ===");
+console.log("moeda        emiss.   short      long    observar");
+const melhorDelta = (v: Record<string, { n: number; delta: number }>) =>
+  Math.max(...Object.values(v).map((x) => x.delta));
+const ordenado = Object.entries(placarPorMoeda).sort(
+  (a, b) => melhorDelta(b[1].vieses) - melhorDelta(a[1].vieses),
+);
+const cel = (x?: { n: number; delta: number }) =>
+  (x ? `${x.delta >= 0 ? "+" : "−"}${(Math.abs(x.delta) * 100).toFixed(2)}` : "—").padStart(9);
+for (const [s2, d] of ordenado.slice(0, 14)) {
+  console.log(
+    s2.padEnd(12), String(d.n).padStart(6),
+    cel(d.vieses.short), cel(d.vieses.long), cel(d.vieses.observar),
+  );
+}
+console.log(`
+${Object.keys(placarPorMoeda).length} moedas com emissões suficientes · em p.p. contra a mediana da própria moeda\n`);
+
+/**
  * O veredito, e ele é deliberadamente duro.
  *
  * Um viés só vale alguma coisa se separar da referência E a separação vier da
@@ -230,6 +286,7 @@ await writeFile(
       moedas: porMoeda.size,
       referencia,
       vereditos,
+      porMoeda: placarPorMoeda,
     },
     null,
     2,

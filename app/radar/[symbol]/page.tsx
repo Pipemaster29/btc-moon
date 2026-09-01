@@ -5,6 +5,7 @@ import PositioningPanel from "@/components/PositioningPanel";
 import { lerCiclo } from "@/lib/setup";
 import { lerVida } from "@/lib/lifecycle";
 import { lerEstudo, type Estudo } from "@/lib/estudo";
+import { getPlacar, type Placar } from "@/lib/placar";
 import { getRadar, type AlertLevel, type RadarSnapshot } from "@/lib/radar";
 import { getPositioning, type PositioningSnapshotView } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
@@ -380,6 +381,78 @@ function EstudoPanel({ estudo }: { estudo: Estudo }) {
   );
 }
 
+/**
+ * O placar do painel DENTRO desta moeda.
+ *
+ * O agregado esconde o que interessa para operar: um viés pode separar em cinco
+ * moedas e inverter em outras cinco, e o total dá zero — que foi exatamente o
+ * que aconteceu. Aqui a comparação é contra a mediana da própria moeda, e não
+ * contra a do grupo, senão "o painel acertou" se mistura com "esta moeda andou
+ * diferente das outras".
+ */
+function PlacarDaMoeda({
+  placar,
+  meu,
+  ticker,
+}: {
+  placar: Placar;
+  meu: NonNullable<Placar["porMoeda"]>[string];
+  ticker: string;
+}) {
+  const linhas = Object.entries(meu.vieses).sort((a, b) => b[1].delta - a[1].delta);
+
+  return (
+    <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-semibold text-lg">O painel acerta na {ticker}?</h2>
+        <span className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+          {meu.n} emissões · {placar.horizonte}h à frente · {placar.janela.de.slice(0, 10)} a{" "}
+          {placar.janela.ate.slice(0, 10)}
+        </span>
+      </div>
+      <p className="text-sm text-black/60 dark:text-white/60 mt-1">
+        Cada viés que esteve na tela desta moeda, contra a mediana dela mesma no período
+        ({(meu.refMoeda * 100).toFixed(2)}%). Positivo significa que o viés separou a favor
+        da direção que ele recomendava.
+      </p>
+
+      <table className="w-full text-sm mt-3">
+        <thead className="text-black/50 dark:text-white/50">
+          <tr className="text-left">
+            <th className="font-normal pb-2">Viés</th>
+            <th className="font-normal pb-2 text-right">Emissões</th>
+            <th className="font-normal pb-2 text-right">Separação</th>
+          </tr>
+        </thead>
+        <tbody className="tabular-nums">
+          {linhas.map(([v, d]) => (
+            <tr key={v} className="border-t border-black/5 dark:border-white/5">
+              <td className="py-2">{v}</td>
+              <td className="py-2 text-right">{d.n}</td>
+              <td
+                className={`py-2 text-right font-medium ${
+                  d.delta > 0
+                    ? "text-[#0a7d43] dark:text-[#0ECB81]"
+                    : "text-[#C42B3E] dark:text-[#F6465D]"
+                }`}
+              >
+                {d.delta >= 0 ? "+" : "−"}
+                {Math.abs(d.delta * 100).toFixed(2)} p.p.
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <p className="text-xs text-black/40 dark:text-white/40 mt-3">
+        Doze dias de emissões, e por moeda isso vira poucas dezenas por viés — números
+        grandes aqui são ruído com decimal, não descoberta. Serve para saber onde olhar
+        quando a amostra crescer, e a amostra cresce a cada execução do workflow.
+      </p>
+    </section>
+  );
+}
+
 export default async function Page({
   params,
 }: {
@@ -399,10 +472,12 @@ export default async function Page({
     getPositioning(token.symbol),
   ]);
 
-  const [vida, estudo] = await Promise.all([
+  const [vida, estudo, placar] = await Promise.all([
     lerVida(token, snapshot?.priceUsd ?? perp?.price ?? 0).catch(() => null),
     lerEstudo(token.symbol),
+    getPlacar(),
   ]);
+  const meuPlacar = placar?.porMoeda?.[token.symbol] ?? null;
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50 font-sans dark:bg-black">
@@ -438,6 +513,9 @@ export default async function Page({
         <CyclePanel leitura={lerCiclo(snapshot, perp?.live ?? null)} />
 
         {estudo && <EstudoPanel estudo={estudo} />}
+        {meuPlacar && placar && (
+          <PlacarDaMoeda placar={placar} meu={meuPlacar} ticker={token.symbol.replace(/USDT$/, "")} />
+        )}
 
         {vida?.tecnica && (
           <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">

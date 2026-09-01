@@ -69,6 +69,10 @@ const leituras = vidas.map((v) => {
       motores: 0,
       motoresMedidos: 0,
       concentracao: null,
+      perfil: null,
+      perfilR: null,
+      perfilLag: null,
+      perfilSigmas: null,
     }),
   };
 });
