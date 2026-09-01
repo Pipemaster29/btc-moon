@@ -1,0 +1,5110 @@
+{
+  "moedas": {
+    "BTWUSDT": {
+      "symbol": "BTWUSDT",
+      "ticker": "BTW",
+      "dias": 90,
+      "de": "2026-06-04",
+      "ate": "2026-09-01",
+      "volDiaria": 0.16657509744085278,
+      "volAnual": 318.2412768154345,
+      "maiorAlta": 0.9029314696175499,
+      "maiorQueda": -0.3957223264540338,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.008367079101517821,
+          "n": 88,
+          "sigmas": 0.07849015936289691
+        },
+        {
+          "lag": 2,
+          "r": -0.12327960034936196,
+          "n": 87,
+          "sigmas": 1.1498755619717993
+        },
+        {
+          "lag": 3,
+          "r": -0.19900534292310487,
+          "n": 86,
+          "sigmas": 1.8454996288341705
+        },
+        {
+          "lag": 5,
+          "r": 0.032117183663514286,
+          "n": 84,
+          "sigmas": 0.29435885049370664
+        },
+        {
+          "lag": 7,
+          "r": -0.14555510840846742,
+          "n": 82,
+          "sigmas": 1.3180575654620164
+        },
+        {
+          "lag": 10,
+          "r": 0.015151498339641878,
+          "n": 79,
+          "sigmas": 0.13466946295637136
+        },
+        {
+          "lag": 14,
+          "r": -0.08854363462676317,
+          "n": 75,
+          "sigmas": 0.7668103693018438
+        },
+        {
+          "lag": 21,
+          "r": -0.07906942577458265,
+          "n": 68,
+          "sigmas": 0.6520231884510795
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 3,
+        "r": -0.19900534292310487,
+        "n": 86,
+        "sigmas": 1.8454996288341705
+      },
+      "sobe20": 0.46987951807228917,
+      "cai20": 0.13253012048192772,
+      "assimetria": 3.5454545454545454,
+      "janelas7d": 83,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 16.7% ao dia; em sete dias sobe 20% em 47.0% das janelas e cai 20% em 13.3%. Maior dia: +90.3%; pior: −39.6%.",
+      "medidoEm": 1788232382534
+    },
+    "PRLUSDT": {
+      "symbol": "PRLUSDT",
+      "ticker": "PRL",
+      "dias": 154,
+      "de": "2026-04-01",
+      "ate": "2026-09-01",
+      "volDiaria": 0.09163714982214344,
+      "volAnual": 175.072528914361,
+      "maiorAlta": 0.6463752075262865,
+      "maiorQueda": -0.2971352431712192,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.057791871891445294,
+          "n": 152,
+          "sigmas": 0.7125060486908291
+        },
+        {
+          "lag": 2,
+          "r": -0.1832082226877799,
+          "n": 151,
+          "sigmas": 2.2513003313469055
+        },
+        {
+          "lag": 3,
+          "r": -0.05462056611020214,
+          "n": 150,
+          "sigmas": 0.6689625821597531
+        },
+        {
+          "lag": 5,
+          "r": 0.03527214797759115,
+          "n": 148,
+          "sigmas": 0.42910420016245115
+        },
+        {
+          "lag": 7,
+          "r": 0.022435267233212257,
+          "n": 146,
+          "sigmas": 0.2710863654087836
+        },
+        {
+          "lag": 10,
+          "r": -0.09231732159540297,
+          "n": 143,
+          "sigmas": 1.1039546027425744
+        },
+        {
+          "lag": 14,
+          "r": -0.1461116765903738,
+          "n": 139,
+          "sigmas": 1.7226312614749995
+        },
+        {
+          "lag": 21,
+          "r": -0.08522038309798351,
+          "n": 132,
+          "sigmas": 0.9791076589366736
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.1832082226877799,
+        "n": 151,
+        "sigmas": 2.2513003313469055
+      },
+      "sobe20": 0.19727891156462585,
+      "cai20": 0.1836734693877551,
+      "assimetria": 1.074074074074074,
+      "janelas7d": 147,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 9.2% ao dia; em sete dias sobe 20% em 19.7% das janelas e cai 20% em 18.4%. Maior dia: +64.6%; pior: −29.7%.",
+      "medidoEm": 1788232382540
+    },
+    "AKEUSDT": {
+      "symbol": "AKEUSDT",
+      "ticker": "AKE",
+      "dias": 341,
+      "de": "2025-09-26",
+      "ate": "2026-09-01",
+      "volDiaria": 0.13987069126028479,
+      "volAnual": 267.2225804432499,
+      "maiorAlta": 2.5706006322444686,
+      "maiorQueda": -0.3472222222222222,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.1021517141422016,
+          "n": 339,
+          "sigmas": 1.8808125228322023
+        },
+        {
+          "lag": 2,
+          "r": 0.058795357554102715,
+          "n": 338,
+          "sigmas": 1.080939496748637
+        },
+        {
+          "lag": 3,
+          "r": 0.09943914095338377,
+          "n": 337,
+          "sigmas": 1.8254599716086117
+        },
+        {
+          "lag": 5,
+          "r": 0.004517664271771261,
+          "n": 335,
+          "sigmas": 0.08268683273815074
+        },
+        {
+          "lag": 7,
+          "r": 0.015658555265894727,
+          "n": 333,
+          "sigmas": 0.285741819749965
+        },
+        {
+          "lag": 10,
+          "r": 0.0033461318836432376,
+          "n": 330,
+          "sigmas": 0.06078550429421613
+        },
+        {
+          "lag": 14,
+          "r": -0.0026936403392849423,
+          "n": 326,
+          "sigmas": 0.048634942566429855
+        },
+        {
+          "lag": 21,
+          "r": 0.058570986707520485,
+          "n": 319,
+          "sigmas": 1.0461112724570558
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 1,
+        "r": 0.1021517141422016,
+        "n": 339,
+        "sigmas": 1.8808125228322023
+      },
+      "sobe20": 0.19760479041916168,
+      "cai20": 0.18562874251497005,
+      "assimetria": 1.0645161290322582,
+      "janelas7d": 334,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 14.0% ao dia; em sete dias sobe 20% em 19.8% das janelas e cai 20% em 18.6%. Maior dia: +257.1%; pior: −34.7%.",
+      "medidoEm": 1788232382628
+    },
+    "HEIUSDT": {
+      "symbol": "HEIUSDT",
+      "ticker": "HEI",
+      "dias": 566,
+      "de": "2025-02-13",
+      "ate": "2026-09-01",
+      "volDiaria": 0.08682202001224068,
+      "volAnual": 165.87323632934763,
+      "maiorAlta": 1.0776082410347763,
+      "maiorQueda": -0.4812255932712526,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.07072229501115405,
+          "n": 564,
+          "sigmas": 1.6795614482857166
+        },
+        {
+          "lag": 2,
+          "r": -0.05741809910894117,
+          "n": 563,
+          "sigmas": 1.362394896230531
+        },
+        {
+          "lag": 3,
+          "r": -0.08724965238737879,
+          "n": 562,
+          "sigmas": 2.0683873029599074
+        },
+        {
+          "lag": 5,
+          "r": -0.0834880562661621,
+          "n": 560,
+          "sigmas": 1.9756880072260992
+        },
+        {
+          "lag": 7,
+          "r": 0.020501183659183977,
+          "n": 558,
+          "sigmas": 0.4842794446769307
+        },
+        {
+          "lag": 10,
+          "r": -0.11935977335294694,
+          "n": 555,
+          "sigmas": 2.8119298176965777
+        },
+        {
+          "lag": 14,
+          "r": -0.058424720322674484,
+          "n": 551,
+          "sigmas": 1.371426198369889
+        },
+        {
+          "lag": 21,
+          "r": 0.028633345917108297,
+          "n": 544,
+          "sigmas": 0.6678386505244943
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 10,
+        "r": -0.11935977335294694,
+        "n": 555,
+        "sigmas": 2.8119298176965777
+      },
+      "sobe20": 0.06797853309481217,
+      "cai20": 0.07513416815742398,
+      "assimetria": 0.9047619047619047,
+      "janelas7d": 559,
+      "veredito": "Devolve: o retorno de um dia se inverte 10 dia(s) depois (r = -0.119, 2.8σ em 555 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 8.7% ao dia; em sete dias sobe 20% em 6.8% das janelas e cai 20% em 7.5%. Maior dia: +107.8%; pior: −48.1%.",
+      "medidoEm": 1788232382720
+    },
+    "VELVETUSDT": {
+      "symbol": "VELVETUSDT",
+      "ticker": "VELVET",
+      "dias": 414,
+      "de": "2025-07-15",
+      "ate": "2026-09-01",
+      "volDiaria": 0.16143513373100266,
+      "volAnual": 308.42138993595347,
+      "maiorAlta": 1.2978158205430934,
+      "maiorQueda": -0.7665723223596008,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.05280309375096021,
+          "n": 412,
+          "sigmas": 1.0717857455597875
+        },
+        {
+          "lag": 2,
+          "r": -0.02160233421995071,
+          "n": 411,
+          "sigmas": 0.43794703650263056
+        },
+        {
+          "lag": 3,
+          "r": 0.019485013609716117,
+          "n": 410,
+          "sigmas": 0.3945414549854516
+        },
+        {
+          "lag": 5,
+          "r": -0.03419125261663219,
+          "n": 408,
+          "sigmas": 0.6906294493009242
+        },
+        {
+          "lag": 7,
+          "r": 0.04092800297255922,
+          "n": 406,
+          "sigmas": 0.824676408958482
+        },
+        {
+          "lag": 10,
+          "r": -0.10014038122369617,
+          "n": 403,
+          "sigmas": 2.0103041233867485
+        },
+        {
+          "lag": 14,
+          "r": -0.10118812379429729,
+          "n": 399,
+          "sigmas": 2.0212311897472297
+        },
+        {
+          "lag": 21,
+          "r": -0.033778771738757596,
+          "n": 392,
+          "sigmas": 0.668785559585584
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 14,
+        "r": -0.10118812379429729,
+        "n": 399,
+        "sigmas": 2.0212311897472297
+      },
+      "sobe20": 0.17936117936117937,
+      "cai20": 0.11793611793611794,
+      "assimetria": 1.5208333333333335,
+      "janelas7d": 407,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 16.1% ao dia; em sete dias sobe 20% em 17.9% das janelas e cai 20% em 11.8%. Maior dia: +129.8%; pior: −76.7%.",
+      "medidoEm": 1788232382729
+    },
+    "USUSDT": {
+      "symbol": "USUSDT",
+      "ticker": "US",
+      "dias": 264,
+      "de": "2025-12-12",
+      "ate": "2026-09-01",
+      "volDiaria": 0.10873818127158923,
+      "volAnual": 207.74400362422844,
+      "maiorAlta": 0.9837141468157513,
+      "maiorQueda": -0.34901037848682437,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.045192295361100976,
+          "n": 262,
+          "sigmas": 0.7315012048666134
+        },
+        {
+          "lag": 2,
+          "r": -0.13599505160022562,
+          "n": 261,
+          "sigmas": 2.1970672974659275
+        },
+        {
+          "lag": 3,
+          "r": 0.07873007080491663,
+          "n": 260,
+          "sigmas": 1.269484246742065
+        },
+        {
+          "lag": 5,
+          "r": 0.011879515674420324,
+          "n": 258,
+          "sigmas": 0.19081327602127143
+        },
+        {
+          "lag": 7,
+          "r": 0.06008131624652446,
+          "n": 256,
+          "sigmas": 0.9613010599443914
+        },
+        {
+          "lag": 10,
+          "r": 0.03569936808783033,
+          "n": 253,
+          "sigmas": 0.5678332106465867
+        },
+        {
+          "lag": 14,
+          "r": -0.05074587628340242,
+          "n": 249,
+          "sigmas": 0.8007564211311862
+        },
+        {
+          "lag": 21,
+          "r": -0.006162449321223017,
+          "n": 242,
+          "sigmas": 0.0958652134826151
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.13599505160022562,
+        "n": 261,
+        "sigmas": 2.1970672974659275
+      },
+      "sobe20": 0.2140077821011673,
+      "cai20": 0.13618677042801555,
+      "assimetria": 1.5714285714285714,
+      "janelas7d": 257,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 10.9% ao dia; em sete dias sobe 20% em 21.4% das janelas e cai 20% em 13.6%. Maior dia: +98.4%; pior: −34.9%.",
+      "medidoEm": 1788232382731
+    },
+    "UBUSDT": {
+      "symbol": "UBUSDT",
+      "ticker": "UB",
+      "dias": 355,
+      "de": "2025-09-12",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11286396637469609,
+      "volAnual": 215.6263049961069,
+      "maiorAlta": 0.8423738699329248,
+      "maiorQueda": -0.33651837928153727,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.005189323218778919,
+          "n": 353,
+          "sigmas": 0.0974985314789006
+        },
+        {
+          "lag": 2,
+          "r": -0.045483269108426046,
+          "n": 352,
+          "sigmas": 0.8533417689378068
+        },
+        {
+          "lag": 3,
+          "r": -0.009431501458241402,
+          "n": 351,
+          "sigmas": 0.17669912318582737
+        },
+        {
+          "lag": 5,
+          "r": -0.006949736317756854,
+          "n": 349,
+          "sigmas": 0.1298317887704535
+        },
+        {
+          "lag": 7,
+          "r": -0.019301989694401417,
+          "n": 347,
+          "sigmas": 0.35955622889679456
+        },
+        {
+          "lag": 10,
+          "r": -0.012994830545223312,
+          "n": 344,
+          "sigmas": 0.24101820178003086
+        },
+        {
+          "lag": 14,
+          "r": 0.08456362799107377,
+          "n": 340,
+          "sigmas": 1.5592762554673636
+        },
+        {
+          "lag": 21,
+          "r": 0.05585316553067213,
+          "n": 333,
+          "sigmas": 1.0192246274655494
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 14,
+        "r": 0.08456362799107377,
+        "n": 340,
+        "sigmas": 1.5592762554673636
+      },
+      "sobe20": 0.22413793103448276,
+      "cai20": 0.16091954022988506,
+      "assimetria": 1.3928571428571428,
+      "janelas7d": 348,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 11.3% ao dia; em sete dias sobe 20% em 22.4% das janelas e cai 20% em 16.1%. Maior dia: +84.2%; pior: −33.7%.",
+      "medidoEm": 1788232382736
+    },
+    "VVVUSDT": {
+      "symbol": "VVVUSDT",
+      "ticker": "VVV",
+      "dias": 581,
+      "de": "2025-01-29",
+      "ate": "2026-09-01",
+      "volDiaria": 0.0811432533500369,
+      "volAnual": 155.02396785475852,
+      "maiorAlta": 0.6334223805283465,
+      "maiorQueda": -0.30527771866354547,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.003967341280959541,
+          "n": 579,
+          "sigmas": 0.09546382754809121
+        },
+        {
+          "lag": 2,
+          "r": 0.08518192055364648,
+          "n": 578,
+          "sigmas": 2.047912264371224
+        },
+        {
+          "lag": 3,
+          "r": -0.05901342951831438,
+          "n": 577,
+          "sigmas": 1.417551221736638
+        },
+        {
+          "lag": 5,
+          "r": 0.045840603755544884,
+          "n": 575,
+          "sigmas": 1.099219062692648
+        },
+        {
+          "lag": 7,
+          "r": 0.02901508348785521,
+          "n": 573,
+          "sigmas": 0.6945461935678074
+        },
+        {
+          "lag": 10,
+          "r": 0.005381770904635936,
+          "n": 570,
+          "sigmas": 0.12848801928542586
+        },
+        {
+          "lag": 14,
+          "r": 0.0293617581976493,
+          "n": 566,
+          "sigmas": 0.698538381166554
+        },
+        {
+          "lag": 21,
+          "r": -0.02708253940395553,
+          "n": 559,
+          "sigmas": 0.6403173766007318
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 2,
+        "r": 0.08518192055364648,
+        "n": 578,
+        "sigmas": 2.047912264371224
+      },
+      "sobe20": 0.17247386759581881,
+      "cai20": 0.08885017421602788,
+      "assimetria": 1.941176470588235,
+      "janelas7d": 574,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 8.1% ao dia; em sete dias sobe 20% em 17.2% das janelas e cai 20% em 8.9%. Maior dia: +63.3%; pior: −30.5%.",
+      "medidoEm": 1788232382725
+    },
+    "TAGUSDT": {
+      "symbol": "TAGUSDT",
+      "ticker": "TAG",
+      "dias": 404,
+      "de": "2025-07-25",
+      "ate": "2026-09-01",
+      "volDiaria": 0.09484403997635307,
+      "volAnual": 181.19928395134903,
+      "maiorAlta": 0.5422422100867332,
+      "maiorQueda": -0.3271775082690187,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.0011984348551492567,
+          "n": 402,
+          "sigmas": 0.024028544130236463
+        },
+        {
+          "lag": 2,
+          "r": -0.11111559808825974,
+          "n": 401,
+          "sigmas": 2.225088117703023
+        },
+        {
+          "lag": 3,
+          "r": 0.006752429780815498,
+          "n": 400,
+          "sigmas": 0.13504859561630997
+        },
+        {
+          "lag": 5,
+          "r": -0.03351740600031036,
+          "n": 398,
+          "sigmas": 0.6686701496147986
+        },
+        {
+          "lag": 7,
+          "r": -0.06277442643094679,
+          "n": 396,
+          "sigmas": 1.2491953134073162
+        },
+        {
+          "lag": 10,
+          "r": 0.05249501684973217,
+          "n": 393,
+          "sigmas": 1.0406731619788656
+        },
+        {
+          "lag": 14,
+          "r": 0.03878013655416001,
+          "n": 389,
+          "sigmas": 0.7648638490352166
+        },
+        {
+          "lag": 21,
+          "r": -0.03465038991631463,
+          "n": 382,
+          "sigmas": 0.677235643743526
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.11111559808825974,
+        "n": 401,
+        "sigmas": 2.225088117703023
+      },
+      "sobe20": 0.19395465994962216,
+      "cai20": 0.12090680100755667,
+      "assimetria": 1.6041666666666667,
+      "janelas7d": 397,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 9.5% ao dia; em sete dias sobe 20% em 19.4% das janelas e cai 20% em 12.1%. Maior dia: +54.2%; pior: −32.7%.",
+      "medidoEm": 1788232382742
+    },
+    "EVAAUSDT": {
+      "symbol": "EVAAUSDT",
+      "ticker": "EVAA",
+      "dias": 334,
+      "de": "2025-10-03",
+      "ate": "2026-09-01",
+      "volDiaria": 0.14297420417371412,
+      "volAnual": 273.1518335390414,
+      "maiorAlta": 1.6416057663429773,
+      "maiorQueda": -0.46566589347455034,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.06233718389981555,
+          "n": 332,
+          "sigmas": 1.1358375468603459
+        },
+        {
+          "lag": 2,
+          "r": -0.07661436484755023,
+          "n": 331,
+          "sigmas": 1.3938761990323467
+        },
+        {
+          "lag": 3,
+          "r": 0.03289156555417807,
+          "n": 330,
+          "sigmas": 0.5975049605815685
+        },
+        {
+          "lag": 5,
+          "r": -0.022428829785706827,
+          "n": 328,
+          "sigmas": 0.40620338381460686
+        },
+        {
+          "lag": 7,
+          "r": 0.048146740752068734,
+          "n": 326,
+          "sigmas": 0.8693120373521206
+        },
+        {
+          "lag": 10,
+          "r": -0.14655754182262104,
+          "n": 323,
+          "sigmas": 2.6339615638850633
+        },
+        {
+          "lag": 14,
+          "r": -0.02732865634729227,
+          "n": 319,
+          "sigmas": 0.4881054097443901
+        },
+        {
+          "lag": 21,
+          "r": -0.12173631109673282,
+          "n": 312,
+          "sigmas": 2.150291976710475
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 10,
+        "r": -0.14655754182262104,
+        "n": 323,
+        "sigmas": 2.6339615638850633
+      },
+      "sobe20": 0.17737003058103976,
+      "cai20": 0.20489296636085627,
+      "assimetria": 0.8656716417910447,
+      "janelas7d": 327,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 14.3% ao dia; em sete dias sobe 20% em 17.7% das janelas e cai 20% em 20.5%. Maior dia: +164.2%; pior: −46.6%.",
+      "medidoEm": 1788232382699
+    },
+    "CYSUSDT": {
+      "symbol": "CYSUSDT",
+      "ticker": "CYS",
+      "dias": 264,
+      "de": "2025-12-12",
+      "ate": "2026-09-01",
+      "volDiaria": 0.12458773920631742,
+      "volAnual": 238.02454154136288,
+      "maiorAlta": 0.9859599859599859,
+      "maiorQueda": -0.423062476524352,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.0004926507747995903,
+          "n": 262,
+          "sigmas": 0.00797424942603295
+        },
+        {
+          "lag": 2,
+          "r": 0.013869834206728519,
+          "n": 261,
+          "sigmas": 0.22407402915259417
+        },
+        {
+          "lag": 3,
+          "r": -0.015201941514481078,
+          "n": 260,
+          "sigmas": 0.2451239415286129
+        },
+        {
+          "lag": 5,
+          "r": -0.05072593114204229,
+          "n": 258,
+          "sigmas": 0.8147791009093334
+        },
+        {
+          "lag": 7,
+          "r": 0.07107253579342399,
+          "n": 256,
+          "sigmas": 1.1371605726947838
+        },
+        {
+          "lag": 10,
+          "r": -0.06321060153729512,
+          "n": 253,
+          "sigmas": 1.005426166914704
+        },
+        {
+          "lag": 14,
+          "r": 0.10988020927210354,
+          "n": 249,
+          "sigmas": 1.7338804563840713
+        },
+        {
+          "lag": 21,
+          "r": -0.03373720785359453,
+          "n": 242,
+          "sigmas": 0.5248277859346883
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 14,
+        "r": 0.10988020927210354,
+        "n": 249,
+        "sigmas": 1.7338804563840713
+      },
+      "sobe20": 0.2529182879377432,
+      "cai20": 0.16342412451361868,
+      "assimetria": 1.5476190476190474,
+      "janelas7d": 257,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 12.5% ao dia; em sete dias sobe 20% em 25.3% das janelas e cai 20% em 16.3%. Maior dia: +98.6%; pior: −42.3%.",
+      "medidoEm": 1788232382735
+    },
+    "BRUSDT": {
+      "symbol": "BRUSDT",
+      "ticker": "BR",
+      "dias": 530,
+      "de": "2025-03-21",
+      "ate": "2026-09-01",
+      "volDiaria": 0.10693209903507216,
+      "volAnual": 204.29348835626072,
+      "maiorAlta": 0.8936364674968584,
+      "maiorQueda": -0.44299343134188296,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.030693053900731897,
+          "n": 528,
+          "sigmas": 0.7052726837852912
+        },
+        {
+          "lag": 2,
+          "r": -0.0719709367660092,
+          "n": 527,
+          "sigmas": 1.6521994112215461
+        },
+        {
+          "lag": 3,
+          "r": -0.030467691716697155,
+          "n": 526,
+          "sigmas": 0.6987670609537804
+        },
+        {
+          "lag": 5,
+          "r": -0.031713665600647256,
+          "n": 524,
+          "sigmas": 0.7259589871161806
+        },
+        {
+          "lag": 7,
+          "r": 0.006195348243391169,
+          "n": 522,
+          "sigmas": 0.141547099600439
+        },
+        {
+          "lag": 10,
+          "r": 0.005539567125916965,
+          "n": 519,
+          "sigmas": 0.12620004455695819
+        },
+        {
+          "lag": 14,
+          "r": -0.11030185084178223,
+          "n": 515,
+          "sigmas": 2.503147343655229
+        },
+        {
+          "lag": 21,
+          "r": 0.0021604621620468635,
+          "n": 508,
+          "sigmas": 0.048694344136123176
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 14,
+        "r": -0.11030185084178223,
+        "n": 515,
+        "sigmas": 2.503147343655229
+      },
+      "sobe20": 0.1586998087954111,
+      "cai20": 0.1089866156787763,
+      "assimetria": 1.456140350877193,
+      "janelas7d": 523,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 10.7% ao dia; em sete dias sobe 20% em 15.9% das janelas e cai 20% em 10.9%. Maior dia: +89.4%; pior: −44.3%.",
+      "medidoEm": 1788232382715
+    },
+    "BASEDUSDT": {
+      "symbol": "BASEDUSDT",
+      "ticker": "BASED",
+      "dias": 156,
+      "de": "2026-03-30",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11115938075112064,
+      "volAnual": 212.3696987348949,
+      "maiorAlta": 0.9361078546307151,
+      "maiorQueda": -0.25637278779022565,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.02472405629701187,
+          "n": 154,
+          "sigmas": 0.30681746985102254
+        },
+        {
+          "lag": 2,
+          "r": -0.17081522432392338,
+          "n": 153,
+          "sigmas": 2.1128676370533332
+        },
+        {
+          "lag": 3,
+          "r": -0.021734120479193673,
+          "n": 152,
+          "sigmas": 0.2679562332483125
+        },
+        {
+          "lag": 5,
+          "r": 0.019500302828992257,
+          "n": 150,
+          "sigmas": 0.2388289588039116
+        },
+        {
+          "lag": 7,
+          "r": -0.0726180461106094,
+          "n": 148,
+          "sigmas": 0.8834366598101664
+        },
+        {
+          "lag": 10,
+          "r": -0.197430464835028,
+          "n": 145,
+          "sigmas": 2.377377615045916
+        },
+        {
+          "lag": 14,
+          "r": -0.181868919319842,
+          "n": 141,
+          "sigmas": 2.1595737630037033
+        },
+        {
+          "lag": 21,
+          "r": 0.06053509154370063,
+          "n": 134,
+          "sigmas": 0.7007443466053543
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 10,
+        "r": -0.197430464835028,
+        "n": 145,
+        "sigmas": 2.377377615045916
+      },
+      "sobe20": 0.174496644295302,
+      "cai20": 0.12751677852348994,
+      "assimetria": 1.3684210526315788,
+      "janelas7d": 149,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 11.1% ao dia; em sete dias sobe 20% em 17.4% das janelas e cai 20% em 12.8%. Maior dia: +93.6%; pior: −25.6%.",
+      "medidoEm": 1788232382665
+    },
+    "CAPUSDT": {
+      "symbol": "CAPUSDT",
+      "ticker": "CAP",
+      "dias": 67,
+      "de": "2026-06-27",
+      "ate": "2026-09-01",
+      "volDiaria": 0.10382035444326078,
+      "volAnual": 198.34850866100226,
+      "maiorAlta": 0.32287681713848504,
+      "maiorQueda": -0.30458015267175576,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.10927665267037158,
+          "n": 65,
+          "sigmas": 0.8810165396998326
+        },
+        {
+          "lag": 2,
+          "r": -0.12371775232488029,
+          "n": 64,
+          "sigmas": 0.9897420185990423
+        },
+        {
+          "lag": 3,
+          "r": 0.1747121136250538,
+          "n": 63,
+          "sigmas": 1.3867344110470554
+        },
+        {
+          "lag": 5,
+          "r": -0.075098564545168,
+          "n": 61,
+          "sigmas": 0.5865385393999533
+        },
+        {
+          "lag": 7,
+          "r": 0.236401516242922,
+          "n": 59,
+          "sigmas": 1.8158345012790118
+        },
+        {
+          "lag": 10,
+          "r": -0.04676340872384305,
+          "n": 56,
+          "sigmas": 0.3499453073645926
+        },
+        {
+          "lag": 14,
+          "r": 0.11354241918026031,
+          "n": 52,
+          "sigmas": 0.8187660285893089
+        },
+        {
+          "lag": 21,
+          "r": 0.03256719003938268,
+          "n": 45,
+          "sigmas": 0.2184673522926412
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 7,
+        "r": 0.236401516242922,
+        "n": 59,
+        "sigmas": 1.8158345012790118
+      },
+      "sobe20": 0.36666666666666664,
+      "cai20": 0.06666666666666667,
+      "assimetria": 5.5,
+      "janelas7d": 60,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 10.4% ao dia; em sete dias sobe 20% em 36.7% das janelas e cai 20% em 6.7%. Maior dia: +32.3%; pior: −30.5%.",
+      "medidoEm": 1788232382609
+    },
+    "BLUAIUSDT": {
+      "symbol": "BLUAIUSDT",
+      "ticker": "BLUAI",
+      "dias": 316,
+      "de": "2025-10-21",
+      "ate": "2026-09-01",
+      "volDiaria": 0.118455060942177,
+      "volAnual": 226.3080761689124,
+      "maiorAlta": 0.6756608232126173,
+      "maiorQueda": -0.5870720188902008,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.20162892515369693,
+          "n": 314,
+          "sigmas": 3.572873656597925
+        },
+        {
+          "lag": 2,
+          "r": 0.022027561324881522,
+          "n": 313,
+          "sigmas": 0.3897073418982548
+        },
+        {
+          "lag": 3,
+          "r": -0.09250065995671822,
+          "n": 312,
+          "sigmas": 1.6338874174304867
+        },
+        {
+          "lag": 5,
+          "r": -0.05784071496726319,
+          "n": 310,
+          "sigmas": 1.018390875576022
+        },
+        {
+          "lag": 7,
+          "r": -0.015250068883637337,
+          "n": 308,
+          "sigmas": 0.26763762271838876
+        },
+        {
+          "lag": 10,
+          "r": -0.07747505542709858,
+          "n": 305,
+          "sigmas": 1.3530436744971535
+        },
+        {
+          "lag": 14,
+          "r": -0.007969692275172042,
+          "n": 301,
+          "sigmas": 0.1382689932097649
+        },
+        {
+          "lag": 21,
+          "r": 0.023798866810127,
+          "n": 294,
+          "sigmas": 0.4080655609888837
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 1,
+        "r": -0.20162892515369693,
+        "n": 314,
+        "sigmas": 3.572873656597925
+      },
+      "sobe20": 0.1650485436893204,
+      "cai20": 0.18122977346278318,
+      "assimetria": 0.9107142857142857,
+      "janelas7d": 309,
+      "veredito": "Devolve: o retorno de um dia se inverte 1 dia(s) depois (r = -0.202, 3.6σ em 314 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 11.8% ao dia; em sete dias sobe 20% em 16.5% das janelas e cai 20% em 18.1%. Maior dia: +67.6%; pior: −58.7%.",
+      "medidoEm": 1788232382763
+    },
+    "ZEREBROUSDT": {
+      "symbol": "ZEREBROUSDT",
+      "ticker": "ZEREBRO",
+      "dias": 608,
+      "de": "2025-01-02",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11347946838071472,
+      "volAnual": 216.80221992749327,
+      "maiorAlta": 2.6442477876106203,
+      "maiorQueda": -0.3804311774461029,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.08475321482369319,
+          "n": 606,
+          "sigmas": 2.0863755889840063
+        },
+        {
+          "lag": 2,
+          "r": 0.0265976619753567,
+          "n": 605,
+          "sigmas": 0.6542159824140481
+        },
+        {
+          "lag": 3,
+          "r": -0.051805744080031406,
+          "n": 604,
+          "sigmas": 1.2731992822375326
+        },
+        {
+          "lag": 5,
+          "r": 0.0793397792170161,
+          "n": 602,
+          "sigmas": 1.9466560920859455
+        },
+        {
+          "lag": 7,
+          "r": -0.03215052503361508,
+          "n": 600,
+          "sigmas": 0.7875238129493394
+        },
+        {
+          "lag": 10,
+          "r": 0.0012905990540718528,
+          "n": 597,
+          "sigmas": 0.03153395968265932
+        },
+        {
+          "lag": 14,
+          "r": 0.019017331997863433,
+          "n": 593,
+          "sigmas": 0.4631022968804598
+        },
+        {
+          "lag": 21,
+          "r": 0.01138460739265309,
+          "n": 586,
+          "sigmas": 0.27559216479087884
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 1,
+        "r": -0.08475321482369319,
+        "n": 606,
+        "sigmas": 2.0863755889840063
+      },
+      "sobe20": 0.13976705490848584,
+      "cai20": 0.17304492512479203,
+      "assimetria": 0.8076923076923076,
+      "janelas7d": 601,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 11.3% ao dia; em sete dias sobe 20% em 14.0% das janelas e cai 20% em 17.3%. Maior dia: +264.4%; pior: −38.0%.",
+      "medidoEm": 1788232382789
+    },
+    "REUSDT": {
+      "symbol": "REUSDT",
+      "ticker": "RE",
+      "dias": 76,
+      "de": "2026-06-18",
+      "ate": "2026-09-01",
+      "volDiaria": 0.12250659322812654,
+      "volAnual": 234.0485177327984,
+      "maiorAlta": 1.0588507877664504,
+      "maiorQueda": -0.17837165941578614,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.02128962808293176,
+          "n": 74,
+          "sigmas": 0.18314030558374417
+        },
+        {
+          "lag": 2,
+          "r": -0.0039563093056579094,
+          "n": 73,
+          "sigmas": 0.03380272152517578
+        },
+        {
+          "lag": 3,
+          "r": -0.10719642764357958,
+          "n": 72,
+          "sigmas": 0.9095918508689783
+        },
+        {
+          "lag": 5,
+          "r": -0.19207650626838665,
+          "n": 70,
+          "sigmas": 1.607027348310809
+        },
+        {
+          "lag": 7,
+          "r": 0.024071934987518896,
+          "n": 68,
+          "sigmas": 0.1985022611330835
+        },
+        {
+          "lag": 10,
+          "r": 0.22832766261041598,
+          "n": 65,
+          "sigmas": 1.8408364670317232
+        },
+        {
+          "lag": 14,
+          "r": -0.11455282311641511,
+          "n": 61,
+          "sigmas": 0.8946861496191734
+        },
+        {
+          "lag": 21,
+          "r": 0.021023005234925382,
+          "n": 54,
+          "sigmas": 0.15448690705628035
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 10,
+        "r": 0.22832766261041598,
+        "n": 65,
+        "sigmas": 1.8408364670317232
+      },
+      "sobe20": 0.13043478260869565,
+      "cai20": 0.14492753623188406,
+      "assimetria": 0.8999999999999999,
+      "janelas7d": 69,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 12.3% ao dia; em sete dias sobe 20% em 13.0% das janelas e cai 20% em 14.5%. Maior dia: +105.9%; pior: −17.8%.",
+      "medidoEm": 1788232382647
+    },
+    "HANAUSDT": {
+      "symbol": "HANAUSDT",
+      "ticker": "HANA",
+      "dias": 341,
+      "de": "2025-09-26",
+      "ate": "2026-09-01",
+      "volDiaria": 0.09632656962351387,
+      "volAnual": 184.03165286529617,
+      "maiorAlta": 0.787709497206704,
+      "maiorQueda": -0.37030150086332847,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.05319069283567689,
+          "n": 339,
+          "sigmas": 0.9793445173538432
+        },
+        {
+          "lag": 2,
+          "r": -0.09177737184224691,
+          "n": 338,
+          "sigmas": 1.6873064517174343
+        },
+        {
+          "lag": 3,
+          "r": -0.017194335474108858,
+          "n": 337,
+          "sigmas": 0.31564604083929015
+        },
+        {
+          "lag": 5,
+          "r": 0.09619670240678702,
+          "n": 335,
+          "sigmas": 1.7606887460791816
+        },
+        {
+          "lag": 7,
+          "r": -0.08565129369314625,
+          "n": 333,
+          "sigmas": 1.5629894398447146
+        },
+        {
+          "lag": 10,
+          "r": 0.0725948596538517,
+          "n": 330,
+          "sigmas": 1.318751115219851
+        },
+        {
+          "lag": 14,
+          "r": 0.02248844128120168,
+          "n": 326,
+          "sigmas": 0.40603937881703817
+        },
+        {
+          "lag": 21,
+          "r": -0.02699100882373227,
+          "n": 319,
+          "sigmas": 0.4820748321432794
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 5,
+        "r": 0.09619670240678702,
+        "n": 335,
+        "sigmas": 1.7606887460791816
+      },
+      "sobe20": 0.11377245508982035,
+      "cai20": 0.11377245508982035,
+      "assimetria": 1,
+      "janelas7d": 334,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 9.6% ao dia; em sete dias sobe 20% em 11.4% das janelas e cai 20% em 11.4%. Maior dia: +78.8%; pior: −37.0%.",
+      "medidoEm": 1788232382795
+    },
+    "ONUSDT": {
+      "symbol": "ONUSDT",
+      "ticker": "ON",
+      "dias": 313,
+      "de": "2025-10-24",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11229851301835267,
+      "volAnual": 214.5460078756673,
+      "maiorAlta": 0.9496562172240999,
+      "maiorQueda": -0.4738100660441812,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.09219142399748581,
+          "n": 311,
+          "sigmas": 1.6258134711124725
+        },
+        {
+          "lag": 2,
+          "r": -0.08526928122967153,
+          "n": 310,
+          "sigmas": 1.5013206185361248
+        },
+        {
+          "lag": 3,
+          "r": -0.05013106481093096,
+          "n": 309,
+          "sigmas": 0.8812237006884392
+        },
+        {
+          "lag": 5,
+          "r": -0.015577246831307387,
+          "n": 307,
+          "sigmas": 0.27293541357791434
+        },
+        {
+          "lag": 7,
+          "r": -0.1113879330478719,
+          "n": 305,
+          "sigmas": 1.9453066202392215
+        },
+        {
+          "lag": 10,
+          "r": -0.0046140898189287235,
+          "n": 302,
+          "sigmas": 0.08018433205344291
+        },
+        {
+          "lag": 14,
+          "r": -0.0022958419858164123,
+          "n": 298,
+          "sigmas": 0.039632377500013284
+        },
+        {
+          "lag": 21,
+          "r": -0.08551002198227035,
+          "n": 291,
+          "sigmas": 1.4586917025498678
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 7,
+        "r": -0.1113879330478719,
+        "n": 305,
+        "sigmas": 1.9453066202392215
+      },
+      "sobe20": 0.16013071895424835,
+      "cai20": 0.14705882352941177,
+      "assimetria": 1.0888888888888888,
+      "janelas7d": 306,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 11.2% ao dia; em sete dias sobe 20% em 16.0% das janelas e cai 20% em 14.7%. Maior dia: +95.0%; pior: −47.4%.",
+      "medidoEm": 1788232382644
+    },
+    "JCTUSDT": {
+      "symbol": "JCTUSDT",
+      "ticker": "JCT",
+      "dias": 296,
+      "de": "2025-11-10",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11489811989192869,
+      "volAnual": 219.51254983406997,
+      "maiorAlta": 0.6812474686107737,
+      "maiorQueda": -0.4490948587979724,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.18759895777825877,
+          "n": 294,
+          "sigmas": 3.2166520598426156
+        },
+        {
+          "lag": 2,
+          "r": -0.03448307442478024,
+          "n": 293,
+          "sigmas": 0.590255156337482
+        },
+        {
+          "lag": 3,
+          "r": -0.022103697659582058,
+          "n": 292,
+          "sigmas": 0.37770815117767087
+        },
+        {
+          "lag": 5,
+          "r": -0.015187277153358027,
+          "n": 290,
+          "sigmas": 0.25863001049094075
+        },
+        {
+          "lag": 7,
+          "r": 0.06781249219373964,
+          "n": 288,
+          "sigmas": 1.1508161539044748
+        },
+        {
+          "lag": 10,
+          "r": 0.04071021890798215,
+          "n": 285,
+          "sigmas": 0.687267595778901
+        },
+        {
+          "lag": 14,
+          "r": -0.02112620599953522,
+          "n": 281,
+          "sigmas": 0.3541397449618981
+        },
+        {
+          "lag": 21,
+          "r": -0.09394383151504543,
+          "n": 274,
+          "sigmas": 1.5550471097189513
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 1,
+        "r": -0.18759895777825877,
+        "n": 294,
+        "sigmas": 3.2166520598426156
+      },
+      "sobe20": 0.17647058823529413,
+      "cai20": 0.17301038062283736,
+      "assimetria": 1.0200000000000002,
+      "janelas7d": 289,
+      "veredito": "Devolve: o retorno de um dia se inverte 1 dia(s) depois (r = -0.188, 3.2σ em 294 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 11.5% ao dia; em sete dias sobe 20% em 17.6% das janelas e cai 20% em 17.3%. Maior dia: +68.1%; pior: −44.9%.",
+      "medidoEm": 1788232382867
+    },
+    "BULLAUSDT": {
+      "symbol": "BULLAUSDT",
+      "ticker": "BULLA",
+      "dias": 425,
+      "de": "2025-07-04",
+      "ate": "2026-09-01",
+      "volDiaria": 0.18896620166632794,
+      "volAnual": 361.019421373044,
+      "maiorAlta": 1.8002154011847065,
+      "maiorQueda": -0.9302884615384616,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.13705529287933324,
+          "n": 423,
+          "sigmas": 2.8188112474125404
+        },
+        {
+          "lag": 2,
+          "r": -0.06156922190138808,
+          "n": 422,
+          "sigmas": 1.2647942734290343
+        },
+        {
+          "lag": 3,
+          "r": -0.17713142709576862,
+          "n": 421,
+          "sigmas": 3.6344330201226844
+        },
+        {
+          "lag": 5,
+          "r": 0.010323573630972293,
+          "n": 419,
+          "sigmas": 0.2113182819431641
+        },
+        {
+          "lag": 7,
+          "r": 0.0449763297154528,
+          "n": 417,
+          "sigmas": 0.9184426426613107
+        },
+        {
+          "lag": 10,
+          "r": -0.04345478655153451,
+          "n": 414,
+          "sigmas": 0.8841741052163434
+        },
+        {
+          "lag": 14,
+          "r": 0.04909599961220691,
+          "n": 410,
+          "sigmas": 0.9941182238285076
+        },
+        {
+          "lag": 21,
+          "r": -0.002222537657307112,
+          "n": 403,
+          "sigmas": 0.0446171320926583
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 3,
+        "r": -0.17713142709576862,
+        "n": 421,
+        "sigmas": 3.6344330201226844
+      },
+      "sobe20": 0.1507177033492823,
+      "cai20": 0.1507177033492823,
+      "assimetria": 1,
+      "janelas7d": 418,
+      "veredito": "Devolve: o retorno de um dia se inverte 3 dia(s) depois (r = -0.177, 3.6σ em 421 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 18.9% ao dia; em sete dias sobe 20% em 15.1% das janelas e cai 20% em 15.1%. Maior dia: +180.0%; pior: −93.0%.",
+      "medidoEm": 1788232382804
+    },
+    "MORPHOUSDT": {
+      "symbol": "MORPHOUSDT",
+      "ticker": "MORPHO",
+      "dias": 644,
+      "de": "2024-11-27",
+      "ate": "2026-09-01",
+      "volDiaria": 0.06378058151334771,
+      "volAnual": 121.85262988692484,
+      "maiorAlta": 0.49591698900963954,
+      "maiorQueda": -0.24451031395559863,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.01599307890343387,
+          "n": 642,
+          "sigmas": 0.4052281378988363
+        },
+        {
+          "lag": 2,
+          "r": -0.06023553703743845,
+          "n": 641,
+          "sigmas": 1.5250419896261562
+        },
+        {
+          "lag": 3,
+          "r": 0.011460979424269548,
+          "n": 640,
+          "sigmas": 0.2899423935761364
+        },
+        {
+          "lag": 5,
+          "r": 0.06451580778418485,
+          "n": 638,
+          "sigmas": 1.6295829747764536
+        },
+        {
+          "lag": 7,
+          "r": 0.03476214668732289,
+          "n": 636,
+          "sigmas": 0.876667982596471
+        },
+        {
+          "lag": 10,
+          "r": 0.029993632626260838,
+          "n": 633,
+          "sigmas": 0.7546245376406663
+        },
+        {
+          "lag": 14,
+          "r": -0.019447442023867913,
+          "n": 629,
+          "sigmas": 0.48773936461997985
+        },
+        {
+          "lag": 21,
+          "r": 0.02923378283966998,
+          "n": 622,
+          "sigmas": 0.7290884341222013
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 5,
+        "r": 0.06451580778418485,
+        "n": 638,
+        "sigmas": 1.6295829747764536
+      },
+      "sobe20": 0.12087912087912088,
+      "cai20": 0.0565149136577708,
+      "assimetria": 2.138888888888889,
+      "janelas7d": 637,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 6.4% ao dia; em sete dias sobe 20% em 12.1% das janelas e cai 20% em 5.7%. Maior dia: +49.6%; pior: −24.5%.",
+      "medidoEm": 1788232382813
+    },
+    "EPICUSDT": {
+      "symbol": "EPICUSDT",
+      "ticker": "EPIC",
+      "dias": 538,
+      "de": "2025-03-13",
+      "ate": "2026-09-01",
+      "volDiaria": 0.09169784999005871,
+      "volAnual": 175.18849642233215,
+      "maiorAlta": 1.0038219806352982,
+      "maiorQueda": -0.5121376811594204,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.02155058221957224,
+          "n": 536,
+          "sigmas": 0.4989320498678785
+        },
+        {
+          "lag": 2,
+          "r": 0.04705606106269002,
+          "n": 535,
+          "sigmas": 1.0884098457215243
+        },
+        {
+          "lag": 3,
+          "r": 0.02236063670004431,
+          "n": 534,
+          "sigmas": 0.5167194319155713
+        },
+        {
+          "lag": 5,
+          "r": 0.063113198800067,
+          "n": 532,
+          "sigmas": 1.4557138314233489
+        },
+        {
+          "lag": 7,
+          "r": 0.04091651440802892,
+          "n": 530,
+          "sigmas": 0.941968900861537
+        },
+        {
+          "lag": 10,
+          "r": -0.009010311756806012,
+          "n": 527,
+          "sigmas": 0.2068450467432056
+        },
+        {
+          "lag": 14,
+          "r": -0.022985997914111916,
+          "n": 523,
+          "sigmas": 0.52567122838924
+        },
+        {
+          "lag": 21,
+          "r": 0.02555873881733415,
+          "n": 516,
+          "sigmas": 0.5805829407115533
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 5,
+        "r": 0.063113198800067,
+        "n": 532,
+        "sigmas": 1.4557138314233489
+      },
+      "sobe20": 0.11487758945386065,
+      "cai20": 0.11864406779661017,
+      "assimetria": 0.9682539682539683,
+      "janelas7d": 531,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 9.2% ao dia; em sete dias sobe 20% em 11.5% das janelas e cai 20% em 11.9%. Maior dia: +100.4%; pior: −51.2%.",
+      "medidoEm": 1788232382834
+    },
+    "ZAMAUSDT": {
+      "symbol": "ZAMAUSDT",
+      "ticker": "ZAMA",
+      "dias": 236,
+      "de": "2026-01-09",
+      "ate": "2026-09-01",
+      "volDiaria": 0.06266248242108818,
+      "volAnual": 119.71650457051494,
+      "maiorAlta": 0.23418209876543217,
+      "maiorQueda": -0.21813031161473084,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.10299602758639127,
+          "n": 234,
+          "sigmas": 1.5755362634566497
+        },
+        {
+          "lag": 2,
+          "r": 0.06783380203562084,
+          "n": 233,
+          "sigmas": 1.0354380497043831
+        },
+        {
+          "lag": 3,
+          "r": 0.0015856398831762836,
+          "n": 232,
+          "sigmas": 0.02415174715575826
+        },
+        {
+          "lag": 5,
+          "r": 0.1159723228645384,
+          "n": 230,
+          "sigmas": 1.7588073584782529
+        },
+        {
+          "lag": 7,
+          "r": 0.10719334091488751,
+          "n": 228,
+          "sigmas": 1.6185839529418695
+        },
+        {
+          "lag": 10,
+          "r": 0.10821678614976939,
+          "n": 225,
+          "sigmas": 1.6232517922465408
+        },
+        {
+          "lag": 14,
+          "r": 0.15003971556455722,
+          "n": 221,
+          "sigmas": 2.2305007264108223
+        },
+        {
+          "lag": 21,
+          "r": 0.027862776297933604,
+          "n": 214,
+          "sigmas": 0.4075972777732204
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 14,
+        "r": 0.15003971556455722,
+        "n": 221,
+        "sigmas": 2.2305007264108223
+      },
+      "sobe20": 0.09170305676855896,
+      "cai20": 0.1222707423580786,
+      "assimetria": 0.7500000000000001,
+      "janelas7d": 229,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 6.3% ao dia; em sete dias sobe 20% em 9.2% das janelas e cai 20% em 12.2%. Maior dia: +23.4%; pior: −21.8%.",
+      "medidoEm": 1788232382872
+    },
+    "XNYUSDT": {
+      "symbol": "XNYUSDT",
+      "ticker": "XNY",
+      "dias": 385,
+      "de": "2025-08-13",
+      "ate": "2026-09-01",
+      "volDiaria": 0.10696117571414061,
+      "volAnual": 204.34903927362154,
+      "maiorAlta": 0.5478089826248498,
+      "maiorQueda": -0.3613238157040882,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.08896454902408402,
+          "n": 383,
+          "sigmas": 1.741070546104167
+        },
+        {
+          "lag": 2,
+          "r": 0.04577929813043372,
+          "n": 382,
+          "sigmas": 0.8947481547644458
+        },
+        {
+          "lag": 3,
+          "r": -0.07075203609742542,
+          "n": 381,
+          "sigmas": 1.3810246497242038
+        },
+        {
+          "lag": 5,
+          "r": -0.1323602048915614,
+          "n": 379,
+          "sigmas": 2.576778188932215
+        },
+        {
+          "lag": 7,
+          "r": -0.0026830528956556304,
+          "n": 377,
+          "sigmas": 0.05209546391975069
+        },
+        {
+          "lag": 10,
+          "r": 0.11003983886270743,
+          "n": 374,
+          "sigmas": 2.1280692035768127
+        },
+        {
+          "lag": 14,
+          "r": -0.07303348618868274,
+          "n": 370,
+          "sigmas": 1.4048271562020822
+        },
+        {
+          "lag": 21,
+          "r": -0.046240980819034265,
+          "n": 363,
+          "sigmas": 0.8810090098742379
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 5,
+        "r": -0.1323602048915614,
+        "n": 379,
+        "sigmas": 2.576778188932215
+      },
+      "sobe20": 0.19047619047619047,
+      "cai20": 0.1402116402116402,
+      "assimetria": 1.3584905660377358,
+      "janelas7d": 378,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 10.7% ao dia; em sete dias sobe 20% em 19.0% das janelas e cai 20% em 14.0%. Maior dia: +54.8%; pior: −36.1%.",
+      "medidoEm": 1788232382852
+    },
+    "STABLEUSDT": {
+      "symbol": "STABLEUSDT",
+      "ticker": "STABLE",
+      "dias": 300,
+      "de": "2025-11-06",
+      "ate": "2026-09-01",
+      "volDiaria": 0.07685557514486765,
+      "volAnual": 146.8323701456755,
+      "maiorAlta": 0.3809888846301266,
+      "maiorQueda": -0.3830945558739255,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.030284270085161314,
+          "n": 298,
+          "sigmas": 0.5227875575681932
+        },
+        {
+          "lag": 2,
+          "r": -0.03533702828635525,
+          "n": 297,
+          "sigmas": 0.6089873182003623
+        },
+        {
+          "lag": 3,
+          "r": -0.0041545983687976675,
+          "n": 296,
+          "sigmas": 0.07147841304464451
+        },
+        {
+          "lag": 5,
+          "r": 0.057162855287907904,
+          "n": 294,
+          "sigmas": 0.980138793871507
+        },
+        {
+          "lag": 7,
+          "r": 0.021862453691587794,
+          "n": 292,
+          "sigmas": 0.3735857724455144
+        },
+        {
+          "lag": 10,
+          "r": 0.03263356969654189,
+          "n": 289,
+          "sigmas": 0.5547706848412121
+        },
+        {
+          "lag": 14,
+          "r": 0.04576530159310716,
+          "n": 285,
+          "sigmas": 0.7726072136110278
+        },
+        {
+          "lag": 21,
+          "r": -0.030274654575317264,
+          "n": 278,
+          "sigmas": 0.5047793669357221
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 5,
+        "r": 0.057162855287907904,
+        "n": 294,
+        "sigmas": 0.980138793871507
+      },
+      "sobe20": 0.13651877133105803,
+      "cai20": 0.10921501706484642,
+      "assimetria": 1.25,
+      "janelas7d": 293,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 7.7% ao dia; em sete dias sobe 20% em 13.7% das janelas e cai 20% em 10.9%. Maior dia: +38.1%; pior: −38.3%.",
+      "medidoEm": 1788232382865
+    },
+    "BASUSDT": {
+      "symbol": "BASUSDT",
+      "ticker": "BAS",
+      "dias": 372,
+      "de": "2025-08-26",
+      "ate": "2026-09-01",
+      "volDiaria": 0.15548225843120042,
+      "volAnual": 297.04843764454154,
+      "maiorAlta": 1.342773213384128,
+      "maiorQueda": -0.7849041207670339,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.09046361162249897,
+          "n": 370,
+          "sigmas": 1.7401023131646431
+        },
+        {
+          "lag": 2,
+          "r": 0.21585137121842732,
+          "n": 369,
+          "sigmas": 4.146369440195482
+        },
+        {
+          "lag": 3,
+          "r": -0.11178981176216041,
+          "n": 368,
+          "sigmas": 2.1445004129366554
+        },
+        {
+          "lag": 5,
+          "r": -0.025124547208667403,
+          "n": 366,
+          "sigmas": 0.48066089014319013
+        },
+        {
+          "lag": 7,
+          "r": -0.042342664015433185,
+          "n": 364,
+          "sigmas": 0.8078465419349674
+        },
+        {
+          "lag": 10,
+          "r": 0.04939968043678108,
+          "n": 361,
+          "sigmas": 0.9385939282988405
+        },
+        {
+          "lag": 14,
+          "r": 0.0016407666046540574,
+          "n": 357,
+          "sigmas": 0.031001372117834356
+        },
+        {
+          "lag": 21,
+          "r": -0.032920430477129364,
+          "n": 350,
+          "sigmas": 0.6158848593526454
+        }
+      ],
+      "perfil": "continua",
+      "melhorLag": {
+        "lag": 2,
+        "r": 0.21585137121842732,
+        "n": 369,
+        "sigmas": 4.146369440195482
+      },
+      "sobe20": 0.24383561643835616,
+      "cai20": 0.16164383561643836,
+      "assimetria": 1.5084745762711864,
+      "janelas7d": 365,
+      "veredito": "Continua: o movimento se estende por 2 dia(s) (r = 0.216, 4.1σ em 369 dias). É a minoria destas moedas, e a única em que seguir o movimento tem base. Volatilidade de 15.5% ao dia; em sete dias sobe 20% em 24.4% das janelas e cai 20% em 16.2%. Maior dia: +134.3%; pior: −78.5%.",
+      "medidoEm": 1788232382890
+    },
+    "AGTUSDT": {
+      "symbol": "AGTUSDT",
+      "ticker": "AGT",
+      "dias": 470,
+      "de": "2025-05-20",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11025555146146823,
+      "volAnual": 210.64293530157738,
+      "maiorAlta": 1.116657868938994,
+      "maiorQueda": -0.393945151687884,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.0981221157614291,
+          "n": 468,
+          "sigmas": 2.1227059178090752
+        },
+        {
+          "lag": 2,
+          "r": -0.10089552168213062,
+          "n": 467,
+          "sigmas": 2.180370665736181
+        },
+        {
+          "lag": 3,
+          "r": 0.023167262063000096,
+          "n": 466,
+          "sigmas": 0.5001124540310979
+        },
+        {
+          "lag": 5,
+          "r": -0.05819748356938665,
+          "n": 464,
+          "sigmas": 1.253612161526598
+        },
+        {
+          "lag": 7,
+          "r": 0.025828263194058232,
+          "n": 462,
+          "sigmas": 0.5551574740424134
+        },
+        {
+          "lag": 10,
+          "r": 0.014610942000179315,
+          "n": 459,
+          "sigmas": 0.31302898970361387
+        },
+        {
+          "lag": 14,
+          "r": -0.03531385485156427,
+          "n": 455,
+          "sigmas": 0.7532702680560238
+        },
+        {
+          "lag": 21,
+          "r": -0.058896537884262995,
+          "n": 448,
+          "sigmas": 1.2466047385956331
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.10089552168213062,
+        "n": 467,
+        "sigmas": 2.180370665736181
+      },
+      "sobe20": 0.14254859611231102,
+      "cai20": 0.13606911447084233,
+      "assimetria": 1.0476190476190477,
+      "janelas7d": 463,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 11.0% ao dia; em sete dias sobe 20% em 14.3% das janelas e cai 20% em 13.6%. Maior dia: +111.7%; pior: −39.4%.",
+      "medidoEm": 1788232382781
+    },
+    "UAIUSDT": {
+      "symbol": "UAIUSDT",
+      "ticker": "UAI",
+      "dias": 300,
+      "de": "2025-11-06",
+      "ate": "2026-09-01",
+      "volDiaria": 0.13034389476225466,
+      "volAnual": 249.02166128983052,
+      "maiorAlta": 2.367626886145404,
+      "maiorQueda": -0.3717714583876859,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.07942185587723223,
+          "n": 298,
+          "sigmas": 1.3710338051679056
+        },
+        {
+          "lag": 2,
+          "r": -0.19255134900926377,
+          "n": 297,
+          "sigmas": 3.3183698611773718
+        },
+        {
+          "lag": 3,
+          "r": -0.055517563081885137,
+          "n": 296,
+          "sigmas": 0.9551602713278668
+        },
+        {
+          "lag": 5,
+          "r": -0.06396492056651593,
+          "n": 294,
+          "sigmas": 1.0967699177793506
+        },
+        {
+          "lag": 7,
+          "r": 0.06855083738235401,
+          "n": 292,
+          "sigmas": 1.1713972226789713
+        },
+        {
+          "lag": 10,
+          "r": -0.007112945957957297,
+          "n": 289,
+          "sigmas": 0.12092008128527404
+        },
+        {
+          "lag": 14,
+          "r": -0.00860921910614294,
+          "n": 285,
+          "sigmas": 0.14534034636331836
+        },
+        {
+          "lag": 21,
+          "r": 0.024716911936772952,
+          "n": 278,
+          "sigmas": 0.4121132787497542
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.19255134900926377,
+        "n": 297,
+        "sigmas": 3.3183698611773718
+      },
+      "sobe20": 0.18430034129692832,
+      "cai20": 0.11262798634812286,
+      "assimetria": 1.6363636363636365,
+      "janelas7d": 293,
+      "veredito": "Devolve: o retorno de um dia se inverte 2 dia(s) depois (r = -0.193, 3.3σ em 297 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 13.0% ao dia; em sete dias sobe 20% em 18.4% das janelas e cai 20% em 11.3%. Maior dia: +236.8%; pior: −37.2%.",
+      "medidoEm": 1788232382793
+    },
+    "APRUSDT": {
+      "symbol": "APRUSDT",
+      "ticker": "APR",
+      "dias": 314,
+      "de": "2025-10-23",
+      "ate": "2026-09-01",
+      "volDiaria": 0.12953308236635777,
+      "volAnual": 247.47260638251083,
+      "maiorAlta": 1.9230028873917226,
+      "maiorQueda": -0.6829125073399882,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.13645436164352356,
+          "n": 312,
+          "sigmas": 2.4102645824060382
+        },
+        {
+          "lag": 2,
+          "r": 0.0075506969193269,
+          "n": 311,
+          "sigmas": 0.1331579905747405
+        },
+        {
+          "lag": 3,
+          "r": -0.2716037807010146,
+          "n": 310,
+          "sigmas": 4.7820780257369595
+        },
+        {
+          "lag": 5,
+          "r": -0.04640551610168283,
+          "n": 308,
+          "sigmas": 0.8144135023416371
+        },
+        {
+          "lag": 7,
+          "r": 0.07391799778654384,
+          "n": 306,
+          "sigmas": 1.2930368677698556
+        },
+        {
+          "lag": 10,
+          "r": -0.06660209826732127,
+          "n": 303,
+          "sigmas": 1.1593357436755782
+        },
+        {
+          "lag": 14,
+          "r": -0.019905182257721404,
+          "n": 299,
+          "sigmas": 0.344192777282178
+        },
+        {
+          "lag": 21,
+          "r": -0.016239833691345577,
+          "n": 292,
+          "sigmas": 0.27750639976438085
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 3,
+        "r": -0.2716037807010146,
+        "n": 310,
+        "sigmas": 4.7820780257369595
+      },
+      "sobe20": 0.13680781758957655,
+      "cai20": 0.10423452768729642,
+      "assimetria": 1.3125,
+      "janelas7d": 307,
+      "veredito": "Devolve: o retorno de um dia se inverte 3 dia(s) depois (r = -0.272, 4.8σ em 310 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 13.0% ao dia; em sete dias sobe 20% em 13.7% das janelas e cai 20% em 10.4%. Maior dia: +192.3%; pior: −68.3%.",
+      "medidoEm": 1788232382821
+    },
+    "CCUSDT": {
+      "symbol": "CCUSDT",
+      "ticker": "CC",
+      "dias": 306,
+      "de": "2025-10-31",
+      "ate": "2026-09-01",
+      "volDiaria": 0.05497747762571671,
+      "volAnual": 105.03432352433447,
+      "maiorAlta": 0.2331810995959951,
+      "maiorQueda": -0.2606516290726817,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.11409521156351407,
+          "n": 304,
+          "sigmas": 1.9893179885890047
+        },
+        {
+          "lag": 2,
+          "r": 0.010550496006128155,
+          "n": 303,
+          "sigmas": 0.18365137813401736
+        },
+        {
+          "lag": 3,
+          "r": 0.1036231354496169,
+          "n": 302,
+          "sigmas": 1.8007781008563255
+        },
+        {
+          "lag": 5,
+          "r": -0.018653863954842597,
+          "n": 300,
+          "sigmas": 0.32309440127265093
+        },
+        {
+          "lag": 7,
+          "r": 0.012615369982134588,
+          "n": 298,
+          "sigmas": 0.21777505094998933
+        },
+        {
+          "lag": 10,
+          "r": 0.18820989974688715,
+          "n": 295,
+          "sigmas": 3.2326111855597985
+        },
+        {
+          "lag": 14,
+          "r": 0.0348956869847444,
+          "n": 291,
+          "sigmas": 0.5952758270834979
+        },
+        {
+          "lag": 21,
+          "r": -0.06465208489959516,
+          "n": 284,
+          "sigmas": 1.089536301024205
+        }
+      ],
+      "perfil": "continua",
+      "melhorLag": {
+        "lag": 10,
+        "r": 0.18820989974688715,
+        "n": 295,
+        "sigmas": 3.2326111855597985
+      },
+      "sobe20": 0.07692307692307693,
+      "cai20": 0.046822742474916385,
+      "assimetria": 1.642857142857143,
+      "janelas7d": 299,
+      "veredito": "Continua: o movimento se estende por 10 dia(s) (r = 0.188, 3.2σ em 295 dias). É a minoria destas moedas, e a única em que seguir o movimento tem base. Volatilidade de 5.5% ao dia; em sete dias sobe 20% em 7.7% das janelas e cai 20% em 4.7%. Maior dia: +23.3%; pior: −26.1%.",
+      "medidoEm": 1788232382837
+    },
+    "COLLECTUSDT": {
+      "symbol": "COLLECTUSDT",
+      "ticker": "COLLECT",
+      "dias": 245,
+      "de": "2025-12-31",
+      "ate": "2026-09-01",
+      "volDiaria": 0.10594848626770986,
+      "volAnual": 202.4142988028013,
+      "maiorAlta": 0.445253059874297,
+      "maiorQueda": -0.2714838353136225,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.043994336331176095,
+          "n": 243,
+          "sigmas": 0.6858038319378332
+        },
+        {
+          "lag": 2,
+          "r": -0.024511716994644727,
+          "n": 242,
+          "sigmas": 0.38131282871965416
+        },
+        {
+          "lag": 3,
+          "r": -0.007847640487432254,
+          "n": 241,
+          "sigmas": 0.12182814188034148
+        },
+        {
+          "lag": 5,
+          "r": -0.020687137250400438,
+          "n": 239,
+          "sigmas": 0.31981538077528476
+        },
+        {
+          "lag": 7,
+          "r": 0.0651757623607713,
+          "n": 237,
+          "sigmas": 1.003368107842746
+        },
+        {
+          "lag": 10,
+          "r": 0.0038728202777768847,
+          "n": 234,
+          "sigmas": 0.0592427585070665
+        },
+        {
+          "lag": 14,
+          "r": -0.07054656477205079,
+          "n": 230,
+          "sigmas": 1.0698916273443522
+        },
+        {
+          "lag": 21,
+          "r": 0.0017085469040376197,
+          "n": 223,
+          "sigmas": 0.025514046184310465
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 14,
+        "r": -0.07054656477205079,
+        "n": 230,
+        "sigmas": 1.0698916273443522
+      },
+      "sobe20": 0.17647058823529413,
+      "cai20": 0.16806722689075632,
+      "assimetria": 1.05,
+      "janelas7d": 238,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 10.6% ao dia; em sete dias sobe 20% em 17.6% das janelas e cai 20% em 16.8%. Maior dia: +44.5%; pior: −27.1%.",
+      "medidoEm": 1788232382846
+    },
+    "MAGMAUSDT": {
+      "symbol": "MAGMAUSDT",
+      "ticker": "MAGMA",
+      "dias": 245,
+      "de": "2025-12-31",
+      "ate": "2026-09-01",
+      "volDiaria": 0.12570065106159756,
+      "volAnual": 240.1507566554386,
+      "maiorAlta": 0.6963400408282296,
+      "maiorQueda": -0.3170783811077449,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.04572072988699589,
+          "n": 243,
+          "sigmas": 0.7127156441106876
+        },
+        {
+          "lag": 2,
+          "r": -0.11363478685727028,
+          "n": 242,
+          "sigmas": 1.7677424240402033
+        },
+        {
+          "lag": 3,
+          "r": -0.12808555961983123,
+          "n": 241,
+          "sigmas": 1.9884226036064887
+        },
+        {
+          "lag": 5,
+          "r": -0.04428319075724597,
+          "n": 239,
+          "sigmas": 0.684601515547979
+        },
+        {
+          "lag": 7,
+          "r": 0.27076829313610734,
+          "n": 237,
+          "sigmas": 4.168424888441473
+        },
+        {
+          "lag": 10,
+          "r": -0.07031129237013789,
+          "n": 234,
+          "sigmas": 1.075555955463782
+        },
+        {
+          "lag": 14,
+          "r": 0.053300482312207485,
+          "n": 230,
+          "sigmas": 0.8083418369626844
+        },
+        {
+          "lag": 21,
+          "r": -0.042494012518694155,
+          "n": 223,
+          "sigmas": 0.6345709300672248
+        }
+      ],
+      "perfil": "continua",
+      "melhorLag": {
+        "lag": 7,
+        "r": 0.27076829313610734,
+        "n": 237,
+        "sigmas": 4.168424888441473
+      },
+      "sobe20": 0.22268907563025211,
+      "cai20": 0.11764705882352941,
+      "assimetria": 1.892857142857143,
+      "janelas7d": 238,
+      "veredito": "Continua: o movimento se estende por 7 dia(s) (r = 0.271, 4.2σ em 237 dias). É a minoria destas moedas, e a única em que seguir o movimento tem base. Volatilidade de 12.6% ao dia; em sete dias sobe 20% em 22.3% das janelas e cai 20% em 11.8%. Maior dia: +69.6%; pior: −31.7%.",
+      "medidoEm": 1788232382868
+    },
+    "RIFUSDT": {
+      "symbol": "RIFUSDT",
+      "ticker": "RIF",
+      "dias": 1047,
+      "de": "2023-10-21",
+      "ate": "2026-09-01",
+      "volDiaria": 0.06579274042459286,
+      "volAnual": 125.69685408915043,
+      "maiorAlta": 0.7716077026421855,
+      "maiorQueda": -0.3422142462727775,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.012874447188882318,
+          "n": 1045,
+          "sigmas": 0.4161852988612035
+        },
+        {
+          "lag": 2,
+          "r": -0.13022463368101259,
+          "n": 1044,
+          "sigmas": 4.207686685925829
+        },
+        {
+          "lag": 3,
+          "r": -0.02739524319510111,
+          "n": 1043,
+          "sigmas": 0.8847433649124695
+        },
+        {
+          "lag": 5,
+          "r": 0.018892482973138874,
+          "n": 1041,
+          "sigmas": 0.6095571140745109
+        },
+        {
+          "lag": 7,
+          "r": -0.043172517942166755,
+          "n": 1039,
+          "sigmas": 1.3916023467140002
+        },
+        {
+          "lag": 10,
+          "r": 0.0019342299713578312,
+          "n": 1036,
+          "sigmas": 0.062256970879207396
+        },
+        {
+          "lag": 14,
+          "r": -0.028674951398594835,
+          "n": 1032,
+          "sigmas": 0.9211758401730652
+        },
+        {
+          "lag": 21,
+          "r": -0.08354804559396888,
+          "n": 1025,
+          "sigmas": 2.674842578664434
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.13022463368101259,
+        "n": 1044,
+        "sigmas": 4.207686685925829
+      },
+      "sobe20": 0.08653846153846154,
+      "cai20": 0.06538461538461539,
+      "assimetria": 1.3235294117647058,
+      "janelas7d": 1040,
+      "veredito": "Devolve: o retorno de um dia se inverte 2 dia(s) depois (r = -0.130, 4.2σ em 1044 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 6.6% ao dia; em sete dias sobe 20% em 8.7% das janelas e cai 20% em 6.5%. Maior dia: +77.2%; pior: −34.2%.",
+      "medidoEm": 1788232382997
+    },
+    "JELLYJELLYUSDT": {
+      "symbol": "JELLYJELLYUSDT",
+      "ticker": "JELLYJELLY",
+      "dias": 525,
+      "de": "2025-03-26",
+      "ate": "2026-09-01",
+      "volDiaria": 0.133514168005391,
+      "volAnual": 255.07845981643956,
+      "maiorAlta": 2.3400096914876434,
+      "maiorQueda": -0.6436022253129347,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.06270210421996174,
+          "n": 523,
+          "sigmas": 1.4339465387170205
+        },
+        {
+          "lag": 2,
+          "r": -0.1949096349635731,
+          "n": 522,
+          "sigmas": 4.453162668087995
+        },
+        {
+          "lag": 3,
+          "r": -0.15813674917460754,
+          "n": 521,
+          "sigmas": 3.6095384164718536
+        },
+        {
+          "lag": 5,
+          "r": 0.11910875744612676,
+          "n": 519,
+          "sigmas": 2.7134846740099663
+        },
+        {
+          "lag": 7,
+          "r": -0.049730420603979246,
+          "n": 517,
+          "sigmas": 1.1307521024490599
+        },
+        {
+          "lag": 10,
+          "r": 0.023621216622087646,
+          "n": 514,
+          "sigmas": 0.5355300211936779
+        },
+        {
+          "lag": 14,
+          "r": -0.04205755654059185,
+          "n": 510,
+          "sigmas": 0.9497933521057046
+        },
+        {
+          "lag": 21,
+          "r": -0.00004991150466763215,
+          "n": 503,
+          "sigmas": 0.0011193983312423215
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.1949096349635731,
+        "n": 522,
+        "sigmas": 4.453162668087995
+      },
+      "sobe20": 0.13127413127413126,
+      "cai20": 0.10231660231660232,
+      "assimetria": 1.2830188679245282,
+      "janelas7d": 518,
+      "veredito": "Devolve: o retorno de um dia se inverte 2 dia(s) depois (r = -0.195, 4.5σ em 522 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 13.4% ao dia; em sete dias sobe 20% em 13.1% das janelas e cai 20% em 10.2%. Maior dia: +234.0%; pior: −64.4%.",
+      "medidoEm": 1788232382897
+    },
+    "ALLOUSDT": {
+      "symbol": "ALLOUSDT",
+      "ticker": "ALLO",
+      "dias": 295,
+      "de": "2025-11-11",
+      "ate": "2026-09-01",
+      "volDiaria": 0.10244174629695317,
+      "volAnual": 195.71468149566093,
+      "maiorAlta": 0.9589316870218763,
+      "maiorQueda": -0.3633558624742873,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.04112719448204147,
+          "n": 293,
+          "sigmas": 0.7039841723415045
+        },
+        {
+          "lag": 2,
+          "r": 0.07850867662115246,
+          "n": 292,
+          "sigmas": 1.341556854182099
+        },
+        {
+          "lag": 3,
+          "r": 0.019227296272517277,
+          "n": 291,
+          "sigmas": 0.32799310402474413
+        },
+        {
+          "lag": 5,
+          "r": -0.06562664781037471,
+          "n": 289,
+          "sigmas": 1.11565301277637
+        },
+        {
+          "lag": 7,
+          "r": -0.01723658363149189,
+          "n": 287,
+          "sigmas": 0.2920062447738299
+        },
+        {
+          "lag": 10,
+          "r": 0.02858452315346073,
+          "n": 284,
+          "sigmas": 0.48171494657177505
+        },
+        {
+          "lag": 14,
+          "r": 0.12140879950768747,
+          "n": 280,
+          "sigmas": 2.0315577883514413
+        },
+        {
+          "lag": 21,
+          "r": -0.04318192801481234,
+          "n": 273,
+          "sigmas": 0.7134825447282271
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 14,
+        "r": 0.12140879950768747,
+        "n": 280,
+        "sigmas": 2.0315577883514413
+      },
+      "sobe20": 0.13541666666666666,
+      "cai20": 0.13541666666666666,
+      "assimetria": 1,
+      "janelas7d": 288,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 10.2% ao dia; em sete dias sobe 20% em 13.5% das janelas e cai 20% em 13.5%. Maior dia: +95.9%; pior: −36.3%.",
+      "medidoEm": 1788232382882
+    },
+    "BPUSDT": {
+      "symbol": "BPUSDT",
+      "ticker": "BP",
+      "dias": 170,
+      "de": "2026-03-16",
+      "ate": "2026-09-01",
+      "volDiaria": 0.08871104007734702,
+      "volAnual": 169.48220409635059,
+      "maiorAlta": 0.6130760986066452,
+      "maiorQueda": -0.2093023255813954,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.016282450320157932,
+          "n": 168,
+          "sigmas": 0.2110446769193032
+        },
+        {
+          "lag": 2,
+          "r": 0.002455386522494268,
+          "n": 167,
+          "sigmas": 0.03173058677048637
+        },
+        {
+          "lag": 3,
+          "r": 0.07345426879903098,
+          "n": 166,
+          "sigmas": 0.9463920511061202
+        },
+        {
+          "lag": 5,
+          "r": -0.007707653677405276,
+          "n": 164,
+          "sigmas": 0.0987061281510643
+        },
+        {
+          "lag": 7,
+          "r": 0.03147792393422581,
+          "n": 162,
+          "sigmas": 0.40064856248817715
+        },
+        {
+          "lag": 10,
+          "r": -0.005941183429220061,
+          "n": 159,
+          "sigmas": 0.07491547253940675
+        },
+        {
+          "lag": 14,
+          "r": 0.033991241401061474,
+          "n": 155,
+          "sigmas": 0.4231875426542132
+        },
+        {
+          "lag": 21,
+          "r": -0.0737976656943658,
+          "n": 148,
+          "sigmas": 0.8977873514183252
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 21,
+        "r": -0.0737976656943658,
+        "n": 148,
+        "sigmas": 0.8977873514183252
+      },
+      "sobe20": 0.17177914110429449,
+      "cai20": 0.10429447852760736,
+      "assimetria": 1.647058823529412,
+      "janelas7d": 163,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 8.9% ao dia; em sete dias sobe 20% em 17.2% das janelas e cai 20% em 10.4%. Maior dia: +61.3%; pior: −20.9%.",
+      "medidoEm": 1788232383694
+    },
+    "QUSDT": {
+      "symbol": "QUSDT",
+      "ticker": "Q",
+      "dias": 365,
+      "de": "2025-09-02",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11418221148245193,
+      "volAnual": 218.1448087382217,
+      "maiorAlta": 0.9425412559228801,
+      "maiorQueda": -0.4987969201154957,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.16835887769154928,
+          "n": 363,
+          "sigmas": 3.2076674307374153
+        },
+        {
+          "lag": 2,
+          "r": 0.08237392195686215,
+          "n": 362,
+          "sigmas": 1.5672707528429757
+        },
+        {
+          "lag": 3,
+          "r": -0.12611688427678114,
+          "n": 361,
+          "sigmas": 2.3962208012588415
+        },
+        {
+          "lag": 5,
+          "r": 0.03648959328112518,
+          "n": 359,
+          "sigmas": 0.6913791000587701
+        },
+        {
+          "lag": 7,
+          "r": 0.04624639482821995,
+          "n": 357,
+          "sigmas": 0.8737999000657509
+        },
+        {
+          "lag": 10,
+          "r": 0.01789007155146785,
+          "n": 354,
+          "sigmas": 0.33659968758347103
+        },
+        {
+          "lag": 14,
+          "r": -0.02020222416892198,
+          "n": 350,
+          "sigmas": 0.3779490064545499
+        },
+        {
+          "lag": 21,
+          "r": 0.015110835476714005,
+          "n": 343,
+          "sigmas": 0.27985658941658187
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 1,
+        "r": -0.16835887769154928,
+        "n": 363,
+        "sigmas": 3.2076674307374153
+      },
+      "sobe20": 0.1452513966480447,
+      "cai20": 0.12849162011173185,
+      "assimetria": 1.1304347826086958,
+      "janelas7d": 358,
+      "veredito": "Devolve: o retorno de um dia se inverte 1 dia(s) depois (r = -0.168, 3.2σ em 363 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 11.4% ao dia; em sete dias sobe 20% em 14.5% das janelas e cai 20% em 12.8%. Maior dia: +94.3%; pior: −49.9%.",
+      "medidoEm": 1788232382894
+    },
+    "JSTUSDT": {
+      "symbol": "JSTUSDT",
+      "ticker": "JST",
+      "dias": 492,
+      "de": "2025-04-28",
+      "ate": "2026-09-01",
+      "volDiaria": 0.030182088364611146,
+      "volAnual": 57.66279885575762,
+      "maiorAlta": 0.12505353319057821,
+      "maiorQueda": -0.21156740485917014,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.1093214287897226,
+          "n": 490,
+          "sigmas": 2.4199329842759965
+        },
+        {
+          "lag": 2,
+          "r": -0.03454478671470893,
+          "n": 489,
+          "sigmas": 0.7639007654149546
+        },
+        {
+          "lag": 3,
+          "r": -0.05991660603602644,
+          "n": 488,
+          "sigmas": 1.3236010891849868
+        },
+        {
+          "lag": 5,
+          "r": -0.027698116733164514,
+          "n": 486,
+          "sigmas": 0.6106162754906782
+        },
+        {
+          "lag": 7,
+          "r": 0.04447942220105936,
+          "n": 484,
+          "sigmas": 0.978547288423306
+        },
+        {
+          "lag": 10,
+          "r": -0.00377355170474492,
+          "n": 481,
+          "sigmas": 0.08276044995825219
+        },
+        {
+          "lag": 14,
+          "r": -0.04795900307490467,
+          "n": 477,
+          "sigmas": 1.0474404376969448
+        },
+        {
+          "lag": 21,
+          "r": 0.002939573942616514,
+          "n": 470,
+          "sigmas": 0.06372844445874776
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 1,
+        "r": -0.1093214287897226,
+        "n": 490,
+        "sigmas": 2.4199329842759965
+      },
+      "sobe20": 0.008247422680412371,
+      "cai20": 0.002061855670103093,
+      "assimetria": 4,
+      "janelas7d": 485,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 3.0% ao dia; em sete dias sobe 20% em 0.8% das janelas e cai 20% em 0.2%. Maior dia: +12.5%; pior: −21.2%.",
+      "medidoEm": 1788232382893
+    },
+    "BANUSDT": {
+      "symbol": "BANUSDT",
+      "ticker": "BAN",
+      "dias": 653,
+      "de": "2024-11-18",
+      "ate": "2026-09-01",
+      "volDiaria": 0.0952135730521124,
+      "volAnual": 181.90527590129784,
+      "maiorAlta": 0.9946879150066399,
+      "maiorQueda": -0.6591941478378857,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.04146585454114211,
+          "n": 651,
+          "sigmas": 1.0579889070450967
+        },
+        {
+          "lag": 2,
+          "r": -0.06510124585121685,
+          "n": 650,
+          "sigmas": 1.6597626147727802
+        },
+        {
+          "lag": 3,
+          "r": 0.021969679720317332,
+          "n": 649,
+          "sigmas": 0.5596881012953968
+        },
+        {
+          "lag": 5,
+          "r": -0.10080100711576385,
+          "n": 647,
+          "sigmas": 2.5639940413351825
+        },
+        {
+          "lag": 7,
+          "r": -0.024968022350532647,
+          "n": 645,
+          "sigmas": 0.6341091233867954
+        },
+        {
+          "lag": 10,
+          "r": -0.012575930853461082,
+          "n": 642,
+          "sigmas": 0.3186454011052475
+        },
+        {
+          "lag": 14,
+          "r": -0.028178771939186605,
+          "n": 638,
+          "sigmas": 0.711758072623304
+        },
+        {
+          "lag": 21,
+          "r": 0.009704017691777334,
+          "n": 631,
+          "sigmas": 0.2437621429952335
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 5,
+        "r": -0.10080100711576385,
+        "n": 647,
+        "sigmas": 2.5639940413351825
+      },
+      "sobe20": 0.11919504643962849,
+      "cai20": 0.0913312693498452,
+      "assimetria": 1.305084745762712,
+      "janelas7d": 646,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 9.5% ao dia; em sete dias sobe 20% em 11.9% das janelas e cai 20% em 9.1%. Maior dia: +99.5%; pior: −65.9%.",
+      "medidoEm": 1788232382920
+    },
+    "ARCUSDT": {
+      "symbol": "ARCUSDT",
+      "ticker": "ARC",
+      "dias": 593,
+      "de": "2025-01-17",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11982691967759324,
+      "volAnual": 228.92900860285135,
+      "maiorAlta": 0.5766381766381767,
+      "maiorQueda": -0.47345742847294037,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.04906707553444567,
+          "n": 591,
+          "sigmas": 1.1928447257662127
+        },
+        {
+          "lag": 2,
+          "r": -0.051035579546614473,
+          "n": 590,
+          "sigmas": 1.239649919936552
+        },
+        {
+          "lag": 3,
+          "r": -0.06140917813993799,
+          "n": 589,
+          "sigmas": 1.4903591302553667
+        },
+        {
+          "lag": 5,
+          "r": 0.032900277119854555,
+          "n": 587,
+          "sigmas": 0.7971106408075438
+        },
+        {
+          "lag": 7,
+          "r": -0.012988527817706102,
+          "n": 585,
+          "sigmas": 0.3141505771118768
+        },
+        {
+          "lag": 10,
+          "r": -0.0013162663325193536,
+          "n": 582,
+          "sigmas": 0.031754499017117854
+        },
+        {
+          "lag": 14,
+          "r": -0.0009955944766508633,
+          "n": 578,
+          "sigmas": 0.023935714595557708
+        },
+        {
+          "lag": 21,
+          "r": -0.0029373147040160897,
+          "n": 571,
+          "sigmas": 0.07018891571904379
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 3,
+        "r": -0.06140917813993799,
+        "n": 589,
+        "sigmas": 1.4903591302553667
+      },
+      "sobe20": 0.17064846416382254,
+      "cai20": 0.17235494880546076,
+      "assimetria": 0.9900990099009901,
+      "janelas7d": 586,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 12.0% ao dia; em sete dias sobe 20% em 17.1% das janelas e cai 20% em 17.2%. Maior dia: +57.7%; pior: −47.3%.",
+      "medidoEm": 1788232382925
+    },
+    "BUSDT": {
+      "symbol": "BUSDT",
+      "ticker": "B",
+      "dias": 468,
+      "de": "2025-05-22",
+      "ate": "2026-09-01",
+      "volDiaria": 0.1044738053561302,
+      "volAnual": 199.59692487712732,
+      "maiorAlta": 1.4293394777265744,
+      "maiorQueda": -0.47889826743669484,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.03680863409606003,
+          "n": 466,
+          "sigmas": 0.7945892042509871
+        },
+        {
+          "lag": 2,
+          "r": 0.07232200656111322,
+          "n": 465,
+          "sigmas": 1.5595415269741784
+        },
+        {
+          "lag": 3,
+          "r": -0.09625024334022053,
+          "n": 464,
+          "sigmas": 2.073293692455551
+        },
+        {
+          "lag": 5,
+          "r": -0.08291655082173904,
+          "n": 462,
+          "sigmas": 1.7822237044996354
+        },
+        {
+          "lag": 7,
+          "r": -0.0505743390044226,
+          "n": 460,
+          "sigmas": 1.0846987287895933
+        },
+        {
+          "lag": 10,
+          "r": 0.04354998788690628,
+          "n": 457,
+          "sigmas": 0.9309924061677439
+        },
+        {
+          "lag": 14,
+          "r": -0.024224108538435166,
+          "n": 453,
+          "sigmas": 0.515581000251459
+        },
+        {
+          "lag": 21,
+          "r": -0.09101844063495536,
+          "n": 446,
+          "sigmas": 1.9221922419170319
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 3,
+        "r": -0.09625024334022053,
+        "n": 464,
+        "sigmas": 2.073293692455551
+      },
+      "sobe20": 0.16702819956616052,
+      "cai20": 0.13882863340563992,
+      "assimetria": 1.203125,
+      "janelas7d": 461,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 10.4% ao dia; em sete dias sobe 20% em 16.7% das janelas e cai 20% em 13.9%. Maior dia: +142.9%; pior: −47.9%.",
+      "medidoEm": 1788232382934
+    },
+    "CLOUSDT": {
+      "symbol": "CLOUSDT",
+      "ticker": "CLO",
+      "dias": 323,
+      "de": "2025-10-14",
+      "ate": "2026-09-01",
+      "volDiaria": 0.13379517863126797,
+      "volAnual": 255.61532986335368,
+      "maiorAlta": 0.453832442067736,
+      "maiorQueda": -0.3592754528419737,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.053299449534809126,
+          "n": 321,
+          "sigmas": 0.9549381414254466
+        },
+        {
+          "lag": 2,
+          "r": -0.003668043311069063,
+          "n": 320,
+          "sigmas": 0.06561595350371066
+        },
+        {
+          "lag": 3,
+          "r": 0.058032925511377315,
+          "n": 319,
+          "sigmas": 1.0365011922074632
+        },
+        {
+          "lag": 5,
+          "r": 0.12486182570974257,
+          "n": 317,
+          "sigmas": 2.223101603549359
+        },
+        {
+          "lag": 7,
+          "r": -0.004415039530601616,
+          "n": 315,
+          "sigmas": 0.07835917832573353
+        },
+        {
+          "lag": 10,
+          "r": -0.011718357630091153,
+          "n": 312,
+          "sigmas": 0.20698746467014678
+        },
+        {
+          "lag": 14,
+          "r": -0.10771815933912496,
+          "n": 308,
+          "sigmas": 1.8904460241525034
+        },
+        {
+          "lag": 21,
+          "r": -0.03957088866119298,
+          "n": 301,
+          "sigmas": 0.6865292594350192
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 5,
+        "r": 0.12486182570974257,
+        "n": 317,
+        "sigmas": 2.223101603549359
+      },
+      "sobe20": 0.25316455696202533,
+      "cai20": 0.22151898734177214,
+      "assimetria": 1.142857142857143,
+      "janelas7d": 316,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 13.4% ao dia; em sete dias sobe 20% em 25.3% das janelas e cai 20% em 22.2%. Maior dia: +45.4%; pior: −35.9%.",
+      "medidoEm": 1788232383059
+    },
+    "CUSDT": {
+      "symbol": "CUSDT",
+      "ticker": "C",
+      "dias": 414,
+      "de": "2025-07-15",
+      "ate": "2026-09-01",
+      "volDiaria": 0.07921665423704238,
+      "volAnual": 151.34320541757268,
+      "maiorAlta": 1.1540384748940897,
+      "maiorQueda": -0.3301593228777694,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.15443339429643202,
+          "n": 412,
+          "sigmas": 3.1346555454872393
+        },
+        {
+          "lag": 2,
+          "r": -0.09594988111712359,
+          "n": 411,
+          "sigmas": 1.9452048866652458
+        },
+        {
+          "lag": 3,
+          "r": 0.04428888997804143,
+          "n": 410,
+          "sigmas": 0.8967816723984128
+        },
+        {
+          "lag": 5,
+          "r": 0.040079539730874934,
+          "n": 408,
+          "sigmas": 0.809567018878501
+        },
+        {
+          "lag": 7,
+          "r": -0.007863193576567224,
+          "n": 406,
+          "sigmas": 0.15843896038652436
+        },
+        {
+          "lag": 10,
+          "r": 0.08581089752922377,
+          "n": 403,
+          "sigmas": 1.7226417457825323
+        },
+        {
+          "lag": 14,
+          "r": 0.02046791603733715,
+          "n": 399,
+          "sigmas": 0.4088463026342318
+        },
+        {
+          "lag": 21,
+          "r": 0.027475333646076867,
+          "n": 392,
+          "sigmas": 0.5439838526221081
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 1,
+        "r": -0.15443339429643202,
+        "n": 412,
+        "sigmas": 3.1346555454872393
+      },
+      "sobe20": 0.05405405405405406,
+      "cai20": 0.0687960687960688,
+      "assimetria": 0.7857142857142858,
+      "janelas7d": 407,
+      "veredito": "Devolve: o retorno de um dia se inverte 1 dia(s) depois (r = -0.154, 3.1σ em 412 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 7.9% ao dia; em sete dias sobe 20% em 5.4% das janelas e cai 20% em 6.9%. Maior dia: +115.4%; pior: −33.0%.",
+      "medidoEm": 1788232382947
+    },
+    "POWERUSDT": {
+      "symbol": "POWERUSDT",
+      "ticker": "POWER",
+      "dias": 270,
+      "de": "2025-12-06",
+      "ate": "2026-09-01",
+      "volDiaria": 0.18020331232964112,
+      "volAnual": 344.2779448021551,
+      "maiorAlta": 0.9001112690176378,
+      "maiorQueda": -0.9001387190692115,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.02963231924267996,
+          "n": 268,
+          "sigmas": 0.4851019729001595
+        },
+        {
+          "lag": 2,
+          "r": 0.14760869103083166,
+          "n": 267,
+          "sigmas": 2.4119458852370803
+        },
+        {
+          "lag": 3,
+          "r": -0.1305486354705773,
+          "n": 266,
+          "sigmas": 2.1291838096742826
+        },
+        {
+          "lag": 5,
+          "r": -0.19599729960285622,
+          "n": 264,
+          "sigmas": 3.184579178357089
+        },
+        {
+          "lag": 7,
+          "r": -0.05750539695702214,
+          "n": 262,
+          "sigmas": 0.9308061656147263
+        },
+        {
+          "lag": 10,
+          "r": -0.08124214080729167,
+          "n": 259,
+          "sigmas": 1.3074685195921614
+        },
+        {
+          "lag": 14,
+          "r": -0.013492785762922664,
+          "n": 255,
+          "sigmas": 0.2154625100783261
+        },
+        {
+          "lag": 21,
+          "r": -0.08224650067692135,
+          "n": 248,
+          "sigmas": 1.295219187879993
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 5,
+        "r": -0.19599729960285622,
+        "n": 264,
+        "sigmas": 3.184579178357089
+      },
+      "sobe20": 0.1520912547528517,
+      "cai20": 0.10266159695817491,
+      "assimetria": 1.4814814814814814,
+      "janelas7d": 263,
+      "veredito": "Devolve: o retorno de um dia se inverte 5 dia(s) depois (r = -0.196, 3.2σ em 264 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 18.0% ao dia; em sete dias sobe 20% em 15.2% das janelas e cai 20% em 10.3%. Maior dia: +90.0%; pior: −90.0%.",
+      "medidoEm": 1788232382957
+    },
+    "AVAAIUSDT": {
+      "symbol": "AVAAIUSDT",
+      "ticker": "AVAAI",
+      "dias": 593,
+      "de": "2025-01-17",
+      "ate": "2026-09-01",
+      "volDiaria": 0.104357046423268,
+      "volAnual": 199.37385724910527,
+      "maiorAlta": 0.7341561040693796,
+      "maiorQueda": -0.5054133100723485,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.08518608278883741,
+          "n": 591,
+          "sigmas": 2.0709155468622655
+        },
+        {
+          "lag": 2,
+          "r": 0.011145697126479373,
+          "n": 590,
+          "sigmas": 0.2707280425385856
+        },
+        {
+          "lag": 3,
+          "r": -0.06443210549999347,
+          "n": 589,
+          "sigmas": 1.5637235283407958
+        },
+        {
+          "lag": 5,
+          "r": 0.03297352685160304,
+          "n": 587,
+          "sigmas": 0.7988853413792232
+        },
+        {
+          "lag": 7,
+          "r": 0.020852218026794638,
+          "n": 585,
+          "sigmas": 0.5043478690672073
+        },
+        {
+          "lag": 10,
+          "r": 0.06317130963320763,
+          "n": 582,
+          "sigmas": 1.5239873877335115
+        },
+        {
+          "lag": 14,
+          "r": 0.02170671386602146,
+          "n": 578,
+          "sigmas": 0.5218647954459543
+        },
+        {
+          "lag": 21,
+          "r": -0.006845994981483559,
+          "n": 571,
+          "sigmas": 0.16358920074561892
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 1,
+        "r": -0.08518608278883741,
+        "n": 591,
+        "sigmas": 2.0709155468622655
+      },
+      "sobe20": 0.13139931740614336,
+      "cai20": 0.17918088737201365,
+      "assimetria": 0.7333333333333334,
+      "janelas7d": 586,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 10.4% ao dia; em sete dias sobe 20% em 13.1% das janelas e cai 20% em 17.9%. Maior dia: +73.4%; pior: −50.5%.",
+      "medidoEm": 1788232383330
+    },
+    "HEMIUSDT": {
+      "symbol": "HEMIUSDT",
+      "ticker": "HEMI",
+      "dias": 369,
+      "de": "2025-08-29",
+      "ate": "2026-09-01",
+      "volDiaria": 0.09042701660701163,
+      "volAnual": 172.76057265308935,
+      "maiorAlta": 0.688610354223433,
+      "maiorQueda": -0.22140004424624204,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.031583702641566014,
+          "n": 367,
+          "sigmas": 0.6050566998440453
+        },
+        {
+          "lag": 2,
+          "r": 0.09279116142403172,
+          "n": 366,
+          "sigmas": 1.7751994444743333
+        },
+        {
+          "lag": 3,
+          "r": 0.014039370964525231,
+          "n": 365,
+          "sigmas": 0.2682218056647096
+        },
+        {
+          "lag": 5,
+          "r": -0.01514203798561959,
+          "n": 363,
+          "sigmas": 0.2884945703335413
+        },
+        {
+          "lag": 7,
+          "r": 0.019339020268746645,
+          "n": 361,
+          "sigmas": 0.36744138510618624
+        },
+        {
+          "lag": 10,
+          "r": 0.11906680138569645,
+          "n": 358,
+          "sigmas": 2.2528496050147417
+        },
+        {
+          "lag": 14,
+          "r": 0.11330585308166498,
+          "n": 354,
+          "sigmas": 2.1318369040026495
+        },
+        {
+          "lag": 21,
+          "r": 0.1680279205539875,
+          "n": 347,
+          "sigmas": 3.130013352006171
+        }
+      ],
+      "perfil": "continua",
+      "melhorLag": {
+        "lag": 21,
+        "r": 0.1680279205539875,
+        "n": 347,
+        "sigmas": 3.130013352006171
+      },
+      "sobe20": 0.11878453038674033,
+      "cai20": 0.1298342541436464,
+      "assimetria": 0.9148936170212766,
+      "janelas7d": 362,
+      "veredito": "Continua: o movimento se estende por 21 dia(s) (r = 0.168, 3.1σ em 347 dias). É a minoria destas moedas, e a única em que seguir o movimento tem base. Volatilidade de 9.0% ao dia; em sete dias sobe 20% em 11.9% das janelas e cai 20% em 13.0%. Maior dia: +68.9%; pior: −22.1%.",
+      "medidoEm": 1788232382973
+    },
+    "TAUSDT": {
+      "symbol": "TAUSDT",
+      "ticker": "TA",
+      "dias": 408,
+      "de": "2025-07-21",
+      "ate": "2026-09-01",
+      "volDiaria": 0.10107756550342237,
+      "volAnual": 193.1084177490977,
+      "maiorAlta": 1.5888785912882293,
+      "maiorQueda": -0.4328358208955223,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.1220380411924757,
+          "n": 406,
+          "sigmas": 2.458998393701618
+        },
+        {
+          "lag": 2,
+          "r": -0.09786919609590752,
+          "n": 405,
+          "sigmas": 1.9695795783633563
+        },
+        {
+          "lag": 3,
+          "r": 0.0613342224064089,
+          "n": 404,
+          "sigmas": 1.2328026130051508
+        },
+        {
+          "lag": 5,
+          "r": -0.05076366628288311,
+          "n": 402,
+          "sigmas": 1.017808344149786
+        },
+        {
+          "lag": 7,
+          "r": -0.03095496456638327,
+          "n": 400,
+          "sigmas": 0.6190992913276654
+        },
+        {
+          "lag": 10,
+          "r": 0.054719834159935817,
+          "n": 397,
+          "sigmas": 1.0902849716679024
+        },
+        {
+          "lag": 14,
+          "r": 0.07400262390870857,
+          "n": 393,
+          "sigmas": 1.467044859481771
+        },
+        {
+          "lag": 21,
+          "r": 0.020912363922264657,
+          "n": 386,
+          "sigmas": 0.4108627610522195
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 1,
+        "r": -0.1220380411924757,
+        "n": 406,
+        "sigmas": 2.458998393701618
+      },
+      "sobe20": 0.1172069825436409,
+      "cai20": 0.10972568578553615,
+      "assimetria": 1.0681818181818183,
+      "janelas7d": 401,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 10.1% ao dia; em sete dias sobe 20% em 11.7% das janelas e cai 20% em 11.0%. Maior dia: +158.9%; pior: −43.3%.",
+      "medidoEm": 1788232382985
+    },
+    "SYNUSDT": {
+      "symbol": "SYNUSDT",
+      "ticker": "SYN",
+      "dias": 747,
+      "de": "2024-08-16",
+      "ate": "2026-09-01",
+      "volDiaria": 0.0834702640529066,
+      "volAnual": 159.46971556027847,
+      "maiorAlta": 0.6520488856937456,
+      "maiorQueda": -0.31863186318631864,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.0807668751154146,
+          "n": 745,
+          "sigmas": 2.204506667341287
+        },
+        {
+          "lag": 2,
+          "r": 0.005042186160198918,
+          "n": 744,
+          "sigmas": 0.13753250200564054
+        },
+        {
+          "lag": 3,
+          "r": 0.05977200213044689,
+          "n": 743,
+          "sigmas": 1.6292668085187385
+        },
+        {
+          "lag": 5,
+          "r": 0.03492362165467262,
+          "n": 741,
+          "sigmas": 0.9506669122062312
+        },
+        {
+          "lag": 7,
+          "r": 0.10621439801532323,
+          "n": 739,
+          "sigmas": 2.8873910849614384
+        },
+        {
+          "lag": 10,
+          "r": -0.006884704955485529,
+          "n": 736,
+          "sigmas": 0.1867773633782425
+        },
+        {
+          "lag": 14,
+          "r": 0.004799603172209053,
+          "n": 732,
+          "sigmas": 0.1298556565075899
+        },
+        {
+          "lag": 21,
+          "r": -0.03432960327910401,
+          "n": 725,
+          "sigmas": 0.924352857107601
+        }
+      ],
+      "perfil": "continua",
+      "melhorLag": {
+        "lag": 7,
+        "r": 0.10621439801532323,
+        "n": 739,
+        "sigmas": 2.8873910849614384
+      },
+      "sobe20": 0.10945945945945947,
+      "cai20": 0.1472972972972973,
+      "assimetria": 0.743119266055046,
+      "janelas7d": 740,
+      "veredito": "Continua: o movimento se estende por 7 dia(s) (r = 0.106, 2.9σ em 739 dias). É a minoria destas moedas, e a única em que seguir o movimento tem base. Volatilidade de 8.3% ao dia; em sete dias sobe 20% em 10.9% das janelas e cai 20% em 14.7%. Maior dia: +65.2%; pior: −31.9%.",
+      "medidoEm": 1788232383409
+    },
+    "SKYAIUSDT": {
+      "symbol": "SKYAIUSDT",
+      "ticker": "SKYAI",
+      "dias": 477,
+      "de": "2025-05-13",
+      "ate": "2026-09-01",
+      "volDiaria": 0.1293864752475435,
+      "volAnual": 247.19251387529644,
+      "maiorAlta": 1.6638554216867467,
+      "maiorQueda": -0.4659117624010658,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.02274841559395017,
+          "n": 475,
+          "sigmas": 0.49579022349846796
+        },
+        {
+          "lag": 2,
+          "r": -0.05669916034417007,
+          "n": 474,
+          "sigmas": 1.2344280973349044
+        },
+        {
+          "lag": 3,
+          "r": 0.0568358192384629,
+          "n": 473,
+          "sigmas": 1.236097405079357
+        },
+        {
+          "lag": 5,
+          "r": 0.050362388481457104,
+          "n": 471,
+          "sigmas": 1.0929914692006717
+        },
+        {
+          "lag": 7,
+          "r": 0.057149938033069836,
+          "n": 469,
+          "sigmas": 1.2376623653723844
+        },
+        {
+          "lag": 10,
+          "r": 0.06876841794209594,
+          "n": 466,
+          "sigmas": 1.4845061174399359
+        },
+        {
+          "lag": 14,
+          "r": 0.016837072556207925,
+          "n": 462,
+          "sigmas": 0.36189915676264106
+        },
+        {
+          "lag": 21,
+          "r": -0.0710614270242721,
+          "n": 455,
+          "sigmas": 1.515792042755307
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 21,
+        "r": -0.0710614270242721,
+        "n": 455,
+        "sigmas": 1.515792042755307
+      },
+      "sobe20": 0.18085106382978725,
+      "cai20": 0.1723404255319149,
+      "assimetria": 1.0493827160493827,
+      "janelas7d": 470,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 12.9% ao dia; em sete dias sobe 20% em 18.1% das janelas e cai 20% em 17.2%. Maior dia: +166.4%; pior: −46.6%.",
+      "medidoEm": 1788232383356
+    },
+    "TACUSDT": {
+      "symbol": "TACUSDT",
+      "ticker": "TAC",
+      "dias": 414,
+      "de": "2025-07-15",
+      "ate": "2026-09-01",
+      "volDiaria": 0.1472758971447633,
+      "volAnual": 281.3702064207427,
+      "maiorAlta": 1.7179556761646317,
+      "maiorQueda": -0.8604802277368649,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.07673634734053673,
+          "n": 412,
+          "sigmas": 1.55757773652072
+        },
+        {
+          "lag": 2,
+          "r": -0.21414480068766475,
+          "n": 411,
+          "sigmas": 4.341386439480022
+        },
+        {
+          "lag": 3,
+          "r": 0.021902714346600953,
+          "n": 410,
+          "sigmas": 0.44349616374553646
+        },
+        {
+          "lag": 5,
+          "r": 0.1311603081360052,
+          "n": 408,
+          "sigmas": 2.649308359473353
+        },
+        {
+          "lag": 7,
+          "r": 0.007497369350354229,
+          "n": 406,
+          "sigmas": 0.1510678064754572
+        },
+        {
+          "lag": 10,
+          "r": 0.13195844185211392,
+          "n": 403,
+          "sigmas": 2.649047232788273
+        },
+        {
+          "lag": 14,
+          "r": -0.039712370500160576,
+          "n": 399,
+          "sigmas": 0.7932539794580721
+        },
+        {
+          "lag": 21,
+          "r": -0.050782017011529554,
+          "n": 392,
+          "sigmas": 1.0054326405531286
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.21414480068766475,
+        "n": 411,
+        "sigmas": 4.341386439480022
+      },
+      "sobe20": 0.13022113022113022,
+      "cai20": 0.11547911547911548,
+      "assimetria": 1.127659574468085,
+      "janelas7d": 407,
+      "veredito": "Devolve: o retorno de um dia se inverte 2 dia(s) depois (r = -0.214, 4.3σ em 411 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 14.7% ao dia; em sete dias sobe 20% em 13.0% das janelas e cai 20% em 11.5%. Maior dia: +171.8%; pior: −86.0%.",
+      "medidoEm": 1788232383359
+    },
+    "DEXEUSDT": {
+      "symbol": "DEXEUSDT",
+      "ticker": "DEXE",
+      "dias": 617,
+      "de": "2024-12-24",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11765516160257075,
+      "volAnual": 224.7798706263612,
+      "maiorAlta": 1.595445411922304,
+      "maiorQueda": -0.8362507058159232,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.002904863993205698,
+          "n": 615,
+          "sigmas": 0.07203828436115839
+        },
+        {
+          "lag": 2,
+          "r": 0.11926436858448325,
+          "n": 614,
+          "sigmas": 2.9552545783582267
+        },
+        {
+          "lag": 3,
+          "r": -0.20956236250010712,
+          "n": 613,
+          "sigmas": 5.188520333878622
+        },
+        {
+          "lag": 5,
+          "r": 0.047173500870488015,
+          "n": 611,
+          "sigmas": 1.1660541332437862
+        },
+        {
+          "lag": 7,
+          "r": 0.05533405883924409,
+          "n": 609,
+          "sigmas": 1.365529773818052
+        },
+        {
+          "lag": 10,
+          "r": -0.041017344093033724,
+          "n": 606,
+          "sigmas": 1.0097267179620806
+        },
+        {
+          "lag": 14,
+          "r": 0.01469981337124309,
+          "n": 602,
+          "sigmas": 0.3606700388387217
+        },
+        {
+          "lag": 21,
+          "r": -0.012779812514107106,
+          "n": 595,
+          "sigmas": 0.31173313378266115
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 3,
+        "r": -0.20956236250010712,
+        "n": 613,
+        "sigmas": 5.188520333878622
+      },
+      "sobe20": 0.12786885245901639,
+      "cai20": 0.06393442622950819,
+      "assimetria": 2,
+      "janelas7d": 610,
+      "veredito": "Devolve: o retorno de um dia se inverte 3 dia(s) depois (r = -0.210, 5.2σ em 613 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 11.8% ao dia; em sete dias sobe 20% em 12.8% das janelas e cai 20% em 6.4%. Maior dia: +159.5%; pior: −83.6%.",
+      "medidoEm": 1788232383191
+    },
+    "BEATUSDT": {
+      "symbol": "BEATUSDT",
+      "ticker": "BEAT",
+      "dias": 294,
+      "de": "2025-11-12",
+      "ate": "2026-09-01",
+      "volDiaria": 0.1652625927413066,
+      "volAnual": 315.73374010780543,
+      "maiorAlta": 0.6946031100721617,
+      "maiorQueda": -0.5049396267837541,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.10177584452295033,
+          "n": 292,
+          "sigmas": 1.7391463935738845
+        },
+        {
+          "lag": 2,
+          "r": 0.12182673420894964,
+          "n": 291,
+          "sigmas": 2.078208404345737
+        },
+        {
+          "lag": 3,
+          "r": 0.13295338561822495,
+          "n": 290,
+          "sigmas": 2.2641145723507554
+        },
+        {
+          "lag": 5,
+          "r": 0.10084740338771363,
+          "n": 288,
+          "sigmas": 1.71143718721218
+        },
+        {
+          "lag": 7,
+          "r": 0.09415155577660929,
+          "n": 286,
+          "sigmas": 1.5922472861256844
+        },
+        {
+          "lag": 10,
+          "r": -0.08077388479873515,
+          "n": 283,
+          "sigmas": 1.358827064688753
+        },
+        {
+          "lag": 14,
+          "r": 0.043207971515746395,
+          "n": 279,
+          "sigmas": 0.7217154119866425
+        },
+        {
+          "lag": 21,
+          "r": 0.011594974187344502,
+          "n": 272,
+          "sigmas": 0.1912292132029267
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 3,
+        "r": 0.13295338561822495,
+        "n": 290,
+        "sigmas": 2.2641145723507554
+      },
+      "sobe20": 0.3310104529616725,
+      "cai20": 0.27177700348432055,
+      "assimetria": 1.217948717948718,
+      "janelas7d": 287,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 16.5% ao dia; em sete dias sobe 20% em 33.1% das janelas e cai 20% em 27.2%. Maior dia: +69.5%; pior: −50.5%.",
+      "medidoEm": 1788232383393
+    },
+    "GWEIUSDT": {
+      "symbol": "GWEIUSDT",
+      "ticker": "GWEI",
+      "dias": 216,
+      "de": "2026-01-29",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11183752662549476,
+      "volAnual": 213.66529460872937,
+      "maiorAlta": 0.5563314711359406,
+      "maiorQueda": -0.25930629415032935,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.07019510110644438,
+          "n": 214,
+          "sigmas": 1.0268658018161891
+        },
+        {
+          "lag": 2,
+          "r": 0.009816538077681087,
+          "n": 213,
+          "sigmas": 0.14326765658692772
+        },
+        {
+          "lag": 3,
+          "r": 0.06498041679831461,
+          "n": 212,
+          "sigmas": 0.9461291498859602
+        },
+        {
+          "lag": 5,
+          "r": 0.06836424790511704,
+          "n": 210,
+          "sigmas": 0.9906920723629431
+        },
+        {
+          "lag": 7,
+          "r": 0.08077194957629912,
+          "n": 208,
+          "sigmas": 1.164909623266153
+        },
+        {
+          "lag": 10,
+          "r": 0.1443393832962241,
+          "n": 205,
+          "sigmas": 2.066625462418996
+        },
+        {
+          "lag": 14,
+          "r": 0.07200859607412201,
+          "n": 201,
+          "sigmas": 1.020898045654794
+        },
+        {
+          "lag": 21,
+          "r": -0.04357469606153604,
+          "n": 194,
+          "sigmas": 0.6069252858053596
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 10,
+        "r": 0.1443393832962241,
+        "n": 205,
+        "sigmas": 2.066625462418996
+      },
+      "sobe20": 0.2583732057416268,
+      "cai20": 0.18660287081339713,
+      "assimetria": 1.3846153846153846,
+      "janelas7d": 209,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 11.2% ao dia; em sete dias sobe 20% em 25.8% das janelas e cai 20% em 18.7%. Maior dia: +55.6%; pior: −25.9%.",
+      "medidoEm": 1788232383376
+    },
+    "SLXUSDT": {
+      "symbol": "SLXUSDT",
+      "ticker": "SLX",
+      "dias": 93,
+      "de": "2026-06-01",
+      "ate": "2026-09-01",
+      "volDiaria": 0.10264070601259129,
+      "volAnual": 196.09479349866902,
+      "maiorAlta": 0.4087051142546245,
+      "maiorQueda": -0.27586206896551724,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.37961257683332017,
+          "n": 91,
+          "sigmas": 3.6212731839220633
+        },
+        {
+          "lag": 2,
+          "r": 0.28727547721157687,
+          "n": 90,
+          "sigmas": 2.7253344717011396
+        },
+        {
+          "lag": 3,
+          "r": 0.08826741493592809,
+          "n": 89,
+          "sigmas": 0.8327131270809568
+        },
+        {
+          "lag": 5,
+          "r": 0.07793645348252959,
+          "n": 87,
+          "sigmas": 0.7269428436849774
+        },
+        {
+          "lag": 7,
+          "r": -0.05216710291809857,
+          "n": 85,
+          "sigmas": 0.48095692456158323
+        },
+        {
+          "lag": 10,
+          "r": -0.2839635796508112,
+          "n": 82,
+          "sigmas": 2.5713995789422563
+        },
+        {
+          "lag": 14,
+          "r": 0.012135900782426705,
+          "n": 78,
+          "sigmas": 0.10718137360787368
+        },
+        {
+          "lag": 21,
+          "r": -0.31444819067598456,
+          "n": 71,
+          "sigmas": 2.649587550540164
+        }
+      ],
+      "perfil": "continua",
+      "melhorLag": {
+        "lag": 1,
+        "r": 0.37961257683332017,
+        "n": 91,
+        "sigmas": 3.6212731839220633
+      },
+      "sobe20": 0.11627906976744186,
+      "cai20": 0.27906976744186046,
+      "assimetria": 0.4166666666666667,
+      "janelas7d": 86,
+      "veredito": "Continua: o movimento se estende por 1 dia(s) (r = 0.380, 3.6σ em 91 dias). É a minoria destas moedas, e a única em que seguir o movimento tem base. Volatilidade de 10.3% ao dia; em sete dias sobe 20% em 11.6% das janelas e cai 20% em 27.9%. Maior dia: +40.9%; pior: −27.6%.",
+      "medidoEm": 1788232383027
+    },
+    "LABUSDT": {
+      "symbol": "LABUSDT",
+      "ticker": "LAB",
+      "dias": 320,
+      "de": "2025-10-17",
+      "ate": "2026-09-01",
+      "volDiaria": 0.1908676849037589,
+      "volAnual": 364.6521999973402,
+      "maiorAlta": 1.618924731182796,
+      "maiorQueda": -0.782336578581363,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.07300358188565731,
+          "n": 318,
+          "sigmas": 1.3018403526804687
+        },
+        {
+          "lag": 2,
+          "r": 0.10922235422088813,
+          "n": 317,
+          "sigmas": 1.9446487301598592
+        },
+        {
+          "lag": 3,
+          "r": 0.016939352714203736,
+          "n": 316,
+          "sigmas": 0.3011205204546506
+        },
+        {
+          "lag": 5,
+          "r": 0.19949874629264475,
+          "n": 314,
+          "sigmas": 3.5351267910095996
+        },
+        {
+          "lag": 7,
+          "r": 0.01567765684315761,
+          "n": 312,
+          "sigmas": 0.27692263236623277
+        },
+        {
+          "lag": 10,
+          "r": 0.08507442848492207,
+          "n": 309,
+          "sigmas": 1.4954719790250706
+        },
+        {
+          "lag": 14,
+          "r": 0.043278614961340035,
+          "n": 305,
+          "sigmas": 0.755828516567374
+        },
+        {
+          "lag": 21,
+          "r": -0.08609778499123102,
+          "n": 298,
+          "sigmas": 1.486278209810694
+        }
+      ],
+      "perfil": "continua",
+      "melhorLag": {
+        "lag": 5,
+        "r": 0.19949874629264475,
+        "n": 314,
+        "sigmas": 3.5351267910095996
+      },
+      "sobe20": 0.24920127795527156,
+      "cai20": 0.16613418530351437,
+      "assimetria": 1.5,
+      "janelas7d": 313,
+      "veredito": "Continua: o movimento se estende por 5 dia(s) (r = 0.199, 3.5σ em 314 dias). É a minoria destas moedas, e a única em que seguir o movimento tem base. Volatilidade de 19.1% ao dia; em sete dias sobe 20% em 24.9% das janelas e cai 20% em 16.6%. Maior dia: +161.9%; pior: −78.2%.",
+      "medidoEm": 1788232383082
+    },
+    "ACEUSDT": {
+      "symbol": "ACEUSDT",
+      "ticker": "ACE",
+      "dias": 989,
+      "de": "2023-12-18",
+      "ate": "2026-09-01",
+      "volDiaria": 0.0727012965000974,
+      "volAnual": 138.89563193888432,
+      "maiorAlta": 1.0775473399458972,
+      "maiorQueda": -0.39867424242424243,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.11597367934861158,
+          "n": 987,
+          "sigmas": 3.6434936085758496
+        },
+        {
+          "lag": 2,
+          "r": -0.018988539066806948,
+          "n": 986,
+          "sigmas": 0.5962522211859429
+        },
+        {
+          "lag": 3,
+          "r": -0.1017841336232117,
+          "n": 985,
+          "sigmas": 3.194465481041609
+        },
+        {
+          "lag": 5,
+          "r": -0.07021904171631707,
+          "n": 983,
+          "sigmas": 2.201565734795442
+        },
+        {
+          "lag": 7,
+          "r": -0.05320384359422283,
+          "n": 981,
+          "sigmas": 1.6663933037274705
+        },
+        {
+          "lag": 10,
+          "r": 0.015829404500320086,
+          "n": 978,
+          "sigmas": 0.49503283305694906
+        },
+        {
+          "lag": 14,
+          "r": 0.020026295345894077,
+          "n": 974,
+          "sigmas": 0.6250001121149286
+        },
+        {
+          "lag": 21,
+          "r": 0.054881425479307876,
+          "n": 967,
+          "sigmas": 1.7066270313614738
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 1,
+        "r": -0.11597367934861158,
+        "n": 987,
+        "sigmas": 3.6434936085758496
+      },
+      "sobe20": 0.06109979633401222,
+      "cai20": 0.09979633401221996,
+      "assimetria": 0.6122448979591837,
+      "janelas7d": 982,
+      "veredito": "Devolve: o retorno de um dia se inverte 1 dia(s) depois (r = -0.116, 3.6σ em 987 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 7.3% ao dia; em sete dias sobe 20% em 6.1% das janelas e cai 20% em 10.0%. Maior dia: +107.8%; pior: −39.9%.",
+      "medidoEm": 1788232383522
+    },
+    "TAKEUSDT": {
+      "symbol": "TAKEUSDT",
+      "ticker": "TAKE",
+      "dias": 364,
+      "de": "2025-09-03",
+      "ate": "2026-09-01",
+      "volDiaria": 0.11500938468050081,
+      "volAnual": 219.72512091416414,
+      "maiorAlta": 0.7971952535059332,
+      "maiorQueda": -0.692485813888394,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.12201653655080534,
+          "n": 362,
+          "sigmas": 2.3215229353704765
+        },
+        {
+          "lag": 2,
+          "r": -0.0870459656671926,
+          "n": 361,
+          "sigmas": 1.6538733476766594
+        },
+        {
+          "lag": 3,
+          "r": -0.08374109374555663,
+          "n": 360,
+          "sigmas": 1.5888755399378385
+        },
+        {
+          "lag": 5,
+          "r": -0.06741325064760072,
+          "n": 358,
+          "sigmas": 1.2755185603940438
+        },
+        {
+          "lag": 7,
+          "r": 0.008851357438731474,
+          "n": 356,
+          "sigmas": 0.16700707814016316
+        },
+        {
+          "lag": 10,
+          "r": 0.03085365850806251,
+          "n": 353,
+          "sigmas": 0.5796876140614398
+        },
+        {
+          "lag": 14,
+          "r": -0.017319804762531907,
+          "n": 349,
+          "sigmas": 0.323560654773206
+        },
+        {
+          "lag": 21,
+          "r": 0.087022708746999,
+          "n": 342,
+          "sigmas": 1.6093320131288742
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 1,
+        "r": 0.12201653655080534,
+        "n": 362,
+        "sigmas": 2.3215229353704765
+      },
+      "sobe20": 0.1400560224089636,
+      "cai20": 0.15126050420168066,
+      "assimetria": 0.925925925925926,
+      "janelas7d": 357,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 11.5% ao dia; em sete dias sobe 20% em 14.0% das janelas e cai 20% em 15.1%. Maior dia: +79.7%; pior: −69.2%.",
+      "medidoEm": 1788232383412
+    },
+    "BOMEUSDT": {
+      "symbol": "BOMEUSDT",
+      "ticker": "BOME",
+      "dias": 900,
+      "de": "2024-03-16",
+      "ate": "2026-09-01",
+      "volDiaria": 0.06982853728535243,
+      "volAnual": 133.40723316542199,
+      "maiorAlta": 0.34545165899349106,
+      "maiorQueda": -0.42252604166666663,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.031687352719300996,
+          "n": 898,
+          "sigmas": 0.9495637490326483
+        },
+        {
+          "lag": 2,
+          "r": -0.07190556974598157,
+          "n": 897,
+          "sigmas": 2.153568812822872
+        },
+        {
+          "lag": 3,
+          "r": -0.04206404358320915,
+          "n": 896,
+          "sigmas": 1.2591139151255641
+        },
+        {
+          "lag": 5,
+          "r": 0.013426358616888977,
+          "n": 894,
+          "sigmas": 0.40144587742823085
+        },
+        {
+          "lag": 7,
+          "r": -0.025600678568229628,
+          "n": 892,
+          "sigmas": 0.7645993139502547
+        },
+        {
+          "lag": 10,
+          "r": -0.038423133206203115,
+          "n": 889,
+          "sigmas": 1.145628098478851
+        },
+        {
+          "lag": 14,
+          "r": 0.0029721102807824104,
+          "n": 885,
+          "sigmas": 0.08841715883357858
+        },
+        {
+          "lag": 21,
+          "r": -0.05985600504517964,
+          "n": 878,
+          "sigmas": 1.773597162969203
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.07190556974598157,
+        "n": 897,
+        "sigmas": 2.153568812822872
+      },
+      "sobe20": 0.09966405375139978,
+      "cai20": 0.10302351623740201,
+      "assimetria": 0.9673913043478262,
+      "janelas7d": 893,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 7.0% ao dia; em sete dias sobe 20% em 10.0% das janelas e cai 20% em 10.3%. Maior dia: +34.5%; pior: −42.3%.",
+      "medidoEm": 1788232383527
+    },
+    "PROMUSDT": {
+      "symbol": "PROMUSDT",
+      "ticker": "PROM",
+      "dias": 595,
+      "de": "2025-01-15",
+      "ate": "2026-09-01",
+      "volDiaria": 0.06378442232473812,
+      "volAnual": 121.85996774678307,
+      "maiorAlta": 0.4699386503067484,
+      "maiorQueda": -0.3493424814179532,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.08704006023454108,
+          "n": 593,
+          "sigmas": 2.1195639756280293
+        },
+        {
+          "lag": 2,
+          "r": 0.025076661386034222,
+          "n": 592,
+          "sigmas": 0.6101415050557807
+        },
+        {
+          "lag": 3,
+          "r": 0.11816462655204038,
+          "n": 591,
+          "sigmas": 2.8726401567541053
+        },
+        {
+          "lag": 5,
+          "r": 0.1281060564908357,
+          "n": 589,
+          "sigmas": 3.109047160622358
+        },
+        {
+          "lag": 7,
+          "r": -0.022942623812414065,
+          "n": 587,
+          "sigmas": 0.5558557911928201
+        },
+        {
+          "lag": 10,
+          "r": -0.07702381239052272,
+          "n": 584,
+          "sigmas": 1.8613645323524186
+        },
+        {
+          "lag": 14,
+          "r": 0.040991771138417725,
+          "n": 580,
+          "sigmas": 0.9872125782309308
+        },
+        {
+          "lag": 21,
+          "r": -0.0346555702765069,
+          "n": 573,
+          "sigmas": 0.8295648858478869
+        }
+      ],
+      "perfil": "continua",
+      "melhorLag": {
+        "lag": 5,
+        "r": 0.1281060564908357,
+        "n": 589,
+        "sigmas": 3.109047160622358
+      },
+      "sobe20": 0.10034013605442177,
+      "cai20": 0.05952380952380952,
+      "assimetria": 1.6857142857142857,
+      "janelas7d": 588,
+      "veredito": "Continua: o movimento se estende por 5 dia(s) (r = 0.128, 3.1σ em 589 dias). É a minoria destas moedas, e a única em que seguir o movimento tem base. Volatilidade de 6.4% ao dia; em sete dias sobe 20% em 10.0% das janelas e cai 20% em 6.0%. Maior dia: +47.0%; pior: −34.9%.",
+      "medidoEm": 1788232383402
+    },
+    "SIRENUSDT": {
+      "symbol": "SIRENUSDT",
+      "ticker": "SIREN",
+      "dias": 529,
+      "de": "2025-03-22",
+      "ate": "2026-09-01",
+      "volDiaria": 0.1871614525324437,
+      "volAnual": 357.57145299408023,
+      "maiorAlta": 2.6860668906090264,
+      "maiorQueda": -0.7474662162162162,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.036276305477638424,
+          "n": 527,
+          "sigmas": 0.8327763017217512
+        },
+        {
+          "lag": 2,
+          "r": -0.009208535476233161,
+          "n": 526,
+          "sigmas": 0.21119490541811253
+        },
+        {
+          "lag": 3,
+          "r": 0.06851197057378582,
+          "n": 525,
+          "sigmas": 1.5698064558248028
+        },
+        {
+          "lag": 5,
+          "r": 0.04887947927296199,
+          "n": 523,
+          "sigmas": 1.1178342575533577
+        },
+        {
+          "lag": 7,
+          "r": 0.056489884328520305,
+          "n": 521,
+          "sigmas": 1.2894055852931783
+        },
+        {
+          "lag": 10,
+          "r": 0.00906458278647737,
+          "n": 518,
+          "sigmas": 0.2063063994308542
+        },
+        {
+          "lag": 14,
+          "r": -0.029137784523241235,
+          "n": 514,
+          "sigmas": 0.6605992660292153
+        },
+        {
+          "lag": 21,
+          "r": 0.03190414594752845,
+          "n": 507,
+          "sigmas": 0.7183748227917557
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 3,
+        "r": 0.06851197057378582,
+        "n": 525,
+        "sigmas": 1.5698064558248028
+      },
+      "sobe20": 0.20881226053639848,
+      "cai20": 0.1111111111111111,
+      "assimetria": 1.8793103448275865,
+      "janelas7d": 522,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 18.7% ao dia; em sete dias sobe 20% em 20.9% das janelas e cai 20% em 11.1%. Maior dia: +268.6%; pior: −74.7%.",
+      "medidoEm": 1788232383414
+    },
+    "TUTUSDT": {
+      "symbol": "TUTUSDT",
+      "ticker": "TUT",
+      "dias": 531,
+      "de": "2025-03-20",
+      "ate": "2026-09-01",
+      "volDiaria": 0.1202319249150006,
+      "volAnual": 229.702770022473,
+      "maiorAlta": 1.9468969929622517,
+      "maiorQueda": -0.5778158947970269,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.1042800969613084,
+          "n": 529,
+          "sigmas": 2.398442230110093
+        },
+        {
+          "lag": 2,
+          "r": -0.11629847891243485,
+          "n": 528,
+          "sigmas": 2.672335591238255
+        },
+        {
+          "lag": 3,
+          "r": -0.03872754741639074,
+          "n": 527,
+          "sigmas": 0.8890481896525037
+        },
+        {
+          "lag": 5,
+          "r": -0.10932060656523152,
+          "n": 525,
+          "sigmas": 2.504849773018299
+        },
+        {
+          "lag": 7,
+          "r": -0.029021670839136798,
+          "n": 523,
+          "sigmas": 0.6637021989178514
+        },
+        {
+          "lag": 10,
+          "r": -0.02737138291548724,
+          "n": 520,
+          "sigmas": 0.624163563024339
+        },
+        {
+          "lag": 14,
+          "r": 0.05779778028651775,
+          "n": 516,
+          "sigmas": 1.3129131873513447
+        },
+        {
+          "lag": 21,
+          "r": -0.0872779096445439,
+          "n": 509,
+          "sigmas": 1.9690793934140582
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.11629847891243485,
+        "n": 528,
+        "sigmas": 2.672335591238255
+      },
+      "sobe20": 0.12404580152671756,
+      "cai20": 0.07251908396946564,
+      "assimetria": 1.7105263157894737,
+      "janelas7d": 524,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 12.0% ao dia; em sete dias sobe 20% em 12.4% das janelas e cai 20% em 7.3%. Maior dia: +194.7%; pior: −57.8%.",
+      "medidoEm": 1788232383424
+    },
+    "BANKUSDT": {
+      "symbol": "BANKUSDT",
+      "ticker": "BANK",
+      "dias": 502,
+      "de": "2025-04-18",
+      "ate": "2026-09-01",
+      "volDiaria": 0.1067988515810454,
+      "volAnual": 204.03891945278505,
+      "maiorAlta": 1.0326673866090714,
+      "maiorQueda": -0.6456203531598512,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.139239556674599,
+          "n": 500,
+          "sigmas": 3.1134911388133797
+        },
+        {
+          "lag": 2,
+          "r": 0.07129828498833271,
+          "n": 499,
+          "sigmas": 1.5926830430743202
+        },
+        {
+          "lag": 3,
+          "r": 0.08059977218469612,
+          "n": 498,
+          "sigmas": 1.7986575526097255
+        },
+        {
+          "lag": 5,
+          "r": -0.005744873379181099,
+          "n": 496,
+          "sigmas": 0.12794440507830163
+        },
+        {
+          "lag": 7,
+          "r": 0.03170806769087036,
+          "n": 494,
+          "sigmas": 0.7047470248282539
+        },
+        {
+          "lag": 10,
+          "r": -0.14009263038986702,
+          "n": 491,
+          "sigmas": 3.104245325190968
+        },
+        {
+          "lag": 14,
+          "r": -0.10062331096063261,
+          "n": 487,
+          "sigmas": 2.220562923028132
+        },
+        {
+          "lag": 21,
+          "r": -0.001987929002548514,
+          "n": 480,
+          "sigmas": 0.04355334229658264
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 10,
+        "r": -0.14009263038986702,
+        "n": 491,
+        "sigmas": 3.104245325190968
+      },
+      "sobe20": 0.14545454545454545,
+      "cai20": 0.10707070707070707,
+      "assimetria": 1.3584905660377358,
+      "janelas7d": 495,
+      "veredito": "Devolve: o retorno de um dia se inverte 10 dia(s) depois (r = -0.140, 3.1σ em 491 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 10.7% ao dia; em sete dias sobe 20% em 14.5% das janelas e cai 20% em 10.7%. Maior dia: +103.3%; pior: −64.6%.",
+      "medidoEm": 1788232383122
+    },
+    "BLESSUSDT": {
+      "symbol": "BLESSUSDT",
+      "ticker": "BLESS",
+      "dias": 344,
+      "de": "2025-09-23",
+      "ate": "2026-09-01",
+      "volDiaria": 0.18799925827735325,
+      "volAnual": 359.1720786222777,
+      "maiorAlta": 5.316602316602317,
+      "maiorQueda": -0.5089648340762754,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.10265874853258443,
+          "n": 342,
+          "sigmas": 1.898493080944603
+        },
+        {
+          "lag": 2,
+          "r": -0.16658519983843806,
+          "n": 341,
+          "sigmas": 3.0761931705563303
+        },
+        {
+          "lag": 3,
+          "r": 0.09702516072374909,
+          "n": 340,
+          "sigmas": 1.789055565537185
+        },
+        {
+          "lag": 5,
+          "r": -0.06895443977669366,
+          "n": 338,
+          "sigmas": 1.2677119509345067
+        },
+        {
+          "lag": 7,
+          "r": -0.05687166394305818,
+          "n": 336,
+          "sigmas": 1.0424748196686193
+        },
+        {
+          "lag": 10,
+          "r": 0.05276282608904328,
+          "n": 333,
+          "sigmas": 0.9628312245812214
+        },
+        {
+          "lag": 14,
+          "r": -0.044028972932914676,
+          "n": 329,
+          "sigmas": 0.7986132358823591
+        },
+        {
+          "lag": 21,
+          "r": -0.059445364769790066,
+          "n": 322,
+          "sigmas": 1.0667089333185105
+        }
+      ],
+      "perfil": "devolve",
+      "melhorLag": {
+        "lag": 2,
+        "r": -0.16658519983843806,
+        "n": 341,
+        "sigmas": 3.0761931705563303
+      },
+      "sobe20": 0.142433234421365,
+      "cai20": 0.19287833827893175,
+      "assimetria": 0.7384615384615385,
+      "janelas7d": 337,
+      "veredito": "Devolve: o retorno de um dia se inverte 2 dia(s) depois (r = -0.167, 3.1σ em 341 dias). Comprar força e vender fraqueza é operar contra ela. Volatilidade de 18.8% ao dia; em sete dias sobe 20% em 14.2% das janelas e cai 20% em 19.3%. Maior dia: +531.7%; pior: −50.9%.",
+      "medidoEm": 1788232383382
+    },
+    "BSBUSDT": {
+      "symbol": "BSBUSDT",
+      "ticker": "BSB",
+      "dias": 161,
+      "de": "2026-03-25",
+      "ate": "2026-09-01",
+      "volDiaria": 0.13742572944469097,
+      "volAnual": 262.5514874532798,
+      "maiorAlta": 0.5999252648700928,
+      "maiorQueda": -0.4528527237330848,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.0718956065986779,
+          "n": 159,
+          "sigmas": 0.9065691046260651
+        },
+        {
+          "lag": 2,
+          "r": 0.08967644750605515,
+          "n": 158,
+          "sigmas": 1.1272154663126255
+        },
+        {
+          "lag": 3,
+          "r": -0.02847810873608378,
+          "n": 157,
+          "sigmas": 0.356829679704367
+        },
+        {
+          "lag": 5,
+          "r": 0.09839649312333792,
+          "n": 155,
+          "sigmas": 1.2250264601797458
+        },
+        {
+          "lag": 7,
+          "r": 0.0875659859850008,
+          "n": 153,
+          "sigmas": 1.083131428282542
+        },
+        {
+          "lag": 10,
+          "r": -0.0004858105826795553,
+          "n": 150,
+          "sigmas": 0.005949940196045449
+        },
+        {
+          "lag": 14,
+          "r": -0.0667710421879983,
+          "n": 146,
+          "sigmas": 0.8067975724624061
+        },
+        {
+          "lag": 21,
+          "r": -0.0693319472872583,
+          "n": 139,
+          "sigmas": 0.8174116032546882
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 5,
+        "r": 0.09839649312333792,
+        "n": 155,
+        "sigmas": 1.2250264601797458
+      },
+      "sobe20": 0.22727272727272727,
+      "cai20": 0.3051948051948052,
+      "assimetria": 0.7446808510638298,
+      "janelas7d": 154,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 13.7% ao dia; em sete dias sobe 20% em 22.7% das janelas e cai 20% em 30.5%. Maior dia: +60.0%; pior: −45.3%.",
+      "medidoEm": 1788232383202
+    },
+    "HOMEUSDT": {
+      "symbol": "HOMEUSDT",
+      "ticker": "HOME",
+      "dias": 449,
+      "de": "2025-06-10",
+      "ate": "2026-09-01",
+      "volDiaria": 0.0706485940943875,
+      "volAnual": 134.97394949924362,
+      "maiorAlta": 0.39489459486462186,
+      "maiorQueda": -0.45257903494176377,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.014137109696422656,
+          "n": 447,
+          "sigmas": 0.2988920677170997
+        },
+        {
+          "lag": 2,
+          "r": 0.021380463704365756,
+          "n": 446,
+          "sigmas": 0.4515278571509302
+        },
+        {
+          "lag": 3,
+          "r": -0.06946601314969678,
+          "n": 445,
+          "sigmas": 1.4653871527335913
+        },
+        {
+          "lag": 5,
+          "r": 0.08975013429653836,
+          "n": 443,
+          "sigmas": 1.8890218015066091
+        },
+        {
+          "lag": 7,
+          "r": 0.0016261265731373619,
+          "n": 441,
+          "sigmas": 0.0341486580358846
+        },
+        {
+          "lag": 10,
+          "r": -0.015259330974643524,
+          "n": 438,
+          "sigmas": 0.31935413826291226
+        },
+        {
+          "lag": 14,
+          "r": -0.027805114181377072,
+          "n": 434,
+          "sigmas": 0.5792546750726374
+        },
+        {
+          "lag": 21,
+          "r": -0.033097683246076905,
+          "n": 427,
+          "sigmas": 0.6839298090316083
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 5,
+        "r": 0.08975013429653836,
+        "n": 443,
+        "sigmas": 1.8890218015066091
+      },
+      "sobe20": 0.10407239819004525,
+      "cai20": 0.09954751131221719,
+      "assimetria": 1.0454545454545456,
+      "janelas7d": 442,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 7.1% ao dia; em sete dias sobe 20% em 10.4% das janelas e cai 20% em 10.0%. Maior dia: +39.5%; pior: −45.3%.",
+      "medidoEm": 1788232383315
+    },
+    "PORTALUSDT": {
+      "symbol": "PORTALUSDT",
+      "ticker": "PORTAL",
+      "dias": 916,
+      "de": "2024-02-29",
+      "ate": "2026-09-01",
+      "volDiaria": 0.079110863752028,
+      "volAnual": 151.14109297974053,
+      "maiorAlta": 1.6038492381716116,
+      "maiorQueda": -0.39634146341463417,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.04533944589931723,
+          "n": 914,
+          "sigmas": 1.3707217565843923
+        },
+        {
+          "lag": 2,
+          "r": -0.01454649756191113,
+          "n": 913,
+          "sigmas": 0.43953536817184663
+        },
+        {
+          "lag": 3,
+          "r": -0.088374946738179,
+          "n": 912,
+          "sigmas": 2.668864864396489
+        },
+        {
+          "lag": 5,
+          "r": -0.07674694985465488,
+          "n": 910,
+          "sigmas": 2.31516431898765
+        },
+        {
+          "lag": 7,
+          "r": -0.019831237541678298,
+          "n": 908,
+          "sigmas": 0.5975754413046936
+        },
+        {
+          "lag": 10,
+          "r": 0.06065656193123389,
+          "n": 905,
+          "sigmas": 1.8247445704296368
+        },
+        {
+          "lag": 14,
+          "r": -0.005887885562302647,
+          "n": 901,
+          "sigmas": 0.17673467105152157
+        },
+        {
+          "lag": 21,
+          "r": -0.010438648149764512,
+          "n": 894,
+          "sigmas": 0.31211383407974147
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 3,
+        "r": -0.088374946738179,
+        "n": 912,
+        "sigmas": 2.668864864396489
+      },
+      "sobe20": 0.0847084708470847,
+      "cai20": 0.11661166116611661,
+      "assimetria": 0.7264150943396226,
+      "janelas7d": 909,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 7.9% ao dia; em sete dias sobe 20% em 8.5% das janelas e cai 20% em 11.7%. Maior dia: +160.4%; pior: −39.6%.",
+      "medidoEm": 1788232383583
+    },
+    "BTRUSDT": {
+      "symbol": "BTRUSDT",
+      "ticker": "BTR",
+      "dias": 371,
+      "de": "2025-08-27",
+      "ate": "2026-09-01",
+      "volDiaria": 0.1449599081301976,
+      "volAnual": 276.94551562116135,
+      "maiorAlta": 2.9243845252051583,
+      "maiorQueda": -0.7829102948131799,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": 0.030125168796021767,
+          "n": 369,
+          "sigmas": 0.5786855954236881
+        },
+        {
+          "lag": 2,
+          "r": -0.04900190566308399,
+          "n": 368,
+          "sigmas": 0.940019535525657
+        },
+        {
+          "lag": 3,
+          "r": 0.07752478463838305,
+          "n": 367,
+          "sigmas": 1.485161220068231
+        },
+        {
+          "lag": 5,
+          "r": -0.08621047286783122,
+          "n": 365,
+          "sigmas": 1.6470487715045652
+        },
+        {
+          "lag": 7,
+          "r": 0.04414417632425283,
+          "n": 363,
+          "sigmas": 0.8410595187707354
+        },
+        {
+          "lag": 10,
+          "r": -0.006589433658071345,
+          "n": 360,
+          "sigmas": 0.12502571310048372
+        },
+        {
+          "lag": 14,
+          "r": 0.010074101984119845,
+          "n": 356,
+          "sigmas": 0.19007777608120122
+        },
+        {
+          "lag": 21,
+          "r": 0.023906604224968105,
+          "n": 349,
+          "sigmas": 0.44661222354932556
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 5,
+        "r": -0.08621047286783122,
+        "n": 365,
+        "sigmas": 1.6470487715045652
+      },
+      "sobe20": 0.18681318681318682,
+      "cai20": 0.14560439560439561,
+      "assimetria": 1.2830188679245282,
+      "janelas7d": 364,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 14.5% ao dia; em sete dias sobe 20% em 18.7% das janelas e cai 20% em 14.6%. Maior dia: +292.4%; pior: −78.3%.",
+      "medidoEm": 1788232383447
+    },
+    "龙虾USDT": {
+      "symbol": "龙虾USDT",
+      "ticker": "龙虾",
+      "dias": 175,
+      "de": "2026-03-11",
+      "ate": "2026-09-01",
+      "volDiaria": 0.13588678313231384,
+      "volAnual": 259.6113346517771,
+      "maiorAlta": 0.8511943766009411,
+      "maiorQueda": -0.4314421449243707,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.18710103673397724,
+          "n": 173,
+          "sigmas": 2.4609299146498937
+        },
+        {
+          "lag": 2,
+          "r": -0.10825939090817786,
+          "n": 172,
+          "sigmas": 1.4198086011175104
+        },
+        {
+          "lag": 3,
+          "r": 0.07586487342913192,
+          "n": 171,
+          "sigmas": 0.9920619499262702
+        },
+        {
+          "lag": 5,
+          "r": 0.02090095105116396,
+          "n": 169,
+          "sigmas": 0.27171236366513146
+        },
+        {
+          "lag": 7,
+          "r": 0.06487986595001842,
+          "n": 167,
+          "sigmas": 0.838432644850273
+        },
+        {
+          "lag": 10,
+          "r": 0.05767297468376083,
+          "n": 164,
+          "sigmas": 0.73857444408488
+        },
+        {
+          "lag": 14,
+          "r": -0.14666097928226282,
+          "n": 160,
+          "sigmas": 1.855130953610869
+        },
+        {
+          "lag": 21,
+          "r": -0.19391486542983277,
+          "n": 153,
+          "sigmas": 2.3985944176339054
+        }
+      ],
+      "perfil": "sem memória",
+      "melhorLag": {
+        "lag": 21,
+        "r": -0.19391486542983277,
+        "n": 153,
+        "sigmas": 2.3985944176339054
+      },
+      "sobe20": 0.20833333333333334,
+      "cai20": 0.125,
+      "assimetria": 1.6666666666666667,
+      "janelas7d": 168,
+      "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 13.6% ao dia; em sete dias sobe 20% em 20.8% das janelas e cai 20% em 12.5%. Maior dia: +85.1%; pior: −43.1%.",
+      "medidoEm": 1788232383272
+    }
+  }
+}

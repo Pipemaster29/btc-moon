@@ -4,6 +4,7 @@ import CyclePanel from "@/components/CyclePanel";
 import PositioningPanel from "@/components/PositioningPanel";
 import { lerCiclo } from "@/lib/setup";
 import { lerVida } from "@/lib/lifecycle";
+import { lerEstudo, type Estudo } from "@/lib/estudo";
 import { getRadar, type AlertLevel, type RadarSnapshot } from "@/lib/radar";
 import { getPositioning, type PositioningSnapshotView } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
@@ -274,6 +275,111 @@ function Transfers({ snapshot }: { snapshot: RadarSnapshot }) {
   );
 }
 
+const PERFIL_TOM: Record<Estudo["perfil"], string> = {
+  devolve: "text-[#C42B3E] dark:text-[#F6465D]",
+  continua: "text-[#0a7d43] dark:text-[#0ECB81]",
+  "sem memória": "text-black/45 dark:text-white/45",
+};
+
+/**
+ * O que esta moeda faz, medido nela e não no grupo.
+ *
+ * Todo o resto do painel usa régua de conjunto — os estágios saíram de 12 mil
+ * observações de 64 moedas juntas. Esta seção mede a moeda sozinha, e a barra de
+ * significância é corrigida pelas oito defasagens testadas: sem isso, uma em
+ * cada vinte passaria por acaso, e são oito por moeda vezes setenta moedas.
+ */
+function EstudoPanel({ estudo }: { estudo: Estudo }) {
+  const maior = Math.max(...estudo.memoria.map((m) => Math.abs(m.r)), 0.05);
+
+  return (
+    <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-semibold text-lg">Estudo da moeda</h2>
+        <span className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+          {estudo.dias} dias · {estudo.de} a {estudo.ate}
+        </span>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-4 mt-3 text-sm">
+        <div>
+          <p className="text-black/50 dark:text-white/50">Memória</p>
+          <p className={`text-lg font-semibold ${PERFIL_TOM[estudo.perfil]}`}>{estudo.perfil}</p>
+        </div>
+        <div>
+          <p className="text-black/50 dark:text-white/50">Volatilidade diária</p>
+          <p className="text-lg font-semibold tabular-nums">
+            {(estudo.volDiaria * 100).toFixed(1)}%
+          </p>
+        </div>
+        <div>
+          <p className="text-black/50 dark:text-white/50" title="Janelas de 7 dias que subiram mais de 20%, sobre as que caíram mais de 20%">
+            Assimetria da cauda
+          </p>
+          <p className="text-lg font-semibold tabular-nums">
+            {Number.isFinite(estudo.assimetria) ? estudo.assimetria.toFixed(2) : "∞"}
+          </p>
+          <p className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+            +20% em {(estudo.sobe20 * 100).toFixed(1)}% · −20% em {(estudo.cai20 * 100).toFixed(1)}%
+          </p>
+        </div>
+        <div>
+          <p className="text-black/50 dark:text-white/50">Extremos de um dia</p>
+          <p className="text-lg font-semibold tabular-nums">
+            <span className="text-[#0a7d43] dark:text-[#0ECB81]">
+              +{(estudo.maiorAlta * 100).toFixed(0)}%
+            </span>{" "}
+            <span className="text-[#C42B3E] dark:text-[#F6465D]">
+              {(estudo.maiorQueda * 100).toFixed(0)}%
+            </span>
+          </p>
+        </div>
+      </div>
+
+      {/* Autocorrelação por defasagem. A linha pontilhada é o corte já corrigido
+          pelas oito tentativas — barra que não a cruza é ruído. */}
+      <div className="mt-4">
+        <p className="text-[10px] tracking-widest text-black/40 dark:text-white/40 uppercase">
+          O retorno de hoje prevê o de daqui a N dias?
+        </p>
+        <div className="mt-2 flex items-end gap-1.5">
+          {estudo.memoria.map((m) => {
+            const passa = m.sigmas >= 2.73;
+            const alturaPct = (Math.abs(m.r) / maior) * 100;
+            return (
+              <div key={m.lag} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full h-16 flex flex-col justify-end">
+                  <div
+                    className={`w-full rounded-t-[3px] ${
+                      !passa
+                        ? "bg-black/15 dark:bg-white/15"
+                        : m.r < 0
+                          ? "bg-[#C42B3E] dark:bg-[#F6465D]"
+                          : "bg-[#0a7d43] dark:bg-[#0ECB81]"
+                    }`}
+                    style={{ height: `${Math.max(alturaPct, 3)}%` }}
+                    title={`${m.lag} dia(s): r = ${m.r.toFixed(3)} · ${m.sigmas.toFixed(1)}σ em ${m.n} dias`}
+                  />
+                </div>
+                <span className="text-[10px] text-black/40 dark:text-white/40 tabular-nums">
+                  {m.lag}d
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <p className="text-xs text-black/55 dark:text-white/55 mt-3">{estudo.veredito}</p>
+      <p className="text-xs text-black/40 dark:text-white/40 mt-2">
+        Barra colorida é defasagem que passou de 2,73σ — o corte de 5% já dividido pelas
+        oito testadas. Cinza é ruído. Vermelho significa que o movimento se INVERTE depois
+        desse prazo; verde, que ele continua.
+      </p>
+    </section>
+  );
+}
+
 export default async function Page({
   params,
 }: {
@@ -293,7 +399,10 @@ export default async function Page({
     getPositioning(token.symbol),
   ]);
 
-  const vida = await lerVida(token, snapshot?.priceUsd ?? perp?.price ?? 0).catch(() => null);
+  const [vida, estudo] = await Promise.all([
+    lerVida(token, snapshot?.priceUsd ?? perp?.price ?? 0).catch(() => null),
+    lerEstudo(token.symbol),
+  ]);
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50 font-sans dark:bg-black">
@@ -327,6 +436,8 @@ export default async function Page({
         </header>
 
         <CyclePanel leitura={lerCiclo(snapshot, perp?.live ?? null)} />
+
+        {estudo && <EstudoPanel estudo={estudo} />}
 
         {vida?.tecnica && (
           <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
