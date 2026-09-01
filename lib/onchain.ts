@@ -146,8 +146,21 @@ export const CHAINS: Record<Chain, ChainConfig> = {
       "https://base.drpc.org",
       "https://base-rpc.publicnode.com",
     ],
-    archiveLog: ["https://mainnet.base.org"],
-    archiveState: [],
+    archiveLog: [
+      "https://mainnet.base.org",
+      // O mesmo nó por outro nome, publicado pela Base para acesso programático.
+      // Serve de segundo lugar no rodízio sem trazer outro operador.
+      "https://developer-access-mainnet.base.org",
+    ],
+    // Estava vazio, e isso bloqueava a varredura de gênese na Base inteira —
+    // a busca binária por bloco de nascimento pergunta "havia código aqui?" em
+    // blocos antigos. Medido: os dois oficiais e o drpc respondem `eth_call` a
+    // três milhões de blocos de profundidade; só o publicnode recusa.
+    archiveState: [
+      "https://mainnet.base.org",
+      "https://developer-access-mainnet.base.org",
+      "https://base.drpc.org",
+    ],
     maxLogSpan: 10_000,
     prunedDepth: 100_000,
     secondsPerBlock: 2,

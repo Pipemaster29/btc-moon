@@ -1033,13 +1033,31 @@ export const WATCHLIST: WatchedToken[] = [
     note: "Estava na BSC, num contrato com 32,9 milhões de tokens contra 200 milhões circulando — 3% da moeda. A concentração que aparecia ali era a carteira quente da Binance guardando 23,6% DAQUELE contrato, que é 3,9% da moeda. O contrato principal, com 1 bilhão, vive na Ethereum.",
   },
   {
-    // sem contrato principal na rede EVM — só fragmento de ponte
+    // Chainbase (C), na Base — e a entrada anterior media a moeda errada.
+    //
+    // Estava como "só perpétuo" porque o contrato da BSC guarda 14% do
+    // circulante, o que é ponte. Essa conclusão estava certa; o erro foi parar
+    // de procurar ali. O contrato da BASE guarda O BILHÃO INTEIRO, que é o
+    // supply total anunciado, e o preço dele bate com o perpétuo em 2,1%.
+    //
+    // A pool da Base não serve de nada — US$ 2,5 mil de liquidez e US$ 56 de
+    // volume por dia — e é por isso que a busca por pool nunca chegou nela.
+    // Quem identifica aqui é o SUPPLY somado à CUSTÓDIA, como na HEI: as
+    // carteiras de corretora seguram 114,6 milhões na Base contra 47 na BSC.
+    //
+    // O DEX que negocia de verdade é o da BNB Chain, com US$ 718 mil de pool
+    // girando US$ 174 mil por dia — em cima do fragmento de 58,6 milhões. Ou
+    // seja: o preço à vista se forma sobre 5,9% da moeda.
     symbol: "CUSDT",
-    chain: "bsc",
-    contract: "",
+    chain: "base",
+    contract: "0xBA12BC7B210E61e5D3110B997A63eA216E0e18F7",
     firstBlock: 0,
     wallets: [],
-    note: "Só o perpétuo: o contrato que existe na BSC guarda 14% do circulante. É ponte, e ler nele inflava todo número de % do supply. Nenhum outro candidato EVM passa nos três testes.",
+    note:
+      "O contrato da Base guarda o bilhão inteiro do supply; o da BNB Chain guarda 58,6 milhões e " +
+      "é ponte — era ele que estava na lista, e por isso a moeda entrava como só perpétuo. A pool " +
+      "da Base é decorativa (US$ 2,5 mil, US$ 56 por dia), então quem identifica o contrato é o " +
+      "supply mais a custódia das corretoras, não o preço de pool.",
   },
   {
     // sem par EVM — o contrato antigo era fragmento de ponte
