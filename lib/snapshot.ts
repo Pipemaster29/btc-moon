@@ -24,6 +24,8 @@
 
 import { readFile } from "node:fs/promises";
 import { getOverview, getPanorama, type PanoramaRow } from "./overview";
+import { lerVies, type Vida } from "./lifecycle";
+import { lerEstudo } from "./estudo";
 
 const RAW =
   "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main/data/panorama.json";
@@ -130,6 +132,84 @@ const ORCAMENTO_VIVO_MS = 7_000;
  * esperar a próxima execução do workflow — ela entra sem estágio e sem leitura,
  * que é o honesto: esses dois ainda não foram calculados para ela.
  */
+/**
+ * O estágio guardado, corrigido quando o preço vivo desmente o pico.
+ *
+ * `vida.estagio` custa seis meses de histórico e não cabe na camada viva. Mas
+ * há um caso em que o guardado é DEMONSTRAVELMENTE falso e o conserto é
+ * aritmética: quando o preço de agora passou da máxima que o retrato registrou,
+ * a moeda não pode estar "em queda longa" — ela está na máxima.
+ *
+ * Foi o que a AKE mostrou em 02/09: retrato das 12:45 com pico de 0,0163 em
+ * 14/08 e estágio "em queda longa", e o preço às 19:28 em 0,0188. O painel
+ * mostrava o preço novo embaixo do veredito velho.
+ *
+ * Só o que o preço prova é corrigido. Fundo, amplitude e dias de série ficam
+ * como estavam, porque para esses o preço de agora não é evidência.
+ */
+function corrigirPico(vida: Vida | null, preco: number): Vida | null {
+  if (!vida || preco <= 0 || preco <= vida.pico) return vida;
+  // `Vida` não guarda o fundo, guarda a alta desde ele — que dá na mesma de
+  // trás para frente, e evita inventar um campo só para este conserto.
+  const fundo = vida.preco > 0 ? vida.preco / (1 + vida.altaDesdeFundo) : 0;
+  return {
+    ...vida,
+    preco,
+    pico: preco,
+    picoEm: new Date().toISOString().slice(0, 10),
+    diasDesdePico: 0,
+    queda: 0,
+    altaDesdeFundo: fundo > 0 ? preco / fundo - 1 : vida.altaDesdeFundo,
+    amplitude: fundo > 0 ? preco / fundo : vida.amplitude,
+    estagio: "no topo",
+  };
+}
+
+/**
+ * A leitura refeita com os sinais de agora — de graça, porque `lerVies` é pura.
+ *
+ * O refresco atualizava preço, open interest e posicionamento e mantinha a
+ * LEITURA do retrato, que é o veredito que a página exibe em cima deles. O
+ * resultado é a pior combinação possível: número novo embaixo de conclusão
+ * velha, sem nada na tela dizendo que as duas têm idades diferentes.
+ *
+ * E não havia motivo. O que é caro é `vida` — seis meses de histórico. Os
+ * sinais de que `lerVies` precisa (perna atual, saída de baleia, open interest,
+ * variação de 24 horas) são exatamente o que a camada viva acabou de ler.
+ */
+async function relerVies(
+  vida: Vida,
+  viva: Awaited<ReturnType<typeof getOverview>>[number],
+  antiga: PanoramaRow,
+): Promise<PanoramaRow["leitura"]> {
+  try {
+    const estudo = await lerEstudo(viva.symbol);
+    return lerVies(vida, {
+      moveKind: viva.moveKind,
+      moveChange: viva.moveChange,
+      whaleExiting: viva.whaleExiting,
+      perpDominance: viva.perpDominance,
+      accountRatio: viva.accountRatio,
+      whaleRatio: viva.whaleRatio,
+      oiChange72h: viva.oiChange72h,
+      openInterestUsd: viva.openInterestUsd,
+      motores: antiga.motor?.motores ?? 0,
+      motoresMedidos: antiga.motor?.medidos ?? 0,
+      concentracao: antiga.motor?.concentracao ?? null,
+      perfil: estudo?.perfil ?? null,
+      perfilR: estudo?.melhorLag?.r ?? null,
+      perfilLag: estudo?.melhorLag?.lag ?? null,
+      perfilSigmas: estudo?.melhorLag?.sigmas ?? null,
+      emissao: antiga.motor?.emissao ?? null,
+      alta24h: viva.change24h,
+    });
+  } catch {
+    // Leitura velha é melhor do que leitura nenhuma, e o carimbo de idade que
+    // já sobe para a tela continua contando a verdade sobre ela.
+    return antiga.leitura;
+  }
+}
+
 async function refrescar(base: Snapshot): Promise<Snapshot> {
   // O `catch` fica NA promessa, não na corrida: se o orçamento vencer primeiro
   // e o `getOverview` falhar depois, a corrida já terminou e a rejeição viraria
@@ -145,17 +225,26 @@ async function refrescar(base: Snapshot): Promise<Snapshot> {
   const guardadas = new Map(base.moedas.map((m) => [m.symbol, m]));
   const novas: string[] = [];
 
-  const moedas: PanoramaRow[] = vivas.map((viva) => {
-    const antiga = guardadas.get(viva.symbol);
-    if (!antiga) {
-      novas.push(viva.ticker);
-      return { ...viva, vida: null, leitura: null, motor: null };
-    }
-    // A linha viva manda em tudo que ela mede; o que ela não mede vem do
-    // retrato. Espalhar nesta ordem é o que garante que nenhum campo velho
-    // sobreviva por cima de um novo.
-    return { ...antiga, ...viva, vida: antiga.vida, leitura: antiga.leitura, motor: antiga.motor };
-  });
+  const moedas: PanoramaRow[] = await Promise.all(
+    vivas.map(async (viva) => {
+      const antiga = guardadas.get(viva.symbol);
+      if (!antiga) {
+        novas.push(viva.ticker);
+        return { ...viva, vida: null, leitura: null, motor: null };
+      }
+      // A linha viva manda em tudo que ela mede; o que ela não mede vem do
+      // retrato. Espalhar nesta ordem é o que garante que nenhum campo velho
+      // sobreviva por cima de um novo.
+      const vida = corrigirPico(antiga.vida, viva.price);
+      return {
+        ...antiga,
+        ...viva,
+        vida,
+        leitura: vida ? await relerVies(vida, viva, antiga) : antiga.leitura,
+        motor: antiga.motor,
+      };
+    }),
+  );
 
   // Moeda que existe no retrato e não voltou na passada viva CONTINUA na tela,
   // com os números do retrato. Descartá-la faria uma requisição perdida apagar
