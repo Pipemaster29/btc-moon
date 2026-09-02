@@ -396,6 +396,7 @@ const VEREDITO_TOM: Record<Veredito, string> = {
   travado: "text-[#A97400] dark:text-[#F0B90B]",
   livre: "text-[#0a7d43] dark:text-[#0ECB81]",
   parcial: "text-black/50 dark:text-white/50",
+  contínua: "text-black/50 dark:text-white/50",
   "sem histórico": "text-black/50 dark:text-white/50",
 };
 
@@ -423,6 +424,11 @@ function VestingPanel({ v, preco }: { v: Vesting; preco: number }) {
   const porMes = (v.ritmo / 100) * v.supply;
   const dolarPorMes = porMes * preco;
 
+  // Token de ponte e leitura sem histórico têm cofre no papel e nada por trás.
+  // Mostrar "0,0% travado · 3,23 pp/mês" ali seria inventar precisão: o que
+  // sobra de real nos dois casos é o saldo em corretora.
+  const aplica = q !== "contínua" && q !== "sem histórico";
+
   return (
     <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -434,6 +440,7 @@ function VestingPanel({ v, preco }: { v: Vesting; preco: number }) {
       <p className={`text-sm mt-1 ${VEREDITO_TOM[q]}`}>{textoVeredito(v)}</p>
 
       <div className="grid gap-4 sm:grid-cols-4 mt-4 text-sm">
+        {aplica && (
         <div>
           <p className="text-black/50 dark:text-white/50">Travado em contrato</p>
           <p className="text-lg font-semibold tabular-nums">{(v.travado * 100).toFixed(1)}%</p>
@@ -441,6 +448,8 @@ function VestingPanel({ v, preco }: { v: Vesting; preco: number }) {
             {units(v.travado * v.supply)} tokens
           </p>
         </div>
+        )}
+        {aplica && (
         <div>
           <p className="text-black/50 dark:text-white/50" title="Pontos percentuais do supply que saem dos contratos por mês, por mínimos quadrados sobre a série">
             Ritmo de saída
@@ -454,6 +463,8 @@ function VestingPanel({ v, preco }: { v: Vesting; preco: number }) {
             </p>
           )}
         </div>
+        )}
+        {aplica && (
         <div>
           <p className="text-black/50 dark:text-white/50">Já liberado na janela</p>
           <p className="text-lg font-semibold tabular-nums">{v.liberado.toFixed(1)} pp</p>
@@ -461,6 +472,7 @@ function VestingPanel({ v, preco }: { v: Vesting; preco: number }) {
             {units((v.liberado / 100) * v.supply)} tokens
           </p>
         </div>
+        )}
         <div>
           <p className="text-black/50 dark:text-white/50" title="Somado nas 17 carteiras de corretora conhecidas">
             Em corretora
@@ -472,7 +484,7 @@ function VestingPanel({ v, preco }: { v: Vesting; preco: number }) {
         </div>
       </div>
 
-      {serie.length >= 2 && (
+      {aplica && serie.length >= 2 && (
         <div className="mt-4">
           <p className="text-[10px] tracking-widest text-black/40 dark:text-white/40 uppercase">
             % do supply parado nos contratos de alocação
@@ -504,7 +516,7 @@ function VestingPanel({ v, preco }: { v: Vesting; preco: number }) {
         </div>
       )}
 
-      {v.cofres.length > 0 && (
+      {aplica && v.cofres.length > 0 && (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm tabular-nums">
             <thead className="text-xs text-black/40 dark:text-white/40 text-left">

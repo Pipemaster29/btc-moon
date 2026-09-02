@@ -849,6 +849,56 @@ export async function balanceAt(
   return BigInt(result === "0x" ? "0x0" : result);
 }
 
+/** `totalSupply` num bloco passado, via nó de arquivo. */
+export async function supplyAt(chain: Chain, token: string, block: number): Promise<bigint> {
+  const config = CHAINS[chain];
+  if (config.archiveState.length === 0) {
+    throw new Error(`${chain} não tem nó de arquivo público para estado antigo`);
+  }
+  const result = (await callRpc(
+    config.archiveState,
+    "eth_call",
+    [{ to: token, data: "0x18160ddd" }, `0x${block.toString(16)}`],
+    8,
+  )) as string;
+  return BigInt(result === "0x" ? "0x0" : result);
+}
+
+/**
+ * O bloco em que o supply chegou ao tamanho que tem hoje, por busca binária.
+ *
+ * Substitui varrer a vida do token atrás da emissão, e a diferença de custo é de
+ * ordem de grandeza: a busca custa ~25 `eth_call` e a varredura custava
+ * milhares de `eth_getLogs`. Medido na C, cujo contrato nasceu em abril de 2025
+ * e só distribuiu em julho: a varredura progressiva gastava 434 faixas para
+ * achar o que a busca acha em 25 leituras.
+ *
+ * PRESSUPÕE SUPPLY QUE SÓ CRESCE. Token que queima e emite ao mesmo tempo tem
+ * curva não monótona, e aí a busca devolve UM ponto em que o supply cruzou o
+ * alvo, não necessariamente o certo — por isso quem chama confere a cobertura
+ * depois e só confia se ela fechar.
+ */
+export async function blocoDoSupply(
+  chain: Chain,
+  token: string,
+  alvo: bigint,
+  baixo: number,
+  alto: number,
+): Promise<number> {
+  let lo = baixo;
+  let hi = alto;
+  while (hi - lo > 1) {
+    const meio = Math.floor((lo + hi) / 2);
+    const s = await supplyAt(chain, token, meio).catch(() => BigInt(-1));
+    // Leitura que falhou não pode decidir o lado: sobe o piso e a busca fecha
+    // pelo outro extremo em vez de apontar um bloco inventado.
+    if (s < BigInt(0)) lo = meio;
+    else if (s >= alvo) hi = meio;
+    else lo = meio;
+  }
+  return hi;
+}
+
 /**
  * O bloco mais próximo de um instante, por busca binária.
  *

@@ -23,6 +23,7 @@ import {
   balanceAt,
   balancesOf,
   birthBlock,
+  blocoDoSupply,
   blockAtTime,
   blockNumber,
   blockTime,
@@ -95,67 +96,108 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
   let faixasPerdidas = 0;
   let faixas = 0;
   let cobertura = 0;
-  let passo = Math.max(blocosPara(token.chain, 1), config.maxLogSpan);
 
-  for (let de = nascimento; de <= head && faixas < TETO_FAIXAS; ) {
-    // O passo dobra sem limite, e sem esta trava a última rodada pediria de uma
-    // vez muito mais faixas do que o orçamento inteiro da moeda.
-    const cabe = (TETO_FAIXAS - faixas) * config.maxLogSpan;
-    const ate = Math.min(de + Math.min(passo, cabe) - 1, head);
-    const { transfers, failed, semHistorico } = await scanTransfers({
-      chain: token.chain,
-      token: token.contract,
-      fromBlock: de,
-      toBlock: ate,
-      sending: [ZERO],
-    });
-    faixasPerdidas += failed;
-    faixas += Math.ceil((ate - de + 1) / config.maxLogSpan);
-
-    // Antes do horizonte do nó não há o que insistir. Sem esta saída, a BLUAI
-    // consumia o orçamento inteiro de faixas — vinte minutos — para devolver
-    // "0% do supply explicado", que é indistinguível de uma moeda sem emissão.
-    if (semHistorico > 0 && transfers.length === 0) {
-      const dias = ((head - de) * config.secondsPerBlock) / 86_400;
+  // Onde procurar: o bloco em que o supply chegou ao tamanho de hoje.
+  //
+  // Achar isso por busca binária sobre `totalSupply` custa ~25 `eth_call`, e
+  // varrer atrás da mesma resposta custava milhares de `eth_getLogs` — na C,
+  // 434 faixas, e na HEI a varredura ia consumir o orçamento inteiro porque a
+  // moeda simplesmente não emite `Transfer` de emissão.
+  //
+  // A busca só é um PALPITE, porque supply que queima e emite ao mesmo tempo
+  // não é monótono. Por isso ela decide onde começar, e a cobertura decide se
+  // valeu: sem fechar os 99,5%, cai na varredura progressiva a partir do
+  // nascimento, que é o caminho antigo.
+  const janela = Math.max(blocosPara(token.chain, 6), config.maxLogSpan * 2);
+  let inicio = nascimento;
+  try {
+    const alvo = (info.totalSupply * BigInt(995)) / BigInt(1000);
+    const cruzou = await blocoDoSupply(token.chain, token.contract, alvo, nascimento, head);
+    if (cruzou > nascimento + janela) {
+      inicio = cruzou - janela;
+      const quando = new Date((await blockTime(token.chain, cruzou)) * 1000);
       console.log(
-        `o nó de log da ${token.chain} não guarda o bloco ${de} ` +
-          `(${dias.toFixed(0)} dias atrás) — emissão não varrível aqui`,
+        `o supply chegou ao tamanho de hoje no bloco ${cruzou} ` +
+          `(${quando.toISOString().slice(0, 10)}), ${cruzou - nascimento} blocos depois do nascimento`,
       );
-      // Grava o limite em vez de devolver nada. Assim o painel diz "não dá para
-      // varrer aqui" no lugar de mandar rodar para sempre um comando que nunca
-      // vai devolver número.
-      return {
-        symbol: token.symbol,
+    }
+  } catch {
+    // Sem estado antigo a busca não roda, e a varredura do nascimento resolve.
+  }
+
+  const limite = {
+    symbol: token.symbol,
+    chain: token.chain,
+    contrato: token.contract,
+    supply,
+    nascimento,
+    nasceuEm: nasceuEm.toISOString(),
+    cobertura: 0,
+    faixasPerdidas: 0,
+    semHistorico: true,
+    cofres: [],
+    serie: [],
+    travado: 0,
+    liberado: 0,
+    ritmo: 0,
+    mesesRestantes: null,
+    emCorretora: 0,
+    medidoEm: Date.now(),
+  } satisfies Vesting;
+
+  /** Varre a emissão a partir de um bloco, dobrando o passo. Nulo se o nó não guarda. */
+  async function varrer(de0: number): Promise<"ok" | "sem histórico"> {
+    let passo = Math.max(blocosPara(token.chain, 1), config.maxLogSpan);
+    for (let de = de0; de <= head && faixas < TETO_FAIXAS; ) {
+      // O passo dobra sem limite, e sem esta trava a última rodada pediria de
+      // uma vez muito mais faixas do que o orçamento inteiro da moeda.
+      const cabe = (TETO_FAIXAS - faixas) * config.maxLogSpan;
+      const ate = Math.min(de + Math.min(passo, cabe) - 1, head);
+      const { transfers, failed, semHistorico } = await scanTransfers({
         chain: token.chain,
-        contrato: token.contract,
-        supply,
-        nascimento,
-        nasceuEm: nasceuEm.toISOString(),
-        cobertura: 0,
-        faixasPerdidas: failed,
-        semHistorico: true,
-        cofres: [],
-        serie: [],
-        travado: 0,
-        liberado: 0,
-        ritmo: 0,
-        mesesRestantes: null,
-        emCorretora: 0,
-        medidoEm: Date.now(),
-      };
+        token: token.contract,
+        fromBlock: de,
+        toBlock: ate,
+        sending: [ZERO],
+      });
+      faixasPerdidas += failed;
+      faixas += Math.ceil((ate - de + 1) / config.maxLogSpan);
+
+      // Antes do horizonte do nó não há o que insistir. Sem esta saída, a BLUAI
+      // consumia o orçamento inteiro de faixas — vinte minutos — para devolver
+      // "0% do supply explicado", que é indistinguível de uma moeda sem emissão.
+      if (semHistorico > 0 && transfers.length === 0) {
+        const dias = ((head - de) * config.secondsPerBlock) / 86_400;
+        console.log(
+          `o nó de log da ${token.chain} não guarda o bloco ${de} ` +
+            `(${dias.toFixed(0)} dias atrás) — emissão não varrível aqui`,
+        );
+        return "sem histórico";
+      }
+
+      for (const t of transfers) {
+        if (t.from.toLowerCase() !== ZERO) continue;
+        const para = t.to.toLowerCase();
+        mintado.set(para, (mintado.get(para) ?? 0) + toUnits(t.value, info.decimals));
+      }
+
+      cobertura = [...mintado.values()].reduce((s, v) => s + v, 0) / supply;
+      if (cobertura >= EXPLICADO) break;
+
+      de = ate + 1;
+      passo *= 2;
     }
+    return "ok";
+  }
 
-    for (const t of transfers) {
-      if (t.from.toLowerCase() !== ZERO) continue;
-      const para = t.to.toLowerCase();
-      mintado.set(para, (mintado.get(para) ?? 0) + toUnits(t.value, info.decimals));
-    }
+  if ((await varrer(inicio)) === "sem histórico") return { ...limite, faixasPerdidas };
 
-    cobertura = [...mintado.values()].reduce((s, v) => s + v, 0) / supply;
-    if (cobertura >= EXPLICADO) break;
-
-    de = ate + 1;
-    passo *= 2;
+  // O palpite da busca binária errou: volta ao caminho antigo, do nascimento.
+  if (cobertura < EXPLICADO && inicio !== nascimento) {
+    console.log(`o palpite não fechou (${(cobertura * 100).toFixed(1)}%) — varrendo do nascimento`);
+    mintado.clear();
+    cobertura = 0;
+    if ((await varrer(nascimento)) === "sem histórico") return { ...limite, faixasPerdidas };
   }
 
   console.log(

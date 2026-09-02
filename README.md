@@ -117,6 +117,42 @@ Medido até agora: JCT 99,9% · CAP 84,5% · ZAMA 70,6% · HEMI 53,1% · MORPHO 
 · PORTAL 8,5%. Só rodava na BNB Chain antes — a Ethereum entrou junto com os nós
 de arquivo consertados.
 
+## Parado ou saindo
+
+A concentração responde "quem segura". Falta a pergunta seguinte, que é a que
+decide o preço: esse supply está **parado** ou está **saindo**? Um contrato com
+30% do supply que não se move é oferta que não existe. O mesmo contrato soltando
+0,9 ponto percentual por mês é uma venda programada de que ninguém avisou.
+
+**Medido na C (Chainbase).** O bilhão inteiro foi mintado para três contratos em
+40/30/30, e a leitura de gênese marcava isso como concentração — que soa a moeda
+travada. Amostrando o saldo dos três mês a mês no nó de arquivo da Base:
+
+| data | supply nos cofres |
+|---|---|
+| 2026-03-05 | 35,39% |
+| 2026-06-03 | 32,65% |
+| 2026-09-01 | 23,12% |
+
+São 12,3 pontos percentuais — 123 milhões de tokens — que viraram oferta em seis
+meses, e o contrato dos 30% pinga 0,91 pp por mês com regularidade de relógio.
+Não é carteira presa; é torneira.
+
+`npm run vesting` acha os contratos de alocação pela emissão — varredura filtrada
+por `from = 0x0`, que devolve as poucas transferências que criaram supply em vez
+dos milhões que o movimentaram depois — e amostra o saldo deles em sete alturas
+de bloco. Grava em `data/vesting.json`.
+
+Entra como **quarto motor**: emissão acima de 0,5 pp/mês reprova. E freia as duas
+regras de compra, ao lado do unlock. Os dois desfazem a mesma premissa — comprar
+moeda derretida supõe que a oferta parou de crescer —, mas cobrem casos opostos:
+o unlock procura um SALTO de 5% em 21 dias, e emissão programada não salta, ela
+pinga.
+
+**Limite conhecido:** na BNB Chain o único endpoint público que serve
+`eth_getLogs` em lote guarda desde 2025-11-10. Moeda nascida antes disso não tem
+emissão varrível ali, e a varredura grava esse limite em vez de devolver zero.
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.
@@ -253,6 +289,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | --- | --- |
 | `npm run placar` | lê o histórico de emissões e mede se o painel acertou |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
+| `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |

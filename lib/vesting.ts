@@ -110,15 +110,43 @@ export const RITMO_RELEVANTE = 0.5;
 /** Abaixo disto a leitura não achou a emissão toda e não vira veredito. */
 export const COBERTURA_MINIMA = 0.9;
 
+/**
+ * Acima disto o token não segue modelo de alocação, e a medição não se aplica.
+ *
+ * A emissão somada não pode passar do supply num token que minta uma vez. Passar
+ * quer dizer que ele minta e queima continuamente — ponte, rebase, staking — e
+ * aí "quem recebeu do endereço zero" não é cofre de alocação, é quem atravessou
+ * a ponte. Medido na HEI: 558 destinos somando 120,7% do supply.
+ */
+export const COBERTURA_MAXIMA = 1.05;
+
+/**
+ * Abaixo disto não sobrou nada nos cofres, e o que saiu é história.
+ *
+ * Sem esta trava a HEI saía classificada como "emitindo a 3,23 pp/mês" com os
+ * cofres a ZERO — a reta media a descida até o fundo e o veredito projetava para
+ * frente uma torneira que já fechou. Ritmo sem estoque não é oferta futura.
+ */
+export const TRAVADO_MINIMO = 0.01;
+
 /** Acima disto sobra supply parado suficiente para um desbloqueio futuro doer. */
 export const TRAVADO_ALTO = 0.15;
 
-export type Veredito = "emitindo" | "travado" | "livre" | "parcial" | "sem histórico";
+export type Veredito =
+  | "emitindo"
+  | "travado"
+  | "livre"
+  | "parcial"
+  | "contínua"
+  | "sem histórico";
 
 export function veredito(v: Vesting): Veredito {
   if (v.semHistorico) return "sem histórico";
+  if (v.cobertura > COBERTURA_MAXIMA) return "contínua";
   if (v.cobertura < COBERTURA_MINIMA || v.serie.length < 2) return "parcial";
-  if (v.ritmo >= RITMO_RELEVANTE) return "emitindo";
+  // Ritmo só vale com estoque atrás dele: cofre vazio não solta mais nada, por
+  // mais inclinada que a reta que o esvaziou tenha sido.
+  if (v.ritmo >= RITMO_RELEVANTE && v.travado >= TRAVADO_MINIMO) return "emitindo";
   if (v.travado >= TRAVADO_ALTO) return "travado";
   return "livre";
 }
@@ -130,6 +158,12 @@ export function textoVeredito(v: Vesting): string {
       return (
         `o nó de log da ${v.chain} não guarda ${v.nasceuEm.slice(0, 10)}, quando esta moeda ` +
         `nasceu — a emissão não é varrível aqui, e insistir não muda isso`
+      );
+    case "contínua":
+      return (
+        `este token minta continuamente: ${v.cofres.length}+ destinos receberam do endereço zero ` +
+        `somando ${pct(v.cobertura)} do supply. É ponte ou rebase, não alocação — quem recebeu do ` +
+        `zero aqui atravessou a ponte, e a conta de cofre esvaziando não se aplica`
       );
     case "parcial":
       return `leitura parcial: a varredura explicou ${pct(v.cobertura)} do supply`;
@@ -187,7 +221,10 @@ export async function ritmoDe(symbol: string): Promise<number | null> {
   const v = await vestingDe(symbol);
   if (!v) return null;
   const q = veredito(v);
-  return q === "sem histórico" || q === "parcial" ? null : v.ritmo;
+  if (q === "sem histórico" || q === "parcial" || q === "contínua") return null;
+  // Cofre vazio não tem oferta futura, e o ritmo que o esvaziou é passado. O
+  // motor precisa de zero aqui, não da inclinação da descida.
+  return v.travado >= TRAVADO_MINIMO ? v.ritmo : 0;
 }
 
 /**
