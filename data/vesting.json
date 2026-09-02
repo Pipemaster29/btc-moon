@@ -416,6 +416,659 @@
       "mesesRestantes": null,
       "emCorretora": 0,
       "medidoEm": 1788310787116
+    },
+    "CYSUSDT": {
+      "symbol": "CYSUSDT",
+      "chain": "bsc",
+      "contrato": "0x0C69199C1562233640e0Db5Ce2c399A88eB507C7",
+      "supply": 484304544.347429,
+      "nascimento": 70468190,
+      "nasceuEm": "2025-12-04T12:51:47.000Z",
+      "cobertura": 0.9806725026164262,
+      "faixasPerdidas": 1,
+      "cofres": [
+        {
+          "endereco": "0xbad1be160d41ef5614dbc731232a4ec3386ca227",
+          "contrato": true,
+          "recebeu": 0.665491399495911,
+          "hoje": 0.4405296450139176,
+          "ritmo": 0
+        },
+        {
+          "endereco": "0xe3e8e1147a47dcf42fa73892d74928544fe5a6a9",
+          "contrato": true,
+          "recebeu": 0.15556634328409635,
+          "hoje": 0.0000375616471253881,
+          "ritmo": -0.00019887902843491022
+        },
+        {
+          "endereco": "0xc0747a6537099d6f0ad37ce1c31f0d913e824fe7",
+          "contrato": false,
+          "recebeu": 0.051620407637690005,
+          "hoje": 2.0648164706929177e-9,
+          "ritmo": 0
+        },
+        {
+          "endereco": "0xd1365de39e943721fd066fd1fb8674f5db7dacde",
+          "contrato": true,
+          "recebeu": 0.030506630946252514,
+          "hoje": 0,
+          "ritmo": 0.0003948961500200205
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-03-06",
+          "bloco": 84909088,
+          "travado": 0.4405751063772147
+        },
+        {
+          "data": "2026-04-05",
+          "bloco": 90661215,
+          "travado": 0.44058470776884373
+        },
+        {
+          "data": "2026-05-05",
+          "bloco": 96413204,
+          "travado": 0.44058600111176466
+        },
+        {
+          "data": "2026-06-04",
+          "bloco": 102164852,
+          "travado": 0.4405650586812065
+        },
+        {
+          "data": "2026-07-04",
+          "bloco": 107920924,
+          "travado": 0.44057068547632294
+        },
+        {
+          "data": "2026-08-03",
+          "bloco": 113677909,
+          "travado": 0.4405767696665755
+        },
+        {
+          "data": "2026-09-02",
+          "bloco": 119435553,
+          "travado": 0.44056720872585947
+        }
+      ],
+      "travado": 0.44056720872585947,
+      "liberado": 0.0007897651355226465,
+      "ritmo": 0.00019601712158464783,
+      "mesesRestantes": null,
+      "emCorretora": 0.013739932713353498,
+      "medidoEm": 1788315533534
+    },
+    "BRUSDT": {
+      "symbol": "BRUSDT",
+      "chain": "bsc",
+      "contrato": "0xFf7d6A96ae471BbCD7713aF9CB1fEeB16cf56B41",
+      "supply": 1000000000,
+      "nascimento": 47388486,
+      "nasceuEm": "2025-03-12T02:38:11.000Z",
+      "cobertura": 0,
+      "faixasPerdidas": 2,
+      "semHistorico": true,
+      "cofres": [],
+      "serie": [],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788315538837
+    },
+    "BASEDUSDT": {
+      "symbol": "BASEDUSDT",
+      "chain": "ethereum",
+      "contrato": "0x4f2b33840227DDD0e28da8d4185D6fa07ADfed87",
+      "supply": 493300410.670357,
+      "nascimento": 24189032,
+      "nasceuEm": "2026-01-08T09:21:47.000Z",
+      "cobertura": 2.0271623099625593,
+      "faixasPerdidas": 0,
+      "cofres": [
+        {
+          "endereco": "0x1924b8561eef20e70ede628a296175d358be80e5",
+          "contrato": false,
+          "recebeu": 2.0271623099625593,
+          "hoje": 0,
+          "ritmo": 15.203717324719193
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-03-06",
+          "bloco": 24594708,
+          "travado": 1.4190136169737915
+        },
+        {
+          "data": "2026-04-05",
+          "bloco": 24809731,
+          "travado": 0
+        },
+        {
+          "data": "2026-05-05",
+          "bloco": 25025077,
+          "travado": 0
+        },
+        {
+          "data": "2026-06-04",
+          "bloco": 25240302,
+          "travado": 0
+        },
+        {
+          "data": "2026-07-04",
+          "bloco": 25455433,
+          "travado": 0
+        },
+        {
+          "data": "2026-08-03",
+          "bloco": 25670641,
+          "travado": 0
+        },
+        {
+          "data": "2026-09-02",
+          "bloco": 25885878,
+          "travado": 0
+        }
+      ],
+      "travado": 0,
+      "liberado": 141.90136169737914,
+      "ritmo": 15.203717324719193,
+      "mesesRestantes": 0,
+      "emCorretora": 0.015578382575876883,
+      "medidoEm": 1788315613091
+    },
+    "CAPUSDT": {
+      "symbol": "CAPUSDT",
+      "chain": "ethereum",
+      "contrato": "0x99991c6AAbba5a096f24f250b73580F5179b9999",
+      "supply": 10000000000,
+      "nascimento": 25051084,
+      "nasceuEm": "2026-05-08T14:57:11.000Z",
+      "cobertura": 1,
+      "faixasPerdidas": 0,
+      "cofres": [
+        {
+          "endereco": "0x00000000c3da1f276183e66ebdb2b6db7763b709",
+          "contrato": true,
+          "recebeu": 1,
+          "hoje": 0.845,
+          "ritmo": 4.65
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-06-04",
+          "bloco": 25240302,
+          "travado": 1
+        },
+        {
+          "data": "2026-07-04",
+          "bloco": 25455433,
+          "travado": 0.845
+        },
+        {
+          "data": "2026-08-03",
+          "bloco": 25670641,
+          "travado": 0.845
+        },
+        {
+          "data": "2026-09-02",
+          "bloco": 25885878,
+          "travado": 0.845
+        }
+      ],
+      "travado": 0.845,
+      "liberado": 15.500000000000004,
+      "ritmo": 4.65,
+      "mesesRestantes": 18.172043010752688,
+      "emCorretora": 0.0009524980456939999,
+      "medidoEm": 1788315619505
+    },
+    "BLUAIUSDT": {
+      "symbol": "BLUAIUSDT",
+      "chain": "bsc",
+      "contrato": "0xed9Ae3DEF8d6F052971Bb8b6d1975FF267Cf9aaD",
+      "supply": 10000000000,
+      "nascimento": 64830890,
+      "nasceuEm": "2025-10-16T13:51:37.000Z",
+      "cobertura": 0,
+      "faixasPerdidas": 2,
+      "semHistorico": true,
+      "cofres": [],
+      "serie": [],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788315625295
+    },
+    "REUSDT": {
+      "symbol": "REUSDT",
+      "chain": "ethereum",
+      "contrato": "0x526526528F35AC738177003b8773B402B8Df8143",
+      "supply": 1000000000,
+      "nascimento": 25095071,
+      "nasceuEm": "2026-05-14T18:08:47.000Z",
+      "cobertura": 1,
+      "faixasPerdidas": 0,
+      "cofres": [
+        {
+          "endereco": "0xe88603471fa37beae1b1ea3133dd8c6d11ef7ac6",
+          "contrato": true,
+          "recebeu": 1,
+          "hoje": 0,
+          "ritmo": 30
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-06-04",
+          "bloco": 25240302,
+          "travado": 1
+        },
+        {
+          "data": "2026-07-04",
+          "bloco": 25455433,
+          "travado": 0
+        },
+        {
+          "data": "2026-08-03",
+          "bloco": 25670641,
+          "travado": 0
+        },
+        {
+          "data": "2026-09-02",
+          "bloco": 25885878,
+          "travado": 0
+        }
+      ],
+      "travado": 0,
+      "liberado": 100,
+      "ritmo": 30,
+      "mesesRestantes": 0,
+      "emCorretora": 0.016205212993288,
+      "medidoEm": 1788315694139
+    },
+    "HANAUSDT": {
+      "symbol": "HANAUSDT",
+      "chain": "bsc",
+      "contrato": "0x6261963EbE9Ff014aAd10eCc3b0238D4D04E8353",
+      "supply": 1000000000,
+      "nascimento": 50526128,
+      "nasceuEm": "2025-05-29T15:36:57.000Z",
+      "cobertura": 0,
+      "faixasPerdidas": 2,
+      "semHistorico": true,
+      "cofres": [],
+      "serie": [],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788315699210
+    },
+    "JCTUSDT": {
+      "symbol": "JCTUSDT",
+      "chain": "ethereum",
+      "contrato": "0xC477B6dfd26EC2460b3b92de18837Fd476Ea7549",
+      "supply": 39686466589.85103,
+      "nascimento": 23668252,
+      "nasceuEm": "2025-10-27T10:41:35.000Z",
+      "cobertura": 1.2598753251766293,
+      "faixasPerdidas": 0,
+      "cofres": [
+        {
+          "endereco": "0x513bc764f21a605a3c61e393be929985e939a15a",
+          "contrato": false,
+          "recebeu": 1.2598753251766293,
+          "hoje": 0,
+          "ritmo": 0
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-03-06",
+          "bloco": 24594708,
+          "travado": 0
+        },
+        {
+          "data": "2026-04-05",
+          "bloco": 24809731,
+          "travado": 0
+        },
+        {
+          "data": "2026-05-05",
+          "bloco": 25025077,
+          "travado": 0
+        },
+        {
+          "data": "2026-06-04",
+          "bloco": 25240302,
+          "travado": 0
+        },
+        {
+          "data": "2026-07-04",
+          "bloco": 25455433,
+          "travado": 0
+        },
+        {
+          "data": "2026-08-03",
+          "bloco": 25670641,
+          "travado": 0
+        },
+        {
+          "data": "2026-09-02",
+          "bloco": 25885878,
+          "travado": 0
+        }
+      ],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788315715172
+    },
+    "BULLAUSDT": {
+      "symbol": "BULLAUSDT",
+      "chain": "bsc",
+      "contrato": "0x595E21b20E78674F8a64C1566A20b2b316Bc3511",
+      "supply": 1000000000,
+      "nascimento": 50452465,
+      "nasceuEm": "2025-05-28T08:52:07.000Z",
+      "cobertura": 0,
+      "faixasPerdidas": 2,
+      "semHistorico": true,
+      "cofres": [],
+      "serie": [],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788315720586
+    },
+    "MORPHOUSDT": {
+      "symbol": "MORPHOUSDT",
+      "chain": "ethereum",
+      "contrato": "0x58D97B57BB95320F9a05dC918Aef65434969c2B2",
+      "supply": 999999999.801032,
+      "nascimento": 21157386,
+      "nasceuEm": "2024-11-10T12:51:59.000Z",
+      "cobertura": 1.000000000198968,
+      "faixasPerdidas": 0,
+      "cofres": [
+        {
+          "endereco": "0x9d03bb2092270648d7480049d0e58d2fcf0e5123",
+          "contrato": true,
+          "recebeu": 1.000000000198968,
+          "hoje": 0.39105564123197956,
+          "ritmo": 3.3541373780323562
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-03-06",
+          "bloco": 24594708,
+          "travado": 0.5791225690665429
+        },
+        {
+          "data": "2026-04-05",
+          "bloco": 24809731,
+          "travado": 0.5785431593743436
+        },
+        {
+          "data": "2026-05-05",
+          "bloco": 25025077,
+          "travado": 0.392414690600366
+        },
+        {
+          "data": "2026-06-04",
+          "bloco": 25240302,
+          "travado": 0.392349457977773
+        },
+        {
+          "data": "2026-07-04",
+          "bloco": 25455433,
+          "travado": 0.39157873933651666
+        },
+        {
+          "data": "2026-08-03",
+          "bloco": 25670641,
+          "travado": 0.39148229383358346
+        },
+        {
+          "data": "2026-09-02",
+          "bloco": 25885878,
+          "travado": 0.39105564123197956
+        }
+      ],
+      "travado": 0.39105564123197956,
+      "liberado": 18.806692783456334,
+      "ritmo": 3.3541373780323562,
+      "mesesRestantes": 11.658903531893653,
+      "emCorretora": 0.007728848214499792,
+      "medidoEm": 1788315776462
+    },
+    "EPICUSDT": {
+      "symbol": "EPICUSDT",
+      "chain": "ethereum",
+      "contrato": "0x94314a14Df63779c99C0764a30e0CD22fA78fC0E",
+      "supply": 33600000,
+      "nascimento": 21477215,
+      "nasceuEm": "2024-12-25T04:51:11.000Z",
+      "cobertura": 1,
+      "faixasPerdidas": 0,
+      "cofres": [
+        {
+          "endereco": "0x763f8d5cddbec11dcf817cffb2337cadb8eb05e2",
+          "contrato": true,
+          "recebeu": 0.8928571428571429,
+          "hoje": 0,
+          "ritmo": 0
+        },
+        {
+          "endereco": "0x32f14956d707b624026d9fdfcfc63956ea683140",
+          "contrato": true,
+          "recebeu": 0.10714285714285714,
+          "hoje": 0,
+          "ritmo": 0
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-03-06",
+          "bloco": 24594708,
+          "travado": 0
+        },
+        {
+          "data": "2026-04-05",
+          "bloco": 24809731,
+          "travado": 0
+        },
+        {
+          "data": "2026-05-05",
+          "bloco": 25025077,
+          "travado": 0
+        },
+        {
+          "data": "2026-06-04",
+          "bloco": 25240302,
+          "travado": 0
+        },
+        {
+          "data": "2026-07-04",
+          "bloco": 25455433,
+          "travado": 0
+        },
+        {
+          "data": "2026-08-03",
+          "bloco": 25670641,
+          "travado": 0
+        },
+        {
+          "data": "2026-09-02",
+          "bloco": 25885878,
+          "travado": 0
+        }
+      ],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0.583753789469762,
+      "medidoEm": 1788316063921
+    },
+    "ZAMAUSDT": {
+      "symbol": "ZAMAUSDT",
+      "chain": "ethereum",
+      "contrato": "0xA12CC123ba206d4031D1c7f6223D1C2Ec249f4f3",
+      "supply": 11285903453.9952,
+      "nascimento": 23790400,
+      "nasceuEm": "2025-11-13T12:51:23.000Z",
+      "cobertura": 1.0025978913889764,
+      "faixasPerdidas": 0,
+      "cofres": [
+        {
+          "endereco": "0x6aed4db2305b22cff494a15433975b7cc2732b28",
+          "contrato": false,
+          "recebeu": 0.8577071423177282,
+          "hoje": 0.6791657426669371,
+          "ritmo": 0
+        },
+        {
+          "endereco": "0xfc8f904f025f1eff02a0a6c3a6fea50bb7e5cfa2",
+          "contrato": true,
+          "recebeu": 0.11696006486150838,
+          "hoje": 0.02698198920768816,
+          "ritmo": 0.5618036495451875
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-03-06",
+          "bloco": 24594708,
+          "travado": 0.7376369144867169
+        },
+        {
+          "data": "2026-04-05",
+          "bloco": 24809731,
+          "travado": 0.7376369144867169
+        },
+        {
+          "data": "2026-05-05",
+          "bloco": 25025077,
+          "travado": 0.7376369144867169
+        },
+        {
+          "data": "2026-06-04",
+          "bloco": 25240302,
+          "travado": 0.7376369144867169
+        },
+        {
+          "data": "2026-07-04",
+          "bloco": 25455433,
+          "travado": 0.7166910898079244
+        },
+        {
+          "data": "2026-08-03",
+          "bloco": 25670641,
+          "travado": 0.7166910898079244
+        },
+        {
+          "data": "2026-09-02",
+          "bloco": 25885878,
+          "travado": 0.7061477318746252
+        }
+      ],
+      "travado": 0.7061477318746252,
+      "liberado": 3.148918261209166,
+      "ritmo": 0.5618036495451884,
+      "mesesRestantes": 125.69297697626057,
+      "emCorretora": 0.012541567099341521,
+      "medidoEm": 1788316108582
+    },
+    "XNYUSDT": {
+      "symbol": "XNYUSDT",
+      "chain": "bsc",
+      "contrato": "0xE3225e11Cab122F1a126A28997788E5230838ab9",
+      "supply": 10000000000,
+      "nascimento": 52016528,
+      "nasceuEm": "2025-06-24T12:45:10.000Z",
+      "cobertura": 0,
+      "faixasPerdidas": 2,
+      "semHistorico": true,
+      "cofres": [],
+      "serie": [],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788316114150
+    },
+    "BASUSDT": {
+      "symbol": "BASUSDT",
+      "chain": "bsc",
+      "contrato": "0x0F0df6cB17ee5E883eddFEf9153fC6036BDB4e37",
+      "supply": 10000000000,
+      "nascimento": 53994920,
+      "nasceuEm": "2025-07-14T11:54:05.000Z",
+      "cobertura": 0,
+      "faixasPerdidas": 2,
+      "semHistorico": true,
+      "cofres": [],
+      "serie": [],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788316157737
+    },
+    "AGTUSDT": {
+      "symbol": "AGTUSDT",
+      "chain": "bsc",
+      "contrato": "0x5dBde81fcE337FF4bcaaEe4Ca3466C00aeCaE274",
+      "supply": 5000000000,
+      "nascimento": 48373924,
+      "nasceuEm": "2025-04-15T07:53:32.000Z",
+      "cobertura": 0,
+      "faixasPerdidas": 2,
+      "semHistorico": true,
+      "cofres": [],
+      "serie": [],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788316922736
+    },
+    "UAIUSDT": {
+      "symbol": "UAIUSDT",
+      "chain": "bsc",
+      "contrato": "0x3E5d4f8aee0D9B3082d5f6DA5D6e225D17ba9ea0",
+      "supply": 1000000000,
+      "nascimento": 66276089,
+      "nasceuEm": "2025-10-29T03:18:56.000Z",
+      "cobertura": 0,
+      "faixasPerdidas": 2,
+      "semHistorico": true,
+      "cofres": [],
+      "serie": [],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788317005198
     }
   }
 }
