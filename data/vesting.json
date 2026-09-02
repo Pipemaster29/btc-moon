@@ -309,6 +309,113 @@
       "mesesRestantes": 0.0006506740578546188,
       "emCorretora": 0.8732453437943507,
       "medidoEm": 1788310402619
+    },
+    "VVVUSDT": {
+      "symbol": "VVVUSDT",
+      "chain": "base",
+      "contrato": "0xacfE6019Ed1A7Dc6f7B508C02d1b04ec88cC21bf",
+      "supply": 114764556.174844,
+      "nascimento": 25430182,
+      "nasceuEm": "2025-01-23T16:28:31.000Z",
+      "cobertura": 0.9999999939940539,
+      "faixasPerdidas": 0,
+      "cofres": [
+        {
+          "endereco": "0x2d8cb8dc596dad0e1e34e2042e7ae6df93b11524",
+          "contrato": true,
+          "recebeu": 0.8942765421190972,
+          "hoje": 0.1808837487783298,
+          "ritmo": -0.08903727585208898
+        },
+        {
+          "endereco": "0x321b7ff75154472b18edb199033ff4d116f340ff",
+          "contrato": true,
+          "recebeu": 0.10572345187495664,
+          "hoje": 0.30878883725848355,
+          "ritmo": -0.3776378982194903
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-03-06",
+          "bloco": 42982926,
+          "travado": 0.4638772672481549
+        },
+        {
+          "data": "2026-04-05",
+          "bloco": 44278926,
+          "travado": 0.4562855699768159
+        },
+        {
+          "data": "2026-05-05",
+          "bloco": 45574926,
+          "travado": 0.46972030156728195
+        },
+        {
+          "data": "2026-06-04",
+          "bloco": 46870926,
+          "travado": 0.4739556928594112
+        },
+        {
+          "data": "2026-07-04",
+          "bloco": 48166926,
+          "travado": 0.4709408547419712
+        },
+        {
+          "data": "2026-08-03",
+          "bloco": 49462926,
+          "travado": 0.48231683957650473
+        },
+        {
+          "data": "2026-09-02",
+          "bloco": 50758926,
+          "travado": 0.48967258603681335
+        }
+      ],
+      "travado": 0.48967258603681335,
+      "liberado": -2.5795318788658426,
+      "ritmo": -0.4666751740715794,
+      "mesesRestantes": null,
+      "emCorretora": 0.000776434780092253,
+      "medidoEm": 1788310760574
+    },
+    "TAGUSDT": {
+      "symbol": "TAGUSDT",
+      "chain": "bsc",
+      "contrato": "0x208bF3E7dA9639f1Eaefa2DE78c23396B0682025",
+      "supply": 405380800000,
+      "nascimento": 44972322,
+      "nasceuEm": "2024-12-18T04:59:33.000Z",
+      "cobertura": 0,
+      "faixasPerdidas": 2,
+      "semHistorico": true,
+      "cofres": [],
+      "serie": [],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788310766041
+    },
+    "EVAAUSDT": {
+      "symbol": "EVAAUSDT",
+      "chain": "bsc",
+      "contrato": "0xaa036928c9c0Df07d525B55ea8EE690Bb5a628C1",
+      "supply": 30000000,
+      "nascimento": 62755834,
+      "nasceuEm": "2025-09-28T13:24:24.000Z",
+      "cobertura": 0,
+      "faixasPerdidas": 2,
+      "semHistorico": true,
+      "cofres": [],
+      "serie": [],
+      "travado": 0,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0,
+      "medidoEm": 1788310787116
     }
   }
 }

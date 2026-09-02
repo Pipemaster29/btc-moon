@@ -181,10 +181,15 @@ export function textoVeredito(v: Vesting): string {
       );
     }
     case "travado":
-      return (
-        `${pct(v.travado)} do supply está parado em contrato de alocação e não se ` +
-        `moveu na janela medida — oferta que não existe hoje e pode existir amanhã`
-      );
+      // Ritmo negativo é o cofre ENCHENDO, e chamar isso de "não se moveu" seria
+      // errado no sentido que mais importa: supply saindo de circulação para
+      // dentro de um contrato é o oposto de oferta chegando. Medido na VVV, que
+      // guarda 49% do supply e recolhe 0,47 pp por mês.
+      return v.ritmo <= -0.1
+        ? `${pct(v.travado)} do supply está em contrato de alocação, e o saldo dele CRESCE ` +
+            `${Math.abs(v.ritmo).toFixed(2)} pp por mês — está recolhendo oferta, não soltando`
+        : `${pct(v.travado)} do supply está parado em contrato de alocação e não se ` +
+            `moveu na janela medida — oferta que não existe hoje e pode existir amanhã`;
     case "livre":
       return `os contratos de alocação já esvaziaram: ${pct(v.travado)} do supply restante neles`;
   }
