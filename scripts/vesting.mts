@@ -121,7 +121,28 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
         `o nó de log da ${token.chain} não guarda o bloco ${de} ` +
           `(${dias.toFixed(0)} dias atrás) — emissão não varrível aqui`,
       );
-      return null;
+      // Grava o limite em vez de devolver nada. Assim o painel diz "não dá para
+      // varrer aqui" no lugar de mandar rodar para sempre um comando que nunca
+      // vai devolver número.
+      return {
+        symbol: token.symbol,
+        chain: token.chain,
+        contrato: token.contract,
+        supply,
+        nascimento,
+        nasceuEm: nasceuEm.toISOString(),
+        cobertura: 0,
+        faixasPerdidas: failed,
+        semHistorico: true,
+        cofres: [],
+        serie: [],
+        travado: 0,
+        liberado: 0,
+        ritmo: 0,
+        mesesRestantes: null,
+        emCorretora: 0,
+        medidoEm: Date.now(),
+      };
     }
 
     for (const t of transfers) {

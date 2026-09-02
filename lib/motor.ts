@@ -219,9 +219,11 @@ export async function lerMotor(
   if (concentracao === null && privado !== null) {
     faltas.push("concentração não varrida — rode `npm run genese`");
   }
-  if (emissao === null && contract) {
-    faltas.push("emissão não varrida — rode `npm run vesting`");
-  }
+  // Sem prescrever comando: `npm run vesting` já roda e grava o limite quando a
+  // moeda nasceu antes do horizonte do nó, e nessas mandar rodar de novo é
+  // mandar repetir para sempre uma leitura que não existe. O detalhe de POR QUE
+  // não há número fica na página da moeda, que lê o registro inteiro.
+  if (emissao === null && contract) faltas.push("emissão não medida");
   if (temOferta === null) {
     faltas.push(
       cobertura !== null && cobertura < 1

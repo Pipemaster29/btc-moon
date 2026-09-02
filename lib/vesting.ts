@@ -67,6 +67,16 @@ export interface Vesting {
    */
   cobertura: number;
   faixasPerdidas: number;
+  /**
+   * O nó de log da rede não guarda a profundidade em que esta moeda nasceu.
+   *
+   * Fica gravado, e não descartado, porque "não varri ainda" e "não dá para
+   * varrer aqui" pedem coisas diferentes: a primeira é uma tarefa, a segunda é
+   * um limite. Sem a distinção, o painel manda rodar para sempre um comando que
+   * nunca vai devolver nada — na BNB Chain isso valeria para toda moeda anterior
+   * a 2025-11-10, que é o horizonte do único endpoint público que serve log.
+   */
+  semHistorico?: boolean;
   cofres: Cofre[];
   serie: Amostra[];
   /** Fração do supply parada nos cofres hoje. */
@@ -103,9 +113,10 @@ export const COBERTURA_MINIMA = 0.9;
 /** Acima disto sobra supply parado suficiente para um desbloqueio futuro doer. */
 export const TRAVADO_ALTO = 0.15;
 
-export type Veredito = "emitindo" | "travado" | "livre" | "parcial";
+export type Veredito = "emitindo" | "travado" | "livre" | "parcial" | "sem histórico";
 
 export function veredito(v: Vesting): Veredito {
+  if (v.semHistorico) return "sem histórico";
   if (v.cobertura < COBERTURA_MINIMA || v.serie.length < 2) return "parcial";
   if (v.ritmo >= RITMO_RELEVANTE) return "emitindo";
   if (v.travado >= TRAVADO_ALTO) return "travado";
@@ -115,6 +126,11 @@ export function veredito(v: Vesting): Veredito {
 export function textoVeredito(v: Vesting): string {
   const pct = (f: number) => `${(f * 100).toFixed(1)}%`;
   switch (veredito(v)) {
+    case "sem histórico":
+      return (
+        `o nó de log da ${v.chain} não guarda ${v.nasceuEm.slice(0, 10)}, quando esta moeda ` +
+        `nasceu — a emissão não é varrível aqui, e insistir não muda isso`
+      );
     case "parcial":
       return `leitura parcial: a varredura explicou ${pct(v.cobertura)} do supply`;
     case "emitindo": {
@@ -157,6 +173,21 @@ export async function lerVesting(): Promise<Arquivo> {
 export async function vestingDe(symbol: string): Promise<Vesting | null> {
   const arquivo = await lerVesting();
   return arquivo.moedas[symbol] ?? null;
+}
+
+/**
+ * Só o ritmo, ou nulo quando a medição não sustenta número.
+ *
+ * O `ritmo` bruto é ZERO tanto numa moeda sem emissão nenhuma quanto numa que
+ * não deu para varrer, e as duas coisas viram vereditos opostos no motor: a
+ * primeira passa no teste, a segunda não pode ser testada. Ler o campo direto
+ * apagava essa diferença.
+ */
+export async function ritmoDe(symbol: string): Promise<number | null> {
+  const v = await vestingDe(symbol);
+  if (!v) return null;
+  const q = veredito(v);
+  return q === "sem histórico" || q === "parcial" ? null : v.ritmo;
 }
 
 /**

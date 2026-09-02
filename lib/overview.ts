@@ -18,7 +18,7 @@ import { depthOn, pairsOfToken } from "./dexscreener";
 import { ATIVAS, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
 import { concentracaoDe } from "./detentores";
-import { vestingDe } from "./vesting";
+import { ritmoDe } from "./vesting";
 import { lerEstudo } from "./estudo";
 import { lerMotor, type Motor } from "./motor";
 import { readLiveFromStats, type MoveKind } from "./positioning";
@@ -269,7 +269,7 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         row.volume24h,
         await concentracaoDe(token.symbol),
         vida.coberturaContrato,
-        (await vestingDe(token.symbol))?.ritmo ?? null,
+        await ritmoDe(token.symbol),
       ).catch(() => null);
 
       const leitura = lerVies(vida, {

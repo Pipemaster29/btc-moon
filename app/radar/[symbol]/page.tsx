@@ -396,6 +396,7 @@ const VEREDITO_TOM: Record<Veredito, string> = {
   travado: "text-[#A97400] dark:text-[#F0B90B]",
   livre: "text-[#0a7d43] dark:text-[#0ECB81]",
   parcial: "text-black/50 dark:text-white/50",
+  "sem histórico": "text-black/50 dark:text-white/50",
 };
 
 /**

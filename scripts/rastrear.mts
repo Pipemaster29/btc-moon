@@ -20,7 +20,7 @@ import { lerLivro, financiamento } from "../lib/livro";
 import { lerVida, lerVies, CARTEIRAS_CEX } from "../lib/lifecycle";
 import { lerMotor } from "../lib/motor";
 import { concentracaoDe } from "../lib/detentores";
-import { vestingDe } from "../lib/vesting";
+import { ritmoDe } from "../lib/vesting";
 import { readLiveFromStats } from "../lib/positioning";
 import { pairsOfToken, depthOn } from "../lib/dexscreener";
 import { tokenInfo, balancesOf, toUnits, blockNumber, blocosPara, scanTransfers, type Chain } from "../lib/onchain";
@@ -203,7 +203,7 @@ else {
     fundo?.volume24h ?? 0,
     await concentracaoDe(token.symbol),
     null,
-    (await vestingDe(token.symbol))?.ritmo ?? null,
+    await ritmoDe(token.symbol),
   ).catch(() => null);
   if (motor) {
     console.log(`\nonde está o supply   fora de corretora e de pool ${((motor.privado ?? 0) * 100).toFixed(1)}% · em corretora ${((motor.emCorretora ?? 0) * 100).toFixed(1)}% · em pool ${((motor.emPool ?? 0) * 100).toFixed(1)}% (${motor.pools} pares)`);
@@ -272,7 +272,7 @@ if (vida) {
     fundo?.volume24h ?? 0,
     await concentracaoDe(token.symbol),
     null,
-    (await vestingDe(token.symbol))?.ritmo ?? null,
+    await ritmoDe(token.symbol),
   ).catch(() => null);
   const leitura = lerVies(vida, {
     moveKind: leituraViva?.move?.kind ?? null,
