@@ -160,6 +160,20 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
           </span>
         )}
       </td>
+      <td className="py-2.5 pr-3 text-right">
+        {row.motor?.emissao == null ? (
+          <span className="text-black/25 dark:text-white/25" title="Nunca varrida — npm run vesting">
+            —
+          </span>
+        ) : (
+          <span
+            className={`tabular-nums ${row.motor.emissao >= 0.5 ? "text-[#C42B3E] dark:text-[#F6465D]" : ""}`}
+            title={`os contratos de alocação soltam ${row.motor.emissao.toFixed(2)} pp do supply por mês`}
+          >
+            {row.motor.emissao < 0.01 ? "—" : `${row.motor.emissao.toFixed(1)}pp`}
+          </span>
+        )}
+      </td>
       <td className="py-2.5 pr-3 text-right tabular-nums">{money(row.openInterestUsd)}</td>
       <td className="py-2.5 pr-3 text-right tabular-nums">
         {row.perpDominance > 0 ? `${row.perpDominance.toFixed(0)}x` : "—"}
@@ -202,7 +216,7 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
           <span
             title={row.motor.resumo}
             className={`tabular-nums text-xs ${
-              row.motor.motores === row.motor.medidos && row.motor.medidos === 3
+              row.motor.motores === row.motor.medidos && row.motor.medidos >= 3
                 ? "text-[#0ECB81]"
                 : row.motor.motores === 0
                   ? "text-black/30 dark:text-white/30"
@@ -422,6 +436,12 @@ export default async function Radar() {
                   title="Quanto do supply ainda está com quem o recebeu na distribuição inicial. Acima de 50% a moeda tem dono, não float — e aí supply fora de corretora não é munição livre."
                 >
                   Dono
+                </th>
+                <th
+                  className="font-normal pb-2 text-right"
+                  title="Pontos percentuais do supply que os contratos de alocação soltam por mês. É oferta programada: o comprador está do outro lado dela."
+                >
+                  Solta
                 </th>
                 <th className="font-normal pb-2 text-right">Open interest</th>
                 <th className="font-normal pb-2 text-right" title="Open interest dividido pela liquidez à vista">

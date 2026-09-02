@@ -93,8 +93,16 @@ export async function lerDetentores(): Promise<Arquivo> {
 export async function concentracaoDe(symbol: string): Promise<number | null> {
   const arquivo = await lerDetentores();
   const d = arquivo.moedas[symbol];
+  if (!d) return null;
   // Leitura incompleta não vira número: faixa perdida some do total somado e
   // faria a concentração parecer MENOR do que é, que é o erro perigoso aqui.
-  if (!d || d.faixasPerdidas > 0) return null;
+  if (d.faixasPerdidas > 0) return null;
+  // Janela vazia é o mesmo erro por outro caminho, e mais traiçoeiro porque não
+  // parece falha. A C nasceu em abril de 2025 e só distribuiu em julho: as
+  // primeiras 20 mil quadras não tinham transferência nenhuma, e o arquivo
+  // gravou concentração ZERO numa moeda em que três contratos seguravam 23% do
+  // supply. Zero e "não medi" precisam ser coisas diferentes — quem responde
+  // essa moeda é `npm run vesting`, que procura a emissão na vida toda.
+  if (d.transferencias === 0) return null;
   return d.concentracao;
 }

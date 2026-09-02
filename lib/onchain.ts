@@ -511,6 +511,45 @@ export async function isContract(chain: Chain, address: string): Promise<boolean
   return code !== "0x" && code.length > 2;
 }
 
+/** Havia código neste endereço naquele bloco? Precisa de nó de arquivo. */
+async function tinhaCodigo(chain: Chain, address: string, bloco: number): Promise<boolean> {
+  const config = CHAINS[chain];
+  const code = (await callRpc(
+    config.archiveState,
+    "eth_getCode",
+    [address, `0x${bloco.toString(16)}`],
+    6,
+  )) as string;
+  return Boolean(code && code !== "0x");
+}
+
+/**
+ * O bloco em que um contrato passou a existir, por busca binária.
+ *
+ * Não existe chamada para "quando este contrato foi criado", mas existe
+ * `eth_getCode`, que devolve vazio antes da criação e o bytecode depois. Uma
+ * busca binária sobre isso acha o bloco exato em ~25 leituras, contra milhares
+ * de varreduras às cegas.
+ */
+export async function birthBlock(
+  chain: Chain,
+  address: string,
+  topo?: number,
+): Promise<number> {
+  const config = CHAINS[chain];
+  if (config.archiveState.length === 0) {
+    throw new Error(`${chain} não tem nó de arquivo público para estado antigo`);
+  }
+  let baixo = 1;
+  let alto = topo ?? (await blockNumber(chain));
+  while (alto - baixo > 1) {
+    const meio = Math.floor((baixo + alto) / 2);
+    if (await tinhaCodigo(chain, address, meio)) alto = meio;
+    else baixo = meio;
+  }
+  return alto;
+}
+
 // -------------------------------------------------------------------- logs
 
 export interface Transfer {
@@ -610,6 +649,15 @@ export interface ScanOptions {
    * pagar pelo outro é desperdício num nó que já responde no limite.
    */
   receiving?: string[];
+  /**
+   * Só quem ENVIA. O espelho de `receiving`, e a forma barata de achar emissão.
+   *
+   * Um token que nasce mintado tem `from` igual ao endereço zero, e perguntar só
+   * por isso devolve as poucas transferências que criaram o supply em vez dos
+   * milhões que o movimentaram depois. É o que permite varrer a vida inteira de
+   * um contrato atrás da alocação inicial sem trafegar o histórico todo.
+   */
+  sending?: string[];
   onProgress?: (done: number, total: number, found: number) => void;
 }
 
@@ -642,15 +690,19 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
 
   const padded = involving?.map(padAddress) ?? [];
   const recebendo = options.receiving?.map(padAddress) ?? [];
-  const filters: (string[] | null)[][] = recebendo.length
-    ? [[null, recebendo]]
-    : padded.length
-      ? [[padded], [null, padded]]
-      : [[]];
+  const enviando = options.sending?.map(padAddress) ?? [];
+  const filters: (string[] | null)[][] = enviando.length
+    ? [[enviando]]
+    : recebendo.length
+      ? [[null, recebendo]]
+      : padded.length
+        ? [[padded], [null, padded]]
+        : [[]];
 
   // Sem filtro a resposta de uma faixa cheia estoura o tempo limite do nó, então
   // faixas sem filtro são curtas mesmo custando mais requisições.
-  const span = padded.length || recebendo.length ? config.maxLogSpan : UNFILTERED_SPAN;
+  const span =
+    padded.length || recebendo.length || enviando.length ? config.maxLogSpan : UNFILTERED_SPAN;
 
   const starts: number[] = [];
   for (let start = fromBlock; start <= toBlock; start += span) {

@@ -19,6 +19,8 @@ import { velas, circulante, precoBinance } from "../lib/binance";
 import { lerLivro, financiamento } from "../lib/livro";
 import { lerVida, lerVies, CARTEIRAS_CEX } from "../lib/lifecycle";
 import { lerMotor } from "../lib/motor";
+import { concentracaoDe } from "../lib/detentores";
+import { vestingDe } from "../lib/vesting";
 import { readLiveFromStats } from "../lib/positioning";
 import { pairsOfToken, depthOn } from "../lib/dexscreener";
 import { tokenInfo, balancesOf, toUnits, blockNumber, blocosPara, scanTransfers, type Chain } from "../lib/onchain";
@@ -191,7 +193,18 @@ else {
     console.log(`   ${a}  ${Math.round(v).toLocaleString("pt-BR").padStart(16)}  ${(v / supply * 100).toFixed(2)}%  ≈ ${usd(v * p)}`);
   }
 
-  const motor = await lerMotor(token.chain, token.contract, circ?.atual ?? null, true, oi, fundo?.liquidityUsd ?? 0, fundo?.volume24h ?? 0).catch(() => null);
+  const motor = await lerMotor(
+    token.chain,
+    token.contract,
+    circ?.atual ?? null,
+    true,
+    oi,
+    fundo?.liquidityUsd ?? 0,
+    fundo?.volume24h ?? 0,
+    await concentracaoDe(token.symbol),
+    null,
+    (await vestingDe(token.symbol))?.ritmo ?? null,
+  ).catch(() => null);
   if (motor) {
     console.log(`\nonde está o supply   fora de corretora e de pool ${((motor.privado ?? 0) * 100).toFixed(1)}% · em corretora ${((motor.emCorretora ?? 0) * 100).toFixed(1)}% · em pool ${((motor.emPool ?? 0) * 100).toFixed(1)}% (${motor.pools} pares)`);
     console.log(`motor                ${motor.motores}/${motor.medidos} — ${motor.resumo}`);
@@ -249,7 +262,18 @@ else {
 // ───────────────────────────────────────────────────────────────── veredito
 titulo("LEITURA");
 if (vida) {
-  const motor = await lerMotor(token.chain, token.contract, circ?.atual ?? null, true, oi, fundo?.liquidityUsd ?? 0, fundo?.volume24h ?? 0).catch(() => null);
+  const motor = await lerMotor(
+    token.chain,
+    token.contract,
+    circ?.atual ?? null,
+    true,
+    oi,
+    fundo?.liquidityUsd ?? 0,
+    fundo?.volume24h ?? 0,
+    await concentracaoDe(token.symbol),
+    null,
+    (await vestingDe(token.symbol))?.ritmo ?? null,
+  ).catch(() => null);
   const leitura = lerVies(vida, {
     moveKind: leituraViva?.move?.kind ?? null,
     moveChange: leituraViva?.move?.priceChange ?? 0,

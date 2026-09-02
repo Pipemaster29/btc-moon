@@ -20,6 +20,10 @@
  *   OFERTA     supply fora das corretoras é munição que ainda não foi gasta.
  *              Quando quase tudo já está em corretora, a distribuição
  *              aconteceu — foi o caso da BLUAI, com só 24,9% em mãos privadas.
+ *   EMISSÃO    supply que ainda vai ser criado é vento contra. Um contrato de
+ *              alocação soltando meio ponto percentual por mês é uma venda
+ *              programada de que ninguém avisou, e todo comprador está do outro
+ *              lado dela.
  *
  * A CONCENTRAÇÃO ERA O BURACO DESTE ARQUIVO, e ele estava anotado aqui como
  * impossível: "fora de corretora" não separa um dono com 80% de dez mil donos
@@ -38,6 +42,16 @@
  * painel emitiu COMPRA. Agora a concentração é descontada antes do teste de
  * oferta, e uma moeda com dono reprova em vez de passar.
  *
+ * A EMISSÃO ERA O SEGUNDO BURACO, e ele estava escondido dentro do primeiro. A
+ * concentração diz quanto supply está parado numa mão só, mas trata "parado" e
+ * "saindo" como a mesma coisa — e para quem compra são opostos. Medido na C
+ * (Chainbase): três contratos guardavam 35,4% do supply em março e 23,1% em
+ * setembro. São 123 milhões de tokens que viraram oferta em seis meses enquanto
+ * a leitura de gênese os contava como moeda travada.
+ *
+ * `npm run vesting` amostra o saldo desses contratos mês a mês e devolve o
+ * ritmo. Aqui ele vira o quarto teste.
+ *
  * O que continua fora: quantos donos existem de verdade. Endereço de gênese
  * esvaziado diz que o supply foi adiante, não que ele se pulverizou. Este módulo
  * mede CAPACIDADE, não intenção.
@@ -47,6 +61,7 @@ import { pairsOfToken } from "./dexscreener";
 import { balancesOf, tokenInfo, toUnits, type Chain } from "./onchain";
 import { CARTEIRAS_CEX } from "./lifecycle";
 import { CONCENTRADA } from "./detentores";
+import { RITMO_RELEVANTE } from "./vesting";
 
 export interface Motor {
   /** Fração do circulante fora de corretoras e fora das pools. */
@@ -64,10 +79,16 @@ export interface Motor {
   emPool: number | null;
   /** Quantas pools com liquidez existem na rede da moeda. */
   pools: number;
-  /** Os três testes. O de oferta é nulo quando não deu para medir. */
+  /**
+   * Ritmo de saída dos contratos de alocação, em pp do supply por mês. Nulo
+   * quando a moeda nunca foi medida por `npm run vesting`.
+   */
+  emissao: number | null;
+  /** Os testes. Oferta e emissão são nulos quando não deu para medir. */
   temPerpetuo: boolean;
   temLivro: boolean;
   temOferta: boolean | null;
+  semEmissao: boolean | null;
   /** Quantos passaram, entre os que deram para medir. */
   motores: number;
   /** Quantos deram para medir — nem sempre três. */
@@ -115,6 +136,13 @@ export async function lerMotor(
    * um contrato que guarda 89% do circulante e fica um ponto abaixo do corte.
    */
   cobertura: number | null = null,
+  /**
+   * Pontos percentuais do supply que os contratos de alocação soltam por mês.
+   *
+   * Vem de `npm run vesting`. Nulo quando a moeda nunca foi medida, e nulo NÃO é
+   * zero: uma moeda não varrida não pode passar num teste que ninguém aplicou.
+   */
+  emissao: number | null = null,
 ): Promise<Motor> {
   const temPerpetuo = openInterestUsd >= OI_MINIMO;
   const giro = liquidityUsd > 0 ? volume24h / liquidityUsd : 0;
@@ -163,7 +191,11 @@ export async function lerMotor(
   // contrato é fragmento — que é uma limitação da leitura, não da moeda.
   const temOferta = privadoPublico === null ? null : privadoPublico >= PRIVADO_MINIMO;
 
-  const testes = [temPerpetuo, temLivro, temOferta];
+  // Emissão abaixo do corte passa; acima, reprova. Não medida fica nula pelo
+  // mesmo motivo dos outros: "não olhei" não é "não tem".
+  const semEmissao = emissao === null ? null : emissao < RITMO_RELEVANTE;
+
+  const testes = [temPerpetuo, temLivro, temOferta, semEmissao];
   const medidos = testes.filter((t) => t !== null).length;
   const motores = testes.filter((t) => t === true).length;
 
@@ -178,8 +210,17 @@ export async function lerMotor(
         : `só ${((privadoPublico ?? 0) * 100).toFixed(0)}% do circulante fora de corretora`,
     );
   }
+  if (semEmissao === false) {
+    faltas.push(
+      `os contratos de alocação soltam ${emissao!.toFixed(2)} pp do supply por mês — ` +
+        `o comprador está do outro lado de uma venda programada`,
+    );
+  }
   if (concentracao === null && privado !== null) {
     faltas.push("concentração não varrida — rode `npm run genese`");
+  }
+  if (emissao === null && contract) {
+    faltas.push("emissão não varrida — rode `npm run vesting`");
   }
   if (temOferta === null) {
     faltas.push(
@@ -197,14 +238,16 @@ export async function lerMotor(
     emCorretora,
     emPool,
     pools,
+    emissao,
     temPerpetuo,
     temLivro,
     temOferta,
+    semEmissao,
     motores,
     medidos,
     resumo:
-      motores === medidos && medidos === 3
-        ? "perpétuo, livro e oferta — a moeda ainda tem com que ser movida"
+      motores === medidos && medidos === 4
+        ? "perpétuo, livro, oferta e nenhuma emissão pendente — a moeda ainda tem com que ser movida"
         : motores === medidos
           ? `${motores} de ${medidos} medidos passam · ${faltas.join(", ")}`
           : `${motores} de ${medidos} medidos · ${faltas.join(", ")}`,

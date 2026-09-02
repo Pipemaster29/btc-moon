@@ -6,6 +6,7 @@ import { lerCiclo } from "@/lib/setup";
 import { lerVida } from "@/lib/lifecycle";
 import { lerEstudo, type Estudo } from "@/lib/estudo";
 import { getPlacar, type Placar } from "@/lib/placar";
+import { textoVeredito, veredito, vestingDe, type Veredito, type Vesting } from "@/lib/vesting";
 import { getRadar, type AlertLevel, type RadarSnapshot } from "@/lib/radar";
 import { getPositioning, type PositioningSnapshotView } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
@@ -390,6 +391,165 @@ function EstudoPanel({ estudo }: { estudo: Estudo }) {
  * contra a do grupo, senão "o painel acertou" se mistura com "esta moeda andou
  * diferente das outras".
  */
+const VEREDITO_TOM: Record<Veredito, string> = {
+  emitindo: "text-[#C42B3E] dark:text-[#F6465D]",
+  travado: "text-[#A97400] dark:text-[#F0B90B]",
+  livre: "text-[#0a7d43] dark:text-[#0ECB81]",
+  parcial: "text-black/50 dark:text-white/50",
+};
+
+/**
+ * A oferta que ainda vai chegar.
+ *
+ * O painel inteiro media quem SEGURA supply e chamava isso de munição intacta.
+ * Faltava a pergunta seguinte: esse supply está parado ou está saindo? São
+ * situações opostas para quem compra, e a diferença entre elas é uma reta sobre
+ * sete leituras de saldo.
+ */
+function VestingPanel({ v, preco }: { v: Vesting; preco: number }) {
+  const q = veredito(v);
+  const serie = v.serie;
+  const maior = Math.max(...serie.map((a) => a.travado), 0.01);
+  const larg = 300;
+  const alt = 72;
+  const x = (i: number) => (serie.length < 2 ? 0 : (i / (serie.length - 1)) * larg);
+  const y = (t: number) => alt - (t / maior) * (alt - 6);
+  const linha = serie.map((a, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(a.travado).toFixed(1)}`).join(" ");
+  const area = serie.length >= 2 ? `${linha} L${larg},${alt} L0,${alt} Z` : "";
+
+  // Tokens por mês vezes preço: o que o comprador precisa absorver todo mês só
+  // para o preço ficar parado.
+  const porMes = (v.ritmo / 100) * v.supply;
+  const dolarPorMes = porMes * preco;
+
+  return (
+    <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-semibold text-lg">Oferta que ainda vai chegar</h2>
+        <span className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+          {serie.length} leituras · desde {serie[0]?.data ?? "—"}
+        </span>
+      </div>
+      <p className={`text-sm mt-1 ${VEREDITO_TOM[q]}`}>{textoVeredito(v)}</p>
+
+      <div className="grid gap-4 sm:grid-cols-4 mt-4 text-sm">
+        <div>
+          <p className="text-black/50 dark:text-white/50">Travado em contrato</p>
+          <p className="text-lg font-semibold tabular-nums">{(v.travado * 100).toFixed(1)}%</p>
+          <p className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+            {units(v.travado * v.supply)} tokens
+          </p>
+        </div>
+        <div>
+          <p className="text-black/50 dark:text-white/50" title="Pontos percentuais do supply que saem dos contratos por mês, por mínimos quadrados sobre a série">
+            Ritmo de saída
+          </p>
+          <p className={`text-lg font-semibold tabular-nums ${v.ritmo >= 0.5 ? VEREDITO_TOM.emitindo : ""}`}>
+            {v.ritmo.toFixed(2)} pp/mês
+          </p>
+          {preco > 0 && porMes > 0 && (
+            <p className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+              {money(dolarPorMes)}/mês em oferta
+            </p>
+          )}
+        </div>
+        <div>
+          <p className="text-black/50 dark:text-white/50">Já liberado na janela</p>
+          <p className="text-lg font-semibold tabular-nums">{v.liberado.toFixed(1)} pp</p>
+          <p className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+            {units((v.liberado / 100) * v.supply)} tokens
+          </p>
+        </div>
+        <div>
+          <p className="text-black/50 dark:text-white/50" title="Somado nas 17 carteiras de corretora conhecidas">
+            Em corretora
+          </p>
+          <p className="text-lg font-semibold tabular-nums">{(v.emCorretora * 100).toFixed(1)}%</p>
+          <p className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+            {units(v.emCorretora * v.supply)} tokens
+          </p>
+        </div>
+      </div>
+
+      {serie.length >= 2 && (
+        <div className="mt-4">
+          <p className="text-[10px] tracking-widest text-black/40 dark:text-white/40 uppercase">
+            % do supply parado nos contratos de alocação
+          </p>
+          <svg
+            viewBox={`0 0 ${larg} ${alt}`}
+            preserveAspectRatio="none"
+            className="w-full h-20 mt-2 overflow-visible"
+            role="img"
+            aria-label={`Supply travado caindo de ${(serie[0].travado * 100).toFixed(1)}% para ${(v.travado * 100).toFixed(1)}%`}
+          >
+            <path d={area} className="fill-[#A97400]/15 dark:fill-[#F0B90B]/15" />
+            <path
+              d={linha}
+              fill="none"
+              strokeWidth={2}
+              vectorEffect="non-scaling-stroke"
+              className="stroke-[#A97400] dark:stroke-[#F0B90B]"
+            />
+          </svg>
+          <div className="flex justify-between text-xs text-black/40 dark:text-white/40 tabular-nums mt-1">
+            <span>
+              {serie[0].data} · {(serie[0].travado * 100).toFixed(1)}%
+            </span>
+            <span>
+              {serie[serie.length - 1].data} · {(v.travado * 100).toFixed(1)}%
+            </span>
+          </div>
+        </div>
+      )}
+
+      {v.cofres.length > 0 && (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm tabular-nums">
+            <thead className="text-xs text-black/40 dark:text-white/40 text-left">
+              <tr>
+                <th className="font-normal py-1">contrato de alocação</th>
+                <th className="font-normal py-1 text-right">recebeu</th>
+                <th className="font-normal py-1 text-right">hoje</th>
+                <th className="font-normal py-1 text-right">ritmo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {v.cofres.map((c) => (
+                <tr key={c.endereco} className="border-t border-black/5 dark:border-white/5">
+                  <td className="py-1.5 font-mono text-xs">
+                    <a
+                      href={`${CHAIN_EXPLORER[v.chain] ?? ""}/address/${c.endereco}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:underline"
+                    >
+                      {short(c.endereco)}
+                    </a>
+                    {!c.contrato && (
+                      <span className="ml-2 text-black/40 dark:text-white/40">carteira</span>
+                    )}
+                  </td>
+                  <td className="py-1.5 text-right">{(c.recebeu * 100).toFixed(2)}%</td>
+                  <td className="py-1.5 text-right">{(c.hoje * 100).toFixed(2)}%</td>
+                  <td className={`py-1.5 text-right ${c.ritmo >= 0.5 ? VEREDITO_TOM.emitindo : ""}`}>
+                    {c.hoje < 0.0001 ? "esvaziou" : `${c.ritmo.toFixed(2)} pp/mês`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="text-xs text-black/40 dark:text-white/40 mt-3">
+        Cofre aqui é quem recebeu emissão direta do endereço zero. Supply que já saiu deles e foi
+        parar numa carteira grande não aparece nesta conta.
+      </p>
+    </section>
+  );
+}
+
 function PlacarDaMoeda({
   placar,
   meu,
@@ -472,10 +632,12 @@ export default async function Page({
     getPositioning(token.symbol),
   ]);
 
-  const [vida, estudo, placar] = await Promise.all([
-    lerVida(token, snapshot?.priceUsd ?? perp?.price ?? 0).catch(() => null),
+  const preco = snapshot?.priceUsd ?? perp?.price ?? 0;
+  const [vida, estudo, placar, vesting] = await Promise.all([
+    lerVida(token, preco).catch(() => null),
     lerEstudo(token.symbol),
     getPlacar(),
+    vestingDe(token.symbol),
   ]);
   const meuPlacar = placar?.porMoeda?.[token.symbol] ?? null;
 
@@ -512,6 +674,7 @@ export default async function Page({
 
         <CyclePanel leitura={lerCiclo(snapshot, perp?.live ?? null)} />
 
+        {vesting && <VestingPanel v={vesting} preco={preco} />}
         {estudo && <EstudoPanel estudo={estudo} />}
         {meuPlacar && placar && (
           <PlacarDaMoeda placar={placar} meu={meuPlacar} ticker={token.symbol.replace(/USDT$/, "")} />
