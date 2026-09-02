@@ -680,6 +680,20 @@ export interface SinaisAgora {
   perfilR: number | null;
   perfilLag: number | null;
   perfilSigmas: number | null;
+  /**
+   * Pontos percentuais do supply que os contratos de alocação soltam por mês.
+   * Nulo quando `npm run vesting` nunca rodou nela.
+   *
+   * Entra ao lado do unlock e cobre o buraco dele. O unlock procura um SALTO no
+   * circulante — 5% em 21 dias — e existe porque na BTW o supply pulou 23% três
+   * dias antes da máxima. Mas emissão programada raramente salta: na C ela pinga
+   * 0,91 ponto percentual por mês, o que nunca aciona a regra do salto e mesmo
+   * assim somou 12,3 pontos — 123 milhões de tokens — em seis meses.
+   *
+   * Um é evento, o outro é regime, e os dois desfazem a mesma premissa: comprar
+   * moeda derretida supõe que a oferta parou de crescer.
+   */
+  emissao: number | null;
 }
 
 /**
@@ -921,6 +935,10 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   const perpManda = agora.perpDominance >= 50;
   const floatAlto = vida.floatCex !== null && vida.floatCex >= 0.15;
   const floatBaixo = vida.floatCex !== null && vida.floatCex < 0.02;
+  // Meio ponto percentual do supply por mês. O corte é o mesmo de `lib/vesting`
+  // e vale pelo que separa, não por calibração contra retorno: a C solta 2,31 e
+  // a BTW, nada.
+  const emitindo = agora.emissao !== null && agora.emissao >= 0.5;
   const pct = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(0)}%`;
 
   // A regra de tempo vem antes de tudo, porque ela não discute direção: durante
@@ -1177,7 +1195,7 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     }
 
     // Pequena e exausta é a melhor assimetria de toda a amostra.
-    // Unlock recente é a única coisa que segura esta regra. A reversão à média
+    // Oferta nova entrando é o que segura esta regra. A reversão à média
     // pressupõe que a oferta parou de crescer; com lote novo destravando, ela
     // não parou.
     if (unlockRecente) {
@@ -1190,6 +1208,24 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
           `${pct(vida.queda)} do topo, e a fase mede +2,7% em sete dias — normalmente compraria. ` +
           `${textoUnlock(unlockRecente)} Isso desfaz a premissa: a reversão à média supõe que a ` +
           `oferta parou de crescer, e ela não parou.`,
+      };
+    }
+    // O mesmo freio pelo outro lado. O unlock procura um SALTO no circulante, e
+    // emissão programada não salta: ela pinga. Na C são 0,91 ponto percentual
+    // por mês saindo de um contrato de alocação — nunca aciona a regra do salto,
+    // e somou 12,3 pontos em seis meses.
+    if (emitindo) {
+      return {
+        vies: "observar",
+        forca: 1,
+        ateQuando: textoAteQuando(vida),
+        titulo: "Fase de quicar, contra uma torneira aberta",
+        porque:
+          `${pct(vida.queda)} do topo, e a fase mede +2,7% em sete dias — normalmente compraria. ` +
+          `Mas os contratos de alocação soltam ${agora.emissao!.toFixed(2)} ponto(s) percentual(is) ` +
+          `do supply por mês, medido saldo a saldo no nó de arquivo. Isso não é um evento que passa: ` +
+          `é oferta programada chegando todo mês, e quem compra aqui está do outro lado dela. A ` +
+          `reversão à média supõe que a oferta parou de crescer, e ela não parou.`,
       };
     }
     // A COMPRA AGORA DEPENDE DO TAMANHO, e não mais da fase sozinha.
@@ -1241,6 +1277,23 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
           ? ` Com só ${((vida.floatCex ?? 0) * 100).toFixed(2)}% do supply em corretora, ` +
             `quase não há oferta pronta para atrapalhar.`
           : ""),
+    };
+  }
+
+  // O mesmo freio: livro fino é a condição para pouco dinheiro mover muito
+  // preço, e emissão programada é dinheiro entrando do outro lado todo mês.
+  if (vida.estagio === "nunca subiu" && floatBaixo && emitindo) {
+    return {
+      vies: "observar",
+      forca: 1,
+      ateQuando: textoAteQuando(vida),
+      titulo: "Livro fino, mas com oferta programada chegando",
+      porque:
+        `Amplitude de só ${vida.amplitude.toFixed(1)}x e ${((vida.floatCex ?? 0) * 100).toFixed(2)}% ` +
+        `do supply em corretora: o livro está fino, que normalmente é a condição para pouco ` +
+        `dinheiro mover muito preço. Só que os contratos de alocação soltam ` +
+        `${agora.emissao!.toFixed(2)} ponto(s) percentual(is) do supply por mês. Livro fino com ` +
+        `oferta programada não é escassez — é escassez sendo desfeita em prestações.`,
     };
   }
 

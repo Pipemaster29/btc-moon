@@ -287,6 +287,7 @@ if (vida) {
     perfilR: null,
     perfilLag: null,
     perfilSigmas: null,
+    emissao: motor?.emissao ?? null,
     accountRatio: ultimo?.accountRatio ?? 0,
     whaleRatio: ultimo?.whaleRatio ?? 0,
     openInterestUsd: oi,

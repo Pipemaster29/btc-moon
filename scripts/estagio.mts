@@ -73,6 +73,7 @@ const leituras = vidas.map((v) => {
       perfilR: null,
       perfilLag: null,
       perfilSigmas: null,
+      emissao: null,
     }),
   };
 });
