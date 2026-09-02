@@ -91,6 +91,10 @@ jobs:
           git fetch --quiet origin main
           git checkout --quiet -B main origin/main
           npm run panorama || exit 0
+          # A carteira consome as linhas que o panorama acabou de gravar, então
+          # vem depois dele e no mesmo commit. Falhar aqui não derruba o
+          # retrato: ele é o dado, a carteira é a leitura em cima do dado.
+          npm run carteira || echo "carteira falhou, seguindo"
           git add data/
           git diff --cached --quiet && exit 0
           git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
@@ -140,6 +144,7 @@ jobs:
             git checkout --quiet -B main origin/main
 
             npm run panorama || { echo "panorama falhou, seguindo"; exit 0; }
+            npm run carteira || echo "carteira falhou, seguindo"
 
             git add data/
             if git diff --cached --quiet; then

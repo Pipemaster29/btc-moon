@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { PanoramaRow } from "@/lib/overview";
 import { getSnapshot } from "@/lib/snapshot";
 import { getPlacar } from "@/lib/placar";
+import { getCarteira } from "@/lib/carteira";
+import CarteiraPanel from "@/components/CarteiraPanel";
 import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
 
@@ -244,7 +246,11 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
 }
 
 export default async function Radar() {
-  const [snapshot, placar] = await Promise.all([getSnapshot(), getPlacar()]);
+  const [snapshot, placar, carteira] = await Promise.all([
+    getSnapshot(),
+    getPlacar(),
+    getCarteira(),
+  ]);
   const rows = snapshot.moedas;
   const comCarteiras = rows.filter((r) => r.hasWallets).length;
 
@@ -320,6 +326,8 @@ export default async function Radar() {
         {/* O painel dizendo o que a própria régua já acertou. Vem ANTES das
             recomendações de propósito: quem lê "vender" precisa saber, na mesma
             tela, que o viés ainda não separou de nada. */}
+        {carteira && <CarteiraPanel c={carteira} />}
+
         {placar && (
           <section className="rounded-xl border border-black/10 dark:border-white/10 p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">

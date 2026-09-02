@@ -153,6 +153,45 @@ pinga.
 `eth_getLogs` em lote guarda desde 2025-11-10. Moeda nascida antes disso não tem
 emissão varrível ali, e a varredura grava esse limite em vez de devolver zero.
 
+## Mil dólares de mentira
+
+O placar mede se os vieses separam da referência em pontos percentuais. Não
+responde a pergunta que qualquer pessoa faz primeiro: **se eu tivesse seguido,
+quanto eu teria hoje?** São perguntas diferentes — a mediana não sabe de tamanho
+de posição, de custo, nem de quantas posições ficam abertas ao mesmo tempo.
+
+`npm run carteira` entra em toda call de compra e venda e mostra o resultado no
+topo do painel, acima das candidatas. A ordem é deliberada: quem abre a página
+vê quanto as calls renderam antes de ver as calls novas.
+
+**Tamanho da posição — pelo risco, não pelo capital.** Cada call arrisca uma
+fração fixa do patrimônio até o stop, e o tamanho sai dessa conta: força 3
+arrisca 1,5%, força 2 arrisca 1,0%, força 1 arrisca 0,5%. Com stop em 25%, isso
+dá posições de 6%, 4% e 2%. Parece pouco até lembrar que o painel emite treze
+calls de uma vez num dia normal — a 4% cada, metade do patrimônio já está na
+mesa. Teto de 50% exposto, sem alavancagem.
+
+**Quando sai — quatro gatilhos, o primeiro que acontecer:**
+
+| gatilho | por quê |
+|---|---|
+| **o painel mudou de ideia** | a saída principal. A carteira segue as calls, então sai quando a call sai — sem isso ela mediria as minhas regras de saída, não o painel |
+| **stop em −25%** | perto de três desvios de UM DIA: o `npm run estudar` mede volatilidade diária de 7% a 10% nestas moedas |
+| **alvo em +40%** | o dobro da assimetria que sustenta a regra de compra: pequena e derretida sobe mais de 20% em 21,0% das semanas |
+| **prazo de 14 dias** | as duas regras direcionais foram medidas em janelas de 7 e 14 dias; depois disso segurar deixa de ser seguir a leitura |
+
+**Ela começa hoje, não sobre o histórico.** Rodar o motor para trás sobre os dois
+meses gravados daria um número imediato e enganoso: as regras do painel foram
+ajustadas ao longo desses dois meses — o freio de perfil, o de emissão, a trava
+de alta — e todas foram escritas depois de ver os dados. Um resultado
+retrospectivo mediria o quanto eu ajustei o painel olhando para o passado.
+
+**O que a conta não cobra, e cada um empurra o número para cima:** financiamento
+de posição vendida, que nestas moedas chega a dezenas de por cento ao ano; a
+diferença entre o preço do retrato e o preço em que a ordem sairia; e a
+profundidade real da pool — o custo é 0,15% por lado, fixo, e numa pool de dois
+mil dólares uma ordem de sessenta já move mais que isso.
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.
@@ -288,6 +327,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | comando | o que faz |
 | --- | --- |
 | `npm run placar` | lê o histórico de emissões e mede se o painel acertou |
+| `npm run carteira` | mil dólares de mentira seguindo as calls, e o que sobrou |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |

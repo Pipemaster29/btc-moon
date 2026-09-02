@@ -47,6 +47,15 @@ interface PontoHistorico {
   saida: number;
   estagio: string | null;
   vies: string | null;
+  /**
+   * Força da call, de 0 a 3. Existe para a carteira poder dimensionar a posição.
+   *
+   * O `nota` ao lado não serve para isso: ele ordena a tela por "merece olhada
+   * agora" e sobe com squeeze em andamento, que é exatamente onde o painel diz
+   * para NÃO entrar. Confundir os dois faria a carteira apostar mais alto justo
+   * onde a leitura é de ficar de fora.
+   */
+  forca: number | null;
   nota: number;
   floatCex: number | null;
   /** Circulante ÷ supply total. */
@@ -95,6 +104,7 @@ const pontos: PontoHistorico[] = comPreco.map((r) => ({
   saida: Number(r.whaleExitShare.toFixed(4)),
   estagio: r.vida?.estagio ?? null,
   vies: r.leitura?.vies ?? null,
+  forca: r.leitura?.forca ?? null,
   nota: r.score,
   floatCex: r.vida?.floatCex === null || r.vida?.floatCex === undefined
     ? null
