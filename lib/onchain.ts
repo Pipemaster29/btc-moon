@@ -59,6 +59,17 @@ export const CHAINS: Record<Chain, ChainConfig> = {
     ],
     // Dos doze nós públicos testados, um único devolve log antigo e outro
     // devolve estado antigo. Fazem coisas diferentes e não se substituem.
+    //
+    // E "log antigo" tem limite, medido em 2026-09-02: o blxrbdn responde
+    // "header not found" abaixo do bloco ~67.751.000, ou seja guarda desde
+    // 2025-11-10 — dez meses, não a cadeia inteira. Moeda nascida antes disso
+    // não tem gênese varrível nesta rede, e era assim que a BLUAI consumia
+    // vinte minutos de varredura para devolver lista vazia. `ScanResult` agora
+    // separa esse caso em `semHistorico`, e quem varre para na hora.
+    //
+    // Não há substituto público: o drpc e o blastapi respondem a profundidade
+    // mas cortam por limite de tráfego na primeira faixa; publicnode, zan e
+    // ankr exigem chave; blockrazor e 1rpc limitam a faixa a 25 e 50 blocos.
     archiveLog: ["https://bsc.rpc.blxrbdn.com"],
     archiveState: ["https://bsc-mainnet.public.blastapi.io"],
     maxLogSpan: 5000,
@@ -665,6 +676,35 @@ export interface ScanResult {
   transfers: Transfer[];
   /** Faixas que nenhuma tentativa conseguiu ler. */
   failed: number;
+  /**
+   * Faixas que falharam porque o nó NÃO GUARDA aquela profundidade.
+   *
+   * Está separado de `failed` porque as duas exigem coisas opostas de quem
+   * chama: faixa que falhou por sobrecarga se tenta de novo, faixa antes do
+   * horizonte do nó não existe por mais que se insista, e insistir é o que
+   * transformava um limite conhecido em varredura de vinte minutos que devolve
+   * lista vazia.
+   *
+   * Medido na BNB Chain em 2026-09-02: `bsc.rpc.blxrbdn.com`, o único endpoint
+   * público que ainda serve `eth_getLogs` em lote, responde "header not found"
+   * abaixo do bloco ~67.751.000 — ele guarda desde 2025-11-10, e não a cadeia
+   * inteira, como `archiveLog` dava a entender. Moeda nascida antes disso não
+   * tem gênese varrível nesta rede, e agora isso aparece em vez de virar zero.
+   */
+  semHistorico: number;
+}
+
+/** Mensagens com que um nó diz "não guardo esta profundidade". */
+function ehFaltaDeHistorico(mensagem: string): boolean {
+  const m = mensagem.toLowerCase();
+  return (
+    m.includes("header not found") ||
+    m.includes("missing trie node") ||
+    m.includes("state not available") ||
+    m.includes("block not found") ||
+    m.includes("older than") ||
+    m.includes("archive")
+  );
 }
 
 /**
@@ -713,6 +753,7 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
   let done = 0;
   let next = 0;
   let failed = 0;
+  let semHistorico = 0;
 
   async function worker(): Promise<void> {
     while (next < starts.length) {
@@ -745,8 +786,9 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
             // Transfer. Tópicos e valor juntos separam os eventos irmãos.
             found.set(`${log.transactionHash}|${log.topics.join("")}|${log.data}`, transfer);
           }
-        } catch {
+        } catch (error) {
           failed++;
+          if (ehFaltaDeHistorico(error instanceof Error ? error.message : "")) semHistorico++;
         }
       }
 
@@ -762,6 +804,7 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
   return {
     transfers: [...found.values()].sort((a, b) => a.block - b.block),
     failed,
+    semHistorico,
   };
 }
 

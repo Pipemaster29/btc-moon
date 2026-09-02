@@ -8,9 +8,11 @@
  *   2. Achar a emissão: varredura filtrada por `from = 0x0`. O filtro é o que
  *      torna isso possível — sem ele, a vida inteira de um token movimentado são
  *      milhões de logs; com ele, são as poucas transferências que criaram supply.
- *      A varredura anda em blocos de uma semana e PARA assim que o supply está
- *      explicado, porque em quase toda moeda a emissão inteira acontece no
- *      primeiro dia.
+ *      A varredura PARA assim que o supply está explicado, e o passo DOBRA a cada
+ *      rodada: em quase toda moeda a emissão inteira acontece no bloco de
+ *      criação, e passo fixo pagaria o caso raro em toda moeda. Medido na BNB
+ *      Chain, onde o bloco dura 0,45 s: uma semana são 1,34 milhão de blocos, ou
+ *      268 faixas de cinco mil, para achar um mint que estava na primeira.
  *   3. Amostrar saldo em sete alturas de bloco: sete `balanceOf` por cofre.
  *
  * Rode com: npm run vesting C
@@ -89,15 +91,18 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
   );
 
   // ------------------------------------------------------- 1. a emissão
-  const passo = Math.max(blocosPara(token.chain, 24 * 7), config.maxLogSpan);
   const mintado = new Map<string, number>();
   let faixasPerdidas = 0;
   let faixas = 0;
   let cobertura = 0;
+  let passo = Math.max(blocosPara(token.chain, 1), config.maxLogSpan);
 
-  for (let de = nascimento; de <= head && faixas < TETO_FAIXAS; de += passo) {
-    const ate = Math.min(de + passo - 1, head);
-    const { transfers, failed } = await scanTransfers({
+  for (let de = nascimento; de <= head && faixas < TETO_FAIXAS; ) {
+    // O passo dobra sem limite, e sem esta trava a última rodada pediria de uma
+    // vez muito mais faixas do que o orçamento inteiro da moeda.
+    const cabe = (TETO_FAIXAS - faixas) * config.maxLogSpan;
+    const ate = Math.min(de + Math.min(passo, cabe) - 1, head);
+    const { transfers, failed, semHistorico } = await scanTransfers({
       chain: token.chain,
       token: token.contract,
       fromBlock: de,
@@ -107,6 +112,18 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
     faixasPerdidas += failed;
     faixas += Math.ceil((ate - de + 1) / config.maxLogSpan);
 
+    // Antes do horizonte do nó não há o que insistir. Sem esta saída, a BLUAI
+    // consumia o orçamento inteiro de faixas — vinte minutos — para devolver
+    // "0% do supply explicado", que é indistinguível de uma moeda sem emissão.
+    if (semHistorico > 0 && transfers.length === 0) {
+      const dias = ((head - de) * config.secondsPerBlock) / 86_400;
+      console.log(
+        `o nó de log da ${token.chain} não guarda o bloco ${de} ` +
+          `(${dias.toFixed(0)} dias atrás) — emissão não varrível aqui`,
+      );
+      return null;
+    }
+
     for (const t of transfers) {
       if (t.from.toLowerCase() !== ZERO) continue;
       const para = t.to.toLowerCase();
@@ -115,6 +132,9 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
 
     cobertura = [...mintado.values()].reduce((s, v) => s + v, 0) / supply;
     if (cobertura >= EXPLICADO) break;
+
+    de = ate + 1;
+    passo *= 2;
   }
 
   console.log(
