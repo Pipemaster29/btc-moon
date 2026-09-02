@@ -74,6 +74,7 @@ const leituras = vidas.map((v) => {
       perfilLag: null,
       perfilSigmas: null,
       emissao: null,
+      alta24h: o?.change24h ?? 0,
     }),
   };
 });

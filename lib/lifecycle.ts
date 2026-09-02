@@ -681,6 +681,23 @@ export interface SinaisAgora {
   perfilLag: number | null;
   perfilSigmas: number | null;
   /**
+   * Variação de preço em 24 horas. Trava o short sem depender de classificação.
+   *
+   * A trava de tempo deste arquivo — não vender no meio de uma alta forçada —
+   * dependia de `moveKind` ter classificado o movimento como squeeze ou
+   * alavancagem. Quando a classificação erra, não sobra proteção nenhuma.
+   *
+   * Medido na AKE em 02/09: às 16:28 ela estava 37% acima do retrato anterior,
+   * com o open interest subindo de 30 para 38 milhões, e `moveKind` disse
+   * "oferta". A trava não pegou e o painel emitiu SHORT. Três horas depois a
+   * moeda estava +117% e o painel já dizia "evitar" — tarde.
+   *
+   * Preço não precisa de classificação: se subiu muito hoje, vender por regra
+   * de fase é entrar contra um movimento em curso, e a fase foi medida em
+   * janelas de sete dias que o intradiário atropela.
+   */
+  alta24h: number;
+  /**
    * Pontos percentuais do supply que os contratos de alocação soltam por mês.
    * Nulo quando `npm run vesting` nunca rodou nela.
    *
@@ -818,6 +835,15 @@ function textoUnlock(u: { quando: number; variacao: number }): string {
  * O freio só REMOVE direção, nunca abre uma. Não há amostra para o contrário: o
  * estudo mede a série de preço da moeda, não o retorno das recomendações nela.
  */
+/**
+ * Alta de um dia que basta para tirar a venda da mesa, qualquer que seja a fase.
+ *
+ * Não saiu de calibração contra retorno — não existe amostra de pump para
+ * calibrar — e sim do que ele impede. Na AKE em 02/09 o painel emitiu short com
+ * a moeda 37% acima do retrato anterior; o dia fechou em +117%.
+ */
+const ALTA_QUE_TRAVA_VENDA = 0.2;
+
 function contradizAFase(agora: SinaisAgora): boolean {
   return (
     agora.perfil === "continua" &&
@@ -944,7 +970,20 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   // A regra de tempo vem antes de tudo, porque ela não discute direção: durante
   // uma alta forçada, vender é alimentar o squeeze, esteja a moeda no estágio
   // que estiver. O momento é depois que os vendidos acabam.
-  const podeVender = !(forcada && agora.moveChange > 0);
+  //
+  // A SEGUNDA METADE DA TRAVA É NOVA, e existe porque a primeira dependia de
+  // acertar a classificação do movimento. Na AKE em 02/09 às 16:28 — 37% acima
+  // do retrato anterior, open interest de 30 para 38 milhões — `moveKind` disse
+  // "oferta" em vez de squeeze, `forcada` ficou falso, e o painel emitiu SHORT
+  // no começo de uma alta que fechou o dia em +117%.
+  //
+  // Preço não precisa de classificação. Vinte por cento em 24 horas é
+  // movimento em curso por qualquer definição, e as regras de fase deste
+  // arquivo foram medidas em janelas de SETE DIAS: elas não têm nada a dizer
+  // sobre o dia em que a moeda dobra. O corte não foi calibrado contra retorno
+  // — não há amostra de pumps — e é grosso de propósito.
+  const subindoForte = agora.alta24h >= ALTA_QUE_TRAVA_VENDA;
+  const podeVender = !(forcada && agora.moveChange > 0) && !subindoForte;
 
   // ------------------------------------------------------------------ short
   //
@@ -1326,6 +1365,28 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
         (perpManda
           ? ` O open interest vale ${agora.perpDominance.toFixed(0)}x a pool à vista, ou seja, ` +
             `o preço aqui é feito por aposta e não por compra — o estouro pode ir longe.`
+          : ""),
+    };
+  }
+
+  // A alta que não foi classificada como forçada, mas é grande demais para o
+  // painel ter opinião. Sem este bloco a moeda caía no "sem vantagem medida" lá
+  // embaixo, que descreve a fase e não avisa nada — e o que precisa ser dito é
+  // que há um movimento em curso.
+  if (subindoForte) {
+    return {
+      vies: "evitar",
+      forca: 2,
+      ateQuando: textoAteQuando(vida),
+      titulo: "Movimento em curso — o painel não tem o que dizer hoje",
+      porque:
+        `${pct(agora.alta24h)} em 24 horas. As regras de fase deste painel foram medidas em ` +
+        `janelas de SETE DIAS, e nenhuma delas tem o que afirmar sobre o dia em que a moeda anda ` +
+        `isso — nem a favor nem contra. A fase (${vida.estagio}) volta a valer quando o ` +
+        `movimento assentar.` +
+        (perpManda
+          ? ` E o open interest vale ${agora.perpDominance.toFixed(0)}x a pool à vista: o preço ` +
+            `aqui é feito por aposta e não por compra, então o estouro pode ir longe nos dois lados.`
           : ""),
     };
   }

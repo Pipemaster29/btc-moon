@@ -289,6 +289,7 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         perfilLag: estudo?.melhorLag?.lag ?? null,
         perfilSigmas: estudo?.melhorLag?.sigmas ?? null,
         emissao: motor?.emissao ?? null,
+        alta24h: row.change24h,
       });
       return { ...row, vida, leitura, motor };
     }),

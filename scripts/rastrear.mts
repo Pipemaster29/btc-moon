@@ -288,6 +288,11 @@ if (vida) {
     perfilLag: null,
     perfilSigmas: null,
     emissao: motor?.emissao ?? null,
+    // A série é horária, então 24 pontos atrás é o preço de ontem a esta hora.
+    alta24h: (() => {
+      const ontem = serie[serie.length - 25]?.price ?? 0;
+      return ontem > 0 ? p / ontem - 1 : 0;
+    })(),
     accountRatio: ultimo?.accountRatio ?? 0,
     whaleRatio: ultimo?.whaleRatio ?? 0,
     openInterestUsd: oi,
