@@ -33,6 +33,7 @@ import {
   tokenInfo,
   toUnits,
   CHAINS,
+  type Chain,
 } from "../lib/onchain";
 import { CARTEIRAS_CEX } from "../lib/lifecycle";
 import { ATIVAS, findToken, type WatchedToken } from "../lib/watchlist";
@@ -48,6 +49,18 @@ const CORTE = 0.01;
 /** Quantas amostras mensais de saldo. Sete dão seis intervalos para a reta. */
 const AMOSTRAS = 7;
 
+const MES = 30 * 24 * 3600 * 1000;
+
+/**
+ * O instante de referência do lote, arredondado para o começo do dia.
+ *
+ * Precisa ser o MESMO para todas as moedas, senão as amostras caem em milésimos
+ * diferentes e o cache de alturas de bloco nunca acerta — que é o único motivo
+ * de ele existir. Arredondar para o dia também faz duas execuções no mesmo dia
+ * medirem nas mesmas alturas, e aí a série é comparável entre elas.
+ */
+const AGORA = Math.floor(Date.now() / 86_400_000) * 86_400_000;
+
 /** Onde parar de procurar emissão: supply explicado. */
 const EXPLICADO = 0.995;
 
@@ -60,6 +73,25 @@ const EXPLICADO = 0.995;
  * resposta que já se sabe: a emissão não acabou.
  */
 const TETO_FAIXAS = 3_000;
+
+/**
+ * A altura de bloco de um instante, achada UMA vez por rede.
+ *
+ * "Que bloco era 5 de março na Base" não depende de moeda nenhuma, e estava
+ * sendo respondido de novo para cada uma: `blockAtTime` é busca binária, ~25
+ * leituras, vezes sete amostras, vezes trinta moedas — cinco mil requisições
+ * sequenciais para achar duzentas alturas, das quais só vinte e uma são
+ * distintas. Era o gargalo do lote inteiro.
+ */
+const alturas = new Map<string, number>();
+async function alturaDe(chain: Chain, instante: number): Promise<number> {
+  const chave = `${chain}:${instante}`;
+  const guardado = alturas.get(chave);
+  if (guardado !== undefined) return guardado;
+  const bloco = await blockAtTime(chain, Math.floor(instante / 1000));
+  alturas.set(chave, bloco);
+  return bloco;
+}
 
 async function medir(token: WatchedToken): Promise<Vesting | null> {
   const config = CHAINS[token.chain];
@@ -215,11 +247,9 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
   }
 
   // --------------------------------------------- 2. as alturas das amostras
-  const agora = Date.now();
-  const MES = 30 * 24 * 3600 * 1000;
   const instantes: number[] = [];
   for (let i = AMOSTRAS - 1; i >= 0; i--) {
-    const quando = agora - i * MES;
+    const quando = AGORA - i * MES;
     // Amostra antes do contrato existir não é zero, é nada: descartar é o certo.
     if (quando >= nasceuEm.getTime() + MES / 4) instantes.push(quando);
   }
@@ -227,7 +257,7 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
   const enderecos = candidatos.map(([a]) => a);
   const blocos = new Map<number, number>();
   for (const instante of instantes) {
-    blocos.set(instante, await blockAtTime(token.chain, Math.floor(instante / 1000)));
+    blocos.set(instante, await alturaDe(token.chain, instante));
   }
 
   // --------------------------------------------- 3. o saldo em cada altura
