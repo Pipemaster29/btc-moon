@@ -885,16 +885,29 @@ export async function blocoDoSupply(
   baixo: number,
   alto: number,
 ): Promise<number> {
+  // A primeira leitura vai SEM rede de proteção, de propósito. Num nó que não
+  // responde, engolir a falha e seguir custaria vinte e cinco leituras de oito
+  // tentativas cada — seis minutos para devolver um palpite inventado. Estourar
+  // aqui manda quem chama para o caminho de varredura na hora.
+  await supplyAt(chain, token, Math.floor((baixo + alto) / 2));
+
   let lo = baixo;
   let hi = alto;
+  let falhas = 0;
   while (hi - lo > 1) {
     const meio = Math.floor((lo + hi) / 2);
     const s = await supplyAt(chain, token, meio).catch(() => BigInt(-1));
     // Leitura que falhou não pode decidir o lado: sobe o piso e a busca fecha
-    // pelo outro extremo em vez de apontar um bloco inventado.
-    if (s < BigInt(0)) lo = meio;
-    else if (s >= alvo) hi = meio;
-    else lo = meio;
+    // pelo outro extremo em vez de apontar um bloco inventado. Três seguidas e
+    // o nó não está respondendo àquela profundidade — não há palpite a dar.
+    if (s < BigInt(0)) {
+      if (++falhas >= 3) throw new Error("busca de supply: o nó parou de responder");
+      lo = meio;
+    } else {
+      falhas = 0;
+      if (s >= alvo) hi = meio;
+      else lo = meio;
+    }
   }
   return hi;
 }
