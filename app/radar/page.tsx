@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { PanoramaRow } from "@/lib/overview";
 import { getSnapshot } from "@/lib/snapshot";
 import { getPlacar } from "@/lib/placar";
-import { getCarteira } from "@/lib/carteira";
+import { getCarteira, remarcar } from "@/lib/carteira";
 import CarteiraPanel from "@/components/CarteiraPanel";
 import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
@@ -246,12 +246,20 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
 }
 
 export default async function Radar() {
-  const [snapshot, placar, carteira] = await Promise.all([
+  const [snapshot, placar, guardada] = await Promise.all([
     getSnapshot(),
     getPlacar(),
     getCarteira(),
   ]);
   const rows = snapshot.moedas;
+
+  // A carteira é recalculada só quando o retrato roda, e o painel ao lado dela
+  // se atualiza pela camada viva. Remarcar as posições com os preços que esta
+  // página já tem em mãos é aritmética, e sem isso a tela mostra preço novo em
+  // cima e posição marcada há horas embaixo.
+  const carteira = guardada
+    ? remarcar(guardada, new Map(rows.filter((r) => r.price > 0).map((r) => [r.ticker, r.price])))
+    : null;
   const comCarteiras = rows.filter((r) => r.hasWallets).length;
 
   const porVies = (v: Vies) =>

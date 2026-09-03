@@ -594,11 +594,76 @@ function montar(estado: Estado, comecouEm: number, atualizadoEm: number): Cartei
 
 const CAMINHO = "data/carteira.json";
 
+const RAW =
+  "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main/data/carteira.json";
+
+/**
+ * A carteira gravada, com as MESMAS duas camadas do panorama.
+ *
+ * Ela lia só o disco, e em produção o disco é o do BUILD. O painel ao lado se
+ * atualiza pelo GitHub raw a cada retrato, e a carteira embaixo dele ficava
+ * parada no último deploy — podia ter dias, sem nada na tela dizendo isso.
+ */
 export async function getCarteira(): Promise<Carteira | null> {
+  const valida = (d: unknown): Carteira | null =>
+    Array.isArray((d as Carteira)?.abertas) ? (d as Carteira) : null;
+
   try {
-    const dado = JSON.parse(await readFile(CAMINHO, "utf8")) as Carteira;
-    return Array.isArray(dado?.abertas) ? dado : null;
+    const res = await fetch(RAW, {
+      signal: AbortSignal.timeout(4_000),
+      next: { revalidate: 120 },
+    });
+    if (res.ok) {
+      const daRede = valida(await res.json());
+      if (daRede) return daRede;
+    }
+  } catch {
+    // Cai para o disco, que sempre responde.
+  }
+
+  try {
+    return valida(JSON.parse(await readFile(CAMINHO, "utf8")));
   } catch {
     return null;
   }
+}
+
+/**
+ * As posições abertas remarcadas com os preços de agora.
+ *
+ * A carteira só é recalculada quando o retrato roda, e o GitHub entrega de dois
+ * a cinco retratos por dia. Entre um e outro, a tabela do painel se atualiza
+ * pela camada viva e a carteira embaixo dela não — preço novo em cima, posição
+ * marcada há horas embaixo. É o mesmo defeito que a leitura tinha.
+ *
+ * Isto NÃO abre nem fecha posição, e a distinção é deliberada: decidir exige o
+ * histórico inteiro e as regras de saída, que é o que `npm run carteira` faz.
+ * Aqui só se corrige a MARCAÇÃO, que é aritmética sobre um preço que a página já
+ * tem em mãos. Uma posição que já passou do stop aparece passada do stop até o
+ * retrato seguinte fechá-la — o que é honesto, porque foi só então que ela
+ * fechou de verdade.
+ */
+export function remarcar(c: Carteira, precos: Map<string, number>): Carteira {
+  if (c.abertas.length === 0) return c;
+
+  let mudou = false;
+  const abertas = c.abertas.map((p) => {
+    const preco = precos.get(p.symbol);
+    if (!preco || !Number.isFinite(preco) || preco <= 0) return p;
+    // O mesmo freio de lixo do motor: salto de dez vezes entre marcações é erro
+    // de dado, não mercado.
+    if (preco / p.precoAtual > SALTO_ABSURDO || p.precoAtual / preco > SALTO_ABSURDO) return p;
+    mudou = true;
+    return { ...p, precoAtual: preco, retorno: sobreMargem({ ...p, precoAtual: preco }, preco) };
+  });
+
+  if (!mudou) return c;
+  const exposto = abertas.reduce((s, p) => s + p.valor * (1 + p.retorno), 0);
+  return {
+    ...c,
+    abertas: abertas.sort((a, b) => b.retorno - a.retorno),
+    patrimonio: c.caixa + exposto,
+    retorno: (c.caixa + exposto) / CAPITAL_INICIAL - 1,
+    atualizadoEm: Date.now(),
+  };
 }
