@@ -70,8 +70,11 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
         <div>
           <p className="text-black/50 dark:text-white/50">Caixa parado</p>
           <p className="text-2xl font-semibold tabular-nums">{usd(c.caixa)}</p>
+          {/* O nocional, e não só a margem. Dizer "US$ 140 exposto" a 3x esconde
+              que o que anda com o preço são US$ 420 — a margem é o que se perde,
+              o nocional é o que se move. */}
           <p className="text-xs text-black/40 dark:text-white/40 tabular-nums">
-            {usd(exposto)} exposto
+            {usd(exposto)} de margem, controlando {usd(exposto * ALAVANCAGEM)}
           </p>
         </div>
         <div>

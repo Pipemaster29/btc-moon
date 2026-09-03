@@ -635,7 +635,12 @@ export default async function Page({
   // O on-chain só existe para quem tem contrato configurado; o perpétuo existe
   // para todos os símbolos da lista, inclusive os que não vivem na BSC.
   const { symbol } = await params;
-  const alvo = symbol.toUpperCase();
+  // DECODIFICAR ANTES DE COMPARAR. O parâmetro de rota chega percent-encoded, e
+  // para ticker ASCII isso não muda nada — mas a 龙虾 chega como
+  // "%E9%BE%99%E8%99%BE" e nunca casava com a watchlist. A moeda aparecia na
+  // tabela do painel com link e o link dava 404, que é o tipo de erro que
+  // ninguém vê até clicar.
+  const alvo = decodeURIComponent(symbol).toUpperCase();
   const token = WATCHLIST.find(
     (t) => t.symbol === alvo || t.symbol === `${alvo}USDT`,
   );
