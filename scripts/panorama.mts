@@ -18,6 +18,7 @@
 
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { caidas, getPanorama } from "../lib/overview";
+import { fundings } from "../lib/binance";
 
 const DIR = "data";
 const ATUAL = `${DIR}/panorama.json`;
@@ -47,6 +48,8 @@ interface PontoHistorico {
   saida: number;
   estagio: string | null;
   vies: string | null;
+  /** Taxa de financiamento por período de 8h. É o custo de carregar posição. */
+  fund: number | null;
   /**
    * Força da call, de 0 a 3. Existe para a carteira poder dimensionar a posição.
    *
@@ -68,6 +71,8 @@ interface PontoHistorico {
 
 const t0 = Date.now();
 const linhas = await getPanorama();
+// Uma requisição para os 895 perpétuos, e não uma por moeda.
+const taxas = await fundings();
 const levou = (Date.now() - t0) / 1000;
 
 await mkdir(DIR, { recursive: true });
@@ -104,6 +109,7 @@ const pontos: PontoHistorico[] = comPreco.map((r) => ({
   saida: Number(r.whaleExitShare.toFixed(4)),
   estagio: r.vida?.estagio ?? null,
   vies: r.leitura?.vies ?? null,
+  fund: taxas.get(r.symbol) ?? null,
   forca: r.leitura?.forca ?? null,
   nota: r.score,
   floatCex: r.vida?.floatCex === null || r.vida?.floatCex === undefined

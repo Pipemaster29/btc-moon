@@ -150,6 +150,41 @@ export async function circulante(symbol: string): Promise<Circulante | null> {
  * 24% de diferença que não é homônimo, é preço velho. Ancorar nele reprovava o
  * contrato certo do PORTAL nas três redes em que ele existe.
  */
+/**
+ * A taxa de financiamento de TODOS os perpétuos, numa requisição só.
+ *
+ * Existe para a carteira poder cobrar o custo de carregar posição, que é o maior
+ * item que ela não cobrava. Nestas moedas ele não é detalhe: medido em 03/09, a
+ * H paga 20,5% ao ano, a POWER 19,2%, a AKE 15,7%. Uma posição vendida segurada
+ * duas semanas come 0,8% só de financiamento — mais do que o custo de entrada e
+ * saída somados.
+ *
+ * O endereço devolve os 895 símbolos de uma vez, então o custo é uma requisição
+ * por retrato e não uma por moeda.
+ *
+ * A taxa é por PERÍODO DE OITO HORAS, e o sinal diz quem paga: positiva, o
+ * comprado paga o vendido; negativa, o contrário.
+ */
+export async function fundings(): Promise<Map<string, number>> {
+  const fora = new Map<string, number>();
+  try {
+    const res = await fetch(`${BASE}/fapi/v1/premiumIndex`, {
+      signal: AbortSignal.timeout(15_000),
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return fora;
+    const cru = (await res.json()) as { symbol: string; lastFundingRate: string }[];
+    if (!Array.isArray(cru)) return fora;
+    for (const r of cru) {
+      const taxa = Number(r.lastFundingRate);
+      if (r.symbol && Number.isFinite(taxa)) fora.set(r.symbol, taxa);
+    }
+  } catch {
+    // Sem financiamento a carteira cobra a estimativa dela e diz que estimou.
+  }
+  return fora;
+}
+
 export async function precoBinance(symbol: string): Promise<number | null> {
   return comLimite("binance", TETO_BINANCE, async () => {
     try {

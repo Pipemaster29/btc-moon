@@ -38,7 +38,7 @@
 import { readFile } from "node:fs/promises";
 
 export type Lado = "long" | "short";
-export type Motivo = "painel mudou" | "stop" | "alvo" | "prazo";
+export type Motivo = "painel mudou" | "stop" | "alvo" | "prazo" | "liquidada";
 
 export interface Aberta {
   symbol: string;
@@ -51,8 +51,16 @@ export interface Aberta {
   forca: number;
   /** Último preço visto, para marcar a posição a mercado. */
   precoAtual: number;
-  /** Retorno da posição até agora, com o custo de saída já provisionado. */
+  /** Retorno SOBRE A MARGEM, já alavancado e com custos e financiamento dentro. */
   retorno: number;
+  /** Financiamento acumulado desde a abertura, em fração da margem. */
+  funding: number;
+  /** Preço em que a corretora liquidaria a posição. */
+  precoLiquidacao: number;
+  /** Quando o financiamento foi cobrado pela última vez. */
+  ultimoFunding: number;
+  /** Última taxa vista, para o caso de o retrato seguinte não trazer nenhuma. */
+  ultimaTaxa: number | null;
 }
 
 export interface Fechada {
@@ -64,8 +72,10 @@ export interface Fechada {
   precoSaida: number;
   forca: number;
   motivo: Motivo;
-  /** Retorno líquido de custos, em fração. */
+  /** Retorno sobre a margem, líquido de custos e financiamento. */
   retorno: number;
+  /** Quanto do resultado foi comido por financiamento, em fração da margem. */
+  funding: number;
   /** Resultado em dólares. */
   resultado: number;
   /** Quantos dias a posição ficou de pé. */
@@ -101,13 +111,15 @@ export const CAPITAL_INICIAL = 1000;
  * Quanto do patrimônio entra em cada call, por força da leitura.
  *
  * Dimensionado pelo RISCO e não pelo capital: cada posição arrisca uma fração
- * fixa do patrimônio até o stop, e o tamanho sai dessa conta. Com stop em 25%,
- * arriscar 1% do patrimônio dá uma posição de 4%.
+ * fixa do patrimônio até o stop, e o tamanho sai dessa conta. Com stop em 25% e
+ * alavancagem de 3, arriscar 1% do patrimônio pede margem de 1,33% — que
+ * controla 4% em posição.
  *
- * Por que arriscar tão pouco: o painel emite doze calls ao mesmo tempo num dia
- * normal. A 4% cada, isso já é metade do patrimônio exposto, e essas moedas
- * andam 8% num dia comum. Tamanho maior não seria agressividade, seria ignorar
- * quantas posições o próprio painel abre de uma vez.
+ * Por que arriscar tão pouco: o painel emite treze calls ao mesmo tempo num dia
+ * normal, e essas moedas andam 8% num dia comum. Se todas as treze batessem no
+ * stop no mesmo dia, a conta perderia 19,5%. Tamanho maior não seria
+ * agressividade, seria ignorar quantas posições o próprio painel abre de uma
+ * vez.
  *
  * A força vem de `lerVies` e vale o que ela diz valer: 3 é a regra com o
  * refinamento mais forte medido, 1 é a que sobrevive por pouco.
@@ -115,13 +127,33 @@ export const CAPITAL_INICIAL = 1000;
 export const RISCO_POR_FORCA: Record<number, number> = { 3: 0.015, 2: 0.01, 1: 0.005 };
 
 /**
- * Teto de patrimônio exposto ao mesmo tempo.
+ * Teto de MARGEM comprometida ao mesmo tempo.
  *
  * Sem ele, um dia com vinte calls colocaria tudo na mesa. Metade parada é o que
  * garante que a carteira sobreviva para continuar medindo — que é o objetivo
  * dela, já que ela existe para produzir amostra e não lucro.
+ *
+ * É margem e não nocional: a 3x, metade do patrimônio em margem controla uma
+ * vez e meia o patrimônio em posição. O que limita quantas calls cabem é o
+ * dinheiro que sai do caixa, e o risco agregado já está limitado pelo tamanho de
+ * cada uma — treze calls a 1,5% somam 19,5% do patrimônio se TODAS baterem no
+ * stop no mesmo dia.
  */
 export const EXPOSICAO_MAXIMA = 0.5;
+
+/**
+ * Quanto a conta pode perder se TUDO bater no stop no mesmo dia.
+ *
+ * O teto de margem sozinho deixou de proteger quando a alavancagem entrou: a
+ * margem por call caiu para um terço, então cabem três vezes mais posições
+ * dentro dos mesmos 50%. Medido no teste de quarenta calls simultâneas, a
+ * carteira passou de 9 para 26 posições abertas — 39% de risco agregado.
+ *
+ * Cripto tem dias em que a lista inteira cai 25% junto, e é exatamente esse o
+ * tamanho do stop. Um quarto da conta é o que se aceita perder num dia desses;
+ * o resto precisa sobreviver para continuar medindo.
+ */
+export const RISCO_TOTAL_MAXIMO = 0.25;
 
 /**
  * Onde a posição morre.
@@ -177,6 +209,43 @@ export const CUSTO = 0.0015;
  */
 export const SALTO_ABSURDO = 10;
 
+/**
+ * Quantas vezes o patrimônio cada posição controla.
+ *
+ * TRÊS É O TETO QUE PRESERVA O STOP, e o número sai de uma conta, não de gosto.
+ * O stop é de 25% DE PREÇO. A 3x ele consome 75% da margem: a posição sobrevive
+ * ao stop e ele funciona como stop. A 4x os mesmos 25% consomem 100% — a
+ * liquidação acontece exatamente onde o stop dispararia, e acima disso ela vem
+ * ANTES: o stop vira enfeite e quem decide a saída é a corretora.
+ *
+ * A 1x a carteira mal se movia: uma call de +40% numa posição de 4% mexe 1,6% do
+ * patrimônio, e ela levaria meses para dizer qualquer coisa. A 3x diz o mesmo em
+ * um terço do tempo sem abrir mão da regra de saída.
+ *
+ * E ela opera VENDIDO, o que não existe à vista. Isto sempre foi futuros; a 1x
+ * era futuros com alavancagem de um, o que só escondia a pergunta.
+ */
+export const ALAVANCAGEM = 3;
+
+/**
+ * Margem de manutenção da corretora, abaixo da qual a posição é liquidada.
+ *
+ * Meio por cento é a faixa das corretoras grandes para posição pequena. Com ela,
+ * a liquidação a 3x acontece quando o preço anda 33,2% contra — depois do stop
+ * de 25%, que é exatamente o que o teto de alavancagem existe para garantir.
+ */
+export const MARGEM_MANUTENCAO = 0.005;
+
+/**
+ * Financiamento presumido quando o histórico não gravou a taxa real.
+ *
+ * As linhas anteriores a 03/09 não têm o campo. Medido nas moedas da lista, a
+ * taxa fica em torno de 0,015% por período de oito horas — 16% ao ano —, e é
+ * esse o valor usado como piso. O sinal segue a convenção da Binance: positivo,
+ * o comprado paga.
+ */
+export const FUNDING_PRESUMIDO = 0.00015;
+
 // ------------------------------------------------------------------- o motor
 
 /** Uma linha do histórico, que é o que o motor consome. */
@@ -187,6 +256,8 @@ export interface Emissao {
   vies: string | null;
   forca?: number | null;
   nota?: number;
+  /** Taxa de financiamento por 8h, quando o retrato a gravou. */
+  fund?: number | null;
 }
 
 interface Estado {
@@ -195,15 +266,41 @@ interface Estado {
   fechadas: Fechada[];
 }
 
-/** Retorno bruto da posição, antes de custo. */
-function bruto(p: { lado: Lado; precoEntrada: number }, preco: number): number {
+/** Variação do preço a favor da posição, sem alavancagem e sem custo. */
+function aFavor(p: { lado: Lado; precoEntrada: number }, preco: number): number {
   const variacao = preco / p.precoEntrada - 1;
   return p.lado === "long" ? variacao : -variacao;
 }
 
+/**
+ * Retorno sobre a MARGEM: a variação de preço multiplicada pela alavancagem,
+ * menos os custos de entrada e saída e menos o financiamento acumulado.
+ *
+ * O custo entra multiplicado porque a taxa incide sobre o NOCIONAL, que é a
+ * margem vezes a alavancagem — a 3x, os 0,15% por lado custam 0,45% da margem.
+ * Esquecer isso é o erro que faz backtest alavancado parecer melhor do que é.
+ */
+function sobreMargem(p: Aberta, preco: number): number {
+  return aFavor(p, preco) * ALAVANCAGEM - 2 * CUSTO * ALAVANCAGEM - p.funding;
+}
+
+/**
+ * O preço em que a corretora fecha a posição à força.
+ *
+ * A margem acaba quando a variação contra chega a `1/alavancagem`, menos a
+ * margem de manutenção. A 3x isso é 33,2% de preço — depois do stop de 25%, que
+ * é o que o teto de alavancagem existe para garantir.
+ */
+function precoDeLiquidacao(lado: Lado, entrada: number): number {
+  const distancia = 1 / ALAVANCAGEM - MARGEM_MANUTENCAO;
+  return lado === "long" ? entrada * (1 - distancia) : entrada * (1 + distancia);
+}
+
 function fechar(estado: Estado, p: Aberta, preco: number, quando: number, motivo: Motivo): void {
-  // O custo de saída entra aqui; o de entrada já saiu do valor na abertura.
-  const retorno = bruto(p, preco) - CUSTO;
+  // Liquidada é o único caso em que a margem não volta: ela foi consumida antes
+  // de a posição ser fechada, e fingir que sobrou algo seria o erro clássico de
+  // backtest alavancado.
+  const retorno = motivo === "liquidada" ? -1 : Math.max(-1, sobreMargem(p, preco));
   const devolvido = p.valor * (1 + retorno);
   estado.caixa += devolvido;
   estado.abertas.delete(p.symbol);
@@ -217,6 +314,7 @@ function fechar(estado: Estado, p: Aberta, preco: number, quando: number, motivo
     forca: p.forca,
     motivo,
     retorno,
+    funding: p.funding,
     resultado: devolvido - p.valor,
     dias: (quando - p.abertaEm) / 86_400_000,
   });
@@ -256,6 +354,7 @@ export function rodar(emissoes: Emissao[], comecouEm: number): Carteira {
 
     const preco = new Map<string, number>();
     const vies = new Map<string, string | null>();
+    const fund = new Map<string, number>();
     for (const e of lote) {
       const antes = ultimoBom.get(e.s);
       const absurdo =
@@ -268,6 +367,7 @@ export function rodar(emissoes: Emissao[], comecouEm: number): Carteira {
       ultimoBom.set(e.s, e.preco);
       preco.set(e.s, e.preco);
       vies.set(e.s, e.vies);
+      if (e.fund != null && Number.isFinite(e.fund)) fund.set(e.s, e.fund);
     }
 
     // 1. marcar a mercado e decidir saídas
@@ -290,8 +390,33 @@ export function rodar(emissoes: Emissao[], comecouEm: number): Carteira {
         continue;
       }
 
+      // FINANCIAMENTO PRIMEIRO, porque ele corre com o relógio e não com o
+      // preço: são três cobranças por dia sobre o NOCIONAL, então a 3x cada uma
+      // custa três vezes mais da margem. Numa vendida de duas semanas isso passa
+      // de 2% — mais do que entrada e saída somadas.
+      const horas = (quando - p.ultimoFunding) / 3_600_000;
+      if (horas > 0) {
+        const taxa = fund.get(p.symbol) ?? p.ultimaTaxa ?? FUNDING_PRESUMIDO;
+        p.ultimaTaxa = taxa;
+        // Positiva, o comprado paga; negativa, o vendido paga.
+        const sinal = p.lado === "long" ? 1 : -1;
+        p.funding += (horas / 8) * taxa * sinal * ALAVANCAGEM;
+        p.ultimoFunding = quando;
+      }
+
       p.precoAtual = atual;
-      p.retorno = bruto(p, atual) - CUSTO;
+      p.retorno = sobreMargem(p, atual);
+
+      // LIQUIDAÇÃO ANTES DE TUDO: a corretora não espera a regra de saída. A 3x
+      // ela só acontece depois do stop, e é isso que o teto de alavancagem
+      // garante — mas um salto de preço entre retratos pode pular o stop e cair
+      // direto aqui, e nesse caso a margem inteira se perde.
+      const liquidou =
+        p.lado === "long" ? atual <= p.precoLiquidacao : atual >= p.precoLiquidacao;
+      if (liquidou) {
+        fechar(estado, p, atual, quando, "liquidada");
+        continue;
+      }
       // A ordem dos testes é a ordem do pior caso: dentro de um intervalo entre
       // retratos o preço passou por lugares que não vemos, e supor que ele
       // tocou o stop antes do alvo é a suposição conservadora.
@@ -330,8 +455,23 @@ export function rodar(emissoes: Emissao[], comecouEm: number): Carteira {
       if (!risco) continue;
 
       const total = patrimonio();
-      const alvo = (total * risco) / STOP;
+      // A MARGEM QUE ARRISCA `risco` DO PATRIMÔNIO, e a alavancagem entra aqui.
+      //
+      // O stop de 25% é de PREÇO. A 3x ele consome 75% da margem, então para
+      // arriscar 1,5% do patrimônio a margem tem de ser 2% — não 6%. Dividir só
+      // pelo stop, como antes, triplicaria o risco de cada call sem que nada na
+      // tela dissesse isso: é assim que backtest alavancado quebra sem avisar.
+      const alvo = (total * risco) / (STOP * ALAVANCAGEM);
       const cabe = Math.max(0, total * EXPOSICAO_MAXIMA - expostoAgora());
+
+      // O risco já comprometido, em fração do patrimônio: cada posição aberta
+      // vale o que ela perderia se batesse no stop.
+      const riscoAberto = [...estado.abertas.values()].reduce(
+        (soma, a) => soma + (RISCO_POR_FORCA[a.forca] ?? 0),
+        0,
+      );
+      if (riscoAberto + risco > RISCO_TOTAL_MAXIMO) continue;
+
       const valor = Math.min(alvo, cabe, estado.caixa);
       // Posição pequena demais é ruído de arredondamento contra custo fixo.
       if (valor < 1) continue;
@@ -342,12 +482,17 @@ export function rodar(emissoes: Emissao[], comecouEm: number): Carteira {
         lado: e.vies,
         abertaEm: quando,
         precoEntrada: e.preco,
-        // O custo de entrada sai do valor alocado, não do caixa: assim o
-        // retorno da posição já nasce líquido de um dos dois lados.
-        valor: valor * (1 - CUSTO),
+        // A margem inteira entra na posição; os custos aparecem no RETORNO, que
+        // é onde a alavancagem os multiplica. Descontá-los aqui os cobraria uma
+        // vez só, e o nocional é três vezes a margem.
+        valor,
         forca,
         precoAtual: e.preco,
-        retorno: -CUSTO,
+        retorno: -2 * CUSTO * ALAVANCAGEM,
+        funding: 0,
+        ultimoFunding: quando,
+        ultimaTaxa: fund.get(e.s) ?? null,
+        precoLiquidacao: precoDeLiquidacao(e.vies, e.preco),
       });
     }
   }

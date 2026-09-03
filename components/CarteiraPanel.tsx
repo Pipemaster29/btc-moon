@@ -8,6 +8,7 @@
  */
 
 import {
+  ALAVANCAGEM,
   CAPITAL_INICIAL,
   ALVO,
   PRAZO_DIAS,
@@ -31,9 +32,12 @@ function tom(v: number): string {
 
 const MOTIVO_NOTA: Record<string, string> = {
   "painel mudou": "o viés saiu — a carteira segue o painel, então sai com ele",
-  stop: `caiu ${(STOP * 100).toFixed(0)}% contra`,
-  alvo: `chegou a ${(ALVO * 100).toFixed(0)}% a favor`,
+  stop: `o preço andou ${(STOP * 100).toFixed(0)}% contra`,
+  alvo: `o preço andou ${(ALVO * 100).toFixed(0)}% a favor`,
   prazo: `${PRAZO_DIAS} dias — além disso não é mais a mesma call`,
+  liquidada:
+    `a margem acabou antes do stop — só acontece quando o preço salta de uma vez ` +
+    `mais do que ${((1 / ALAVANCAGEM) * 100).toFixed(0)}%`,
 };
 
 export default function CarteiraPanel({ c }: { c: Carteira }) {
@@ -50,7 +54,9 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
       </div>
       <p className="text-sm text-black/60 dark:text-white/60 mt-1">
         {usd(CAPITAL_INICIAL)} de mentira entrando em toda call de compra e venda que o painel
-        emite, para a pergunta ficar na tela em vez de ficar no terminal.
+        emite, para a pergunta ficar na tela em vez de ficar no terminal. Perpétuo a{" "}
+        <strong>{ALAVANCAGEM}x</strong> — que é o teto em que o stop de {(STOP * 100).toFixed(0)}%
+        ainda dispara antes da liquidação —, com financiamento e liquidação cobrados.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-4 mt-4 text-sm">
@@ -98,6 +104,9 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
                 </th>
                 <th className="font-normal py-1 text-right">Entrada</th>
                 <th className="font-normal py-1 text-right">Agora</th>
+                <th className="font-normal py-1 text-right" title="Preço em que a corretora fecha a posição à força">
+                  Liquida em
+                </th>
                 <th className="font-normal py-1 text-right">Valor</th>
                 <th className="font-normal py-1 text-right">Resultado</th>
               </tr>
@@ -120,6 +129,9 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
                   <td className="py-1.5 text-right">{p.forca}/3</td>
                   <td className="py-1.5 text-right">{p.precoEntrada.toPrecision(4)}</td>
                   <td className="py-1.5 text-right">{p.precoAtual.toPrecision(4)}</td>
+                  <td className="py-1.5 text-right text-black/40 dark:text-white/40">
+                    {p.precoLiquidacao ? p.precoLiquidacao.toPrecision(4) : "—"}
+                  </td>
                   <td className="py-1.5 text-right">{usd(p.valor * (1 + p.retorno))}</td>
                   <td className={`py-1.5 text-right ${tom(p.retorno)}`}>{pct(p.retorno)}</td>
                 </tr>
@@ -142,6 +154,9 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
                   <th className="font-normal py-1">Lado</th>
                   <th className="font-normal py-1">Saiu por</th>
                   <th className="font-normal py-1 text-right">Dias</th>
+                  <th className="font-normal py-1 text-right" title="Financiamento pago enquanto a posição ficou de pé, em fração da margem">
+                    Funding
+                  </th>
                   <th className="font-normal py-1 text-right">Resultado</th>
                   <th className="font-normal py-1 text-right">Em dólar</th>
                 </tr>
@@ -158,6 +173,9 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
                       {f.motivo}
                     </td>
                     <td className="py-1.5 text-right">{f.dias.toFixed(1)}</td>
+                    <td className={`py-1.5 text-right ${tom(-(f.funding ?? 0))}`}>
+                      {f.funding ? pct(-f.funding) : "—"}
+                    </td>
                     <td className={`py-1.5 text-right ${tom(f.retorno)}`}>{pct(f.retorno)}</td>
                     <td className={`py-1.5 text-right ${tom(f.retorno)}`}>
                       {f.resultado >= 0 ? "+" : "−"}
@@ -209,11 +227,11 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
 
       <p className="text-xs text-black/40 dark:text-white/40 mt-5 pt-4 border-t border-black/10 dark:border-white/10">
         <strong>O que esta conta não cobra, e cada um empurra o número para cima:</strong>{" "}
-        financiamento de posição vendida, que nestas moedas chega a dezenas de por cento ao ano; a
-        diferença entre o preço do retrato e o preço em que a ordem sairia de verdade; e a
-        profundidade real da pool — o custo aqui é 0,15% por lado, fixo, e numa pool de dois mil
-        dólares uma ordem de sessenta já move mais do que isso. Não há alavancagem: com ela, o stop
-        de {(STOP * 100).toFixed(0)}% viraria perda total antes.
+        a diferença entre o preço do retrato e o preço em que a ordem sairia de verdade — numa
+        moeda que anda 100% num dia, os minutos entre os dois custam; e a profundidade real da
+        pool, já que o custo aqui é 0,15% por lado, fixo, e numa pool de dois mil dólares uma
+        ordem de sessenta já move mais do que isso. O financiamento passou a ser cobrado com a
+        taxa real de cada moeda, e ele não é pequeno: a lista paga de 15% a 20% ao ano.
       </p>
     </section>
   );
