@@ -111,28 +111,6 @@ function montar(arquivo: Arquivo, fonte: Fonte): Snapshot {
 const ORCAMENTO_VIVO_MS = 7_000;
 
 /**
- * O retrato guardado com a camada barata refeita por cima.
- *
- * ISTO É O CONSERTO DE UM PROBLEMA QUE ESTAVA ACONTECENDO, e não uma precaução.
- * As três camadas foram desenhadas para o caso de o arquivo SUMIR, e nenhuma
- * delas cobria o caso de ele ESTAR VELHO — que é o que acontece na prática. O
- * cron do workflow pede duas execuções por hora e o GitHub entrega de duas a
- * cinco por DIA: medido no histórico de commits, os retratos saem em pares
- * separados por cinco a dez horas. Como o disco sempre responde, a camada de
- * cálculo nunca era alcançada, e a página servia preço de dez horas atrás com
- * um aviso em letra pequena.
- *
- * O que dá para refazer barato é justamente o que envelhece rápido: preço, open
- * interest, posicionamento, perna atual e nota são duas requisições por moeda. O
- * que não dá é o estágio de vida — seis meses de histórico, dez arquivos por
- * moeda, vinte segundos. Então as duas metades passam a ter idades diferentes e
- * declaradas, em vez de uma idade só que estava errada para metade dos números.
- *
- * De quebra, moeda recém-adicionada à watchlist aparece na hora em vez de
- * esperar a próxima execução do workflow — ela entra sem estágio e sem leitura,
- * que é o honesto: esses dois ainda não foram calculados para ela.
- */
-/**
  * O estágio guardado, corrigido quando o preço vivo desmente o pico.
  *
  * `vida.estagio` custa seis meses de histórico e não cabe na camada viva. Mas
@@ -148,7 +126,10 @@ const ORCAMENTO_VIVO_MS = 7_000;
  * como estavam, porque para esses o preço de agora não é evidência.
  */
 function corrigirPico(vida: Vida | null, preco: number): Vida | null {
-  if (!vida || preco <= 0 || preco <= vida.pico) return vida;
+  // `Number.isFinite` e não `preco > 0`: NaN faz TODA comparação devolver falso,
+  // então `preco <= 0 || preco <= vida.pico` deixava NaN passar e a moeda saía
+  // "no topo" com pico NaN, envenenando a leitura inteira dela.
+  if (!vida || !Number.isFinite(preco) || preco <= 0 || preco <= vida.pico) return vida;
   // `Vida` não guarda o fundo, guarda a alta desde ele — que dá na mesma de
   // trás para frente, e evita inventar um campo só para este conserto.
   const fundo = vida.preco > 0 ? vida.preco / (1 + vida.altaDesdeFundo) : 0;
@@ -210,6 +191,28 @@ async function relerVies(
   }
 }
 
+/**
+ * O retrato guardado com a camada barata refeita por cima.
+ *
+ * ISTO É O CONSERTO DE UM PROBLEMA QUE ESTAVA ACONTECENDO, e não uma precaução.
+ * As três camadas foram desenhadas para o caso de o arquivo SUMIR, e nenhuma
+ * delas cobria o caso de ele ESTAR VELHO — que é o que acontece na prática. O
+ * cron do workflow pede duas execuções por hora e o GitHub entrega de duas a
+ * cinco por DIA: medido no histórico de commits, os retratos saem em pares
+ * separados por cinco a dez horas. Como o disco sempre responde, a camada de
+ * cálculo nunca era alcançada, e a página servia preço de dez horas atrás com
+ * um aviso em letra pequena.
+ *
+ * O que dá para refazer barato é justamente o que envelhece rápido: preço, open
+ * interest, posicionamento, perna atual e nota são duas requisições por moeda. O
+ * que não dá é o estágio de vida — seis meses de histórico, dez arquivos por
+ * moeda, vinte segundos. Então as duas metades passam a ter idades diferentes e
+ * declaradas, em vez de uma idade só que estava errada para metade dos números.
+ *
+ * De quebra, moeda recém-adicionada à watchlist aparece na hora em vez de
+ * esperar a próxima execução do workflow — ela entra sem estágio e sem leitura,
+ * que é o honesto: esses dois ainda não foram calculados para ela.
+ */
 async function refrescar(base: Snapshot): Promise<Snapshot> {
   // O `catch` fica NA promessa, não na corrida: se o orçamento vencer primeiro
   // e o `getOverview` falhar depois, a corrida já terminou e a rejeição viraria
