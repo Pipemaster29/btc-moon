@@ -177,6 +177,31 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
   const oiBnc = last?.oiBinanceUsd ?? 0;
   const oiUsd = oiBnc > 0 ? oiBnc : last?.openInterestUsd ?? 0;
 
+  // A VARIAÇÃO DE 24 HORAS VINHA SÓ DA POOL, e mais da metade da lista não tem
+  // pool. Medido: 39 das 71 moedas gravavam `change24h` EXATAMENTE zero, 37
+  // delas por não terem contrato nenhum — elas vivem no perpétuo.
+  //
+  // Zero não é "não andou", é "não olhei", e a diferença passou a custar caro no
+  // dia em que a trava de venda passou a depender deste número: uma moeda só
+  // perpétuo podia dobrar de preço e o painel continuaria emitindo short, porque
+  // para ele ela não tinha andado. Era o buraco da AKE de novo, em 55% da lista.
+  //
+  // A série do perpétuo já está carregada e tem 100 pontos horários. Vinte e
+  // quatro atrás é o preço de ontem a esta hora, e ele responde para toda moeda
+  // que tem perpétuo — que é a lista inteira.
+  //
+  // Com série curta a comparação cai no ponto mais antigo que existe, em vez de
+  // devolver zero. Moeda recém-listada é exatamente a que anda 100% num dia, e
+  // "não tenho 24 horas de série" não pode virar "não andou" logo nela — foi
+  // esse tipo de silêncio que deixou o painel emitir short no meio do pump.
+  const precoOntem = stats[Math.max(0, stats.length - 25)]?.price ?? 0;
+  const varPerp =
+    precoOntem > 0 && precoPerp > 0 && stats.length >= 2 ? precoPerp / precoOntem - 1 : 0;
+  // A pool continua tendo preferência onde ela existe e gira: é a fonte que o
+  // DexScreener calcula sobre o mercado à vista real. O perpétuo entra quando
+  // ela não responde, que é o caso que estava zerado.
+  const change24h = depth?.change24h || varPerp;
+
   const base = {
     symbol: token.symbol,
     ticker: token.symbol.replace(/USDT$/, ""),
@@ -185,7 +210,7 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
     hasWallets: token.wallets.length > 0,
     note: token.note,
     price,
-    change24h: depth?.change24h ?? 0,
+    change24h,
     liquidityUsd,
     volume24h: depth?.volume24h ?? 0,
     turnover: liquidityUsd > 0 ? (depth?.volume24h ?? 0) / liquidityUsd : 0,

@@ -39,6 +39,7 @@ import { CARTEIRAS_CEX } from "../lib/lifecycle";
 import { ATIVAS, findToken, type WatchedToken } from "../lib/watchlist";
 import { ritmoMensal, textoVeredito, type Arquivo, type Cofre, type Vesting } from "../lib/vesting";
 import { lerDetentores } from "../lib/detentores";
+import { circulante } from "../lib/binance";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
@@ -100,9 +101,12 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
     return null;
   }
 
-  const [head, info] = await Promise.all([
+  const [head, info, circ] = await Promise.all([
     blockNumber(token.chain),
     tokenInfo(token.chain, token.contract),
+    // Vem de graça no mesmo endpoint de open interest, e é o denominador que
+    // separa "cofre vazio, moeda livre" de "cofre vazio, supply escondido".
+    circulante(token.symbol).catch(() => null),
   ]);
   const supply = toUnits(info.totalSupply, info.decimals);
   if (supply <= 0) {
@@ -157,6 +161,12 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
     // Sem estado antigo a busca não roda, e a varredura do nascimento resolve.
   }
 
+  // Fração do supply do contrato que NÃO circula. Nulo sem circulante publicado,
+  // e nulo também quando o circulante passa do supply do contrato — aí o
+  // contrato é fragmento e a divisão não significa nada.
+  const foraDeCirculacao =
+    circ && circ.atual > 0 && circ.atual <= supply ? 1 - circ.atual / supply : null;
+
   const limite = {
     symbol: token.symbol,
     chain: token.chain,
@@ -167,6 +177,7 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
     cobertura: 0,
     faixasPerdidas: 0,
     semHistorico: true,
+    foraDeCirculacao,
     cofres: [],
     serie: [],
     travado: 0,
@@ -319,11 +330,18 @@ async function medir(token: WatchedToken): Promise<Vesting | null> {
     ritmo,
     mesesRestantes: ritmo > 0.01 ? (travado * 100) / ritmo : null,
     emCorretora: naCex / supply,
+    foraDeCirculacao,
     medidoEm: Date.now(),
   };
 
   console.log(`\n${textoVeredito(resultado)}`);
   console.log(`corretoras conhecidas seguram ${(resultado.emCorretora * 100).toFixed(1)}% do supply`);
+  if (foraDeCirculacao !== null) {
+    console.log(
+      `${(foraDeCirculacao * 100).toFixed(1)}% do supply do contrato não circula ` +
+        `(${((circ?.atual ?? 0) / 1e6).toFixed(1)}M circulando de ${(supply / 1e6).toFixed(1)}M)`,
+    );
+  }
   for (const c of cofres) {
     console.log(
       `  ${c.endereco}  recebeu ${(c.recebeu * 100).toFixed(2).padStart(6)}%  ` +

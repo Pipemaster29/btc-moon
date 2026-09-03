@@ -397,6 +397,7 @@ const VEREDITO_TOM: Record<Veredito, string> = {
   livre: "text-[#0a7d43] dark:text-[#0ECB81]",
   parcial: "text-black/50 dark:text-white/50",
   contínua: "text-black/50 dark:text-white/50",
+  "fora do alcance": "text-[#A97400] dark:text-[#F0B90B]",
   "sem histórico": "text-black/50 dark:text-white/50",
 };
 
@@ -427,7 +428,7 @@ function VestingPanel({ v, preco }: { v: Vesting; preco: number }) {
   // Token de ponte e leitura sem histórico têm cofre no papel e nada por trás.
   // Mostrar "0,0% travado · 3,23 pp/mês" ali seria inventar precisão: o que
   // sobra de real nos dois casos é o saldo em corretora.
-  const aplica = q !== "contínua" && q !== "sem histórico";
+  const aplica = q !== "contínua" && q !== "sem histórico" && q !== "fora do alcance";
 
   return (
     <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">

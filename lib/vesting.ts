@@ -89,6 +89,22 @@ export interface Vesting {
   mesesRestantes: number | null;
   /** Fração do supply nas carteiras de corretora conhecidas, hoje. */
   emCorretora: number;
+  /**
+   * Supply que existe no contrato e NÃO circula, segundo o circulante publicado.
+   *
+   * Existe porque a H expôs o furo do resto deste arquivo. O detector achou o
+   * mint — um destino, 100% do supply —, viu que aquele endereço já esvaziou, e
+   * concluiu "os contratos de alocação já esvaziaram: 0,5% restante neles".
+   * Verdade e irrelevante: dos dez bilhões de H, só 1,95 bilhão circula. Os
+   * outros OITO BILHÕES saíram do cofre e não chegaram ao mercado.
+   *
+   * Cofre vazio com float de 19,5% não é moeda livre; é moeda cujo supply parado
+   * está num lugar que este método não enxerga — ele segue quem recebeu do
+   * endereço zero, e para de seguir no salto seguinte.
+   *
+   * Nulo quando não há circulante publicado para comparar.
+   */
+  foraDeCirculacao?: number | null;
   medidoEm: number;
 }
 
@@ -132,12 +148,22 @@ export const TRAVADO_MINIMO = 0.01;
 /** Acima disto sobra supply parado suficiente para um desbloqueio futuro doer. */
 export const TRAVADO_ALTO = 0.15;
 
+/**
+ * Acima disto o supply parado fora dos cofres é grande demais para chamar de
+ * livre.
+ *
+ * Trinta por cento do supply sem circular é oferta futura por qualquer leitura,
+ * e o detector não sabe onde ela está. Medido na H: 80,5%.
+ */
+export const FORA_DE_CIRCULACAO_ALTA = 0.3;
+
 export type Veredito =
   | "emitindo"
   | "travado"
   | "livre"
   | "parcial"
   | "contínua"
+  | "fora do alcance"
   | "sem histórico";
 
 export function veredito(v: Vesting): Veredito {
@@ -148,6 +174,14 @@ export function veredito(v: Vesting): Veredito {
   // mais inclinada que a reta que o esvaziou tenha sido.
   if (v.ritmo >= RITMO_RELEVANTE && v.travado >= TRAVADO_MINIMO) return "emitindo";
   if (v.travado >= TRAVADO_ALTO) return "travado";
+  // Cofre vazio E float baixo é o caso em que "livre" mentiria: o supply saiu da
+  // alocação e não chegou ao mercado, e este método não segue além do primeiro
+  // salto. Dizer que não há oferta futura aqui seria afirmar o que não se mediu.
+  // `!= null` e não `!== null`: os registros gravados antes deste campo existir
+  // trazem `undefined`, e as duas ausências têm de cair do mesmo lado.
+  if (v.foraDeCirculacao != null && v.foraDeCirculacao >= FORA_DE_CIRCULACAO_ALTA) {
+    return "fora do alcance";
+  }
   return "livre";
 }
 
@@ -190,6 +224,13 @@ export function textoVeredito(v: Vesting): string {
             `${Math.abs(v.ritmo).toFixed(2)} pp por mês — está recolhendo oferta, não soltando`
         : `${pct(v.travado)} do supply está parado em contrato de alocação e não se ` +
             `moveu na janela medida — oferta que não existe hoje e pode existir amanhã`;
+    case "fora do alcance":
+      return (
+        `os contratos de alocação esvaziaram — só ${pct(v.travado)} do supply restou neles —, mas ` +
+        `${pct(v.foraDeCirculacao ?? 0)} do supply NÃO CIRCULA. Esse pedaço saiu da alocação e não ` +
+        `chegou ao mercado, e este método não segue além do primeiro salto: ele acha quem recebeu ` +
+        `do endereço zero, não quem recebeu depois`
+      );
     case "livre":
       return `os contratos de alocação já esvaziaram: ${pct(v.travado)} do supply restante neles`;
   }
@@ -226,7 +267,14 @@ export async function ritmoDe(symbol: string): Promise<number | null> {
   const v = await vestingDe(symbol);
   if (!v) return null;
   const q = veredito(v);
-  if (q === "sem histórico" || q === "parcial" || q === "contínua") return null;
+  // "fora do alcance" entra aqui com os outros não-medidos, e é o ponto todo da
+  // mudança: antes ele saía como "livre" e virava ZERO, que o motor lê como
+  // aprovado no teste de emissão. Uma moeda com 80% do supply fora de circulação
+  // passando no teste de oferta futura é o mesmo falso positivo da concentração
+  // que este projeto já pagou uma vez.
+  if (q === "sem histórico" || q === "parcial" || q === "contínua" || q === "fora do alcance") {
+    return null;
+  }
   // Cofre vazio não tem oferta futura, e o ritmo que o esvaziou é passado. O
   // motor precisa de zero aqui, não da inclinação da descida.
   return v.travado >= TRAVADO_MINIMO ? v.ritmo : 0;

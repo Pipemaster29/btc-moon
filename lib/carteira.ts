@@ -160,6 +160,23 @@ export const PRAZO_DIAS = 14;
  */
 export const CUSTO = 0.0015;
 
+/**
+ * Salto de preço entre dois retratos que só pode ser erro de dado.
+ *
+ * SEM ISTO UMA LINHA DE LIXO QUEBRA A CARTEIRA INTEIRA, e não é hipótese: o JCT
+ * já foi gravado no histórico a 2,9e-27, quinze ordens de grandeza abaixo do
+ * preço dele. Reproduzido — preço 1, depois 2,9e-27, depois 1,02 — a carteira
+ * fecha no stop a −100%, REABRE no preço de lixo e fecha no alvo com ganho de
+ * 3,5e+28%. Mil dólares viram 1,3e+28.
+ *
+ * Os retratos saem a cada quarenta minutos. Nenhum mercado real faz dez vezes
+ * nesse intervalo — a AKE, que dobrou num dia, andou 52% no melhor par de
+ * retratos. Dez vezes é folgado de propósito: não serve para pegar pool rasa
+ * desalinhada, serve para pegar lixo, exatamente como o freio equivalente do
+ * `lib/overview.ts`.
+ */
+export const SALTO_ABSURDO = 10;
+
 // ------------------------------------------------------------------- o motor
 
 /** Uma linha do histórico, que é o que o motor consome. */
@@ -228,21 +245,53 @@ export function rodar(emissoes: Emissao[], comecouEm: number): Carteira {
   }
 
   let ultimo = comecouEm;
+  // O último preço que passou no teste de sanidade, por moeda. É contra ele que
+  // o preço novo é comparado — não contra o preço anterior cru, senão duas
+  // linhas de lixo seguidas se validariam uma à outra.
+  const ultimoBom = new Map<string, number>();
 
   for (const [t, lote] of [...lotes.entries()].sort((a, b) => a[0] - b[0])) {
     const quando = t * 1000;
     ultimo = quando;
-    const preco = new Map(lote.map((e) => [e.s, e.preco]));
-    const vies = new Map(lote.map((e) => [e.s, e.vies]));
+
+    const preco = new Map<string, number>();
+    const vies = new Map<string, string | null>();
+    for (const e of lote) {
+      const antes = ultimoBom.get(e.s);
+      const absurdo =
+        antes !== undefined &&
+        (e.preco / antes > SALTO_ABSURDO || antes / e.preco > SALTO_ABSURDO);
+      // Preço absurdo não entra nem para marcar nem para abrir. A posição fica
+      // no último preço bom e espera o retrato seguinte, que é o que aconteceria
+      // se a leitura simplesmente tivesse falhado — e é o que ela de fato é.
+      if (absurdo) continue;
+      ultimoBom.set(e.s, e.preco);
+      preco.set(e.s, e.preco);
+      vies.set(e.s, e.vies);
+    }
 
     // 1. marcar a mercado e decidir saídas
     for (const p of [...estado.abertas.values()]) {
       const atual = preco.get(p.symbol);
-      if (atual === undefined) continue;
+      const dias = (quando - p.abertaEm) / 86_400_000;
+
+      // MOEDA QUE SAIU DO RETRATO NÃO PODE PRENDER CAPITAL PARA SEMPRE.
+      //
+      // O `continue` daqui pulava o loop inteiro, e com ele o teste de prazo —
+      // então uma moeda deslistada, ou que simplesmente parasse de responder,
+      // deixava a posição aberta indefinidamente, marcada no último preço visto
+      // e ocupando o teto de exposição de todas as calls seguintes.
+      //
+      // O prazo continua valendo mesmo sem preço novo: ele conta tempo, não
+      // cotação. A saída é pelo último preço conhecido, que é a única coisa
+      // honesta a fazer quando não há preço de hoje.
+      if (atual === undefined) {
+        if (dias >= PRAZO_DIAS) fechar(estado, p, p.precoAtual, quando, "prazo");
+        continue;
+      }
+
       p.precoAtual = atual;
       p.retorno = bruto(p, atual) - CUSTO;
-
-      const dias = (quando - p.abertaEm) / 86_400_000;
       // A ordem dos testes é a ordem do pior caso: dentro de um intervalo entre
       // retratos o preço passou por lugares que não vemos, e supor que ele
       // tocou o stop antes do alvo é a suposição conservadora.
@@ -254,9 +303,13 @@ export function rodar(emissoes: Emissao[], comecouEm: number): Carteira {
         // calls, então ela sai quando a call sai. Sem isso a carteira mediria as
         // MINHAS regras de saída, e não o painel.
         //
-        // Moeda que sumiu do lote não conta como mudança de ideia — leitura que
-        // falhou não é leitura nova.
-        if (vies.has(p.symbol)) fechar(estado, p, atual, quando, "painel mudou");
+        // Mas AUSÊNCIA de leitura não é leitura contrária, e o código tratava as
+        // duas formas de ausência de jeitos opostos: moeda que sumia do lote não
+        // fechava, e moeda presente com viés NULO fechava como "painel mudou".
+        // As duas dizem a mesma coisa — não houve leitura —, e viés nulo não é
+        // raro: 26 das 1.845 emissões de setembro.
+        const lido = vies.get(p.symbol);
+        if (lido != null) fechar(estado, p, atual, quando, "painel mudou");
       }
     }
 

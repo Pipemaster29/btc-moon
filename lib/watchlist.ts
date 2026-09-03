@@ -1060,13 +1060,51 @@ export const WATCHLIST: WatchedToken[] = [
       "supply mais a custódia das corretoras, não o preço de pool.",
   },
   {
-    // sem par EVM — o contrato antigo era fragmento de ponte
+    // A NOTA ANTERIOR DIZIA "nenhum par EVM passa nos três testes", e estava
+    // errada pelo mesmo motivo que a C: a busca parou na BNB Chain.
+    //
+    // O mesmo endereço existe nas duas redes, e só uma delas é a moeda. Na BNB
+    // Chain o contrato guarda 45 milhões contra 210 milhões circulando — não dá
+    // para circular mais do que existe, então aquilo é implantação secundária, e
+    // o terceiro teste corretamente o reprovou. Na ETHEREUM ele guarda o bilhão
+    // inteiro, 4,76x o circulante, que é o formato normal de supply preso.
+    //
+    // O preço fecha: US$ 0,0853 na pool contra US$ 0,08637 do perpétuo, 1,2% de
+    // erro. E a pool gira — US$ 52,7 mil de liquidez com US$ 43,0 mil por dia,
+    // 0,82x, longe da pool decorativa que o quarto teste procura.
     symbol: "POWERUSDT",
-    chain: "bsc",
-    contract: "",
-    firstBlock: 0,
+    chain: "ethereum",
+    contract: "0x9dC44ae5BE187ECA9e2A67e33f27A4c91cEA1223",
+    // Bloco de criação por busca binária sobre `eth_getCode`: 03/04/2025.
+    firstBlock: 22187906,
     wallets: [],
-    note: "Só o perpétuo: o contrato que estava aqui era fragmento de ponte e nenhum par EVM passa nos três testes. A moeda vive fora do alcance da leitura on-chain daqui.",
+    note:
+      "Estava como só perpétuo porque a busca de contrato parou na BNB Chain, onde o endereço é " +
+      "fragmento de ponte (45 mi contra 210 mi circulando). Na Ethereum o mesmo endereço guarda o " +
+      "bilhão inteiro. Só 21% do supply circula, e as corretoras conhecidas seguram 3,4% dele.",
+  },
+  {
+    // Humanity Protocol. Achada pelo nome do projeto, e não pelo ticker: "H" é o
+    // ticker mais curto que existe e a busca por ele devolve o mercado inteiro
+    // sem nenhum candidato com o símbolo exato.
+    //
+    // Passa nos quatro testes. Preço US$ 0,08199 na pool contra US$ 0,08246 do
+    // perpétuo, 0,6% de erro. Contrato com 10 bilhões contra 1,95 bilhão
+    // circulando, 5,14x — supply preso, não fragmento. Pool de US$ 991 mil
+    // girando US$ 318 mil por dia, 0,32x.
+    //
+    // O que salta: só 19,5% do supply circula, e o mercado precifica US$ 160
+    // milhões contra US$ 825 milhões de FDV. Os outros 80% são promessa de
+    // oferta futura, e é exatamente o que `npm run vesting` existe para medir.
+    symbol: "HUSDT",
+    chain: "ethereum",
+    contract: "0xE76c5b78f93909d34404E9eb4C1f19e7582a5dE1",
+    // Bloco de criação por busca binária sobre `eth_getCode`: 10/06/2026.
+    firstBlock: 25288117,
+    wallets: [],
+    note:
+      "Humanity Protocol. Só 19,5% do supply circula — US$ 160 mi de market cap contra US$ 825 mi " +
+      "de FDV —, e as corretoras conhecidas seguram 5,5% do circulante.",
   },
   {
     // Ava AI. Identificada pelos três testes, mas vive na SOLANA: o mint

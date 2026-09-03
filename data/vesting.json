@@ -20,38 +20,38 @@
       ],
       "serie": [
         {
-          "data": "2026-03-06",
-          "bloco": 84909088,
+          "data": "2026-03-07",
+          "bloco": 85101062,
           "travado": 0
         },
         {
-          "data": "2026-04-05",
-          "bloco": 90661215,
+          "data": "2026-04-06",
+          "bloco": 90852999,
           "travado": 0
         },
         {
-          "data": "2026-05-05",
-          "bloco": 96413204,
+          "data": "2026-05-06",
+          "bloco": 96604917,
           "travado": 0
         },
         {
-          "data": "2026-06-04",
-          "bloco": 102164852,
+          "data": "2026-06-05",
+          "bloco": 102356611,
           "travado": 0
         },
         {
-          "data": "2026-07-04",
-          "bloco": 107920924,
+          "data": "2026-07-05",
+          "bloco": 108112860,
           "travado": 0
         },
         {
-          "data": "2026-08-03",
-          "bloco": 113677909,
+          "data": "2026-08-04",
+          "bloco": 113869862,
           "travado": 0
         },
         {
-          "data": "2026-09-02",
-          "bloco": 119435553,
+          "data": "2026-09-03",
+          "bloco": 119627412,
           "travado": 0
         }
       ],
@@ -59,8 +59,9 @@
       "liberado": 0,
       "ritmo": 0,
       "mesesRestantes": null,
-      "emCorretora": 0.0334967209385665,
-      "medidoEm": 1788310135572
+      "emCorretora": 0.0327274276072945,
+      "foraDeCirculacao": 0.7190229264,
+      "medidoEm": 1788438528628
     },
     "BTW-ETH": {
       "symbol": "BTW-ETH",
@@ -82,38 +83,38 @@
       ],
       "serie": [
         {
-          "data": "2026-03-06",
-          "bloco": 24594708,
+          "data": "2026-03-07",
+          "bloco": 24601856,
           "travado": 1.214703e-8
         },
         {
-          "data": "2026-04-05",
-          "bloco": 24809731,
+          "data": "2026-04-06",
+          "bloco": 24816907,
           "travado": 1.214703e-8
         },
         {
-          "data": "2026-05-05",
-          "bloco": 25025077,
+          "data": "2026-05-06",
+          "bloco": 25032255,
           "travado": 1.214703e-8
         },
         {
-          "data": "2026-06-04",
-          "bloco": 25240302,
+          "data": "2026-06-05",
+          "bloco": 25247461,
           "travado": 1.214703e-8
         },
         {
-          "data": "2026-07-04",
-          "bloco": 25455433,
+          "data": "2026-07-05",
+          "bloco": 25462598,
           "travado": 1.214703e-8
         },
         {
-          "data": "2026-08-03",
-          "bloco": 25670641,
+          "data": "2026-08-04",
+          "bloco": 25677819,
           "travado": 1.214703e-8
         },
         {
-          "data": "2026-09-02",
-          "bloco": 25885878,
+          "data": "2026-09-03",
+          "bloco": 25893051,
           "travado": 1.214703e-8
         }
       ],
@@ -122,7 +123,8 @@
       "ritmo": 0,
       "mesesRestantes": null,
       "emCorretora": 0,
-      "medidoEm": 1788310187638
+      "foraDeCirculacao": null,
+      "medidoEm": 1788438621119
     },
     "AKEUSDT": {
       "symbol": "AKEUSDT",
@@ -1620,6 +1622,112 @@
       "mesesRestantes": null,
       "emCorretora": 0.257514265623311,
       "medidoEm": 1788320660290
+    },
+    "HUSDT": {
+      "symbol": "HUSDT",
+      "chain": "ethereum",
+      "contrato": "0xE76c5b78f93909d34404E9eb4C1f19e7582a5dE1",
+      "supply": 10000000000,
+      "nascimento": 25288117,
+      "nasceuEm": "2026-06-10T16:02:59.000Z",
+      "cobertura": 0.9999999499,
+      "faixasPerdidas": 0,
+      "cofres": [
+        {
+          "endereco": "0xc2bc47b9293c3acc90c7c5da2f79c5136e16189e",
+          "contrato": false,
+          "recebeu": 0.9999999499,
+          "hoje": 0.0046210703364887,
+          "ritmo": 0.0029605532743849916
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-07-05",
+          "bloco": 25462598,
+          "travado": 0.0046802814019764
+        },
+        {
+          "data": "2026-08-04",
+          "bloco": 25677819,
+          "travado": 0.0046210703364887
+        },
+        {
+          "data": "2026-09-03",
+          "bloco": 25893051,
+          "travado": 0.0046210703364887
+        }
+      ],
+      "travado": 0.0046210703364887,
+      "liberado": 0.005921106548769945,
+      "ritmo": 0.0029605532743849916,
+      "mesesRestantes": null,
+      "emCorretora": 0.0106619914441099,
+      "foraDeCirculacao": 0.8054427409461888,
+      "medidoEm": 1788438387152
+    },
+    "POWERUSDT": {
+      "symbol": "POWERUSDT",
+      "chain": "ethereum",
+      "contrato": "0x9dC44ae5BE187ECA9e2A67e33f27A4c91cEA1223",
+      "supply": 1000000000,
+      "nascimento": 22187906,
+      "nasceuEm": "2025-04-03T10:51:59.000Z",
+      "cobertura": 1,
+      "faixasPerdidas": 0,
+      "cofres": [
+        {
+          "endereco": "0x9eba6157b4841a57c4cd3359c2bf95ee0a0363df",
+          "contrato": true,
+          "recebeu": 1,
+          "hoje": 0.218000001,
+          "ritmo": 0
+        }
+      ],
+      "serie": [
+        {
+          "data": "2026-03-07",
+          "bloco": 24601856,
+          "travado": 0.218000001
+        },
+        {
+          "data": "2026-04-06",
+          "bloco": 24816907,
+          "travado": 0.218000001
+        },
+        {
+          "data": "2026-05-06",
+          "bloco": 25032255,
+          "travado": 0.218000001
+        },
+        {
+          "data": "2026-06-05",
+          "bloco": 25247461,
+          "travado": 0.218000001
+        },
+        {
+          "data": "2026-07-05",
+          "bloco": 25462598,
+          "travado": 0.218000001
+        },
+        {
+          "data": "2026-08-04",
+          "bloco": 25677819,
+          "travado": 0.218000001
+        },
+        {
+          "data": "2026-09-03",
+          "bloco": 25893051,
+          "travado": 0.218000001
+        }
+      ],
+      "travado": 0.218000001,
+      "liberado": 0,
+      "ritmo": 0,
+      "mesesRestantes": null,
+      "emCorretora": 0.007085068938791,
+      "foraDeCirculacao": 0.79,
+      "medidoEm": 1788438439714
     }
   }
 }
