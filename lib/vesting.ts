@@ -35,7 +35,16 @@ const CAMINHO = "data/vesting.json";
 export interface Cofre {
   endereco: string;
   contrato: boolean;
-  /** Fração do supply que ele recebeu direto da emissão. */
+  /**
+   * Fração do supply que ele recebeu direto da emissão, SOMADA ao longo da vida.
+   *
+   * Pode passar de 1, e passar não é erro: num token de ponte o mesmo endereço
+   * recebe emissão toda vez que alguém atravessa, e o supply é queimado do outro
+   * lado. Medido: o cofre do BASED soma 202,7% do supply e o do JCT 126,0%. É a
+   * mesma assinatura que `cobertura` acima de 1 denuncia, e os dois casos caem no
+   * veredito "contínua", onde a página esconde esta tabela justamente porque a
+   * conta de alocação não se aplica.
+   */
   recebeu: number;
   /** Fração do supply que ele ainda segura. */
   hoje: number;
@@ -288,11 +297,18 @@ export async function ritmoDe(symbol: string): Promise<number | null> {
  * grande inventa tendência onde não há. A reta usa todas as amostras.
  */
 export function ritmoMensal(serie: { data: string; travado: number }[]): number {
-  if (serie.length < 2) return 0;
-  const t0 = Date.parse(serie[0].data);
+  // Ponto com data ilegível ou saldo não numérico envenena a reta inteira: um
+  // `NaN` em `xs` faz a média virar NaN e o ritmo sai NaN, que segue para o
+  // motor e para a tela sem parecer errado. Descartar é o certo — a série tem
+  // sete pontos e perder um ainda deixa reta.
+  const limpa = serie.filter(
+    (a) => Number.isFinite(Date.parse(a.data)) && Number.isFinite(a.travado),
+  );
+  if (limpa.length < 2) return 0;
+  const t0 = Date.parse(limpa[0].data);
   const MES = 30 * 24 * 3600 * 1000;
-  const xs = serie.map((a) => (Date.parse(a.data) - t0) / MES);
-  const ys = serie.map((a) => a.travado * 100);
+  const xs = limpa.map((a) => (Date.parse(a.data) - t0) / MES);
+  const ys = limpa.map((a) => a.travado * 100);
   const n = xs.length;
   const mx = xs.reduce((s, x) => s + x, 0) / n;
   const my = ys.reduce((s, y) => s + y, 0) / n;
@@ -302,7 +318,7 @@ export function ritmoMensal(serie: { data: string; travado: number }[]): number 
     num += (xs[i] - mx) * (ys[i] - my);
     den += (xs[i] - mx) ** 2;
   }
-  if (den === 0) return 0;
+  if (den === 0 || !Number.isFinite(num) || !Number.isFinite(den)) return 0;
   // Sinal invertido de propósito: a reta desce quando o cofre esvazia, e o que
   // se lê no painel é "quanto SAI por mês", que é um número positivo.
   return -(num / den);

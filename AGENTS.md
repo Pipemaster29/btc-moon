@@ -143,9 +143,22 @@ gravados, todas depois de ver os dados.
 execução; a profundidade da pool (o custo é fixo, e numa pool de US$ 2 mil uma
 ordem de US$ 60 move mais que isso).
 
-`npm run testar-carteira` roda os casos-limite. **Cada um deles quebrou de
-verdade** — o pior fazia mil dólares virarem 1,3×10²⁸ por causa de uma linha de
-preço de lixo no histórico.
+**A call queimada não se repete.** Depois de um stop ou uma liquidação, a moeda
+só volta a valer quando o viés dela sair daquele lado. Sem isso a carteira
+recomprava a call que acabou de morrer no MESMO retrato — reproduzido com uma
+moeda caindo 28% por retrato e o painel fixo em "long", ela tomou **onze stops
+seguidos** e perdeu 17% do patrimônio na mesma leitura errada.
+
+**A unidade de cada número importa, e confundi-las já quebrou isto.** `STOP` e
+`ALVO` são variação de PREÇO; `retorno`, `funding` e `RISCO_POR_FORCA` são fração
+da MARGEM, ou seja já multiplicados pela alavancagem. Comparar um contra o outro
+fazia o stop de 25% disparar com 8,3% de preço — ruído de um dia normal.
+
+`npm run testar-carteira` roda os casos-limite e trava os limiares. **Cada um
+deles quebrou de verdade** — o pior fazia mil dólares virarem 1,3×10²⁸ por causa
+de uma linha de preço de lixo no histórico.
+
+`npm run auditar-dados` confere as invariantes de tudo que está em `data/`.
 
 ---
 
@@ -194,12 +207,19 @@ O JCT já foi gravado no histórico a **2,9e-27**, quinze ordens de grandeza aba
 do preço dele, porque uma pool devolveu isso ao DexScreener. Há dois freios
 independentes hoje (`lib/overview.ts` e `lib/carteira.ts`); mantenha os dois.
 
-### 4. `NaN` fura guardas
+### 4. Unidades misturadas
+
+Meio arquivo trabalha em variação de PREÇO e meio em fração da MARGEM, e a
+alavancagem é o fator entre os dois. Já quebrou: o stop de 25% comparado contra
+o retorno alavancado disparava com 8,3% de preço. Quando um número novo entrar,
+diga no nome ou no comentário em que unidade ele está.
+
+### 5. `NaN` fura guardas
 
 `NaN <= 0` e `NaN >= 0` são **ambos falsos**. Um guard escrito como
 `if (x <= 0) return` deixa NaN passar. Use `Number.isFinite`.
 
-### 5. O retrato é velho e a página não pode fingir que não
+### 6. O retrato é velho e a página não pode fingir que não
 
 Um pump de 120% cabe inteiro no intervalo entre dois retratos. Qualquer coisa que
 a página exiba junto do preço precisa ser recalculada com o preço, ou carimbada

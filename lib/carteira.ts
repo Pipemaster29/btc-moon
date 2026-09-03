@@ -22,17 +22,22 @@
  *
  * O QUE ISTO NÃO MODELA, e cada um destes empurra o resultado para cima:
  *
- *   FINANCIAMENTO   posição vendida paga funding a cada oito horas, e nestas
- *                   moedas ele chega a valer dezenas de por cento ao ano. Não
- *                   entra na conta.
  *   EXECUÇÃO        o preço usado é o do retrato. Na vida real a ordem sai
  *                   segundos ou minutos depois, e numa moeda que anda 100% num
  *                   dia esses minutos custam.
  *   PROFUNDIDADE    o custo de 0,15% por lado é uma estimativa fixa. Numa pool
  *                   de dois mil dólares — a C tem exatamente isso — uma ordem de
  *                   sessenta dólares já move o preço mais do que isso.
- *   LIQUIDAÇÃO      não há alavancagem aqui, então não há chamada de margem. Com
- *                   alavancagem, o stop de 25% viraria perda total muito antes.
+ *
+ * O que ELA MODELA e é fácil esquecer que precisa modelar: é PERPÉTUO a 3x, não
+ * mercado à vista — ela opera vendido, e vendido não existe à vista. Então
+ * financiamento e liquidação entram na conta, e os custos incidem sobre o
+ * nocional, que é três vezes a margem.
+ *
+ * A UNIDADE DE CADA NÚMERO IMPORTA, e confundi-las já quebrou isto uma vez:
+ * `STOP` e `ALVO` são variação de PREÇO; `retorno`, `funding` e `RISCO_POR_FORCA`
+ * são fração da MARGEM, ou seja já multiplicados pela alavancagem. Comparar um
+ * contra o outro fazia o stop de 25% disparar com 8,3% de preço.
  */
 
 import { readFile } from "node:fs/promises";
@@ -55,7 +60,7 @@ export interface Aberta {
   retorno: number;
   /** Financiamento acumulado desde a abertura, em fração da margem. */
   funding: number;
-  /** Preço em que a corretora liquidaria a posição. */
+  /** Preço de liquidação nominal, sem contar o financiamento já pago. */
   precoLiquidacao: number;
   /** Quando o financiamento foi cobrado pela última vez. */
   ultimoFunding: number;
@@ -156,7 +161,11 @@ export const EXPOSICAO_MAXIMA = 0.5;
 export const RISCO_TOTAL_MAXIMO = 0.25;
 
 /**
- * Onde a posição morre.
+ * Onde a posição morre, em variação de PREÇO.
+ *
+ * De preço, e não de margem: a 3x isto consome 75% da margem, e é dessa conta
+ * que sai o teto de alavancagem. Comparar contra o retorno alavancado faria o
+ * stop disparar com 8,3% de preço.
  *
  * Vinte e cinco por cento é perto de três desvios de UM DIA nestas moedas: o
  * `npm run estudar` mede volatilidade diária de 7% a 10% na maioria delas. Mais
@@ -166,7 +175,7 @@ export const RISCO_TOTAL_MAXIMO = 0.25;
 export const STOP = 0.25;
 
 /**
- * Onde ela realiza.
+ * Onde ela realiza, em variação de PREÇO — como o stop, e pelo mesmo motivo.
  *
  * Sai da assimetria medida, que é o único motivo pelo qual a regra de compra
  * deste painel existe: moeda pequena e derretida sobe mais de 20% em 21,0% das
@@ -264,6 +273,20 @@ interface Estado {
   caixa: number;
   abertas: Map<string, Aberta>;
   fechadas: Fechada[];
+  /**
+   * Moedas cuja call falhou, com o lado que falhou.
+   *
+   * SEM ISTO A CARTEIRA RECOMPRA A CALL QUE ACABOU DE MORRER, no MESMO retrato:
+   * a posição sai pelo stop na fase de saída e a fase de abertura, logo abaixo,
+   * vê o viés ainda em "long" e abre tudo de novo. Numa moeda em queda contínua
+   * isso vira um moedor — reproduzido com −28% por retrato, a carteira tomou
+   * ONZE stops seguidos de −84,9% da margem e perdeu 17% do patrimônio.
+   *
+   * Um stop diz que a leitura falhou naquela direção. Repetir a mesma aposta sem
+   * nada ter mudado não é seguir o painel, é insistir. A moeda volta a valer
+   * quando o viés dela sair daquele lado — aí é call nova, não a mesma.
+   */
+  queimadas: Map<string, Lado>;
 }
 
 /** Variação do preço a favor da posição, sem alavancagem e sem custo. */
@@ -304,6 +327,9 @@ function fechar(estado: Estado, p: Aberta, preco: number, quando: number, motivo
   const devolvido = p.valor * (1 + retorno);
   estado.caixa += devolvido;
   estado.abertas.delete(p.symbol);
+  // Só stop e liquidação queimam a call. Sair pelo alvo, pelo prazo ou porque o
+  // painel mudou de ideia não diz que a leitura estava errada.
+  if (motivo === "stop" || motivo === "liquidada") estado.queimadas.set(p.symbol, p.lado);
   estado.fechadas.push({
     symbol: p.symbol,
     lado: p.lado,
@@ -329,7 +355,12 @@ function fechar(estado: Estado, p: Aberta, preco: number, quando: number, motivo
  * nova competiria por caixa com uma posição que já devia ter saído.
  */
 export function rodar(emissoes: Emissao[], comecouEm: number): Carteira {
-  const estado: Estado = { caixa: CAPITAL_INICIAL, abertas: new Map(), fechadas: [] };
+  const estado: Estado = {
+    caixa: CAPITAL_INICIAL,
+    abertas: new Map(),
+    fechadas: [],
+    queimadas: new Map(),
+  };
 
   const uteis = emissoes
     .filter((e) => e.t * 1000 >= comecouEm && e.preco > 0 && Number.isFinite(e.preco))
@@ -411,17 +442,36 @@ export function rodar(emissoes: Emissao[], comecouEm: number): Carteira {
       // ela só acontece depois do stop, e é isso que o teto de alavancagem
       // garante — mas um salto de preço entre retratos pode pular o stop e cair
       // direto aqui, e nesse caso a margem inteira se perde.
-      const liquidou =
-        p.lado === "long" ? atual <= p.precoLiquidacao : atual >= p.precoLiquidacao;
+      //
+      // O gatilho é a MARGEM e não o preço, porque a corretora também deduz o
+      // financiamento dela. Uma posição carregada muito tempo liquida antes do
+      // preço de liquidação nominal, e testar só o preço deixava o retorno
+      // passar de −100% sem ninguém fechar nada. `precoLiquidacao` continua
+      // gravado porque é o número que se olha na tela — só não é o gatilho.
+      const liquidou = p.retorno <= -1 + MARGEM_MANUTENCAO;
       if (liquidou) {
         fechar(estado, p, atual, quando, "liquidada");
         continue;
       }
+      // STOP E ALVO SÃO DE PREÇO, e comparar contra `p.retorno` os quebrava.
+      //
+      // `p.retorno` passou a ser sobre a MARGEM quando a alavancagem entrou —
+      // ou seja, já multiplicado por três. Comparado contra um corte de 25%
+      // pensado em preço, o stop disparava com o preço andando 8,3% contra, que
+      // é ruído de um dia normal nestas moedas: `npm run estudar` mede
+      // volatilidade diária de 7% a 10%. Quase toda posição morreria no primeiro
+      // dia, e o alvo cairia de 40% para 13,3%.
+      //
+      // Pior, isso desmontava em silêncio a justificativa do teto de 3x: ele
+      // existe porque o stop de 25% de preço consome 75% da margem, e o stop
+      // errado consumia 25%.
+      const varPreco = aFavor(p, atual);
+
       // A ordem dos testes é a ordem do pior caso: dentro de um intervalo entre
       // retratos o preço passou por lugares que não vemos, e supor que ele
       // tocou o stop antes do alvo é a suposição conservadora.
-      if (p.retorno <= -STOP) fechar(estado, p, atual, quando, "stop");
-      else if (p.retorno >= ALVO) fechar(estado, p, atual, quando, "alvo");
+      if (varPreco <= -STOP) fechar(estado, p, atual, quando, "stop");
+      else if (varPreco >= ALVO) fechar(estado, p, atual, quando, "alvo");
       else if (dias >= PRAZO_DIAS) fechar(estado, p, atual, quando, "prazo");
       else if (vies.get(p.symbol) !== p.lado) {
         // O painel mudou de ideia. Esta é a saída principal: a carteira segue as
@@ -443,9 +493,16 @@ export function rodar(emissoes: Emissao[], comecouEm: number): Carteira {
       [...estado.abertas.values()].reduce((s, p) => s + p.valor * (1 + p.retorno), 0);
     const patrimonio = () => estado.caixa + expostoAgora();
 
+    // A call queimada volta a valer quando o viés sai daquele lado — aí a leitura
+    // é outra, e não a mesma repetida.
+    for (const [sym, lado] of estado.queimadas) {
+      if (vies.has(sym) && vies.get(sym) !== lado) estado.queimadas.delete(sym);
+    }
+
     for (const e of lote) {
       if (e.vies !== "long" && e.vies !== "short") continue;
       if (estado.abertas.has(e.s)) continue;
+      if (estado.queimadas.get(e.s) === e.vies) continue;
 
       const forca = e.forca ?? 0;
       const risco = RISCO_POR_FORCA[forca];

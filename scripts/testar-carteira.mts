@@ -62,6 +62,55 @@ caso("viés vira null no retrato seguinte", [
   { t: h(1), s: "X", preco: 1.05, vies: null },
 ]);
 
+// --- O MOEDOR: moeda em queda contínua com o painel insistindo em "long".
+// Sem a trava de call queimada, a carteira estopa e RECOMPRA no mesmo retrato,
+// onze vezes seguidas, perdendo 17% do patrimônio na mesma leitura errada.
+{
+  const es: Emissao[] = [];
+  let preco = 1;
+  for (let i = 0; i < 12; i++) {
+    es.push({ t: h(i), s: "X", preco, vies: "long", forca: 3, fund: 0 });
+    preco *= 0.72;
+  }
+  const c = rodar(es, T0 * 1000);
+  console.log(
+    `\nqueda contínua com "long" fixo:  ${c.encerradas} stop(s), patrimônio ${c.patrimonio.toFixed(2)} ` +
+      `${c.encerradas === 1 ? "ok" : "← DEVERIA SER 1"}`,
+  );
+}
+
+// --- OS LIMIARES, que são de PREÇO e já foram comparados contra margem por
+// engano. Cada linha abaixo trava um número que a documentação promete.
+console.log("\n--- os limiares disparam onde a documentação diz? ---");
+function ate(varPreco: number, lado: "long" | "short" = "long") {
+  const p1 = 1;
+  const p2 = lado === "long" ? p1 * (1 + varPreco) : p1 * (1 - varPreco);
+  const c = rodar(
+    [
+      { t: h(0), s: "X", preco: p1, vies: lado, forca: 2, fund: 0 },
+      { t: h(1), s: "X", preco: p2, vies: lado, forca: 2, fund: 0 },
+    ],
+    T0 * 1000,
+  );
+  return c.fechadas[0]?.motivo ?? "aberta";
+}
+const casos: [string, number, string][] = [
+  ["preço -24% (antes do stop de 25%)", -0.24, "aberta"],
+  ["preço -26% (depois do stop)", -0.26, "stop"],
+  ["preço +39% (antes do alvo de 40%)", 0.39, "aberta"],
+  ["preço +41% (depois do alvo)", 0.41, "alvo"],
+  ["preço -34% (depois da liquidação a 33,2%)", -0.34, "liquidada"],
+];
+for (const [nome, v, esperado] of casos) {
+  const got = ate(v);
+  console.log(`  ${nome.padEnd(44)} ${got.padEnd(11)} ${got === esperado ? "ok" : `← ESPERADO ${esperado}`}`);
+}
+// o mesmo do lado vendido, onde os sinais invertem
+for (const [nome, v, esperado] of casos) {
+  const got = ate(v, "short");
+  console.log(`  vendido: ${nome.padEnd(35)} ${got.padEnd(11)} ${got === esperado ? "ok" : `← ESPERADO ${esperado}`}`);
+}
+
 console.log("\n--- o caso que preocupa: lixo e volta ---");
 const c = rodar(
   [
