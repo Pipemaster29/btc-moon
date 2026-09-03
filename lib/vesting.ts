@@ -179,18 +179,33 @@ export function veredito(v: Vesting): Veredito {
   if (v.semHistorico) return "sem histórico";
   if (v.cobertura > COBERTURA_MAXIMA) return "contínua";
   if (v.cobertura < COBERTURA_MINIMA || v.serie.length < 2) return "parcial";
-  // Ritmo só vale com estoque atrás dele: cofre vazio não solta mais nada, por
-  // mais inclinada que a reta que o esvaziou tenha sido.
+  // A ORDEM DAQUI PARA BAIXO É A ORDEM DA FORÇA DA EVIDÊNCIA, e ela importa.
+  //
+  // 1. Emissão MEDIDA e ativa é o sinal mais forte que existe: eu vi o supply
+  //    saindo, mês a mês. Ritmo só vale com estoque atrás dele — cofre vazio não
+  //    solta mais nada, por mais inclinada que a reta que o esvaziou tenha sido.
   if (v.ritmo >= RITMO_RELEVANTE && v.travado >= TRAVADO_MINIMO) return "emitindo";
-  if (v.travado >= TRAVADO_ALTO) return "travado";
-  // Cofre vazio E float baixo é o caso em que "livre" mentiria: o supply saiu da
-  // alocação e não chegou ao mercado, e este método não segue além do primeiro
-  // salto. Dizer que não há oferta futura aqui seria afirmar o que não se mediu.
+
+  // 2. Supply que não circula e não está em cofre nenhum vem ANTES de "travado",
+  //    e esta ordem é um conserto. A POWER tem 21,8% num cofre parado e 79% do
+  //    supply fora de circulação: os outros 57,2% não circulam E não estão em
+  //    cofre que eu ache. "Travado" saía primeiro, o ritmo zero passava no teste
+  //    do motor, e a moeda ganhava viés de COMPRA com 4/4 motores — enquanto
+  //    mais da metade do supply dela está num lugar que eu não sei apontar.
+  //
+  //    Vinte e um por cento localizado e parado é menos importante do que
+  //    cinquenta e sete por cento desaparecido. O que domina é o que não se sabe.
+  //
   // `!= null` e não `!== null`: os registros gravados antes deste campo existir
   // trazem `undefined`, e as duas ausências têm de cair do mesmo lado.
   if (v.foraDeCirculacao != null && v.foraDeCirculacao >= FORA_DE_CIRCULACAO_ALTA) {
     return "fora do alcance";
   }
+
+  // 3. Cofre grande e parado, com o resto do supply circulando: oferta que não
+  //    existe hoje e pode existir amanhã.
+  if (v.travado >= TRAVADO_ALTO) return "travado";
+
   return "livre";
 }
 
@@ -233,13 +248,15 @@ export function textoVeredito(v: Vesting): string {
             `${Math.abs(v.ritmo).toFixed(2)} pp por mês — está recolhendo oferta, não soltando`
         : `${pct(v.travado)} do supply está parado em contrato de alocação e não se ` +
             `moveu na janela medida — oferta que não existe hoje e pode existir amanhã`;
-    case "fora do alcance":
+    case "fora do alcance": {
+      const perdido = (v.foraDeCirculacao ?? 0) - v.travado;
       return (
-        `os contratos de alocação esvaziaram — só ${pct(v.travado)} do supply restou neles —, mas ` +
-        `${pct(v.foraDeCirculacao ?? 0)} do supply NÃO CIRCULA. Esse pedaço saiu da alocação e não ` +
-        `chegou ao mercado, e este método não segue além do primeiro salto: ele acha quem recebeu ` +
-        `do endereço zero, não quem recebeu depois`
+        `${pct(v.foraDeCirculacao ?? 0)} do supply NÃO CIRCULA, e ${pct(perdido)} dele não está em ` +
+        `contrato de alocação nenhum que eu ache — só ${pct(v.travado)} está. Esse pedaço saiu da ` +
+        `alocação e não chegou ao mercado, e este método não segue além do primeiro salto: ele acha ` +
+        `quem recebeu do endereço zero, não quem recebeu depois. Não dá para dizer se vira oferta`
       );
+    }
     case "livre":
       return `os contratos de alocação já esvaziaram: ${pct(v.travado)} do supply restante neles`;
   }

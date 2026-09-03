@@ -20,7 +20,7 @@ import { lerLivro, financiamento } from "../lib/livro";
 import { lerVida, lerVies, CARTEIRAS_CEX } from "../lib/lifecycle";
 import { lerMotor } from "../lib/motor";
 import { concentracaoDe } from "../lib/detentores";
-import { ritmoDe } from "../lib/vesting";
+import { ritmoDe, vestingDe } from "../lib/vesting";
 import { readLiveFromStats } from "../lib/positioning";
 import { pairsOfToken, depthOn } from "../lib/dexscreener";
 import { tokenInfo, balancesOf, toUnits, blockNumber, blocosPara, scanTransfers, type Chain } from "../lib/onchain";
@@ -288,6 +288,7 @@ if (vida) {
     perfilLag: null,
     perfilSigmas: null,
     emissao: motor?.emissao ?? null,
+    foraDeCirculacao: (await vestingDe(token.symbol))?.foraDeCirculacao ?? null,
     // A série é horária, então 24 pontos atrás é o preço de ontem a esta hora.
     alta24h: (() => {
       const ontem = serie[serie.length - 25]?.price ?? 0;

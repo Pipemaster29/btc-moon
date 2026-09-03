@@ -711,6 +711,20 @@ export interface SinaisAgora {
    * moeda derretida supõe que a oferta parou de crescer.
    */
   emissao: number | null;
+  /**
+   * Fração do supply do contrato que NÃO circula. Nulo quando não medida.
+   *
+   * Entra pelo mesmo motivo que `emissao`, e cobre o buraco que sobra dela. O
+   * freio de emissão exige ter MEDIDO supply saindo; este cobre o caso em que a
+   * medição não alcança — supply que sumiu da alocação e não chegou ao mercado.
+   *
+   * Medido na POWER: 79% do supply não circula, e 57,2% dele não está em
+   * contrato de alocação nenhum que a varredura ache. A regra de compra por
+   * livro fino dizia "pouco dinheiro move muito preço", que é verdade hoje e
+   * pressupõe que o supply de fora está preso — e sobre mais da metade dele não
+   * há como afirmar isso.
+   */
+  foraDeCirculacao: number | null;
 }
 
 /**
@@ -965,6 +979,10 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   // e vale pelo que separa, não por calibração contra retorno: a C solta 2,31 e
   // a BTW, nada.
   const emitindo = agora.emissao !== null && agora.emissao >= 0.5;
+  // Trinta por cento do supply sem circular e sem cofre que o explique. O corte
+  // é o mesmo de `lib/vesting`, e vale pelo que separa: a POWER tem 57,2%.
+  const supplySumido =
+    agora.foraDeCirculacao !== null && agora.foraDeCirculacao >= 0.3 && agora.emissao === null;
   const pct = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(0)}%`;
 
   // A regra de tempo vem antes de tudo, porque ela não discute direção: durante
@@ -1316,6 +1334,26 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
           ? ` Com só ${((vida.floatCex ?? 0) * 100).toFixed(2)}% do supply em corretora, ` +
             `quase não há oferta pronta para atrapalhar.`
           : ""),
+    };
+  }
+
+  // O mesmo freio pelo lado do que NÃO se sabe. A regra abaixo diz que livro
+  // fino é a condição para pouco dinheiro mover muito preço, e isso pressupõe
+  // que o supply de fora do livro está preso. Com metade dele num lugar que a
+  // varredura não alcança, a premissa não está estabelecida.
+  if (vida.estagio === "nunca subiu" && floatBaixo && supplySumido) {
+    return {
+      vies: "observar",
+      forca: 1,
+      ateQuando: textoAteQuando(vida),
+      titulo: "Livro fino, mas com metade do supply em lugar nenhum",
+      porque:
+        `Amplitude de só ${vida.amplitude.toFixed(1)}x e ${((vida.floatCex ?? 0) * 100).toFixed(2)}% ` +
+        `do supply em corretora: o livro está fino, que normalmente é a condição para pouco ` +
+        `dinheiro mover muito preço. Só que ${((agora.foraDeCirculacao ?? 0) * 100).toFixed(0)}% do ` +
+        `supply do contrato NÃO CIRCULA, e a varredura de emissão não acha contrato de alocação ` +
+        `que explique a maior parte disso. Livro fino só vale como escassez enquanto o resto do ` +
+        `supply estiver preso, e sobre esse pedaço não dá para afirmar nem uma coisa nem outra.`,
     };
   }
 

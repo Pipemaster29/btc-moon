@@ -26,6 +26,7 @@ import { readFile } from "node:fs/promises";
 import { getOverview, getPanorama, type PanoramaRow } from "./overview";
 import { lerVies, type Vida } from "./lifecycle";
 import { lerEstudo } from "./estudo";
+import { vestingDe } from "./vesting";
 
 const RAW =
   "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main/data/panorama.json";
@@ -182,6 +183,7 @@ async function relerVies(
       perfilLag: estudo?.melhorLag?.lag ?? null,
       perfilSigmas: estudo?.melhorLag?.sigmas ?? null,
       emissao: antiga.motor?.emissao ?? null,
+      foraDeCirculacao: (await vestingDe(viva.symbol))?.foraDeCirculacao ?? null,
       alta24h: viva.change24h,
     });
   } catch {

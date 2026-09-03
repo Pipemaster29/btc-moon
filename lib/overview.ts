@@ -18,7 +18,7 @@ import { depthOn, pairsOfToken } from "./dexscreener";
 import { ATIVAS, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
 import { concentracaoDe } from "./detentores";
-import { ritmoDe } from "./vesting";
+import { ritmoDe, vestingDe } from "./vesting";
 import { lerEstudo } from "./estudo";
 import { lerMotor, type Motor } from "./motor";
 import { readLiveFromStats, type MoveKind } from "./positioning";
@@ -314,6 +314,7 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         perfilLag: estudo?.melhorLag?.lag ?? null,
         perfilSigmas: estudo?.melhorLag?.sigmas ?? null,
         emissao: motor?.emissao ?? null,
+        foraDeCirculacao: (await vestingDe(token.symbol))?.foraDeCirculacao ?? null,
         alta24h: row.change24h,
       });
       return { ...row, vida, leitura, motor };
