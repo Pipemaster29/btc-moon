@@ -132,6 +132,7 @@ retrato seguinte fechá-la com a hora certa.
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
 | `components/vivo.ts` | o relógio único da página que consome essa rota |
 | `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |
+| `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção, disco primeiro no resto |
 
 ### Os dados
 
@@ -292,6 +293,13 @@ antiga do lado parecendo carimbo de frescor.
 
 E vale para a IDADE ao lado do número: a janela do placar diz sobre que período
 ele foi calculado, não quando. São duas datas e as duas precisam estar na tela.
+
+**Mas a ordem das camadas se INVERTE fora de produção**, e isso não era feito. Em
+`next dev` e nos scripts, o disco é o arquivo que você acabou de gerar e o raw é
+a produção — então ler o raw primeiro fazia `npm run carteira` não mudar nada na
+tela, sem erro e sem aviso. Medido: disco em US$ 999,57 com a queda máxima,
+página em US$ 998,11 sem ela. A regra mora em `lib/guardado.ts` e vale para as
+quatro leituras.
 
 ### 7. Um freio que existe numa metade do caminho não existe
 
