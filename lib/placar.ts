@@ -8,7 +8,7 @@
  * não mediu.
  */
 
-import { readFile } from "node:fs/promises";
+import { lerGuardado } from "./guardado";
 
 export interface Veredito {
   vies: string;
@@ -41,11 +41,6 @@ export interface Placar {
   >;
 }
 
-const CAMINHO = "data/placar.json";
-
-const RAW =
-  "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main/data/placar.json";
-
 /**
  * O placar gravado, com as MESMAS duas camadas do panorama e da carteira.
  *
@@ -60,25 +55,10 @@ const RAW =
  * velho apresentado como atual é pior do que dado ausente.
  */
 export async function getPlacar(): Promise<Placar | null> {
-  const valido = (d: unknown): Placar | null =>
-    Array.isArray((d as Placar)?.vereditos) ? (d as Placar) : null;
-
-  try {
-    const res = await fetch(RAW, {
-      signal: AbortSignal.timeout(4_000),
-      next: { revalidate: 600 },
-    });
-    if (res.ok) {
-      const daRede = valido(await res.json());
-      if (daRede) return daRede;
-    }
-  } catch {
-    // Cai para o disco, que sempre responde.
-  }
-
-  try {
-    return valido(JSON.parse(await readFile(CAMINHO, "utf8")));
-  } catch {
-    return null;
-  }
+  const g = await lerGuardado<Placar>(
+    "placar.json",
+    (d) => (Array.isArray((d as Placar)?.vereditos) ? (d as Placar) : null),
+    600,
+  );
+  return g?.dado ?? null;
 }

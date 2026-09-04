@@ -22,16 +22,11 @@
  * desconfiar.
  */
 
-import { readFile } from "node:fs/promises";
+import { lerGuardado, type Fonte } from "./guardado";
 import { getOverview, getPanorama, type PanoramaRow } from "./overview";
 import { lerVies, type Vida } from "./lifecycle";
 import { lerEstudo } from "./estudo";
 import { vestingDe } from "./vesting";
-
-const RAW =
-  "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main/data/panorama.json";
-
-const CAMINHO = "data/panorama.json";
 
 /**
  * Quando o retrato deixa de ser "agora", e quando ele está de fato parado.
@@ -48,8 +43,6 @@ const CAMINHO = "data/panorama.json";
  */
 export const ATRASADO_MINUTOS = 100;
 export const PARADO_MINUTOS = 240;
-
-export type Fonte = "github" | "disco" | "cálculo";
 
 export interface Snapshot {
   moedas: PanoramaRow[];
@@ -269,35 +262,15 @@ async function refrescar(base: Snapshot): Promise<Snapshot> {
 }
 
 export async function getSnapshot(): Promise<Snapshot> {
-  let guardado: Snapshot | null = null;
-
-  // 1. o repositório
-  try {
-    const res = await fetch(RAW, {
-      // Quatro segundos, não oito: são 250 KB de arquivo estático vindo de CDN,
-      // e o que vem depois — refazer a camada viva — precisa do orçamento. Se o
-      // GitHub demorar mais do que isso, o disco responde na hora e a camada
-      // viva conserta o que nele estiver velho.
-      signal: AbortSignal.timeout(4_000),
-      next: { revalidate: 120 },
-    });
-    if (res.ok) {
-      const dado = await res.json();
-      if (valido(dado)) guardado = montar(dado, "github");
-    }
-  } catch {
-    // Cai para a próxima camada.
-  }
-
-  // 2. o disco
-  if (!guardado) {
-    try {
-      const dado = JSON.parse(await readFile(CAMINHO, "utf8"));
-      if (valido(dado)) guardado = montar(dado, "disco");
-    } catch {
-      // Cai para a próxima camada.
-    }
-  }
+  // 1 e 2. o repositório e o disco, na ordem que o AMBIENTE pede.
+  //
+  // Em produção o raw vem primeiro, porque o disco é o do build e o
+  // `ignoreCommand` do `vercel.json` o congela. Em desenvolvimento a ordem se
+  // inverte, porque o disco é o retrato que você acabou de gerar e o raw é a
+  // produção — e ler produção em cima do trabalho local fazia `npm run panorama`
+  // não mudar nada na tela. A regra e o porquê moram em `lib/guardado.ts`.
+  const lido = await lerGuardado<Arquivo>("panorama.json", (d) => (valido(d) ? d : null), 120);
+  const guardado: Snapshot | null = lido ? montar(lido.dado, lido.fonte) : null;
 
   // 2b. o retrato existe mas passou da hora: refaz o que é barato por cima.
   if (guardado) {

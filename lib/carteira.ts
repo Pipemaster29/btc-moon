@@ -982,43 +982,26 @@ function montar(estado: Estado, comecouEm: number, atualizadoEm: number): Cartei
   };
 }
 
-const CAMINHO = "data/carteira.json";
-
-const RAW =
-  "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main/data/carteira.json";
-
 /**
  * A carteira gravada, com as MESMAS duas camadas do panorama.
  *
  * Ela lia só o disco, e em produção o disco é o do BUILD. O painel ao lado se
  * atualiza pelo GitHub raw a cada retrato, e a carteira embaixo dele ficava
  * parada no último deploy — podia ter dias, sem nada na tela dizendo isso.
+ *
+ * A ORDEM DAS CAMADAS mora em `lib/guardado.ts`, porque ela depende do
+ * ambiente: em produção o raw vem primeiro, em desenvolvimento o disco. Estava
+ * fixa aqui e nas outras três leituras, e o efeito era rodar `npm run carteira`,
+ * abrir a página e ver a carteira do `main` em vez da que acabou de ser gerada.
  */
 export async function getCarteira(): Promise<Carteira | null> {
-  const valida = (d: unknown): Carteira | null =>
-    Array.isArray((d as Carteira)?.abertas) ? (d as Carteira) : null;
-
-  try {
-    const res = await fetch(RAW, {
-      signal: AbortSignal.timeout(4_000),
-      next: { revalidate: 120 },
-    });
-    if (res.ok) {
-      const daRede = valida(await res.json());
-      if (daRede) return daRede;
-    }
-  } catch {
-    // Cai para o disco, que sempre responde.
-  }
-
-  try {
-    // `import()` dentro da função, e não no topo: este módulo é importado pelo
-    // painel da carteira, que roda no navegador para marcar as posições ao vivo.
-    const { readFile } = await import("node:fs/promises");
-    return valida(JSON.parse(await readFile(CAMINHO, "utf8")));
-  } catch {
-    return null;
-  }
+  const { lerGuardado } = await import("./guardado");
+  const g = await lerGuardado<Carteira>(
+    "carteira.json",
+    (d) => (Array.isArray((d as Carteira)?.abertas) ? (d as Carteira) : null),
+    120,
+  );
+  return g?.dado ?? null;
 }
 
 /**

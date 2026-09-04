@@ -83,6 +83,7 @@
 
 import { velas } from "./binance";
 import { ATIVAS, WATCHLIST } from "./watchlist";
+import { lerGuardado } from "./guardado";
 
 const BASE = "https://www.binance.com";
 
@@ -446,34 +447,17 @@ async function anotarTamanho(a: Achado): Promise<void> {
   }
 }
 
-const CAMINHO = "data/garimpo.json";
-
-const RAW =
-  "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main/data/garimpo.json";
-
 /**
  * O garimpo gravado, com as mesmas duas camadas do panorama e do placar — e
  * pelo mesmo motivo: em produção o disco é o do BUILD, e o `ignoreCommand` do
- * `vercel.json` pula o build quando só `data/` mudou.
+ * `vercel.json` pula o build quando só `data/` mudou. A ORDEM das camadas mora
+ * em `lib/guardado.ts` e depende do ambiente.
  */
 export async function getGarimpo(): Promise<Garimpo | null> {
-  const valido = (d: unknown): Garimpo | null =>
-    Array.isArray((d as Garimpo)?.achados) ? (d as Garimpo) : null;
-
-  try {
-    const res = await fetch(RAW, { signal: AbortSignal.timeout(4_000), next: { revalidate: 300 } });
-    if (res.ok) {
-      const daRede = valido(await res.json());
-      if (daRede) return daRede;
-    }
-  } catch {
-    // Cai para o disco, que sempre responde.
-  }
-
-  try {
-    const { readFile } = await import("node:fs/promises");
-    return valido(JSON.parse(await readFile(CAMINHO, "utf8")));
-  } catch {
-    return null;
-  }
+  const g = await lerGuardado<Garimpo>(
+    "garimpo.json",
+    (d) => (Array.isArray((d as Garimpo)?.achados) ? (d as Garimpo) : null),
+    300,
+  );
+  return g?.dado ?? null;
 }
