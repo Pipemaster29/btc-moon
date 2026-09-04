@@ -100,17 +100,69 @@ jobs:
           git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
           git push --quiet origin HEAD:main || echo "abertura perdeu a corrida, o fechamento tenta de novo"
 
-      - name: Vigiar por 35 minutos, um ciclo a cada 3
+      # O RETRATO TAMBÉM ENTRA NO LAÇO, e antes só saía nas duas pontas.
+      #
+      # O laço vigia de 3 em 3 minutos, mas quem DECIDE — abrir e fechar posição,
+      # emitir viés, garimpar — era só `panorama` + `carteira`, que rodavam uma
+      # vez ao abrir e outra ao fechar. Medido sobre os 35 retratos gravados: o
+      # intervalo mediano entre decisões era de 38 minutos.
+      #
+      # A cada quatro ciclos (12 minutos) o retrato é refeito e commitado. Isso
+      # leva a resolução DENTRO da janela de 38 para ~12 minutos, e o número de
+      # decisões por dia de 14 para perto de 40.
+      #
+      # O QUE ISTO NÃO CONSERTA, e é o buraco maior: as janelas em si. O cron
+      # pede 48 execuções por dia e o GitHub entrega cerca de sete, então entre
+      # uma execução e a seguinte há vãos de até 4,7 horas medidos. Nenhum ajuste
+      # aqui dentro alcança isso — é a plataforma, e sair dela exige uma máquina
+      # que fique ligada.
+      #
+      # Doze minutos e não três: o `panorama` leva 36 segundos e faz perto de
+      # quinhentas requisições a APIs públicas gratuitas. A cada três minutos
+      # isso multiplicaria por quatro a carga sobre DexScreener e sobre os nós
+      # RPC, que é exatamente o abuso que este workflow evita desde o começo — e
+      # bloqueio por abuso pararia o monitor de vez, muito pior do que decidir de
+      # doze em doze minutos.
+      - name: Vigiar por 35 minutos, com retrato a cada 12
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           fim=$(( $(date +%s) + 35*60 ))
           n=0
           while [ "$(date +%s)" -lt "$fim" ]; do
             n=$((n+1))
             echo "=== ciclo $n · $(date -u +%H:%M:%S) UTC ==="
             npm run monitor || echo "ciclo $n falhou, seguindo"
+
+            # A cada quatro ciclos, refaz e grava o retrato. Falhar aqui não
+            # derruba o laço: a vigilância é o que não pode parar.
+            if [ $(( n % 4 )) -eq 0 ]; then
+              echo "--- retrato intermediário no ciclo $n ---"
+              (
+                set -e
+                # Sem `stash`: a memória do monitor vive em `.cache/`, que é
+                # ignorada pelo git, e o retrato de abertura já commitou o que
+                # tinha. Se a árvore estiver suja por algum motivo, o `set -e`
+                # aborta ESTE retrato e o laço segue — vigiar é o que não pode
+                # parar.
+                git fetch --quiet origin main
+                git checkout --quiet -B main origin/main
+                npm run panorama
+                npm run carteira || echo "carteira falhou, seguindo"
+                git add data/
+                if git diff --cached --quiet; then
+                  echo "nada mudou"
+                else
+                  git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
+                  git push --quiet origin HEAD:main || echo "corrida perdida, o próximo tenta"
+                fi
+              ) || echo "retrato intermediário falhou, seguindo"
+            fi
+
             [ "$(date +%s)" -ge "$fim" ] && break
             sleep 180
           done

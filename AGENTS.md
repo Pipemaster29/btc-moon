@@ -61,9 +61,27 @@ npm run carteira     # a carteira fictícia → data/carteira.json
 Não há chave, `.env` nem banco. O estado inteiro mora em `data/`.
 
 O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` e
-commita o resultado. **O cron pede duas execuções por hora e o GitHub entrega de
-duas a cinco por dia** — é limitação da plataforma, e a aplicação foi desenhada
-para sobreviver a isso (ver *A camada viva*).
+commita o resultado. **O cron pede 48 execuções por dia e o GitHub entrega cerca
+de sete** — é limitação da plataforma, e a aplicação foi desenhada para
+sobreviver a isso (ver *A camada viva*).
+
+### Os três relógios, que são diferentes de propósito
+
+| o quê | com que frequência | onde roda |
+|---|---|---|
+| preço, 24h, financiamento e a MARCAÇÃO da carteira | 15 segundos | no navegador de quem está com a página aberta |
+| preço e posicionamento por cima do retrato velho | a cada montagem da página | no servidor, quando o retrato passa de 100 min |
+| as DECISÕES: viés, abrir e fechar posição, garimpo | ~12 min dentro da janela do workflow | GitHub Actions |
+
+O terceiro é o gargalo e ele é da plataforma. Cada execução do workflow cobre 50
+minutos e faz retrato ao abrir, a cada quatro ciclos do laço e ao fechar — mas
+**entre uma execução e a seguinte há vãos de até 4,7 horas medidos**, porque o
+GitHub entrega 7 das 48 execuções pedidas. Nenhum ajuste dentro do workflow
+alcança isso; sair disso exige uma máquina que fique ligada.
+
+O que segura o estrago desses vãos é o caminho de velas da carteira: um stop que
+aconteceu às 3h dentro do buraco é registrado às 3h e no preço do stop, não no
+retrato das 6h30. O que atrasa de verdade é ABRIR call nova.
 
 ---
 
