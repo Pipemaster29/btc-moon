@@ -145,6 +145,14 @@ jobs:
 
             npm run panorama || { echo "panorama falhou, seguindo"; exit 0; }
             npm run carteira || echo "carteira falhou, seguindo"
+            # O garimpo peneira os 526 perpétuos da Binance atrás de moeda que
+            # se pareça com o objeto de estudo, para a lista deixar de ser só o
+            # que alguém lembrou de apontar. Roda SÓ no retrato de fechamento e
+            # não no de abertura nem no laço de 3 minutos: são cerca de 570
+            # requisições, e a coisa que ele procura leva dias para acontecer —
+            # peneirar de três em três minutos gastaria orçamento da Binance
+            # para reencontrar a mesma lista.
+            npm run garimpar || echo "garimpo falhou, seguindo"
 
             git add data/
             if git diff --cached --quiet; then

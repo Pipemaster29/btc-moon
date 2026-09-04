@@ -36,6 +36,13 @@ no código, com número:
 - **"No topo" deixou de ser regra de venda.** O número que a sustentava vinha de
   uma janela de medição diferente da que roda ao vivo. Refeita na janela certa:
   −3,1 p.p. com p = 0,187.
+- **O garimpo acha o padrão e não vira call.** Sobre os 526 perpétuos da
+  Binance, uma moeda que sobe ≥25% num dia cai 12,68% na mediana dos 7 dias
+  seguintes contra referência de −0,96%, com 102 de 139 moedas concordando —
+  monotônico em toda a escala e estável nas duas metades da janela. É o sinal
+  mais forte já medido aqui, e **vendê-lo perde dinheiro em toda largura de stop
+  testada**, porque o caminho estopa a posição antes. `npm run garimpar` entrega
+  fila de investigação, com essa frase na tela.
 
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
@@ -124,6 +131,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
 | `components/vivo.ts` | o relógio único da página que consome essa rota |
+| `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |
 
 ### Os dados
 
@@ -136,6 +144,7 @@ retrato seguinte fechá-la com a hora certa.
 | `data/estudos.json` | estudo por moeda | `npm run estudar` |
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/carteira.json` | a carteira | `npm run carteira` |
+| `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 
 ---
 

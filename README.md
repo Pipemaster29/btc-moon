@@ -238,6 +238,66 @@ A ordem é mecânica, não estatística:
    corretora é preciso depositar antes. No LAB isso foi 1% do supply indo e
    voltando no dia exato da máxima.
 
+## Garimpar o universo inteiro
+
+A watchlist tem 73 moedas e todas entraram porque alguém as viu em algum lugar.
+O limite disso é óbvio: o painel só acha padrão em moeda que já está nele, e o
+padrão que ele procura acontece o tempo todo em moeda que ninguém apontou. São
+526 perpétuos USDT em negociação na Binance; a lista cobre 14% deles.
+
+`npm run garimpar` peneira os 526 — três requisições largas mais uma de velas
+por moeda, cinco segundos no total — e devolve o que se parece com o objeto de
+estudo. `npm run aferir-garimpo` é a medição que sustenta o gatilho, refeita do
+zero: 200 dias de velas diárias de todos os perpétuos, com a metodologia do
+placar.
+
+**O sinal é o mais forte já medido neste projeto.** Retorno de 7 dias à frente,
+95.141 observações de 523 moedas, referência de −0,96%:
+
+| alta do dia | n | mediana 7d | vs referência | moedas a favor |
+| --- | --- | --- | --- | --- |
+| caiu | 50.054 | −0,65% | +0,31 p.p. | 310/523 |
+| 0 a 10% | 41.107 | −1,08% | −0,12 p.p. | 300/523 |
+| 10 a 25% | 3.146 | −4,75% | −3,79 p.p. | 301/430 |
+| 25 a 50% | 625 | −12,68% | −11,72 p.p. | 102/139 |
+| 50 a 100% | 169 | −22,00% | −21,04 p.p. | 26/40 |
+| +100% | 40 | −51,32% | −50,36 p.p. | 5/6 |
+
+É monotônico em toda a escala, igual no horizonte de 14 dias, e aparece nas duas
+metades da janela separadamente (−12,57 e −14,75 p.p. no corte de 25%). Para
+comparação, os vieses que o painel emite separam +0,01 e +0,02 p.p. O viés de
+sobrevivência corre a favor da conclusão: o universo é quem está listado hoje,
+então as moedas que bombaram e foram deslistadas — as de pior desfecho — ficaram
+de fora.
+
+**E ele não vira call, porque o caminho até a queda mata a posição.** Vendido a
+partir do dia da alta, com custo e o financiamento real da Binance dentro:
+
+| stop | alvo | stop | prazo | média | mediana | moedas com mediana + |
+| --- | --- | --- | --- | --- | --- | --- |
+| +25% | 21% | 55% | 24% | −1,30% | −24,95% | 58/152 |
+| +40% | 26% | 41% | 34% | −1,67% | +8,37% | 75/152 |
+| +60% | 29% | 30% | 41% | −1,98% | +13,43% | 98/152 |
+| +100% | 31% | 18% | 50% | −2,72% | +16,27% | 114/152 |
+
+A mediana é boa e **a média é negativa em toda largura de stop**: ganha-se pouco
+com frequência e perde-se muito de vez em quando, que é o perfil que quebra
+conta alavancada. Com o stop de 25% que a carteira usa, 55% das entradas estopam
+antes de qualquer coisa acontecer e a mediana do desfecho é o próprio stop. Só
+os gatilhos extremos viram média positiva, e neles a amostra some junto — alta
+≥50% num dia dá +1,56% com n=202 e 22 de 46 moedas.
+
+**Do lado comprado não há o que garimpar.** "Comprar a derretida", que é a regra
+de compra do painel, testada sobre o universo com a mesma máquina, piora quanto
+mais fundo a queda: caiu ≥50% do pico dá mediana −1,13% com 213 de 395 moedas;
+caiu ≥85% dá média −0,76%; caiu ≥95% dá −2,43% com 2 de 17. O que faz uma moeda
+subir do zero não está no preço, e este projeto não tem como ler o X.
+
+Então o garimpo é uma **fila de investigação**, e a página diz isso em cima da
+tabela. Nenhuma moeda entra na análise completa sozinha: o próximo passo é
+sempre `npm run descobrir`, porque identificar o token errado é o erro mais caro
+daqui e já foi cometido duas vezes.
+
 ## Identificar a moeda certa
 
 O erro mais caro deste projeto foi analisar o token errado — duas vezes. Buscar
@@ -362,6 +422,8 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
+| `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
+| `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |
