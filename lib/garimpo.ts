@@ -139,9 +139,24 @@ export interface Achado {
   preco: number;
   /** Fração. */
   alta24h: number;
-  alta7d: number;
+  /**
+   * Alta acumulada de 7 dias, ou NULO quando não há 7 dias de série.
+   *
+   * NULO E NÃO ZERO, e essa distinção é a armadilha nº 2 do AGENTS.md aplicada
+   * aqui: zero se lê como "não andou", e moeda listada há três dias é
+   * exatamente a que anda 100% num dia. É a mesma correção que
+   * `lib/overview.ts` já carrega para o `change24h`.
+   */
+  alta7d: number | null;
   /** Volume em dólar nas 24h. */
   volume24h: number;
+  /**
+   * Quantos dias de vela a moeda tem. Menos de 8 é moeda recém-listada.
+   *
+   * Existe porque `alta7d` e `quedaDoPico` são NULOS nesse caso, e um nulo sem
+   * explicação na tela vira "não andou" na cabeça de quem lê.
+   */
+  diasDeSerie: number;
   /**
    * Circulante × preço, quando a Binance publica o circulante.
    *
@@ -169,8 +184,8 @@ export interface Achado {
   funding: number | null;
   /** Dias desde que a Binance listou o perpétuo. */
   idadeDias: number | null;
-  /** Quanto o preço está abaixo da máxima que a série alcançou. */
-  quedaDoPico: number;
+  /** Quanto o preço está abaixo da máxima da série, ou nulo sem série. */
+  quedaDoPico: number | null;
   /** A faixa que manda na ordenação, com a mediana medida dela. */
   faixa: Faixa;
   /** Se a faixa que classificou veio do dia ou da semana. */
@@ -270,9 +285,12 @@ export async function garimpar(): Promise<Garimpo> {
   const naLista = new Map(WATCHLIST.map((t) => [t.symbol, t]));
   const ativas = new Set(ATIVAS.map((t) => t.symbol));
 
-  // O corte largo ANTES das velas: sem ele seriam 526 requisições para depois
-  // jogar fora 90% delas. Aqui só sai quem já não tem chance nenhuma — volume
-  // de existência e alta de 24h abaixo do menor gatilho medido.
+  // O corte de volume, ANTES das velas. E ele corta pouco: medido em 04/09,
+  // 519 dos 526 perpétuos passam — 99%. Não está aqui para economizar
+  // requisição, e dizer que estava era falso: está para não deixar entrar na
+  // lista um "pump" de 40% que foi uma ordem de mil dólares num livro vazio. É
+  // filtro de EXISTÊNCIA de mercado, e o custo real do garimpo continua sendo
+  // uma requisição de velas por moeda da praça.
   const candidatas = lista.filter((s) => {
     const t = porTicker.get(s.symbol);
     if (!t) return false;
@@ -292,24 +310,41 @@ export async function garimpar(): Promise<Garimpo> {
       if (!(preco > 0) || !Number.isFinite(alta24h)) return;
 
       const v = await velas(s.symbol, "1d", 30).catch(() => []);
-      // Lista vazia é "não consegui", e a contagem sobe para isso aparecer no
-      // relatório em vez de virar uma moeda que silenciosamente não foi olhada.
-      if (v.length < 8) {
+      // Lista vazia é "NÃO CONSEGUI", e só isso conta como falha de leitura.
+      if (v.length === 0) {
         semSerie++;
         return;
       }
 
+      // MOEDA RECÉM-LISTADA NÃO PODE SER DESCARTADA AQUI, e era.
+      //
+      // A versão anterior exigia 8 velas para seguir, e jogava fora quem tinha
+      // menos — junto com a contagem de "sem série", como se fosse falha de
+      // leitura. Custo medido em 04/09: a MARSCOIN, listada havia TRÊS DIAS,
+      // subindo 96,3% em 24h com US$ 588 milhões de volume, sumia do garimpo.
+      // Ela cai na faixa de 50 a 100% num dia, cuja mediana medida é −22,00% em
+      // 7 dias — a segunda mais forte da tabela — e é justamente o tipo de moeda
+      // que o único filtro de média positiva ("listada há menos de 180 dias")
+      // aponta. O garimpo perdia exatamente o que existe para achar.
+      //
+      // A alta de 24h vem do `ticker/24hr` e NÃO precisa de vela nenhuma. Quem
+      // precisa de série é a alta de 7 dias e a queda do pico, e essas duas
+      // viram NULO em vez de zero — a armadilha nº 2 do AGENTS.md, e a mesma
+      // correção que `lib/overview.ts` já carrega: "não tenho 24 horas de série"
+      // não pode virar "não andou" logo na moeda que anda 100% num dia.
       const ultimo = v[v.length - 1].close;
-      const seteAtras = v[Math.max(0, v.length - 8)].close;
-      const alta7d = seteAtras > 0 && ultimo > 0 ? ultimo / seteAtras - 1 : 0;
+      const alta7d =
+        v.length >= 8 && ultimo > 0 && v[v.length - 8].close > 0
+          ? ultimo / v[v.length - 8].close - 1
+          : null;
       const pico = Math.max(...v.map((x) => x.high));
-      const quedaDoPico = pico > 0 ? preco / pico - 1 : 0;
+      const quedaDoPico = pico > 0 ? preco / pico - 1 : null;
 
       // A faixa mais severa das duas manda: uma moeda que fez +30% hoje DEPOIS
       // de +150% na semana é o caso da BTW, e classificá-la pelo dia jogaria
       // fora a metade que mais importa.
       const doDia = faixaDe(alta24h, FAIXAS_DIA);
-      const daSemana = faixaDe(alta7d, FAIXAS_SEMANA);
+      const daSemana = alta7d == null ? null : faixaDe(alta7d, FAIXAS_SEMANA);
       if (!doDia && !daSemana) return;
       const usaDia =
         !daSemana || (doDia != null && doDia.mediana7d <= daSemana.mediana7d);
@@ -320,8 +355,13 @@ export async function garimpar(): Promise<Garimpo> {
       const doProjeto = naLista.get(s.symbol);
 
       const porque = [`${faixa.rotulo}: mediana medida de ${(faixa.mediana7d * 100).toFixed(1)}% em 7 dias`];
-      if (alta24h >= 0.1 && alta7d >= 0.5) {
+      if (alta7d != null && alta24h >= 0.1 && alta7d >= 0.5) {
         porque.push(`vem de ${(alta7d * 100).toFixed(0)}% na semana`);
+      }
+      if (alta7d == null) {
+        // O motivo do buraco, e não só o buraco: sem isto a linha aparece com
+        // travessão na coluna de 7 dias e quem lê completa a lacuna sozinho.
+        porque.push(`só ${v.length} ${v.length === 1 ? "dia" : "dias"} de série — sem 7 dias para comparar`);
       }
       if (idadeDias != null && idadeDias < 180) {
         // O único corte cujo desfecho MÉDIO ficou positivo. Com n=164 e achado
@@ -331,7 +371,11 @@ export async function garimpar(): Promise<Garimpo> {
       if (funding != null && funding >= 0.0005) {
         porque.push(`comprado paga ${(funding * 100).toFixed(3)}% por 8h para ficar`);
       }
-      if (quedaDoPico >= -0.05) porque.push(`na máxima dos 30 dias`);
+      // "Na máxima DA SÉRIE" e não "dos 30 dias": numa moeda de quatro velas a
+      // série tem quatro dias, e prometer trinta seria mentir no rótulo.
+      if (quedaDoPico != null && quedaDoPico >= -0.05) {
+        porque.push(v.length >= 30 ? `na máxima dos 30 dias` : `na máxima dos ${v.length} dias de série`);
+      }
 
       achados.push({
         symbol: s.symbol,
@@ -340,6 +384,7 @@ export async function garimpar(): Promise<Garimpo> {
         alta24h,
         alta7d,
         volume24h: Number(t.quoteVolume),
+        diasDeSerie: v.length,
         marketCap: null,
         oiSobreMcap: null,
         funding: funding != null && Number.isFinite(funding) ? funding : null,

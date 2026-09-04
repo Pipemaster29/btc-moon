@@ -19,6 +19,21 @@ import { ATIVAS } from "@/lib/watchlist";
  * isso que a cadência do cliente pode ser de segundos sem abusar de uma API
  * pública que não pede chave.
  *
+ * ISSO FOI MEDIDO, E CONTRARIA A DOCUMENTAÇÃO DO PRÓPRIO NEXT. O guia diz que
+ * `dynamic = "force-dynamic"` equivale a `fetchCache = 'force-no-store'`, que
+ * "força toda requisição a ser refeita mesmo que ela peça cache" — o que
+ * anularia o `revalidate` daqui e faria cada consulta do cliente virar duas
+ * viagens à Binance. Medido em 04/09 no Next 16.2.12, cinco chamadas seguidas à
+ * rota: 1,107s a primeira e 37, 11, 10 e 13 MILISSEGUNDOS as outras; esperando
+ * treze segundos, a seguinte volta a 0,672s e a de logo depois a 0,013s. O
+ * cache existe e respeita o TTL, então o texto acima vale.
+ *
+ * FICA REGISTRADO PORQUE É FRÁGIL: a garantia depende de um comportamento que a
+ * documentação nega, e o dia em que ele mudar numa atualização do Next o modo de
+ * falha não é a tela quebrar — é a Binance começar a recusar por excesso, o que
+ * derruba panorama, carteira e monitor junto. Quem atualizar o Next: repita a
+ * medição das cinco chamadas antes de confiar nela de novo.
+ *
  * O financiamento vem junto porque a carteira precisa dele para marcar posição:
  * são três cobranças por dia sobre o nocional, e a 3x isso é 0,16% da margem por
  * dia numa taxa comum da lista. Marcar preço vivo com financiamento velho

@@ -154,6 +154,21 @@ jobs:
             # para reencontrar a mesma lista.
             npm run garimpar || echo "garimpo falhou, seguindo"
 
+            # A AUDITORIA RODA ANTES DO COMMIT e o resultado vai para o log.
+            #
+            # Ela existe porque um arquivo de `data/` gerado por uma versão
+            # ANTERIOR do código passa despercebido: o `garimpo.json` do primeiro
+            # commit saiu sem `marketCap` porque foi gerado antes de o campo
+            # existir, e o painel passou a mostrar UNI e ARB — as moedas que o
+            # filtro de tamanho existe para tirar — porque `null` passa no
+            # filtro. Nada quebrava; a tela só ficava errada em silêncio.
+            #
+            # Não bloqueia o commit de propósito: o retrato é o dado, e travá-lo
+            # por uma invariante de um arquivo só deixaria a página velha. O
+            # sinal fica no log e no passo separado logo abaixo, que reprova em
+            # vermelho na aba Actions sem impedir a gravação.
+            npm run auditar-dados || echo "AUDITORIA REPROVOU — ver acima"
+
             git add data/
             if git diff --cached --quiet; then
               echo "nada mudou"
@@ -170,6 +185,15 @@ jobs:
             sleep $((tentativa * 5))
           done
           echo "não consegui gravar o retrato depois de três tentativas"
+
+      # O mesmo comando, agora como PASSO PRÓPRIO, para a reprovação aparecer
+      # em vermelho na aba Actions em vez de ficar enterrada no log de um passo
+      # que terminou verde. `continue-on-error` porque o dado já foi gravado e
+      # travar aqui não desfaz nada — o que se quer é que alguém VEJA.
+      - name: Auditar as invariantes do que foi gravado
+        if: always()
+        continue-on-error: true
+        run: npm run auditar-dados
 
       - name: Guardar memória
         # Grava mesmo se o laço falhar no meio: perder o retrato faz o ciclo

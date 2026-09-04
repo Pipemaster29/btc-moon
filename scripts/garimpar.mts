@@ -33,7 +33,8 @@ const t0 = Date.now();
 const g = await garimpar();
 const levou = (Date.now() - t0) / 1000;
 
-const pct = (v: number) => `${v >= 0 ? "+" : "−"}${(Math.abs(v) * 100).toFixed(1)}%`;
+const pct = (v: number | null) =>
+  v == null ? "—" : `${v >= 0 ? "+" : "−"}${(Math.abs(v) * 100).toFixed(1)}%`;
 const money = (v: number) =>
   v >= 1e9 ? `${(v / 1e9).toFixed(1)}bi` : v >= 1e6 ? `${(v / 1e6).toFixed(0)}mi` : `${(v / 1e3).toFixed(0)}mil`;
 
@@ -55,14 +56,14 @@ console.log(
   `referência do universo: ${pct(REFERENCIA_7D)} em 7 dias — é dela que a distância importa\n`,
 );
 
-console.log("ticker      preço        24h      7d    volume     mcap  oi/mc  funding  idade   faixa medida");
+console.log("ticker      preço        24h       7d    volume     mcap  oi/mc  funding  idade   faixa medida");
 for (const a of mostrar.slice(0, QUANTAS)) {
   const marca = a.naLista ? "•" : a.aposentada ? "×" : " ";
   console.log(
     `${marca} ${a.ticker.padEnd(10)}` +
       `${a.preco.toPrecision(4).padStart(11)} ` +
       `${pct(a.alta24h).padStart(8)} ` +
-      `${pct(a.alta7d).padStart(8)} ` +
+      `${(a.alta7d == null ? `${a.diasDeSerie}d série` : pct(a.alta7d)).padStart(9)} ` +
       `${money(a.volume24h).padStart(8)} ` +
       `${(a.marketCap == null ? "—" : money(a.marketCap)).padStart(8)} ` +
       `${(a.oiSobreMcap == null ? "—" : `${(a.oiSobreMcap * 100).toFixed(0)}%`).padStart(6)} ` +

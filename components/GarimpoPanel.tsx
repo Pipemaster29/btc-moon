@@ -21,13 +21,13 @@ function money(v: number | null): string {
   return `${(v / 1e3).toFixed(0)} mil`;
 }
 
-function signed(v: number): string {
-  if (!Number.isFinite(v) || v === 0) return "—";
+function signed(v: number | null): string {
+  if (v == null || !Number.isFinite(v) || v === 0) return "—";
   return `${v > 0 ? "+" : ""}${(v * 100).toFixed(0)}%`;
 }
 
-function tom(v: number): string {
-  if (!Number.isFinite(v) || v === 0) return "";
+function tom(v: number | null): string {
+  if (v == null || !Number.isFinite(v) || v === 0) return "";
   return v > 0 ? "text-[#0a7d43] dark:text-[#0ECB81]" : "text-[#C42B3E] dark:text-[#F6465D]";
 }
 
@@ -112,7 +112,23 @@ export default function GarimpoPanel({ g }: { g: Garimpo }) {
               <tr key={a.symbol} className="border-t border-black/5 dark:border-white/5">
                 <td className="py-1.5 font-medium">{a.ticker}</td>
                 <td className={`py-1.5 text-right ${tom(a.alta24h)}`}>{signed(a.alta24h)}</td>
-                <td className={`py-1.5 text-right ${tom(a.alta7d)}`}>{signed(a.alta7d)}</td>
+                {/* Travessão com MOTIVO: moeda listada há três dias não tem 7
+                    dias de série, e uma célula vazia se lê como "não andou" —
+                    logo nela, que é a que mais anda. */}
+                <td
+                  className={`py-1.5 text-right ${tom(a.alta7d)}`}
+                  title={
+                    a.alta7d == null
+                      ? `só ${a.diasDeSerie} ${a.diasDeSerie === 1 ? "dia" : "dias"} de série desde a listagem`
+                      : undefined
+                  }
+                >
+                  {a.alta7d == null ? (
+                    <span className="text-black/30 dark:text-white/30">{a.diasDeSerie}d de série</span>
+                  ) : (
+                    signed(a.alta7d)
+                  )}
+                </td>
                 <td className="py-1.5 text-right">{money(a.marketCap)}</td>
                 <td
                   className={`py-1.5 text-right ${

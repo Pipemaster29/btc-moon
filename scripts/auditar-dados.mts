@@ -93,4 +93,73 @@ if (v) {
   }
 } else console.log("  (ausente)");
 
+// ---- garimpo
+const gar = await ler<{
+  geradoEm: number; universo: number; semSerie: number;
+  achados: {
+    ticker: string; preco: number; alta24h: number; alta7d: number | null;
+    volume24h: number; diasDeSerie: number; marketCap: number | null;
+    oiSobreMcap: number | null; quedaDoPico: number | null;
+    faixa: { mediana7d: number; n: number; moedas: [number, number] };
+  }[];
+}>("data/garimpo.json");
+console.log("garimpo:");
+if (gar) {
+  checa("geradoEm no passado", gar.geradoEm <= Date.now() + 60_000, `(${new Date(gar.geradoEm).toISOString()})`);
+  checa("universo plausível", gar.universo >= 100 && gar.universo <= 2000, `= ${gar.universo}`);
+  const t = gar.achados.map((a) => a.ticker);
+  checa("sem ticker duplicado", t.length === new Set(t).size, `(${t.length} linhas, ${new Set(t).size} únicas)`);
+  for (const a of gar.achados) {
+    checa(`${a.ticker}: preço > 0`, a.preco > 0, `= ${a.preco}`);
+    checa(`${a.ticker}: alta24h finita`, Number.isFinite(a.alta24h), `= ${a.alta24h}`);
+    checa(`${a.ticker}: volume >= 0`, a.volume24h >= 0);
+    checa(`${a.ticker}: diasDeSerie >= 1`, a.diasDeSerie >= 1, `= ${a.diasDeSerie}`);
+    // NULO É VÁLIDO e zero não é a mesma coisa: moeda listada há três dias não
+    // tem 7 dias de série, e gravar zero ali se leria como "não andou" — que é
+    // o erro que fez a MARSCOIN, subindo 96% num dia, sumir do garimpo.
+    checa(
+      `${a.ticker}: alta7d nula ou finita`,
+      a.alta7d === null || Number.isFinite(a.alta7d),
+      `= ${a.alta7d}`,
+    );
+    checa(
+      `${a.ticker}: alta7d nula sse série < 8 dias`,
+      (a.alta7d === null) === (a.diasDeSerie < 8),
+      `alta7d=${a.alta7d}, dias=${a.diasDeSerie}`,
+    );
+    checa(
+      `${a.ticker}: quedaDoPico nula ou <= 0`,
+      a.quedaDoPico === null || (a.quedaDoPico <= 1e-9 && a.quedaDoPico >= -1),
+      `= ${a.quedaDoPico}`,
+    );
+    checa(`${a.ticker}: marketCap nulo ou > 0`, a.marketCap === null || a.marketCap > 0, `= ${a.marketCap}`);
+    checa(`${a.ticker}: oi/mcap nulo ou >= 0`, a.oiSobreMcap === null || a.oiSobreMcap >= 0);
+    // A faixa é a régua da ordenação e ela vem da medição: se a mediana virasse
+    // positiva, a lista estaria ordenando por outra coisa que não o efeito.
+    checa(`${a.ticker}: mediana da faixa negativa`, a.faixa.mediana7d < 0, `= ${a.faixa.mediana7d}`);
+    checa(`${a.ticker}: faixa com amostra`, a.faixa.n >= 30, `n = ${a.faixa.n}`);
+    checa(
+      `${a.ticker}: concordância <= total`,
+      a.faixa.moedas[0] <= a.faixa.moedas[1] && a.faixa.moedas[1] > 0,
+      `= ${a.faixa.moedas.join("/")}`,
+    );
+  }
+  // A ordenação É o produto: se ela quebrar, a lista deixa de significar o que
+  // a tela promete.
+  const ordenado = gar.achados.every(
+    (a, i) => i === 0 || gar.achados[i - 1].faixa.mediana7d <= a.faixa.mediana7d,
+  );
+  checa("ordenado pela mediana medida", ordenado);
+} else console.log("  (ausente)");
+
 console.log(falhas === 0 ? "\nTUDO OK" : `\n${falhas} FALHAS`);
+
+// SAI COM CÓDIGO DE ERRO, e não saía.
+//
+// O script imprimia "3 FALHAS" e terminava com status 0, então ele era
+// relatório e não portão: qualquer `npm run auditar-dados && ...` seguia em
+// frente com o dado quebrado, e nenhum CI conseguiria reprovar por ele. O nome
+// do arquivo e a frase de abertura prometem uma coisa e o código entregava
+// outra — é o tipo de silêncio que este projeto trata como o pior modo de
+// falha.
+process.exitCode = falhas === 0 ? 0 : 1;
