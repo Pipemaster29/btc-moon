@@ -15,6 +15,7 @@ import {
   ALAVANCAGEM,
   ALVO,
   CAPITAL_INICIAL,
+  RISCO_TOTAL_MAXIMO,
   STOP,
   remarcar,
   rodar,
@@ -336,6 +337,81 @@ console.log("\n--- o caminho entre os retratos, com velas ---");
     "vela aberta antes da entrada não estopa a posição",
     semHeranca.encerradas === 0,
     `${semHeranca.encerradas} saída(s)`,
+  );
+}
+
+console.log("\n--- quem entra quando o orçamento de risco acaba ---");
+{
+  // 40 calls de força 1 (0,5% cada = 20%) chegando ANTES de 10 de força 3
+  // (1,5% cada): o teto de 25% estoura no meio do lote. Antes do conserto, a
+  // ordem do arquivo decidia — 3 das 10 fortes entravam se elas viessem por
+  // último, e 10 de 10 se viessem primeiro. Mesmas calls, livros opostos.
+  const fracas: Emissao[] = Array.from({ length: 40 }, (_, i) => ({
+    t: h(0), s: `FRACA${i}`, preco: 1, vies: "long", forca: 1, fund: 0,
+  }));
+  const fortes: Emissao[] = Array.from({ length: 10 }, (_, i) => ({
+    t: h(0), s: `FORTE${i}`, preco: 1, vies: "long", forca: 3, fund: 0,
+  }));
+
+  const conta = (es: Emissao[]) => {
+    const r = rodar(es, T0 * 1000);
+    const s = r.abertas.map((p) => p.symbol);
+    return {
+      fortes: s.filter((x) => x.startsWith("FORTE")).length,
+      fracas: s.filter((x) => x.startsWith("FRACA")).length,
+      risco: r.maiorRiscoAberto,
+    };
+  };
+  const depois = conta([...fracas, ...fortes]);
+  const antes = conta([...fortes, ...fracas]);
+
+  confere(
+    "a força escassa fica com quem tem a leitura mais forte",
+    depois.fortes === 10,
+    `${depois.fortes}/10 fortes, ${depois.fracas}/40 fracas`,
+  );
+  confere(
+    "a ordem do lote não muda mais o livro",
+    depois.fortes === antes.fortes && depois.fracas === antes.fracas,
+    `${depois.fortes}/${depois.fracas} vs ${antes.fortes}/${antes.fracas}`,
+  );
+  confere(
+    "o teto de risco agregado é respeitado",
+    depois.risco <= RISCO_TOTAL_MAXIMO + 1e-9,
+    `${(depois.risco * 100).toFixed(1)}% de ${(RISCO_TOTAL_MAXIMO * 100).toFixed(0)}%`,
+  );
+}
+
+console.log("\n--- o tamanho da aposta como parâmetro ---");
+{
+  const es: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 2, fund: 0 },
+    { t: h(1), s: "X", preco: 1.5, vies: "long", forca: 2, fund: 0 },
+  ];
+  const um = rodar(es, T0 * 1000);
+  const dois = rodar(es, T0 * 1000, undefined, 2);
+  // Dobrar o orçamento tem de dobrar o RESULTADO em dólar, e não mexer no
+  // retorno sobre a margem — que é o que diz que só o tamanho mudou.
+  const g1 = um.fechadas[0], g2 = dois.fechadas[0];
+  confere(
+    "escala 2x dobra o resultado em dólar",
+    g1 != null && g2 != null && Math.abs(g2.resultado / g1.resultado - 2) < 1e-6,
+    `US$ ${g1?.resultado.toFixed(2)} → US$ ${g2?.resultado.toFixed(2)}`,
+  );
+  confere(
+    "escala não mexe no retorno sobre a margem",
+    g1 != null && g2 != null && Math.abs(g2.retorno - g1.retorno) < 1e-9,
+    `${((g1?.retorno ?? 0) * 100).toFixed(1)}% em ambas`,
+  );
+  confere(
+    "a queda máxima é medida e não é positiva",
+    um.quedaMaxima <= 0 && Number.isFinite(um.quedaMaxima),
+    `${(um.quedaMaxima * 100).toFixed(2)}%`,
+  );
+  confere(
+    "a curva tem pontos e o pico >= capital inicial",
+    um.curva.length > 0 && um.pico >= CAPITAL_INICIAL,
+    `${um.curva.length} pontos, pico ${um.pico.toFixed(2)}`,
   );
 }
 

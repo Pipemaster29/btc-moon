@@ -176,6 +176,37 @@ export interface Carteira {
   porMotivo: Record<string, { n: number; retornoMedio: number }>;
   /** O mesmo, separado por lado. */
   porLado: Record<string, { n: number; retornoMedio: number; acertos: number }>;
+
+  /**
+   * O LADO DO RISCO, que não existia e sem o qual não dá para julgar o tamanho.
+   *
+   * A carteira mostrava retorno, acertos e motivo de saída — tudo do lado do
+   * ganho. A pergunta "este tamanho está certo?" não tem resposta sem a outra
+   * metade: quanto a conta afundou no caminho, e quanto do orçamento de risco
+   * chegou a ser usado.
+   *
+   * Sem isto, "conservadora" e "agressiva" viram opinião. Com isto, viram dois
+   * números na mesma tela: uma carteira que rende 3% com 2% de queda máxima e
+   * uma que rende 3% com 30% não são a mesma carteira, e até aqui era impossível
+   * distinguir as duas olhando o painel.
+   */
+  /** Maior patrimônio já alcançado. */
+  pico: number;
+  /** Maior queda do pico até o vale seguinte, em fração. Sempre ≤ 0. */
+  quedaMaxima: number;
+  /** Maior margem exposta ao mesmo tempo, em fração do patrimônio de então. */
+  maiorExposicao: number;
+  /**
+   * Maior risco agregado já comprometido, em fração do patrimônio.
+   *
+   * É o que a conta perderia se TODAS as posições abertas naquele instante
+   * batessem no stop juntas — o cenário que o teto de 25% existe para limitar.
+   * Comparar este número com o teto responde se o teto está prendendo ou se é
+   * enfeite.
+   */
+  maiorRiscoAberto: number;
+  /** O patrimônio ao longo do tempo, um ponto por hora no máximo. */
+  curva: { t: number; patrimonio: number }[];
 }
 
 // ------------------------------------------------------------------ as regras
@@ -358,6 +389,56 @@ interface Estado {
    * quando o viés dela sair daquele lado — aí é call nova, não a mesma.
    */
   queimadas: Map<string, Lado>;
+  /** Multiplicador do orçamento de risco. 1 é a régua publicada. */
+  escala: number;
+  /** O maior patrimônio já visto, e a maior queda a partir dele. */
+  pico: number;
+  quedaMaxima: number;
+  maiorExposicao: number;
+  maiorRiscoAberto: number;
+  curva: { t: number; patrimonio: number }[];
+}
+
+/**
+ * Registra o patrimônio do instante e atualiza pico, queda e picos de risco.
+ *
+ * Chamado UMA vez por lote, depois das saídas e depois das aberturas, porque é
+ * aí que o estado da conta está completo. Chamar antes das aberturas mediria uma
+ * exposição que ainda não existe.
+ */
+function marcar(estado: Estado, quando: number): void {
+  const exposto = [...estado.abertas.values()].reduce((s, p) => s + p.valor * (1 + p.retorno), 0);
+  const patrimonio = estado.caixa + exposto;
+  if (!Number.isFinite(patrimonio)) return;
+
+  if (patrimonio > estado.pico) estado.pico = patrimonio;
+  if (estado.pico > 0) {
+    const queda = patrimonio / estado.pico - 1;
+    if (queda < estado.quedaMaxima) estado.quedaMaxima = queda;
+    // Em fração do patrimônio DE ENTÃO, não do inicial: exposição de US$ 300
+    // numa conta de mil é metade do que é numa de seiscentos, e é a segunda
+    // leitura que diz se o teto está prendendo.
+    if (patrimonio > 0) {
+      const exp = exposto / patrimonio;
+      if (exp > estado.maiorExposicao) estado.maiorExposicao = exp;
+    }
+  }
+
+  const risco = [...estado.abertas.values()].reduce(
+    (s, p) => s + (RISCO_POR_FORCA[p.forca] ?? 0) * estado.escala,
+    0,
+  );
+  if (risco > estado.maiorRiscoAberto) estado.maiorRiscoAberto = risco;
+
+  // Um ponto por hora no máximo: o motor roda sobre todos os retratos, e são de
+  // duas a cinco execuções por hora. Guardar todas engordaria `carteira.json`
+  // sem acrescentar forma nenhuma à curva.
+  const ultimo = estado.curva[estado.curva.length - 1];
+  if (!ultimo || quando - ultimo.t >= 3_600_000) {
+    estado.curva.push({ t: quando, patrimonio });
+  } else {
+    ultimo.patrimonio = patrimonio;
+  }
 }
 
 /** Variação do preço a favor da posição, sem alavancagem e sem custo. */
@@ -585,12 +666,19 @@ export function rodar(
   emissoes: Emissao[],
   comecouEm: number,
   caminho?: Map<string, Passo[]>,
+  escala = 1,
 ): Carteira {
   const estado: Estado = {
     caixa: CAPITAL_INICIAL,
     abertas: new Map(),
     fechadas: [],
     queimadas: new Map(),
+    escala,
+    pico: CAPITAL_INICIAL,
+    quedaMaxima: 0,
+    maiorExposicao: 0,
+    maiorRiscoAberto: 0,
+    curva: [],
   };
 
   const uteis = emissoes
@@ -750,7 +838,30 @@ export function rodar(
       if (lido != null && lido !== lado) estado.queimadas.delete(sym);
     }
 
-    for (const e of lote) {
+    // A FORÇA DECIDE QUEM ENTRA PRIMEIRO, e antes ela não decidia nada.
+    //
+    // O orçamento de risco é escasso por desenho, e quando ele acaba as calls
+    // seguintes são recusadas. A versão anterior percorria o lote na ordem em
+    // que ele veio do histórico — que é a ordem do `panorama.json`, ordenada
+    // por NOTA DE ATENÇÃO. E a nota é exatamente o número que este projeto
+    // avisa, em `scripts/panorama.mts`, que não serve para dimensionar: "ele
+    // ordena a tela por 'merece olhada agora' e sobe com squeeze em andamento,
+    // que é onde o painel diz para NÃO entrar".
+    //
+    // Ou seja: o aviso estava escrito e a alocação o contornava por baixo.
+    // Reproduzido com 40 calls de força 1 chegando antes de 10 de força 3, o
+    // teto de 25% estourando no meio: na ordem do lote entram 3 das 10 fortes e
+    // as 40 fracas; invertendo a ordem entram as 10 fortes e 19 fracas. Mesmas
+    // calls, mesmo orçamento, livros opostos — e a diferença era a ordem de um
+    // arquivo.
+    //
+    // Hoje isto está dormente, porque o teto não chega a prender: o pico medido
+    // de risco agregado é 13% de 25%. Ele acorda no dia em que o painel emitir
+    // muita call junta, ou no dia em que alguém aumentar o tamanho da aposta —
+    // que é justamente a pergunta que a tabela de escala existe para responder.
+    const porForca = [...lote].sort((a, b) => (b.forca ?? 0) - (a.forca ?? 0));
+
+    for (const e of porForca) {
       if (e.vies !== "long" && e.vies !== "short") continue;
       if (estado.abertas.has(e.s)) continue;
       if (estado.queimadas.get(e.s) === e.vies) continue;
@@ -772,11 +883,15 @@ export function rodar(
       if (entrada === undefined) continue;
 
       const forca = e.forca ?? 0;
-      const risco = RISCO_POR_FORCA[forca];
+      const base = RISCO_POR_FORCA[forca];
       // Sem força gravada não há como dimensionar, e chutar um tamanho seria
       // inventar a parte mais importante da conta. As linhas antigas do
       // histórico não têm o campo; elas simplesmente não viram posição.
-      if (!risco) continue;
+      if (!base) continue;
+      // `escala` multiplica o orçamento de risco e nada mais: stop, alvo, prazo
+      // e alavancagem ficam onde estão. É só o TAMANHO que muda, que é a
+      // pergunta que ela existe para responder.
+      const risco = base * escala;
 
       const total = patrimonio();
       // A MARGEM QUE ARRISCA `risco` DO PATRIMÔNIO, e a alavancagem entra aqui.
@@ -791,7 +906,7 @@ export function rodar(
       // O risco já comprometido, em fração do patrimônio: cada posição aberta
       // vale o que ela perderia se batesse no stop.
       const riscoAberto = [...estado.abertas.values()].reduce(
-        (soma, a) => soma + (RISCO_POR_FORCA[a.forca] ?? 0),
+        (soma, a) => soma + (RISCO_POR_FORCA[a.forca] ?? 0) * escala,
         0,
       );
       if (riscoAberto + risco > RISCO_TOTAL_MAXIMO) continue;
@@ -819,6 +934,9 @@ export function rodar(
         precoLiquidacao: precoDeLiquidacao(e.vies, entrada),
       });
     }
+
+    // 3. registrar o estado da conta, DEPOIS das saídas e DEPOIS das aberturas.
+    marcar(estado, quando);
   }
 
   return montar(estado, comecouEm, ultimo);
@@ -856,6 +974,11 @@ function montar(estado: Estado, comecouEm: number, atualizadoEm: number): Cartei
     encerradas: estado.fechadas.length,
     porMotivo,
     porLado,
+    pico: estado.pico,
+    quedaMaxima: estado.quedaMaxima,
+    maiorExposicao: estado.maiorExposicao,
+    maiorRiscoAberto: estado.maiorRiscoAberto,
+    curva: estado.curva,
   };
 }
 

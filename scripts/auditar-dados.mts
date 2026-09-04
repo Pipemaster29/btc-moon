@@ -43,6 +43,8 @@ const c = await ler<{
   abertas: { symbol: string; valor: number; retorno: number; forca: number; lado: string }[];
   fechadas: { retorno: number; resultado: number; dias: number; motivo: string }[];
   acertos: number; encerradas: number;
+  pico?: number; quedaMaxima?: number; maiorExposicao?: number;
+  maiorRiscoAberto?: number; curva?: { t: number; patrimonio: number }[];
 }>("data/carteira.json");
 console.log("carteira:");
 if (c) {
@@ -66,6 +68,30 @@ if (c) {
     checa("fechada: dias >= 0", f.dias >= 0);
     checa("fechada: motivo válido",
       ["painel mudou", "stop", "alvo", "prazo", "liquidada"].includes(f.motivo), `= ${f.motivo}`);
+  }
+
+  // O LADO DO RISCO. Opcional porque o arquivo do `main` pode ter sido gravado
+  // antes de a medição existir — mas quando está presente, tem de fechar.
+  if (c.quedaMaxima !== undefined) {
+    checa("queda máxima <= 0", c.quedaMaxima <= 1e-12, `= ${c.quedaMaxima}`);
+    checa("queda máxima > -100%", c.quedaMaxima > -1, `= ${c.quedaMaxima}`);
+    checa("pico >= patrimônio", (c.pico ?? 0) >= c.patrimonio - 1e-6, `pico ${c.pico}, hoje ${c.patrimonio}`);
+    checa("pico >= capital inicial", (c.pico ?? 0) >= 1000 - 1e-6, `= ${c.pico}`);
+    // A queda máxima tem de ser CONSISTENTE com o patrimônio de hoje: se a conta
+    // está 5% abaixo do pico, a maior queda não pode ser de 1%.
+    const quedaHoje = (c.pico ?? 0) > 0 ? c.patrimonio / (c.pico as number) - 1 : 0;
+    checa("queda máxima cobre a queda de hoje", (c.quedaMaxima as number) <= quedaHoje + 1e-9,
+      `máx ${c.quedaMaxima}, hoje ${quedaHoje}`);
+    checa("exposição de pico 0..1", (c.maiorExposicao ?? 0) >= 0 && (c.maiorExposicao ?? 0) <= 1,
+      `= ${c.maiorExposicao}`);
+    // O teto de risco agregado é uma PROMESSA da documentação, e o pico medido é
+    // a prova de que ela foi cumprida. Uma folga pequena porque o risco é somado
+    // antes de a posição existir.
+    checa("risco de pico dentro do teto de 25%", (c.maiorRiscoAberto ?? 0) <= 0.2501,
+      `= ${c.maiorRiscoAberto}`);
+    const curva = c.curva ?? [];
+    checa("curva ordenada no tempo", curva.every((p, i) => i === 0 || curva[i - 1].t <= p.t));
+    checa("curva sem patrimônio negativo", curva.every((p) => p.patrimonio >= 0));
   }
 } else console.log("  (ausente)");
 

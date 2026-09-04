@@ -141,6 +141,47 @@ if (c.abertas.length > 0) {
   }
 }
 
+console.log(
+  `queda máxima ${pct(c.quedaMaxima)} do pico de ${usd(c.pico)}  ·  ` +
+    `pico de margem exposta ${(c.maiorExposicao * 100).toFixed(1)}% (teto 50%)  ·  ` +
+    `pico de risco agregado ${(c.maiorRiscoAberto * 100).toFixed(1)}% (teto 25%)`,
+);
+
+/**
+ * O TAMANHO DA APOSTA, VIRADO EM NÚMERO.
+ *
+ * A régua publicada arrisca 1,5% / 1,0% / 0,5% do patrimônio por call, e a
+ * consequência aritmética dela é que uma call de força 2 que acerta o ALVO
+ * INTEIRO move +1,6% da conta. Isso é pouco, e "pouco" é uma opinião até que
+ * alguém mostre o que se ganharia e o que se arriscaria ao mudar.
+ *
+ * Esta tabela roda o motor inteiro — as mesmas emissões, o mesmo caminho de
+ * velas, os mesmos custos — multiplicando SÓ o orçamento de risco. Stop, alvo,
+ * prazo e alavancagem ficam onde estão. As duas colunas que importam andam
+ * juntas: retorno e queda máxima. Uma carteira que rende 3% com 2% de queda e
+ * outra que rende 3% com 30% não são a mesma carteira.
+ *
+ * A LEITURA HONESTA DELA depende do placar: enquanto nenhum viés separar da
+ * referência, multiplicar o tamanho multiplica uma perda esperada, não um lucro.
+ * A tabela existe para mostrar a troca, não para escolher a linha mais alta.
+ */
+const ESCALAS = [1, 1.5, 2, 3, 5];
+console.log(`\ntamanho da aposta — o mesmo motor, só o orçamento de risco multiplicado`);
+console.log(`escala   risco/call   patrimônio   retorno   queda máx   margem pico   risco pico`);
+for (const e of ESCALAS) {
+  const r = rodar(emissoes, COMECO, caminho, e);
+  console.log(
+    `  ${`${e}x`.padEnd(6)} ` +
+      `${`${(1.5 * e).toFixed(1)}/${(1.0 * e).toFixed(1)}/${(0.5 * e).toFixed(1)}%`.padStart(12)} ` +
+      `${usd(r.patrimonio).padStart(12)} ` +
+      `${pct(r.retorno).padStart(9)} ` +
+      `${pct(r.quedaMaxima).padStart(11)} ` +
+      `${`${(r.maiorExposicao * 100).toFixed(0)}%`.padStart(13)} ` +
+      `${`${(r.maiorRiscoAberto * 100).toFixed(0)}%`.padStart(12)}` +
+      (e === 1 ? "   ← a régua de hoje" : ""),
+  );
+}
+
 if (c.encerradas > 0) {
   console.log(`\nencerradas: ${c.encerradas} · ${c.acertos} no positivo (${((c.acertos / c.encerradas) * 100).toFixed(0)}%)`);
   for (const [motivo, g] of Object.entries(c.porMotivo)) {

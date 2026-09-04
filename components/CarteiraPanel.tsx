@@ -152,6 +152,66 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
         </div>
       </div>
 
+      {/* O LADO DO RISCO, que faltava inteiro. O painel mostrava retorno,
+          acertos e motivo de saída — tudo do lado do ganho — e com isso não dava
+          para julgar se o tamanho da aposta está certo. Uma carteira que rende
+          3% com 2% de queda e outra que rende 3% com 30% não são a mesma
+          carteira, e até aqui elas eram indistinguíveis nesta tela. */}
+      {/* O RETRATO SALVO PODE SER MAIS NOVO NO TEMPO E MAIS VELHO NO ESQUEMA, e
+          essa é uma falha nova do arranjo "GitHub raw primeiro": ele busca o
+          arquivo do `main`, que é mais fresco que o disco do build, mas que foi
+          gravado pela versão ANTERIOR do código até o workflow rodar de novo.
+          Um `&&` escondendo o bloco fazia a seção inteira sumir sem explicação —
+          exatamente o silêncio que este projeto trata como o pior modo de falha.
+          Então ela aparece dizendo por que está vazia. */}
+      {c.quedaMaxima == null ? (
+        <p className="text-xs text-black/40 dark:text-white/40 mt-4 border-t border-black/10 dark:border-white/10 pt-4">
+          O lado do risco — queda máxima, pico de margem e pico de risco agregado — ainda não
+          está neste retrato: ele foi gravado antes de a medição existir. Aparece no próximo
+          que o <code className="px-1 rounded bg-black/5 dark:bg-white/10">npm run carteira</code>{" "}
+          gerar.
+        </p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-3 mt-4 text-sm border-t border-black/10 dark:border-white/10 pt-4">
+          <div>
+            <p className="text-black/50 dark:text-white/50">Queda máxima</p>
+            <p className={`text-xl font-semibold tabular-nums ${tom(c.quedaMaxima)}`}>
+              {pct(c.quedaMaxima)}
+            </p>
+            <p className="text-xs text-black/40 dark:text-white/40 tabular-nums">
+              do pico de {usd(c.pico ?? CAPITAL_INICIAL)}
+            </p>
+          </div>
+          <div>
+            <p className="text-black/50 dark:text-white/50" title="Maior margem comprometida ao mesmo tempo, sobre um teto de 50%">
+              Margem no pico
+            </p>
+            <p className="text-xl font-semibold tabular-nums">
+              {((c.maiorExposicao ?? 0) * 100).toFixed(0)}%
+            </p>
+            <p className="text-xs text-black/40 dark:text-white/40">de um teto de 50%</p>
+          </div>
+          <div>
+            <p
+              className="text-black/50 dark:text-white/50"
+              title="O que a conta perderia se TODAS as posições abertas naquele instante batessem no stop juntas"
+            >
+              Risco no pico
+            </p>
+            <p className="text-xl font-semibold tabular-nums">
+              {((c.maiorRiscoAberto ?? 0) * 100).toFixed(0)}%
+            </p>
+            {/* O número que responde "está conservadora?": se o pico de risco
+                nunca chega perto do teto, quem segura o tamanho não é o teto —
+                é o risco por call. */}
+            <p className="text-xs text-black/40 dark:text-white/40">
+              de um teto de 25%
+              {(c.maiorRiscoAberto ?? 0) < 0.2 && " · o teto nunca prendeu"}
+            </p>
+          </div>
+        </div>
+      )}
+
       {c.abertas.length > 0 && (
         <div className="mt-5 overflow-x-auto">
           <p className="text-[10px] tracking-widest text-black/40 dark:text-white/40 uppercase mb-2">
