@@ -4,6 +4,7 @@ import { getSnapshot } from "@/lib/snapshot";
 import { getPlacar } from "@/lib/placar";
 import { getCarteira, remarcar } from "@/lib/carteira";
 import CarteiraPanel from "@/components/CarteiraPanel";
+import { PrecoVivo, VariacaoViva } from "@/components/PrecoVivo";
 import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
 
@@ -74,11 +75,6 @@ function signed(v: number): string {
   return `${v > 0 ? "+" : ""}${(v * 100).toFixed(1)}%`;
 }
 
-function tone(v: number): string {
-  if (!Number.isFinite(v) || v === 0) return "";
-  return v > 0 ? "text-[#0ECB81]" : "text-[#F6465D]";
-}
-
 /**
  * A barra de nota é deliberadamente discreta. Ela ordena a tabela, e ordenar é
  * tudo o que ela faz — dar a ela cara de medidor sugeriria uma precisão que
@@ -126,11 +122,15 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
           {row.hasWallets && " · carteiras mapeadas"}
         </p>
       </td>
+      {/* Preço e 24h continuam andando depois que a página é servida: são os dois
+          números que envelhecem em minutos, e um pump de 120% cabe inteiro entre
+          dois retratos. O resto da linha muda de hora em hora e segue vindo
+          pronto do servidor. */}
       <td className="py-2.5 pr-3 text-right tabular-nums">
-        {row.price > 0 ? `US$ ${row.price.toPrecision(4)}` : "—"}
+        <PrecoVivo ticker={row.ticker} retrato={row.price} />
       </td>
-      <td className={`py-2.5 pr-3 text-right tabular-nums ${tone(row.change24h)}`}>
-        {signed(row.change24h)}
+      <td className="py-2.5 pr-3 text-right tabular-nums">
+        <VariacaoViva ticker={row.ticker} retrato={row.change24h} />
       </td>
       <td className="py-2.5 pr-3 text-right tabular-nums">
         {row.vida?.marketCap != null ? money(row.vida.marketCap) : "—"}
@@ -340,9 +340,17 @@ export default async function Radar() {
           <section className="rounded-xl border border-black/10 dark:border-white/10 p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-sm font-semibold">O placar do próprio painel</h2>
+              {/* A JANELA NÃO É CARIMBO DE FRESCOR, e sem o `medido em` ela
+                  parecia um. Ela diz sobre que período o placar foi calculado;
+                  QUANDO ele foi calculado é outra coisa, e o `npm run placar` não
+                  roda no workflow — ele pode ter dias. Mostrar as duas datas é o
+                  que impede a segunda de se passar pela primeira. */}
               <span className="text-xs text-black/40 dark:text-white/40 tabular-nums">
                 {placar.emissoes.toLocaleString("pt-BR")} emissões · {placar.moedas} moedas ·{" "}
                 {placar.janela.de.slice(0, 10)} a {placar.janela.ate.slice(0, 10)}
+                {placar.geradoEm > 0 && (
+                  <> · medido em {new Date(placar.geradoEm).toISOString().slice(0, 10)}</>
+                )}
               </span>
             </div>
             <p className="text-xs text-black/55 dark:text-white/55 mt-1.5">

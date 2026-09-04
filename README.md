@@ -164,21 +164,52 @@ de posição, de custo, nem de quantas posições ficam abertas ao mesmo tempo.
 topo do painel, acima das candidatas. A ordem é deliberada: quem abre a página
 vê quanto as calls renderam antes de ver as calls novas.
 
+**É perpétuo a 3x, não mercado à vista.** Ela opera vendido, e vendido não
+existe no spot — então financiamento e liquidação entram na conta, e os custos
+incidem sobre o nocional, que é três vezes a margem. Três é o teto que preserva
+o stop: a 25% de preço ele consome 75% da margem e ainda dispara antes da
+liquidação; a 4x os mesmos 25% consomem 100% e quem decide a saída passa a ser
+a corretora.
+
 **Tamanho da posição — pelo risco, não pelo capital.** Cada call arrisca uma
 fração fixa do patrimônio até o stop, e o tamanho sai dessa conta: força 3
-arrisca 1,5%, força 2 arrisca 1,0%, força 1 arrisca 0,5%. Com stop em 25%, isso
-dá posições de 6%, 4% e 2%. Parece pouco até lembrar que o painel emite treze
-calls de uma vez num dia normal — a 4% cada, metade do patrimônio já está na
-mesa. Teto de 50% exposto, sem alavancagem.
+arrisca 1,5%, força 2 arrisca 1,0%, força 1 arrisca 0,5%. Parece pouco até
+lembrar que o painel emite treze calls de uma vez num dia normal, e que cripto
+tem dia em que a lista inteira cai 25% junta. Teto de 50% de margem exposta e de
+25% de risco agregado.
 
-**Quando sai — quatro gatilhos, o primeiro que acontecer:**
+**Quando sai — cinco gatilhos, o primeiro que acontecer:**
 
 | gatilho | por quê |
 |---|---|
 | **o painel mudou de ideia** | a saída principal. A carteira segue as calls, então sai quando a call sai — sem isso ela mediria as minhas regras de saída, não o painel |
-| **stop em −25%** | perto de três desvios de UM DIA: o `npm run estudar` mede volatilidade diária de 7% a 10% nestas moedas |
-| **alvo em +40%** | o dobro da assimetria que sustenta a regra de compra: pequena e derretida sobe mais de 20% em 21,0% das semanas |
+| **stop em −25% de preço** | perto de três desvios de UM DIA: o `npm run estudar` mede volatilidade diária de 7% a 10% nestas moedas |
+| **alvo em +40% de preço** | o dobro da assimetria que sustenta a regra de compra: pequena e derretida sobe mais de 20% em 21,0% das semanas |
 | **prazo de 14 dias** | as duas regras direcionais foram medidas em janelas de 7 e 14 dias; depois disso segurar deixa de ser seguir a leitura |
+| **liquidação** | a corretora não espera a regra de saída. A 3x ela fica em −32,9% de preço, depois do stop — mas um salto pode pular o stop e cair direto aqui |
+
+**Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.** Era
+o maior otimismo desta conta, e não era custo nem execução: era o mapa de saída
+simplesmente não enxergar o meio. Os retratos saem de duas a cinco vezes por dia
+e os gatilhos só eram testados nas pontas, então uma moeda que caísse 30% às 3h
+da manhã e voltasse antes do retrato das 6h nunca estopava aqui — e teria
+estopado na corretora, porque ordem parada não pisca.
+
+`npm run carteira` agora busca as velas de uma hora da Binance das moedas que
+podem virar posição e percorre o caminho. Medido nas 16 posições que a carteira
+carregou até 04/09: **todas as 16 esconderam movimento entre os retratos**, a
+mediana escondeu 2,1 p.p. e a maior — a SKYAI vendida — escondeu 5,0 p.p.
+
+E o que isso mudou no resultado até aqui: **nada.** Nos dois dias de vida da
+carteira nenhuma posição chegou perto dos limites — a que mais andou contra foi
+a TUT, a 12,5% de preço, metade do stop —, então as duas leituras dão o mesmo
+patrimônio. É um freio que ainda não foi acionado, e o script imprime os dois
+números lado a lado para continuar sendo possível ver qual é qual.
+
+As velas vêm do perpétuo e os preços da carteira vêm do retrato, que prefere a
+pool à vista onde ela existe. O caminho é **ancorado** pela razão entre os dois
+— medida entre 0,96 e 1,08 nessas 16 posições — e recusado inteiro fora da faixa
+de 0,8 a 1,25: uma razão de 1,4 não é base de mercado, é outra moeda.
 
 **Ela começa hoje, não sobre o histórico.** Rodar o motor para trás sobre os dois
 meses gravados daria um número imediato e enganoso: as regras do painel foram
@@ -186,11 +217,11 @@ ajustadas ao longo desses dois meses — o freio de perfil, o de emissão, a tra
 de alta — e todas foram escritas depois de ver os dados. Um resultado
 retrospectivo mediria o quanto eu ajustei o painel olhando para o passado.
 
-**O que a conta não cobra, e cada um empurra o número para cima:** financiamento
-de posição vendida, que nestas moedas chega a dezenas de por cento ao ano; a
-diferença entre o preço do retrato e o preço em que a ordem sairia; e a
-profundidade real da pool — o custo é 0,15% por lado, fixo, e numa pool de dois
-mil dólares uma ordem de sessenta já move mais que isso.
+**O que a conta não cobra, e cada um empurra o número para cima:** a diferença
+entre o preço do retrato e o preço em que a ordem de ENTRADA sairia — a saída
+deixou de ter esse problema —, e a profundidade real da pool, já que o custo é
+0,15% por lado, fixo, e numa pool de dois mil dólares uma ordem de sessenta já
+move mais que isso.
 
 ## O ciclo, em quatro estágios
 

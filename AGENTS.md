@@ -82,6 +82,32 @@ precisa acabaram de ser lidos. Sem isso a página mostrava preço novo embaixo d
 veredito velho — foi o que fez a AKE aparecer como "em queda longa" no dia em que
 subiu 117%.
 
+### A camada viva do NAVEGADOR
+
+A camada acima conserta o retrato no instante em que a página é montada. Daí em
+diante a aba fica parada até alguém recarregar, e o `revalidate` da página é de
+cinco minutos: um pump de 120% cabe inteiro nesse intervalo.
+
+`/api/vivo` devolve preço, variação de 24h e financiamento de todas as moedas
+vigiadas — **duas requisições à Binance para qualquer número de moedas e de
+abas**, porque os dois endereços servem a praça inteira de uma vez e o
+`next.revalidate` deduplica no servidor. `components/vivo.ts` mantém UM relógio
+por página, de quinze em quinze segundos, que dorme quando a aba sai de vista.
+
+Quem consome: as células de preço e 24h da tabela (`PrecoVivo`) e a carteira
+(`CarteiraPanel`, que remarca as posições com `remarcar`). O número do retrato é
+sempre o ponto de partida e nunca some — se a rota não responder, a célula fica
+exatamente como estava.
+
+Medido em 04/09 com a página aberta: a CAP estava no retrato a US$ 0,07056 com
+−3,8% em 24h e ao vivo a US$ 0,04501 com −38,3%. Trinta e seis por cento de
+diferença, na tela, marcada como atual.
+
+**A carteira NÃO decide ao vivo, só marca.** Abrir e fechar exige o histórico
+inteiro, as regras de saída e o caminho de velas — isso é do `npm run carteira`.
+Uma posição que já passou do stop aparece passada do stop, sinalizada, até o
+retrato seguinte fechá-la com a hora certa.
+
 ### Os módulos
 
 | arquivo | responsabilidade |
@@ -94,8 +120,10 @@ subiu 117%.
 | `lib/vesting.ts` | emissão: o supply travado está parado ou saindo? |
 | `lib/estudo.ts` | como CADA moeda se move — memória, volatilidade, assimetria |
 | `lib/placar.ts` | o painel acertou? Lê o histórico de emissões |
-| `lib/carteira.ts` | a carteira fictícia |
+| `lib/carteira.ts` | a carteira fictícia. **Não importa nada de `node:` no topo** — `remarcar` roda no navegador |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
+| `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
+| `components/vivo.ts` | o relógio único da página que consome essa rota |
 
 ### Os dados
 
@@ -135,6 +163,25 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 carteira segue as calls, então sai quando a call sai), stop, alvo, prazo,
 liquidação.
 
+**Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.**
+`npm run carteira` busca as velas de 1h da Binance das moedas que podem virar
+posição e percorre o caminho: a saída é no NÍVEL DA ORDEM, não no extremo da
+vela, e na abertura quando a vela saltou por cima do nível. Ordem parada não
+pisca — testar só as pontas dava à carteira uma paciência que ninguém tem, e
+sempre na direção que a favorece.
+
+As velas vêm do perpétuo e os preços da carteira vêm do retrato, que prefere a
+pool. O caminho é **ancorado** pela razão entre os dois e recusado inteiro fora
+de 0,8–1,25, porque razão de 1,4 não é base de mercado, é outra moeda. Sem velas
+— e há moeda sem série — o motor cai no teste de ponta de sempre, e o script diz
+quantas ficaram assim.
+
+Medido nas 16 posições carregadas até 04/09: **todas as 16** esconderam
+movimento entre retratos, mediana 2,1 p.p., maior 5,0 p.p. (SKYAI). E o que isso
+mudou no patrimônio: **nada** — nada chegou perto dos limites em dois dias, a
+maior excursão contra foi 12,5% de preço na TUT. `npm run carteira` imprime as
+duas leituras lado a lado para isso continuar visível.
+
 **Ela começa em 02/09/2026, não sobre o histórico.** Rodar o motor para trás daria
 um número enganoso: as regras do painel foram ajustadas ao longo dos dois meses
 gravados, todas depois de ver os dados.
@@ -154,9 +201,10 @@ seguidos** e perdeu 17% do patrimônio na mesma leitura errada.
 da MARGEM, ou seja já multiplicados pela alavancagem. Comparar um contra o outro
 fazia o stop de 25% disparar com 8,3% de preço — ruído de um dia normal.
 
-`npm run testar-carteira` roda os casos-limite e trava os limiares. **Cada um
-deles quebrou de verdade** — o pior fazia mil dólares virarem 1,3×10²⁸ por causa
-de uma linha de preço de lixo no histórico.
+`npm run testar-carteira` roda os casos-limite e trava os limiares, sem tocar em
+rede. **Cada um deles quebrou de verdade** — o pior fazia mil dólares virarem
+1,4×10²⁸ por causa de uma linha de preço de lixo no histórico. Ele sai com
+código diferente de zero quando algum caso falha, então serve de portão.
 
 `npm run auditar-dados` confere as invariantes de tudo que está em `data/`.
 
@@ -224,6 +272,31 @@ diga no nome ou no comentário em que unidade ele está.
 Um pump de 120% cabe inteiro no intervalo entre dois retratos. Qualquer coisa que
 a página exiba junto do preço precisa ser recalculada com o preço, ou carimbada
 com a própria idade.
+
+Isto vale para TODO arquivo de `data/`, e a forma que o descuido toma é sempre a
+mesma: **em produção o disco é o do BUILD**, e o `ignoreCommand` do `vercel.json`
+pula o build quando só `data/` mudou. Um arquivo lido só do disco fica congelado
+para sempre. `getSnapshot`, `getCarteira` e `getPlacar` leem do GitHub raw
+primeiro por isso — o `getPlacar` só passou a ler em 04/09, e até então o painel
+que diz "nenhum viés separou" era o do último deploy, com a janela de medição
+antiga do lado parecendo carimbo de frescor.
+
+E vale para a IDADE ao lado do número: a janela do placar diz sobre que período
+ele foi calculado, não quando. São duas datas e as duas precisam estar na tela.
+
+### 7. Um freio que existe numa metade do caminho não existe
+
+O `SALTO_ABSURDO` da carteira barrava preço de lixo na MARCAÇÃO e não na
+ABERTURA, e o buraco durou até 04/09 com o teste de regressão em pé ao lado:
+o teste abria a posição antes de a linha de lixo chegar, e aí `abertas.has`
+barrava a reabertura por outro motivo. Bastava a moeda ainda estar fechada
+quando o lixo chegasse — US$ 1.000 viravam US$ 1,4×10²⁸.
+
+O mesmo formato apareceu na trava de call queimada: ela distinguia "não houve
+leitura" de "leitura contrária" na SAÍDA e não no descongelamento, e um único
+retrato mudo bastava para o moedor voltar — doze stops seguidos, −18,6%.
+
+Quando escrever um freio, procure a outra ponta onde a mesma decisão é tomada.
 
 ---
 

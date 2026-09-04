@@ -228,19 +228,45 @@ export async function estudar(symbol: string): Promise<Estudo | null> {
 // ------------------------------------------------------------------ leitura
 
 /**
+ * O arquivo inteiro, lido e interpretado UMA vez por processo.
+ *
+ * `lerEstudo` relia e reinterpretava `data/estudos.json` — 144 KB — a CADA
+ * chamada, e a camada viva de `lib/snapshot.ts` a chama uma vez por moeda. São
+ * 73 leituras e 73 `JSON.parse` do mesmo arquivo por render da página.
+ *
+ * MEDIDO, e o número é menor do que parece: 114 ms contra 1 ms em disco quente.
+ * Não é o que derruba a página; é 1,6% de um orçamento de sete segundos gasto em
+ * reler setenta e três vezes um arquivo que não mudou. Fica registrado como
+ * desperdício medido, não como incêndio — em disco frio de função serverless o
+ * fator é outro, mas esse eu não medi.
+ *
+ * O mesmo arranjo de `lib/vesting.ts` e `lib/detentores.ts`, e pelo mesmo
+ * motivo: o arquivo é histórico e só muda quando `npm run estudar` regrava, o
+ * que acontece num processo diferente deste.
+ */
+let cache: Record<string, Estudo> | null = null;
+
+/**
  * O estudo já medido, de `data/estudos.json`.
  *
  * A página lê daqui em vez de calcular: são 1.500 velas por moeda e o resultado
  * é histórico, não muda de minuto em minuto. `npm run estudar` regrava.
  */
 export async function lerEstudo(symbol: string): Promise<Estudo | null> {
+  if (cache) return cache[symbol] ?? null;
   try {
+    // `import()` dentro da função para o módulo continuar podendo ser importado
+    // por componente de cliente, que é como ele já estava.
     const { readFile } = await import("node:fs/promises");
     const arquivo = JSON.parse(await readFile("data/estudos.json", "utf8")) as {
       moedas: Record<string, Estudo>;
     };
-    return arquivo.moedas?.[symbol] ?? null;
+    cache = arquivo.moedas ?? {};
+    return cache[symbol] ?? null;
   } catch {
+    // Falha NÃO vira cache vazio: um erro momentâneo de leitura calaria o estudo
+    // de todas as moedas pelo resto da vida do processo, e o painel emitiria
+    // viés sem o freio de perfil sem nada na tela dizendo isso.
     return null;
   }
 }

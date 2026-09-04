@@ -1,10 +1,25 @@
+"use client";
+
 /**
- * A carteira fictícia na tela.
+ * A carteira fictícia na tela, marcada a mercado enquanto a aba está aberta.
  *
  * Fica no topo do painel, acima das candidatas, porque a ordem importa: quem
  * abre a página deve ver quanto as calls renderam ANTES de ver as calls novas.
  * Um painel que recomenda e esconde o próprio resultado está pedindo confiança
  * que não mediu.
+ *
+ * É COMPONENTE DE CLIENTE PORQUE A MARCAÇÃO NÃO PODE ESPERAR O RETRATO. O
+ * `npm run carteira` roda de duas a cinco vezes por dia, e entre uma e outra as
+ * posições ficavam congeladas no preço de horas atrás enquanto a tabela logo
+ * abaixo já andava. `remarcar` é aritmética pura sobre preços que a rota
+ * `/api/vivo` acabou de ler, então ela roda aqui, a cada quinze segundos.
+ *
+ * O QUE ELA NÃO FAZ AQUI, e a distinção é o ponto: não abre nem fecha posição.
+ * Decidir exige o histórico inteiro e as regras de saída, e quem faz isso é o
+ * script — inclusive porque só ele tem o caminho de velas que diz ONDE dentro do
+ * intervalo a ordem teria executado. Uma posição que já passou do stop aparece
+ * passada do stop, marcada e sinalizada, até o retrato seguinte fechá-la com a
+ * hora certa.
  */
 
 import {
@@ -13,8 +28,10 @@ import {
   ALVO,
   PRAZO_DIAS,
   STOP,
+  remarcar,
   type Carteira,
 } from "@/lib/carteira";
+import { useVivo } from "./vivo";
 
 function usd(v: number): string {
   return `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -40,9 +57,32 @@ const MOTIVO_NOTA: Record<string, string> = {
     `mais do que ${((1 / ALAVANCAGEM) * 100).toFixed(0)}%`,
 };
 
-export default function CarteiraPanel({ c }: { c: Carteira }) {
+export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
+  const vivo = useVivo();
+
+  // A MARCAÇÃO É DERIVADA DA CARTEIRA QUE VEIO DO SERVIDOR, a cada render, e
+  // nunca guardada em estado. Não há acumulador para sair de sincronia, e cada
+  // tique é uma conta inteira sobre a mesma base — que é o que garante que quinze
+  // segundos parado e quinze minutos parado deem o mesmo número para o mesmo
+  // instante. (Encadear também seria correto, porque `cobrarFunding` avança o
+  // relógio da posição; derivar é só menos coisa que pode dar errado.)
+  const c =
+    vivo.em === null
+      ? guardada
+      : remarcar(
+          guardada,
+          new Map(Object.entries(vivo.moedas).map(([t, m]) => [t, m.preco])),
+          vivo.em,
+          new Map(
+            Object.entries(vivo.moedas)
+              .filter(([, m]) => m.funding != null)
+              .map(([t, m]) => [t, m.funding as number]),
+          ),
+        );
+
   const dias = Math.max(0, (c.atualizadoEm - c.comecouEm) / 86_400_000);
   const exposto = c.patrimonio - c.caixa;
+  const estourada = c.abertas.some((p) => p.estourada);
 
   return (
     <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
@@ -50,8 +90,28 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
         <h2 className="font-semibold text-lg">Carteira fictícia</h2>
         <span className="text-xs text-black/40 dark:text-white/40 tabular-nums">
           desde {new Date(c.comecouEm).toISOString().slice(0, 10)} · {dias.toFixed(1)} dias
+          {/* Duas idades outra vez, e pelo mesmo motivo da tabela acima: a
+              MARCAÇÃO é de agora, as ENTRADAS e SAÍDAS são do último retrato.
+              Dizer só "ao vivo" faria parecer que a carteira também decide ao
+              vivo, e ela não decide — nem deve. */}
+          {vivo.estado === "ao vivo" ? (
+            <span className="text-[#0a7d43] dark:text-[#0ECB81]">
+              {" "}
+              · marcada ao vivo, decisões do último retrato
+            </span>
+          ) : vivo.estado === "sem resposta" ? (
+            <span className="text-[#F0B90B]"> · sem cotação ao vivo, marcada no retrato</span>
+          ) : null}
         </span>
       </div>
+
+      {estourada && (
+        <p className="text-xs text-[#C42B3E] dark:text-[#F6465D] mt-2">
+          Posição com a margem zerada na marcação ao vivo. A perda para em −100%
+          porque a margem isolada é o teto — a corretora fecharia aqui, e o
+          retrato seguinte é que registra a liquidação com a hora certa.
+        </p>
+      )}
       <p className="text-sm text-black/60 dark:text-white/60 mt-1">
         {usd(CAPITAL_INICIAL)} de mentira entrando em toda call de compra e venda que o painel
         emite, para a pergunta ficar na tela em vez de ficar no terminal. Perpétuo a{" "}
@@ -97,7 +157,7 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
           <p className="text-[10px] tracking-widest text-black/40 dark:text-white/40 uppercase mb-2">
             Abertas
           </p>
-          <table className="w-full text-sm tabular-nums min-w-[34rem]">
+          <table className="w-full text-sm tabular-nums min-w-[40rem]">
             <thead className="text-xs text-black/40 dark:text-white/40 text-left">
               <tr>
                 <th className="font-normal py-1">Moeda</th>
@@ -109,6 +169,12 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
                 <th className="font-normal py-1 text-right">Agora</th>
                 <th className="font-normal py-1 text-right" title="Preço em que a corretora fecha a posição à força">
                   Liquida em
+                </th>
+                <th
+                  className="font-normal py-1 text-right"
+                  title="Financiamento já pago para carregar esta posição, em fração da margem. Cobrado com a taxa real da moeda e atualizado enquanto a aba está aberta."
+                >
+                  Funding
                 </th>
                 <th className="font-normal py-1 text-right">Valor</th>
                 <th className="font-normal py-1 text-right">Resultado</th>
@@ -135,8 +201,22 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
                   <td className="py-1.5 text-right text-black/40 dark:text-white/40">
                     {p.precoLiquidacao ? p.precoLiquidacao.toPrecision(4) : "—"}
                   </td>
+                  {/* O sinal invertido porque financiamento POSITIVO é dinheiro
+                      saindo. Numa vendida com taxa positiva ele entra, e aí
+                      aparece verde — que é a verdade e surpreende quem só
+                      conhece o lado comprado. */}
+                  <td className={`py-1.5 text-right ${tom(-p.funding)}`}>
+                    {p.funding ? pct(-p.funding) : "—"}
+                  </td>
                   <td className="py-1.5 text-right">{usd(p.valor * (1 + p.retorno))}</td>
-                  <td className={`py-1.5 text-right ${tom(p.retorno)}`}>{pct(p.retorno)}</td>
+                  <td className={`py-1.5 text-right ${tom(p.retorno)}`}>
+                    {pct(p.retorno)}
+                    {p.estourada && (
+                      <span className="ml-1" title="margem zerada na marcação ao vivo">
+                        ⚠
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -230,11 +310,16 @@ export default function CarteiraPanel({ c }: { c: Carteira }) {
 
       <p className="text-xs text-black/40 dark:text-white/40 mt-5 pt-4 border-t border-black/10 dark:border-white/10">
         <strong>O que esta conta não cobra, e cada um empurra o número para cima:</strong>{" "}
-        a diferença entre o preço do retrato e o preço em que a ordem sairia de verdade — numa
-        moeda que anda 100% num dia, os minutos entre os dois custam; e a profundidade real da
-        pool, já que o custo aqui é 0,15% por lado, fixo, e numa pool de dois mil dólares uma
-        ordem de sessenta já move mais do que isso. O financiamento passou a ser cobrado com a
-        taxa real de cada moeda, e ele não é pequeno: a lista paga de 15% a 20% ao ano.
+        a diferença entre o preço do retrato e o preço em que a ordem de ENTRADA sairia de
+        verdade — numa moeda que anda 100% num dia, os minutos entre os dois custam; e a
+        profundidade real da pool, já que o custo aqui é 0,15% por lado, fixo, e numa pool de
+        dois mil dólares uma ordem de sessenta já move mais do que isso.{" "}
+        <strong>O que ela passou a cobrar:</strong> financiamento com a taxa real de cada
+        moeda — a lista paga de 15% a 20% ao ano —, e as saídas por stop, alvo e liquidação
+        DENTRO do intervalo entre dois retratos, pelas velas de uma hora da Binance. Ordem
+        parada não pisca: se o preço tocou o stop às 3h e voltou antes do retrato das 6h, a
+        posição estava fechada às 3h. Nas 16 posições medidas até aqui, todas as 16
+        esconderam movimento entre os retratos — a mediana escondeu 2,1 p.p. e a maior, 5,0.
       </p>
     </section>
   );

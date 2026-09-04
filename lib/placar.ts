@@ -41,10 +41,43 @@ export interface Placar {
   >;
 }
 
+const CAMINHO = "data/placar.json";
+
+const RAW =
+  "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main/data/placar.json";
+
+/**
+ * O placar gravado, com as MESMAS duas camadas do panorama e da carteira.
+ *
+ * Ele lia SÓ O DISCO, e em produção o disco é o do BUILD — que é exatamente o
+ * defeito que `getCarteira` já tinha e documenta ter consertado. Aqui ele era
+ * pior de perceber por causa do `vercel.json`: o `ignoreCommand` pula o build
+ * quando só `data/` mudou, então um `npm run placar` novo, commitado sozinho,
+ * NUNCA chegaria à tela. O painel continuaria mostrando o veredito antigo com a
+ * janela antiga do lado, e a janela antiga tem cara de carimbo de frescor.
+ *
+ * O `geradoEm` sobe junto para a página, que é a outra metade do conserto: dado
+ * velho apresentado como atual é pior do que dado ausente.
+ */
 export async function getPlacar(): Promise<Placar | null> {
+  const valido = (d: unknown): Placar | null =>
+    Array.isArray((d as Placar)?.vereditos) ? (d as Placar) : null;
+
   try {
-    const dado = JSON.parse(await readFile("data/placar.json", "utf8")) as Placar;
-    return Array.isArray(dado?.vereditos) ? dado : null;
+    const res = await fetch(RAW, {
+      signal: AbortSignal.timeout(4_000),
+      next: { revalidate: 600 },
+    });
+    if (res.ok) {
+      const daRede = valido(await res.json());
+      if (daRede) return daRede;
+    }
+  } catch {
+    // Cai para o disco, que sempre responde.
+  }
+
+  try {
+    return valido(JSON.parse(await readFile(CAMINHO, "utf8")));
   } catch {
     return null;
   }

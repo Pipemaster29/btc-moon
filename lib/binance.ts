@@ -185,6 +185,54 @@ export async function fundings(): Promise<Map<string, number>> {
   return fora;
 }
 
+/**
+ * Preço e variação de 24h de TODOS os perpétuos, numa requisição só.
+ *
+ * É a fonte da camada ao vivo do navegador. A escolha do endereço é por tamanho:
+ * medido em 04/09, `/fapi/v1/ticker/24hr` são 282 KB para 762 símbolos e traz
+ * preço E variação; `/fapi/v1/ticker/price` são 47 KB e traz só preço. A
+ * variação de 24 horas é justamente um dos números que mais envelhece entre
+ * retratos — e é ele que a trava de venda do painel consulta —, então vale os
+ * 235 KB, que ficam no servidor: o cliente recebe só as moedas da lista.
+ *
+ * O cache de dez segundos é o que impede que dez abas virem dez requisições: o
+ * `next.revalidate` deduplica no servidor, então a cadência para a Binance é uma
+ * a cada dez segundos independentemente de quanta gente esteja olhando.
+ */
+export interface Cotacao {
+  preco: number;
+  /** Variação de 24h em FRAÇÃO, não em porcento — o resto do projeto é fração. */
+  variacao24h: number;
+}
+
+export async function cotacoes(): Promise<Map<string, Cotacao>> {
+  const fora = new Map<string, Cotacao>();
+  try {
+    const res = await fetch(`${BASE}/fapi/v1/ticker/24hr`, {
+      signal: AbortSignal.timeout(10_000),
+      next: { revalidate: 10 },
+    });
+    if (!res.ok) return fora;
+    const cru = (await res.json()) as { symbol: string; lastPrice: string; priceChangePercent: string }[];
+    if (!Array.isArray(cru)) return fora;
+    for (const r of cru) {
+      const preco = Number(r.lastPrice);
+      const variacao = Number(r.priceChangePercent) / 100;
+      // Preço zerado é símbolo listado sem negócio; entrar no mapa faria a tela
+      // trocar um preço bom do retrato por um zero ao vivo.
+      if (r.symbol && preco > 0) {
+        fora.set(r.symbol, {
+          preco,
+          variacao24h: Number.isFinite(variacao) ? variacao : 0,
+        });
+      }
+    }
+  } catch {
+    // Sem cotação a página fica com os números do retrato e diz que ficou.
+  }
+  return fora;
+}
+
 export async function precoBinance(symbol: string): Promise<number | null> {
   return comLimite("binance", TETO_BINANCE, async () => {
     try {
