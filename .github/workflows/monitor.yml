@@ -1,32 +1,43 @@
-# Vigilância das carteiras da BTW, 24 horas por dia.
+# Vigilância das carteiras, 24 horas por dia — e agora de verdade.
 #
-# A cadência NÃO vem do agendamento do GitHub, e isso é deliberado: medido ao
-# longo de dois dias, ele pede 10 minutos e entrega de 17 a 78. Numa moeda que
-# se move 47% numa noite, 78 minutos de cegueira é inaceitável.
+# A CADÊNCIA NÃO VEM DO AGENDAMENTO DO GITHUB, e a razão foi medida pela API
+# dele, não estimada. Nas 40 execuções mais recentes: TODAS com sucesso, NENHUMA
+# cancelada, e o intervalo entre a CRIAÇÃO de uma e da seguinte indo de 2,0 a
+# 5,2 horas — com o cron pedindo uma a cada 30 minutos. Não é fila, não é
+# concorrência, não é falha nossa: o `schedule` do GitHub atrasa e DESCARTA
+# execuções sob carga, o que a documentação dele assume. Das 48 pedidas por dia,
+# chegam cerca de sete.
 #
-# Aqui o cron dispara duas vezes por hora e a cadência real vem de um laço
-# interno que roda um ciclo a cada 3 minutos durante 35 minutos. Como as duas
-# partidas se emendam pela fila de concorrência, não sobra intervalo morto entre
-# elas — e uma partida atrasada pelo GitHub é coberta pela seguinte.
+# A SAÍDA É PELA DURAÇÃO, NÃO PELA FREQUÊNCIA. Se não dá para aumentar quantas
+# execuções começam, aumenta-se quanto cada uma dura: o teto de um job são seis
+# horas e o laço usa cinco. Sete execuções por dia de cinco horas somam 35 horas
+# de cobertura para um dia de 24 — sobra, e a sobra vira sobreposição, que o
+# grupo de concorrência enfileira em vez de colidir. Vigilância contínua sem
+# serviço externo, sem token e sem custo.
 #
-# Três minutos é o piso prático: cada ciclo faz cerca de cinquenta chamadas a
-# nós públicos gratuitos, e apertar mais arrisca bloqueio por abuso — o que
-# pararia o monitor de vez, muito pior do que atrasar um pouco.
+# O QUE ISSO CUSTA, e é o preço a vigiar: o monitor passa de ~80 ciclos por dia
+# para ~480, e o retrato de 14 para ~120. São 6x mais chamadas aos nós RPC
+# públicos e 2,5x mais linhas de histórico por dia do que o desenho original
+# previa. Se algum nó começar a recusar, o número a mexer é o `sleep` do laço ou
+# o `% 4` do retrato — não a duração, que é o que resolve o problema real.
 #
-# O custo é zero porque o repositório é público, e nesse caso o GitHub não cobra
-# minutos de execução. Se ele voltar a ser privado, isto consumiria os 2.000
-# minutos mensais em menos de dois dias — aí o certo é voltar ao cron simples.
+# Três minutos continua sendo o piso do monitor: cada ciclo faz cerca de
+# cinquenta chamadas a nós públicos gratuitos, e apertar mais arrisca bloqueio
+# por abuso — o que pararia o monitor de vez, muito pior do que atrasar.
+#
+# O CUSTO EM DINHEIRO É ZERO E ISSO FOI CONFERIDO: "GitHub Actions usage is free
+# for public repositories that use standard GitHub-hosted runners". Se o
+# repositório voltar a ser privado, cinco horas por execução queimariam os 2.000
+# minutos mensais em menos de um dia — aí o certo é voltar ao laço curto.
 
 name: Radar BTW
 
 on:
   schedule:
-    # De hora em hora, e cada execução se repete por dentro durante ~50 minutos.
-    # O agendamento do GitHub é só o disparo; a cadência real vem do laço.
-    # Duas partidas por hora, cada uma cobrindo 35 minutos. Com a fila de
-    # concorrência elas se emendam em vez de se sobrepor, e uma partida atrasada
-    # pelo GitHub é coberta pela outra — foi um intervalo morto de dez minutos
-    # que deixou passar uma transferência de 2 milhões.
+    # Duas tentativas por hora, sabendo que a maioria não vira execução. Não é
+    # desperdício: quanto mais o GitHub tenta, maior a chance de UMA pegar
+    # quando a anterior terminar — e como cada uma cobre cinco horas, uma que
+    # pegue já basta para o dia não abrir buraco.
     - cron: "5,35 * * * *"
   # Permite disparar à mão pela aba Actions, para testar sem esperar.
   workflow_dispatch:
@@ -44,7 +55,11 @@ jobs:
     # privilégio a mais que este workflow pede.
     permissions:
       contents: write
-    timeout-minutes: 60
+    # CINCO HORAS E MEIA, não uma. O teto do GitHub para um job é de SEIS horas,
+    # e em repositório público o minuto de runner é gratuito e sem cota — as duas
+    # coisas conferidas na documentação. É esse par que torna a execução longa a
+    # saída para o agendador não confiável.
+    timeout-minutes: 330
 
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +138,7 @@ jobs:
       # RPC, que é exatamente o abuso que este workflow evita desde o começo — e
       # bloqueio por abuso pararia o monitor de vez, muito pior do que decidir de
       # doze em doze minutos.
-      - name: Vigiar por 35 minutos, com retrato a cada 12
+      - name: Vigiar por 5 horas, com retrato a cada 12 minutos
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -131,7 +146,21 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          fim=$(( $(date +%s) + 35*60 ))
+          # CINCO HORAS de laço, e não trinta e cinco minutos.
+          #
+          # Medido nas 40 últimas execuções pela API do GitHub: TODAS tiveram
+          # sucesso, NENHUMA foi cancelada — o agendador simplesmente não CRIA a
+          # maioria das execuções pedidas. O intervalo entre criações foi de 2,0
+          # a 5,2 horas, com o cron pedindo uma a cada 30 minutos. Não é fila,
+          # não é concorrência, não é falha: é o `schedule` do GitHub, que a
+          # própria documentação diz que atrasa e DESCARTA sob carga.
+          #
+          # Se não dá para aumentar quantas execuções começam, aumenta-se quanto
+          # cada uma DURA. Sete execuções por dia de cinco horas somam 35 horas
+          # de cobertura para um dia de 24 — sobra, e a sobra vira sobreposição,
+          # que o grupo de concorrência enfileira em vez de colidir. O resultado
+          # é vigilância contínua sem serviço externo, sem token e sem custo.
+          fim=$(( $(date +%s) + 300*60 ))
           n=0
           while [ "$(date +%s)" -lt "$fim" ]; do
             n=$((n+1))

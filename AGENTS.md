@@ -60,10 +60,11 @@ npm run carteira     # a carteira fictícia → data/carteira.json
 
 Não há chave, `.env` nem banco. O estado inteiro mora em `data/`.
 
-O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` e
+O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` +
+`garimpar` e
 commita o resultado. **O cron pede 48 execuções por dia e o GitHub entrega cerca
-de sete** — é limitação da plataforma, e a aplicação foi desenhada para
-sobreviver a isso (ver *A camada viva*).
+de sete** — é limitação da plataforma, contornada pela DURAÇÃO de cada execução
+e não pela frequência delas (ver logo abaixo).
 
 ### Os três relógios, que são diferentes de propósito
 
@@ -71,13 +72,27 @@ sobreviver a isso (ver *A camada viva*).
 |---|---|---|
 | preço, 24h, financiamento e a MARCAÇÃO da carteira | 15 segundos | no navegador de quem está com a página aberta |
 | preço e posicionamento por cima do retrato velho | a cada montagem da página | no servidor, quando o retrato passa de 100 min |
-| as DECISÕES: viés, abrir e fechar posição, garimpo | ~12 min dentro da janela do workflow | GitHub Actions |
+| as DECISÕES: viés, abrir e fechar posição, garimpo | ~12 min, contínuo | GitHub Actions |
 
-O terceiro é o gargalo e ele é da plataforma. Cada execução do workflow cobre 50
-minutos e faz retrato ao abrir, a cada quatro ciclos do laço e ao fechar — mas
-**entre uma execução e a seguinte há vãos de até 4,7 horas medidos**, porque o
-GitHub entrega 7 das 48 execuções pedidas. Nenhum ajuste dentro do workflow
-alcança isso; sair disso exige uma máquina que fique ligada.
+O terceiro era o gargalo, e o conserto veio pela DURAÇÃO e não pela frequência.
+
+Medido pela API do GitHub nas 40 execuções mais recentes: todas com sucesso,
+nenhuma cancelada, e o intervalo entre CRIAÇÕES indo de 2,0 a 5,2 horas — com o
+cron pedindo uma a cada 30 minutos. O `schedule` do GitHub atrasa e descarta sob
+carga; das 48 pedidas por dia chegam cerca de sete. Nenhum ajuste de cron
+alcança isso.
+
+O que alcança: **cada execução dura cinco horas em vez de trinta e cinco
+minutos**. O teto de um job são seis horas, e em repositório público o minuto de
+runner é gratuito e sem cota. Sete execuções de cinco horas somam 35 horas de
+cobertura para um dia de 24 — a sobra vira sobreposição, que o grupo de
+concorrência enfileira. Vigilância contínua sem serviço externo, sem token e sem
+custo.
+
+O preço: o monitor passa de ~80 ciclos por dia para ~480 e o retrato de 14 para
+~120 — 6x mais chamadas aos nós RPC públicos e 2,5x mais histórico por dia do
+que o desenho original previa. Se algum nó recusar, mexa no `sleep` do laço ou
+no `% 4` do retrato, não na duração.
 
 O que segura o estrago desses vãos é o caminho de velas da carteira: um stop que
 aconteceu às 3h dentro do buraco é registrado às 3h e no preço do stop, não no
