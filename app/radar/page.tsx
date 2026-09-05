@@ -421,6 +421,30 @@ export default async function Radar() {
                           {r.leitura.ateQuando}
                         </p>
                       )}
+                      {/* A TRAVA QUE NÃO PÔDE RODAR, dita onde alguém decide.
+                          `lerVies` só remove a compra quando a concentração é
+                          CONHECIDA e alta — com ela nula, a regra "moeda com dono
+                          não quica" simplesmente não roda. Medido em 05/09: das 7
+                          calls de compra, as 7 estavam sem varredura, e a mais
+                          forte (BASED, força 3) tinha 97% do circulante fora de
+                          corretora contando como munição livre. É a forma exata
+                          do JCT, onde o painel emitiu COMPRA e a moeda imprimiu
+                          2,9e-27 dias depois.
+                          O número já aparecia na coluna "Dono" da tabela, mas
+                          não aqui — e é aqui que se lê antes de agir. */}
+                      {r.leitura?.vies === "long" && r.motor?.concentracao == null && (
+                        <p className="text-xs text-[#C42B3E] dark:text-[#F6465D] mt-1">
+                          {/* A frase é montada numa string só, e não em pedaços de
+                              JSX: quebra de linha entre expressões vira espaço, e
+                              o texto saía com "50% , e aqui" e um " ." solto no
+                              fim. */}
+                          {`Concentração não varrida: a trava de “o supply tem dono” não rodou nesta. ` +
+                            `Ela só remove a compra quando a concentração é conhecida e passa de 50%` +
+                            (r.motor?.privadoPublico != null
+                              ? `, e aqui ${(r.motor.privadoPublico * 100).toFixed(0)}% do circulante fora de corretora está contando como munição livre.`
+                              : ".")}
+                        </p>
+                      )}
                     </li>
                   ))}
                 </ul>

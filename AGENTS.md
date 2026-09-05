@@ -72,7 +72,7 @@ e não pela frequência delas (ver logo abaixo).
 |---|---|---|
 | preço, 24h, financiamento e a MARCAÇÃO da carteira | 15 segundos | no navegador de quem está com a página aberta |
 | preço e posicionamento por cima do retrato velho | a cada montagem da página | no servidor, quando o retrato passa de 100 min |
-| as DECISÕES: viés, abrir e fechar posição, garimpo | ~12 min, contínuo | GitHub Actions |
+| as DECISÕES: viés, abrir e fechar posição, garimpo | **22 min, contínuo** | GitHub Actions |
 
 O terceiro era o gargalo, e o conserto veio pela DURAÇÃO e não pela frequência.
 
@@ -89,10 +89,31 @@ cobertura para um dia de 24 — a sobra vira sobreposição, que o grupo de
 concorrência enfileira. Vigilância contínua sem serviço externo, sem token e sem
 custo.
 
-O preço: o monitor passa de ~80 ciclos por dia para ~480 e o retrato de 14 para
-~120 — 6x mais chamadas aos nós RPC públicos e 2,5x mais histórico por dia do
-que o desenho original previa. Se algum nó recusar, mexa no `sleep` do laço ou
-no `% 4` do retrato, não na duração.
+**MEDIDO DEPOIS DE 24 HORAS NO AR**, e o resultado é melhor do que a previsão
+em coisa nenhuma que importe:
+
+| | antes | depois |
+|---|---|---|
+| retratos por dia | 14 | **68** |
+| intervalo mediano | 38 min | **22 min** |
+| maior buraco | **4,7 h** | **24 min** |
+| buracos acima de 1h | 16 de 45 | **0 de 80** |
+
+A previsão era de 12 minutos entre retratos e saiu 22 — o `monitor` demora mais
+no runner do que eu supus. Fica o número medido, não o previsto. O que importava
+era o buraco, e ele saiu de 4,7 horas para 24 minutos, com ZERO vãos acima de
+uma hora em 80 intervalos.
+
+O RISCO QUE EU SINALIZEI NÃO SE MATERIALIZOU: comparados um retrato de antes e
+um de depois, a completude do dado não mudou (72→73 moedas, 1→2 sem motor, 0 sem
+preço). Os nós RPC públicos aguentaram as 6x. O que subiu de verdade foi o
+histórico: de ~1.200 para ~4.960 linhas por dia, o que projeta ~38 MB para o mês
+contra os 12 MB do desenho. Se ficar pesado, o número a mexer é o `% 4` do
+retrato.
+
+As execuções agora aparecem como `cancelled` na aba Actions com frequência, e
+isso é o mecanismo funcionando, não falha: é a execução PENDENTE sendo
+substituída por uma mais nova enquanto a atual roda suas cinco horas.
 
 O que segura o estrago desses vãos é o caminho de velas da carteira: um stop que
 aconteceu às 3h dentro do buraco é registrado às 3h e no preço do stop, não no
