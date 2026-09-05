@@ -9,7 +9,7 @@
  */
 
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
-import { rodar, CAPITAL_INICIAL, type Emissao, type Passo } from "../lib/carteira";
+import { rodar, CAPITAL_INICIAL, RISCO_POR_FORCA, type Emissao, type Passo } from "../lib/carteira";
 import { velas } from "../lib/binance";
 import { ATIVAS } from "../lib/watchlist";
 
@@ -150,10 +150,14 @@ console.log(
 /**
  * O TAMANHO DA APOSTA, VIRADO EM NÚMERO.
  *
- * A régua publicada arrisca 1,5% / 1,0% / 0,5% do patrimônio por call, e a
- * consequência aritmética dela é que uma call de força 2 que acerta o ALVO
- * INTEIRO move +1,6% da conta. Isso é pouco, e "pouco" é uma opinião até que
- * alguém mostre o que se ganharia e o que se arriscaria ao mudar.
+ * A régua publicada arrisca 3% / 2% / 1% do patrimônio por call — dobrada em
+ * 05/09 justamente por causa desta tabela. Na anterior, uma call de força 2 que
+ * acertasse o ALVO INTEIRO movia +1,6% da conta e o pico de risco agregado
+ * ficava em 13% de um teto de 25%: nenhum limite chegava a prender, e a carteira
+ * não conseguia testar se a estratégia quebra a conta.
+ *
+ * A tabela continua aqui porque a pergunta não acabou: ela é o que mostra onde
+ * o teto encosta e a partir de onde mais tamanho só faz RECUSAR call.
  *
  * Esta tabela roda o motor inteiro — as mesmas emissões, o mesmo caminho de
  * velas, os mesmos custos — multiplicando SÓ o orçamento de risco. Stop, alvo,
@@ -170,9 +174,15 @@ console.log(`\ntamanho da aposta — o mesmo motor, só o orçamento de risco mu
 console.log(`escala   risco/call   patrimônio   retorno   queda máx   margem pico   risco pico`);
 for (const e of ESCALAS) {
   const r = rodar(emissoes, COMECO, caminho, e);
+  // Os rótulos saem de `RISCO_POR_FORCA`, e não de números escritos aqui: eles
+  // estavam fixos em 1,5/1,0/0,5% e continuaram imprimindo isso depois que a
+  // régua dobrou — a tabela passou a mentir sobre a própria linha de base.
+  const r3 = (RISCO_POR_FORCA[3] * 100 * e).toFixed(1);
+  const r2 = (RISCO_POR_FORCA[2] * 100 * e).toFixed(1);
+  const r1 = (RISCO_POR_FORCA[1] * 100 * e).toFixed(1);
   console.log(
     `  ${`${e}x`.padEnd(6)} ` +
-      `${`${(1.5 * e).toFixed(1)}/${(1.0 * e).toFixed(1)}/${(0.5 * e).toFixed(1)}%`.padStart(12)} ` +
+      `${`${r3}/${r2}/${r1}%`.padStart(12)} ` +
       `${usd(r.patrimonio).padStart(12)} ` +
       `${pct(r.retorno).padStart(9)} ` +
       `${pct(r.quedaMaxima).padStart(11)} ` +

@@ -15,6 +15,7 @@ import {
   ALAVANCAGEM,
   ALVO,
   CAPITAL_INICIAL,
+  RISCO_POR_FORCA,
   RISCO_TOTAL_MAXIMO,
   STOP,
   remarcar,
@@ -365,10 +366,19 @@ console.log("\n--- quem entra quando o orçamento de risco acaba ---");
   const depois = conta([...fracas, ...fortes]);
   const antes = conta([...fortes, ...fracas]);
 
+  // O ESPERADO SAI DAS CONSTANTES, e não de um número escrito aqui: quantas
+  // fortes cabem é o teto agregado dividido pelo risco de uma força 3. Travar
+  // "10 de 10" amarrava o teste à régua da época, e ele reprovou quando o
+  // tamanho da aposta dobrou — sem nada ter piorado, só passando a caber menos.
+  //
+  // Que uma FRACA entre depois de a última forte não caber está certo e não é
+  // exceção: com 8 fortes somando 24%, sobra 1% de orçamento, e 1% é exatamente
+  // uma força 1. Recusar isso deixaria orçamento parado sem motivo.
+  const cabemFortes = Math.min(10, Math.floor(RISCO_TOTAL_MAXIMO / RISCO_POR_FORCA[3] + 1e-9));
   confere(
-    "a força escassa fica com quem tem a leitura mais forte",
-    depois.fortes === 10,
-    `${depois.fortes}/10 fortes, ${depois.fracas}/40 fracas`,
+    "as fortes enchem o orçamento antes de qualquer fraca",
+    depois.fortes === cabemFortes,
+    `${depois.fortes} de ${cabemFortes} que cabem · ${depois.fracas} fracas na sobra`,
   );
   confere(
     "a ordem do lote não muda mais o livro",

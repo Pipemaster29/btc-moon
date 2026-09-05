@@ -219,19 +219,50 @@ export const CAPITAL_INICIAL = 1000;
  *
  * Dimensionado pelo RISCO e não pelo capital: cada posição arrisca uma fração
  * fixa do patrimônio até o stop, e o tamanho sai dessa conta. Com stop em 25% e
- * alavancagem de 3, arriscar 1% do patrimônio pede margem de 1,33% — que
- * controla 4% em posição.
+ * alavancagem de 3, arriscar 2% do patrimônio pede margem de 2,67% — que
+ * controla 8% em posição.
  *
- * Por que arriscar tão pouco: o painel emite treze calls ao mesmo tempo num dia
- * normal, e essas moedas andam 8% num dia comum. Se todas as treze batessem no
- * stop no mesmo dia, a conta perderia 19,5%. Tamanho maior não seria
- * agressividade, seria ignorar quantas posições o próprio painel abre de uma
- * vez.
+ * DOBRADO EM 05/09, DE 1,5/1,0/0,5%, E O MOTIVO NÃO É QUERER GANHAR MAIS.
+ *
+ * A régua anterior deixava a carteira sem conseguir testar o que ela existe para
+ * testar. Medido nela: o pico de margem exposta foi 17% de um teto de 50% e o
+ * pico de risco agregado 13% de 25%, com 85% do dinheiro parado — NENHUM teto
+ * chegava perto de prender. Quem limitava era só o tamanho por call, e a
+ * consequência aritmética é que uma call de força 2 acertando o ALVO INTEIRO
+ * movia +1,6% da conta. Uma carteira assim não quebra nem se tudo der errado, e
+ * "isto quebra a conta?" é exatamente a pergunta que ela foi construída para
+ * responder — e que o `lib/placar.ts` sozinho não responde, porque mediana não
+ * sabe de tamanho de posição nem de quantas posições ficam abertas juntas.
+ *
+ * DOIS E NÃO TRÊS, e o corte saiu da tabela de escala do `npm run carteira`:
+ *
+ *   escala   risco/call     retorno   queda máx   margem   risco agregado
+ *     1x     1,5/1,0/0,5%     −0,0%      −1,4%      17%         13%
+ *     2x     3,0/2,0/1,0%     −0,1%      −2,8%      32%         25%   ← encosta
+ *     3x     4,5/3,0/1,5%     −2,1%      −3,1%      32%         24%
+ *     5x     7,5/5,0/2,5%     −4,3%      −5,3%      33%         25%
+ *
+ * 2x é onde o risco agregado encosta nos 25% que este arquivo declara. Acima
+ * disso mais tamanho NÃO compra exposição — a margem trava em 32% — ele compra
+ * RECUSA de call, porque o teto passa a barrar as que chegam depois. Escalar
+ * além de 2x não é ser mais agressivo, é operar um subconjunto arbitrário das
+ * mesmas calls.
+ *
+ * O QUE ISSO NÃO É: uma aposta em que o painel funciona. O placar continua
+ * dizendo que nenhum viés separa da referência, e dobrar o tamanho de uma
+ * estratégia sem vantagem medida dobra a perda esperada — é o que as linhas de
+ * 3x e 5x da tabela mostram, ainda que com poucos trades encerrados isso não
+ * conclua. O que 2x compra é a carteira rodando no orçamento de risco que ela
+ * mesma publica, em vez de num sexto dele.
+ *
+ * O teto agregado de 25% é o que segura o resto: o painel emite treze calls ao
+ * mesmo tempo num dia normal, e a 2% cada isso somaria 26% — o teto barra a
+ * décima terceira. É ele, e não o tamanho por call, que passa a ser o freio.
  *
  * A força vem de `lerVies` e vale o que ela diz valer: 3 é a regra com o
  * refinamento mais forte medido, 1 é a que sobrevive por pouco.
  */
-export const RISCO_POR_FORCA: Record<number, number> = { 3: 0.015, 2: 0.01, 1: 0.005 };
+export const RISCO_POR_FORCA: Record<number, number> = { 3: 0.03, 2: 0.02, 1: 0.01 };
 
 /**
  * Teto de MARGEM comprometida ao mesmo tempo.

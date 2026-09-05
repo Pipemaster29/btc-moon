@@ -173,7 +173,7 @@ a corretora.
 
 **Tamanho da posição — pelo risco, não pelo capital.** Cada call arrisca uma
 fração fixa do patrimônio até o stop, e o tamanho sai dessa conta: força 3
-arrisca 1,5%, força 2 arrisca 1,0%, força 1 arrisca 0,5%. Parece pouco até
+arrisca 3%, força 2 arrisca 2%, força 1 arrisca 1%. Parece pouco até
 lembrar que o painel emite treze calls de uma vez num dia normal, e que cripto
 tem dia em que a lista inteira cai 25% junta. Teto de 50% de margem exposta e de
 25% de risco agregado.

@@ -216,7 +216,7 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | Stop | −25% de preço | ~3 desvios de UM DIA; `npm run estudar` mede volatilidade diária de 7% a 10% |
 | Alvo | +40% de preço | o dobro da assimetria que sustenta a regra de compra (sobe +20% em 21,0% das semanas) |
 | Prazo | 14 dias | as regras direcionais foram medidas em janelas de 7 e 14 dias |
-| Risco por call | 1,5% / 1,0% / 0,5% do patrimônio (força 3/2/1) | dimensionado pelo risco, não pelo capital |
+| Risco por call | **3% / 2% / 1%** do patrimônio (força 3/2/1) | dobrado em 05/09: na régua anterior o pico de risco agregado era 13% de um teto de 25% e 85% do dinheiro ficava parado — a carteira não conseguia testar se a estratégia quebra a conta, que é para o que ela existe |
 | Risco agregado | teto de 25% | cripto tem dias em que a lista inteira cai 25% junta |
 | Margem exposta | teto de 50% | |
 | Custo | 0,15% por lado, **sobre o nocional** | a 3x, isso é 0,45% da margem por lado |
