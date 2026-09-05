@@ -85,8 +85,10 @@ export interface Arquivo {
  *
  * O corte é grosso de propósito e não foi calibrado contra retorno nenhum — não
  * há amostra para isso. Ele separa os casos que a medição mostrou serem
- * qualitativamente diferentes: JCT com 99,9%, CAP com 84,5% e ZAMA com 70,6% de
- * um lado; PORTAL com 8,5% e BASED com 0% do outro.
+ * qualitativamente diferentes. Com a janela ancorada no primeiro evento, as 17
+ * moedas de Ethereum e Base leem: BTW 100,0% · JCT 99,9% · CAP 84,5% · ZAMA
+ * 70,6% · MORPHO 51,5% de um lado; C 29,0% · VVV 28,6% · POWER 21,8% · HEMI
+ * 12,1% · e sete em 0% do outro.
  */
 export const CONCENTRADA = 0.5;
 
@@ -116,8 +118,16 @@ export async function concentracaoDe(symbol: string): Promise<number | null> {
   // parece falha. A C nasceu em abril de 2025 e só distribuiu em julho: as
   // primeiras 20 mil quadras não tinham transferência nenhuma, e o arquivo
   // gravou concentração ZERO numa moeda em que três contratos seguravam 23% do
-  // supply. Zero e "não medi" precisam ser coisas diferentes — quem responde
-  // essa moeda é `npm run vesting`, que procura a emissão na vida toda.
+  // supply. Zero e "não medi" precisam ser coisas diferentes.
+  //
+  // A CAUSA DAQUELE CASO FOI CONSERTADA e este guard fica. `npm run genese`
+  // agora ancora a janela no PRIMEIRO EVENTO em vez do nascimento do contrato,
+  // e a C — cuja primeira transferência vem 2.349 horas, 98 dias, depois de o
+  // contrato existir — passou a ler 29,0% com 12 transferências. O guard
+  // continua porque a âncora só existe onde há explorador: nas 20 moedas da BSC
+  // a janela ainda começa no nascimento e este caso pode voltar. Onde ele
+  // voltar, quem responde é `npm run vesting`, que procura a emissão na vida
+  // toda.
   if (d.transferencias === 0) return null;
   return d.concentracao;
 }
