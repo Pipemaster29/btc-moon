@@ -32,9 +32,24 @@ const CAMINHO = "data/detentores.json";
 
 export interface DonoDaGenese {
   endereco: string;
-  /** Fração do supply que ele recebeu na distribuição inicial. */
+  /**
+   * Fração do supply que ele recebeu na distribuição inicial.
+   *
+   * PODE PASSAR DE 1, E PASSAR NÃO É ERRO. O valor recebido é histórico e o
+   * supply que divide é o de HOJE, então uma moeda que queimou parte do que
+   * emitiu devolve fração acima de um. A BASED é o exemplo do repositório: no
+   * bloco de nascimento o endereço 0x1924… recebeu do zero 202,67% do supply
+   * atual e devolveu ao zero 60,80% mil e duzentos blocos depois, o que dá os
+   * 141,87% que a página imprime. Os dois números estão certos; o que mudou
+   * entre a emissão e hoje foi o denominador.
+   *
+   * Normalizar pelo supply da época exigiria `totalSupply` no bloco da gênese,
+   * que é uma leitura de estado antigo por moeda — dá para fazer e ainda não
+   * foi feito. Enquanto não for, quem lê este campo precisa saber que ele é
+   * "quanto do supply de hoje", e não "quanto da emissão".
+   */
   recebeu: number;
-  /** Fração do supply que ele ainda segura. */
+  /** Fração do supply que ele ainda segura. Esta é de hoje sobre hoje. */
   hoje: number;
   contrato: boolean;
 }

@@ -19,6 +19,8 @@
  * servem log vêm primeiro.
  */
 
+import { temExplorador, transferenciasDoExplorador } from "./explorador";
+
 /**
  * As redes suportadas.
  *
@@ -754,6 +756,37 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
   let next = 0;
   let failed = 0;
   let semHistorico = 0;
+
+  // O EXPLORADOR ANTES DO NÓ, na varredura SEM FILTRO — que é a lenta.
+  //
+  // Sem filtro de carteira a faixa cai para 500 blocos (`UNFILTERED_SPAN`),
+  // porque faixa maior estoura o tempo limite do nó. Uma janela de gênese de
+  // três semanas na Ethereum são 151 mil blocos, ou 302 requisições a 1,5–3,4
+  // segundos cada: de sete a dezessete minutos POR MOEDA. É por isso que
+  // `data/detentores.json` tem 7 moedas e 37 têm contrato.
+  //
+  // Medido em 05/09 na BTW-ETH, a mesma janela de 21 dias: o explorador
+  // devolveu as 20 transferências — incluindo o mint de 1 bilhão para um
+  // endereço só — em UMA requisição e 0,3 segundo.
+  //
+  // Só para o caso sem filtro: a varredura filtrada já anda de 5.000 ou 10.000
+  // blocos por vez e não é o gargalo, e mexer nela seria trocar um caminho que
+  // funciona por um novo sem motivo.
+  //
+  // `completo: false` NÃO vira resultado: se o explorador não terminou de olhar,
+  // a varredura cai para o nó em vez de devolver meia leitura como se fosse
+  // inteira. É a armadilha nº 2 do AGENTS.md — "não consegui" não é "não achei".
+  const semFiltro = !padded.length && !recebendo.length && !enviando.length;
+  if (semFiltro && temExplorador(chain)) {
+    const doExplorador = await transferenciasDoExplorador(chain, token, fromBlock, toBlock);
+    if (doExplorador?.completo) {
+      for (const t of doExplorador.transfers) {
+        found.set(`${t.txHash}|${t.from}|${t.to}|${t.value}`, t);
+      }
+      onProgress?.(1, 1, found.size);
+      return { transfers: [...found.values()].sort((a, b) => a.block - b.block), failed: 0, semHistorico: 0 };
+    }
+  }
 
   async function worker(): Promise<void> {
     while (next < starts.length) {

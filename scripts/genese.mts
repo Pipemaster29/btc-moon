@@ -13,32 +13,29 @@
  * em ~25 leituras, contra milhares de varreduras às cegas.
  *
  * Só funciona onde há nó de arquivo para ESTADO, porque a busca binária pergunta
- * "havia código aqui?" em blocos antigos. Na BNB Chain há; na Base e na Ethereum
- * não, e essas moedas ficam de fora até existir outra fonte.
+ * "havia código aqui?" em blocos antigos. As três redes EVM da lista têm.
  *
- * ESTADO: o método funciona e o custo não fecha para lote. Medido na BTW, ele
- * acha o bloco de nascimento (19/12/2025) e os dois contratos que receberam 99%
- * e 1% do supply. Mas os dois hoje têm ZERO — eram passagem — e seguir o rastro
- * até o dono exige varrer mais do que um dia de blocos, que é o alcance que
- * cabe no orçamento de tempo.
+ * ============================================ O GARGALO, E O QUE O DESTRAVOU
  *
- * O gargalo é o nó de arquivo: ele entrega uma faixa a cada 1,5 a 3,4 segundos.
- * Com quatro milhões de blocos por salto — as três semanas em que a distribuição
- * de fato acontece — são sete minutos por salto e mais de sete horas para as
- * vinte e cinco moedas. E nem todas respondem: no AKE, 41 das 41 faixas da
- * gênese falharam.
+ * A parte difícil sempre foi ler os LOGS da janela, não achar o nascimento. Sem
+ * filtro de carteira `scanTransfers` anda de 500 em 500 blocos, porque faixa
+ * maior estoura o tempo limite do nó, e o nó entrega uma faixa a cada 1,5 a 3,4
+ * segundos. Uma janela de três semanas na Ethereum são 302 requisições: de sete
+ * a dezessete minutos POR MOEDA, mais de sete horas para o lote. É por isso que
+ * `data/detentores.json` tinha 7 moedas com 37 tendo contrato.
  *
- * Fica no repositório porque a parte difícil está resolvida e validada: achar o
- * nascimento por busca binária sobre `eth_getCode` custa ~25 leituras, contra
- * varrer às cegas. O que falta é throughput, e isso vem de um indexador com
- * chave ou de rodar uma moeda por vez sem pressa.
+ * `lib/explorador.ts` faz a mesma leitura em UMA requisição por mil eventos, e
+ * só na Ethereum e na Base — a BSC não tem instância gratuita, o que está
+ * verificado lá. Então 17 moedas ficaram baratas e 20 continuam caras, e é essa
+ * diferença que define as duas janelas abaixo.
  *
  * Rode com: npm run genese BTW
- *           npm run genese            (todas as da BNB Chain com motor)
+ *           npm run genese            (todas as que têm nó de arquivo)
  */
 
 import {
   balancesOf,
+  birthBlock,
   blockNumber,
   blockTime,
   gasOf,
@@ -49,12 +46,75 @@ import {
   CHAINS,
   type Chain,
 } from "../lib/onchain";
+import { primeiroEventoPeloExplorador, temExplorador } from "../lib/explorador";
 import { ATIVAS, findToken, type WatchedToken } from "../lib/watchlist";
 import type { Arquivo, Detentores, DonoDaGenese } from "../lib/detentores";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
-/** Quantos blocos varrer a partir do nascimento, sem filtro. */
-const JANELA = 20_000;
+/**
+ * A JANELA DE DISTRIBUIÇÃO, em horas — e ela não começa no nascimento.
+ *
+ * O número antigo era 20.000 BLOCOS, e blocos não são tempo: os mesmos 20 mil
+ * são 2,5h na BNB Chain, 11,1h na Base e 66,7h na Ethereum. Um número, três
+ * janelas, 27x de diferença entre as pontas, e nenhuma delas escolhida.
+ *
+ * E o começo estava errado junto. Medido em 05/09 nas 17 moedas de Ethereum e
+ * Base, o atraso entre o contrato nascer e a PRIMEIRA transferência aparecer:
+ *
+ *   13 moedas    0,00h   o mint está na própria transação de deploy
+ *   H           13,20h
+ *   SYN         67,49h   ← a janela velha da Ethereum terminava em 66,7h
+ *   HEI        ~110h     (4,6 dias)
+ *   C           nada em 14 dias — ver a nota abaixo
+ *
+ * A SYN passava a 67,49h de uma janela de 66,7h. Uma hora e meia de margem
+ * separava "concentração medida" de "concentração zero", e zero não pedia
+ * desculpa: `mapear` grava zero como resultado legítimo. Três das dezessete
+ * estavam gravadas ou seriam gravadas assim.
+ *
+ * Então a janela agora ancora no primeiro evento e não no nascimento, e o
+ * primeiro evento sai de UMA requisição ao explorador — ele devolve em ordem
+ * crescente, então a página truncada perde o fim e nunca o começo.
+ *
+ * As 72h saem do custo medido: com a janela ancorada, 15 das 17 moedas cabem em
+ * uma requisição. Sete dias em vez de três levariam a VVV a 7.000 eventos e a H
+ * a 9.486 — já é mercado, não é mais distribuição.
+ */
+const JANELA_HORAS = 72;
+
+/*
+ * NÃO EXISTE TETO PARA A PROCURA DO PRIMEIRO EVENTO, e a razão é que ele não
+ * compraria nada. A sonda é UMA requisição qualquer que seja a largura da faixa,
+ * porque o Blockscout devolve em ordem crescente e a primeira página começa no
+ * primeiro evento. Procurar do nascimento até a cabeça da cadeia custa o mesmo
+ * que procurar em três dias.
+ *
+ * O primeiro desenho tinha um teto de catorze dias, escolhido porque o maior
+ * atraso que eu tinha medido era de 4,6 dias. Ele custou a leitura da C: o
+ * contrato dela nasceu no bloco 28401211 da Base e a primeira transferência veio
+ * no 32630340, quatro milhões de blocos e **98 dias** depois. O script dizia
+ * "nenhuma transferência em 14 dias — o contrato pode não ser o que guarda o
+ * supply", que era um palpite errado gerado por um limite que eu mesmo tinha
+ * posto sem precisar.
+ */
+
+/**
+ * A janela onde o explorador não alcança, em BLOCOS — e aqui blocos são a
+ * unidade certa, porque o que limita é requisição e não tempo.
+ *
+ * São 40 faixas de 500 blocos, que é o que a varredura sem filtro paga em
+ * poucos minutos por moeda. Na BNB Chain isso são 2,5h de janela contra as 72h
+ * que a medição pede, e não há como fechar essa distância pelo nó: 72h da BSC
+ * são 576 mil blocos, ou 1.152 faixas, ou mais de meia hora por moeda.
+ *
+ * FICA ESCRITO QUE ISTO É ORÇAMENTO E NÃO MEDIÇÃO. Se a proporção da Ethereum e
+ * da Base valer para a BSC, uma janela de 2,5h ancorada no nascimento perde as
+ * moedas que mintam tarde — foram 4 em 17 lá, e as 20 moedas da BSC estão
+ * expostas ao mesmo erro sem que possamos vê-lo. Enquanto não houver fonte de
+ * log gratuita para a BSC, a concentração dessas moedas é uma leitura pior, e
+ * dizer isso é melhor do que deixar o zero parecer resultado.
+ */
+const JANELA_SEM_EXPLORADOR = 20_000;
 
 /**
  * Quantos saltos seguir depois da gênese.
@@ -68,50 +128,101 @@ const JANELA = 20_000;
 const SALTOS = 2;
 
 /**
- * Até onde seguir cada salto, em blocos a partir do nascimento.
+ * Até onde seguir cada salto, em HORAS a partir do início da janela.
  *
- * Duzentos mil blocos são pouco mais de um dia na BNB Chain, e é onde a
- * distribuição inicial acontece — o supply sai dos contratos de passagem para as
- * carteiras que vão operá-lo antes de existir mercado.
+ * Era `200_000` blocos, e o comentário que o justificava dizia "pouco mais de um
+ * dia na BNB Chain" — o que é verdade lá e só lá. Os mesmos 200 mil blocos são
+ * 111 horas na Base e **667 horas, vinte e sete dias, na Ethereum**. O rastro
+ * saía da distribuição e entrava no mercado sem que nada no código dissesse, e
+ * o texto ao lado afirmava o contrário do que o número fazia em duas das três
+ * redes.
  *
- * O número saiu de medição, não de gosto. O nó de arquivo entrega uma faixa a
- * cada 1,5 a 3,4 segundos, muito abaixo do que eu supunha: a primeira tentativa
- * usava quatro milhões de blocos, o que dá oitocentas faixas e sete minutos POR
- * SALTO, e o lote de vinte e cinco moedas passaria de sete horas. Com duzentos
- * mil, cada moeda sai em torno de três minutos e meio.
+ * Vinte e cinco horas é o que o comentário antigo dizia que estava fazendo, e
+ * agora é o que ele faz nas três. O custo não muda: a varredura do salto é
+ * FILTRADA por endereço e anda de 5.000 ou 10.000 blocos por vez.
  */
-const ALCANCE = 200_000;
+const ALCANCE_HORAS = 25;
 
 /** Só entra na lista quem recebeu pelo menos isto do supply. */
 const CORTE = 0.005;
 
-async function temCodigo(chain: Chain, address: string, bloco: number): Promise<boolean> {
-  const config = CHAINS[chain];
-  const res = await fetch(config.archiveState[0], {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "eth_getCode",
-      params: [address, `0x${bloco.toString(16)}`],
-    }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  const body = (await res.json()) as { result?: string };
-  return Boolean(body.result && body.result !== "0x");
+/** Para onde o supply vai quando é queimado, e de onde vem quando é criado. */
+const ENDERECO_ZERO = "0x0000000000000000000000000000000000000000";
+
+/*
+ * A busca binária pelo nascimento vive em `lib/onchain.ts` (`birthBlock`), e não
+ * aqui. Este arquivo tinha a sua própria cópia, e a cópia batia sempre no
+ * PRIMEIRO nó de `archiveState`, sem rodízio e sem repetição.
+ *
+ * Custou uma varredura: `npm run genese SYN` morria em "The operation was
+ * aborted due to timeout" antes de ler transferência nenhuma. A SYN nasceu no
+ * bloco 13025432, de 2021, e o primeiro nó da Ethereum não responde a estado tão
+ * fundo — o `callRpc` do `birthBlock` roda os três e acha o bloco sem reclamar.
+ * Duas implementações da mesma coisa, e só a que ninguém usava tinha o conserto.
+ */
+
+function emBlocos(chain: Chain, horas: number): number {
+  return Math.round((horas * 3600) / CHAINS[chain].secondsPerBlock);
 }
 
-/** O bloco em que o contrato passou a existir, por busca binária. */
-async function blocoDeNascimento(chain: Chain, address: string, topo: number): Promise<number> {
-  let baixo = 1;
-  let alto = topo;
-  while (alto - baixo > 1) {
-    const meio = Math.floor((baixo + alto) / 2);
-    if (await temCodigo(chain, address, meio)) alto = meio;
-    else baixo = meio;
+/**
+ * Onde a janela de distribuição começa e quantos blocos ela cobre.
+ *
+ * `descricao` sai daqui e não do chamador porque só aqui se sabe a diferença
+ * entre os quatro casos, e eles não podem virar a mesma frase: "o mint veio no
+ * deploy", "o mint veio N horas depois", "não deu para procurar" e "não existe
+ * transferência nenhuma" produzem o MESMO início de janela e significam coisas
+ * opostas. Quem lê o relatório precisa saber qual dos quatro foi.
+ */
+async function janelaDe(
+  token: WatchedToken,
+  nascimento: number,
+  head: number,
+): Promise<{ inicio: number; janela: number; descricao: string }> {
+  if (!temExplorador(token.chain)) {
+    return {
+      inicio: nascimento,
+      janela: JANELA_SEM_EXPLORADOR,
+      descricao: "a partir do nascimento — SEM ÂNCORA, o explorador não alcança esta rede",
+    };
   }
-  return alto;
+
+  const janela = emBlocos(token.chain, JANELA_HORAS);
+  const sonda = await primeiroEventoPeloExplorador(token.chain, token.contract!, nascimento, head);
+
+  if (!sonda || !sonda.leu) {
+    // Não conseguiu olhar: cai no nascimento, mas DIZ que caiu.
+    return {
+      inicio: nascimento,
+      janela,
+      descricao: `a partir do nascimento — SEM ÂNCORA, a sonda do 1º evento não terminou${
+        sonda?.porque ? ` (${sonda.porque})` : ""
+      }`,
+    };
+  }
+
+  if (sonda.bloco === null) {
+    // Olhou a vida inteira do contrato e não há transferência nenhuma. Aí não é
+    // "concentração zero": um token com supply e sem um único `Transfer` desde
+    // o nascimento não é o contrato que guarda esse supply.
+    return {
+      inicio: nascimento,
+      janela,
+      descricao:
+        "ATENÇÃO: nenhuma transferência desde o nascimento — este contrato não é o que guarda o supply",
+    };
+  }
+
+  if (sonda.bloco === nascimento) {
+    return { inicio: nascimento, janela, descricao: "a partir do nascimento (o mint veio no deploy)" };
+  }
+
+  const atraso = ((sonda.bloco - nascimento) * CHAINS[token.chain].secondsPerBlock) / 3600;
+  return {
+    inicio: sonda.bloco,
+    janela,
+    descricao: `a partir do 1º evento, ${atraso.toFixed(1)}h após o nascimento`,
+  };
 }
 
 async function mapear(token: WatchedToken): Promise<Detentores | null> {
@@ -125,7 +236,7 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
   const info = await tokenInfo(token.chain, token.contract);
   const supply = toUnits(info.totalSupply, info.decimals);
 
-  const nascimento = await blocoDeNascimento(token.chain, token.contract, head);
+  const nascimento = await birthBlock(token.chain, token.contract, head);
   const quando = new Date((await blockTime(token.chain, nascimento)) * 1000);
 
   console.log(
@@ -133,16 +244,19 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
   );
   console.log(`nasceu no bloco ${nascimento} em ${quando.toISOString().slice(0, 16)} UTC`);
 
+  // ONDE A JANELA COMEÇA. O nascimento do contrato só é o começo da distribuição
+  // quando o mint está na transação de deploy, e isso é 13 de 17 e não 17 de 17.
+  const { inicio, janela, descricao } = await janelaDe(token, nascimento, head);
   const { transfers, failed } = await scanTransfers({
     chain: token.chain,
     token: token.contract,
-    fromBlock: nascimento,
-    toBlock: nascimento + JANELA,
+    fromBlock: inicio,
+    toBlock: Math.min(inicio + janela, head),
   });
 
-  const horas = (JANELA * config.secondsPerBlock) / 3600;
+  const horas = (janela * config.secondsPerBlock) / 3600;
   console.log(
-    `${transfers.length} transferências nas primeiras ${horas.toFixed(1)}h · ${failed} faixas falharam`,
+    `${transfers.length} transferências em ${horas.toFixed(1)}h ${descricao} · ${failed} faixas falharam`,
   );
 
   // Saldo líquido de cada endereço no fim da janela: recebeu menos enviou.
@@ -156,7 +270,7 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
   }
 
   let candidatos = [...liquido.entries()]
-    .filter(([a, v]) => v / supply >= CORTE && a !== "0x0000000000000000000000000000000000000000")
+    .filter(([a, v]) => v / supply >= CORTE && a !== ENDERECO_ZERO)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 15);
 
@@ -188,16 +302,56 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
     const { transfers: saidas } = await scanTransfers({
       chain: token.chain,
       token: token.contract,
-      fromBlock: nascimento,
-      toBlock: Math.min(nascimento + ALCANCE, head),
+      // Do INÍCIO DA JANELA, não do nascimento: onde o mint vem tarde, contar a
+      // partir do nascimento gastaria o alcance inteiro antes de a distribuição
+      // começar. Na HEI são 110 horas de blocos vazios contra 25 de alcance.
+      fromBlock: inicio,
+      toBlock: Math.min(inicio + emBlocos(token.chain, ALCANCE_HORAS), head),
       involving: origens,
     });
 
+    // LÍQUIDO, e não a soma do que entrou. Na gênese acima o número é
+    // recebeu-menos-enviou; aqui era só somar, e a mesma palavra — `recebeu`,
+    // que é o que vai para o arquivo e para a página da moeda — passou a nomear
+    // duas contas diferentes conforme o endereço tivesse vindo de uma metade ou
+    // da outra deste arquivo.
+    //
+    // NÃO VEIO DE DEFEITO MEDIDO: veio de ler as duas metades lado a lado, que é
+    // a armadilha nº 7 do AGENTS.md ("um freio que existe numa metade do caminho
+    // não existe"). Não tenho uma moeda em que a diferença apareça hoje.
+    //
+    // E o líquido daqui não é tão bom quanto o da gênese, o que vale dizer: a
+    // varredura do salto é FILTRADA pelas origens, então ela vê o que sai delas
+    // e o que volta para elas, e não vê o que o destino manda para um terceiro.
+    // Fecha a ida-e-volta e não faz mais do que isso.
     const recebido = new Map<string, number>();
     for (const t of saidas) {
-      if (!origens.includes(t.from.toLowerCase())) continue;
+      const doOrigem = origens.includes(t.from.toLowerCase());
+      const paraOrigem = origens.includes(t.to.toLowerCase());
+      if (paraOrigem && !doOrigem) {
+        const quemDevolveu = t.from.toLowerCase();
+        if (!vistos.has(quemDevolveu) && quemDevolveu !== ENDERECO_ZERO) {
+          recebido.set(
+            quemDevolveu,
+            (recebido.get(quemDevolveu) ?? 0) - toUnits(t.value, info.decimals),
+          );
+        }
+        continue;
+      }
+      if (!doOrigem) continue;
       const para = t.to.toLowerCase();
-      if (vistos.has(para)) continue;
+      // O ZERO TAMBÉM AQUI, e não só na gênese. A armadilha nº 7 do AGENTS.md em
+      // estado puro: o filtro existia numa metade do caminho e não na outra. A
+      // BASED saiu assim na primeira rodada com a janela nova —
+      //
+      //   0x0000…0000   recebeu 60.80%   hoje 0.00%   contrato false
+      //   "os 1 maiores da gênese ainda seguram 0.0% do supply"
+      //
+      // — porque o dono da gênese QUEIMOU 60,8% do supply, o rastro seguiu a
+      // queima e chamou o endereço zero de dono. Não é dono, é destruição: o
+      // saldo dele é zero por definição, então a concentração caía para 0,0% e o
+      // painel lia a BASED como moeda sem ninguém segurando pedaço grande.
+      if (vistos.has(para) || para === ENDERECO_ZERO) continue;
       recebido.set(para, (recebido.get(para) ?? 0) + toUnits(t.value, info.decimals));
     }
 

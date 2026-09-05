@@ -119,6 +119,56 @@ if (v) {
   }
 } else console.log("  (ausente)");
 
+// ---- detentores
+//
+// O arquivo que a concentração lê, e que não era auditado. A concentração é a
+// trava que existe por causa do JCT — seis endereços com 99,9% do supply e o
+// painel emitindo COMPRA —, então um número torto aqui vira call.
+const det = await ler<{
+  moedas: Record<
+    string,
+    {
+      chain: string; nascimento: number; nasceuEm: string; transferencias: number;
+      faixasPerdidas: number; concentracao: number; medidoEm: number;
+      donos: { endereco: string; recebeu: number; hoje: number; contrato: boolean }[];
+    }
+  >;
+}>("data/detentores.json");
+console.log("detentores:");
+if (det) {
+  for (const [k, m] of Object.entries(det.moedas)) {
+    checa(`${k}: concentração 0..1`, m.concentracao >= 0 && m.concentracao <= 1.0001, `= ${m.concentracao}`);
+    checa(`${k}: nascimento > 0`, m.nascimento > 0, `= ${m.nascimento}`);
+    checa(`${k}: nasceuEm no passado`, Date.parse(m.nasceuEm) <= Date.now(), `= ${m.nasceuEm}`);
+    checa(`${k}: medidoEm no passado`, m.medidoEm <= Date.now() + 60_000);
+    checa(`${k}: transferências >= 0`, m.transferencias >= 0, `= ${m.transferencias}`);
+    const enderecos = m.donos.map((d) => d.endereco);
+    checa(`${k}: sem dono duplicado`, enderecos.length === new Set(enderecos).size);
+    checa(
+      `${k}: endereço zero fora da lista`,
+      !enderecos.includes("0x0000000000000000000000000000000000000000"),
+      "queima não é dono",
+    );
+    // A soma de `hoje` é a concentração, e a conta tem de fechar — é o número
+    // que o painel usa, e ele não pode divergir da lista que o explica.
+    const somaHoje = m.donos.reduce((s, d) => s + d.hoje, 0);
+    checa(
+      `${k}: soma de donos.hoje = concentração`,
+      Math.abs(somaHoje - m.concentracao) < 1e-6,
+      `soma ${somaHoje.toFixed(6)}, gravado ${m.concentracao.toFixed(6)}`,
+    );
+    for (const d of m.donos) {
+      checa(`${k}: dono.hoje 0..1`, d.hoje >= -1e-9 && d.hoje <= 1.0001, `= ${d.hoje}`);
+      // `recebeu` acima de 1 NÃO é erro: o valor é histórico e o supply que o
+      // divide é o de hoje, então moeda que queimou parte da emissão passa de
+      // 100% — a BASED dá 141,87%. Ver o comentário em `lib/detentores.ts`.
+      // O teto largo aqui separa "moeda deflacionária" de "conta furada".
+      checa(`${k}: dono.recebeu >= 0`, d.recebeu >= 0, `= ${d.recebeu}`);
+      checa(`${k}: dono.recebeu abaixo de 10x o supply`, d.recebeu < 10, `= ${d.recebeu}`);
+    }
+  }
+} else console.log("  (ausente)");
+
 // ---- garimpo
 const gar = await ler<{
   geradoEm: number; universo: number; semSerie: number;

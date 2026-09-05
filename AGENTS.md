@@ -10,9 +10,14 @@ Radar de tokens de pump-and-dump. Lê quem segura o supply na blockchain, como a
 posições estão montadas no perpétuo, e em que ponto do ciclo cada moeda está.
 
 **Tudo vem de fonte pública e sem nenhuma chave de API.** Nós RPC públicos da BNB
-Chain, Base e Ethereum; DexScreener para o mercado à vista; `www.binance.com`
+Chain, Base e Ethereum; Blockscout para os logs antigos da Ethereum e da Base;
+DexScreener para o mercado à vista; `www.binance.com`
 para o perpétuo; Gate para as duas coisas que a Binance não expõe por REST;
 FRED para liquidez dos bancos centrais.
+
+A frase "sem nenhuma chave" é restrição de projeto e não descrição. Ela já
+recusou o Etherscan, que resolveria a Ethereum e cobraria pela BSC e pela Base —
+o Blockscout resolve as mesmas duas de graça e sem cadastro.
 
 O `README.md` conta a história de cada decisão com os números que a sustentam.
 Este arquivo é o mapa para trabalhar no código.
@@ -174,6 +179,7 @@ retrato seguinte fechá-la com a hora certa.
 | arquivo | responsabilidade |
 |---|---|
 | `lib/onchain.ts` | JSON-RPC: saldos, logs, supply, bloco de nascimento. Sabe qual nó serve o quê |
+| `lib/explorador.ts` | o Blockscout como fonte de log, **sem chave**, na Ethereum e na Base. Uma requisição por mil eventos onde o nó pedia centenas de faixas. A BSC não tem instância gratuita, e por que está escrito lá |
 | `lib/watchlist.ts` | as moedas, com contrato e carteiras mapeadas. **Cada entrada tem a justificativa da identificação** |
 | `lib/lifecycle.ts` | estágio do ciclo (`lerVida`) e o viés (`lerVies`) |
 | `lib/motor.ts` | "ainda existe quem empurre esta moeda?" — quatro testes |
@@ -194,7 +200,7 @@ retrato seguinte fechá-la com a hora certa.
 |---|---|---|
 | `data/panorama.json` | o retrato completo, ~70 moedas | `npm run panorama` |
 | `data/historico-AAAA-MM.jsonl` | uma linha por moeda por retrato. **É a memória do projeto** | idem |
-| `data/detentores.json` | concentração por moeda | `npm run genese` |
+| `data/detentores.json` | concentração por moeda. **17 das 37 com contrato**, e as 20 que faltam são as da BSC, onde não há explorador gratuito | `npm run genese` |
 | `data/vesting.json` | emissão por moeda | `npm run vesting` |
 | `data/estudos.json` | estudo por moeda | `npm run estudar` |
 | `data/placar.json` | o painel acertou? | `npm run placar` |
@@ -368,6 +374,30 @@ leitura" de "leitura contrária" na SAÍDA e não no descongelamento, e um únic
 retrato mudo bastava para o moedor voltar — doze stops seguidos, −18,6%.
 
 Quando escrever um freio, procure a outra ponta onde a mesma decisão é tomada.
+
+### 8. Janela medida em BLOCOS não é janela de tempo
+
+Bloco não é segundo, e a razão entre os dois muda 27 vezes dentro deste
+repositório: 0,45 s na BNB Chain, 2 s na Base, 12 s na Ethereum. Uma constante em
+blocos vira três janelas diferentes sem que ninguém escolha nenhuma delas.
+
+O `scripts/genese.mts` tinha duas, e as duas estavam erradas de jeitos
+diferentes:
+
+- `JANELA = 20_000` blocos era 2,5h na BSC e 66,7h na Ethereum. A **SYN** tem a
+  primeira transferência 67,49h depois do nascimento — hora e meia fora — e
+  gravava concentração ZERO, que `mapear` trata como resultado legítimo.
+- `ALCANCE = 200_000` blocos tinha ao lado o comentário "pouco mais de um dia na
+  BNB Chain", que é verdade lá e **667 horas na Ethereum**. O texto afirmava o
+  contrário do que o número fazia em duas das três redes.
+
+E o começo da janela é a outra metade do mesmo erro: o nascimento do contrato só
+é o começo da distribuição quando o mint está no deploy, o que é 13 de 17.
+Na **C** a primeira transferência vem **98 dias** depois do contrato existir.
+
+Se a janela é sobre um fenômeno de mercado, ela é de TEMPO e se converte para
+blocos por rede. Se é sobre orçamento de requisição, ela é de blocos — e aí
+escreva ao lado que é orçamento, para ninguém ler o corte como medição.
 
 ---
 

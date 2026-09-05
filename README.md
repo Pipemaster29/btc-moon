@@ -5,7 +5,8 @@ supply na blockchain, como as posições estão montadas no perpétuo, e em que
 ponto do ciclo cada moeda está — com alerta no Telegram quando algo se mexe.
 
 Tudo é lido de fontes públicas, **sem nenhuma chave de API**: nós RPC públicos
-da BNB Chain, Base e Ethereum, o DexScreener para o mercado à vista, e a API de
+da BNB Chain, Base e Ethereum, o Blockscout para os logs antigos da Ethereum e da
+Base, o DexScreener para o mercado à vista, e a API de
 futuros da Binance ao vivo — que parecia bloqueada por região e não estava: a
 recusa é do host `fapi.binance.com`, e `www.binance.com` serve os mesmos
 caminhos normalmente. A Gate entra só para as duas coisas que a Binance não
@@ -113,9 +114,49 @@ cabe em minutos. `npm run genese` faz isso e grava em `data/detentores.json`; o
 motor desconta a concentração antes de julgar a oferta, e o viés de compra deixa
 de sair em moeda com dono.
 
-Medido até agora: JCT 99,9% · CAP 84,5% · ZAMA 70,6% · HEMI 53,1% · MORPHO 51,6%
-· PORTAL 8,5%. Só rodava na BNB Chain antes — a Ethereum entrou junto com os nós
-de arquivo consertados.
+### A janela estava no lugar errado, e a medição custava horas
+
+O método funcionava e quase ninguém tinha sido medido: **7 moedas de 37 com
+contrato**, porque uma janela de gênese sem filtro anda de 500 em 500 blocos e o
+nó entrega uma faixa a cada 1,5 a 3,4 segundos — 302 requisições e até dezessete
+minutos por moeda. O `lib/explorador.ts` lê a mesma janela pelo Blockscout, sem
+chave, em **uma requisição por mil eventos**: a BTW saiu de ~302 requisições e
+sete minutos para **1 requisição e 0,3 segundo**. Só na Ethereum e na Base — a
+BSC não tem instância gratuita, e isso foi verificado antes de ser afirmado
+(o Etherscan cobra pelas duas redes, o Routescan não serve a 56, e os nós
+públicos param em 10 mil blocos ou pedem token).
+
+Com a leitura barata, o defeito da janela ficou visível. Ela era de **20.000
+blocos**, e blocos não são tempo: os mesmos 20 mil são 2,5h na BNB Chain e 66,7h
+na Ethereum. E ela começava no NASCIMENTO DO CONTRATO, que só é o começo da
+distribuição quando o mint está na transação de deploy. Medido nas 17 moedas de
+Ethereum e Base:
+
+| atraso entre nascer e a 1ª transferência | moedas |
+|---|---|
+| 0,00h — o mint veio no deploy | 13 |
+| 13,20h | H |
+| **67,49h** | SYN |
+| ~110h (4,6 dias) | HEI |
+| **2.349h (98 dias)** | C |
+
+A SYN caía 1,5 hora fora de uma janela de 66,7h. E o script não reclamava: ele
+grava concentração ZERO como resultado legítimo, então a leitura falhada e a
+leitura "ninguém tem pedaço grande" viravam o mesmo número.
+
+A janela agora é de **72 horas contadas do primeiro evento**, e o primeiro evento
+custa uma requisição — o Blockscout devolve em ordem crescente, então a primeira
+página começa nele por mais larga que seja a faixa.
+
+Resultado: **17 moedas medidas em vez de 7**, e três leituras que existiam
+estavam erradas. A C saiu de 0% para **29,0%**; a SYN e a HEI liam zero por
+janela curta demais.
+
+Medido até agora: BTW 100,0% · JCT 99,9% · CAP 84,5% · ZAMA 70,6% · MORPHO 51,5%
+· C 29,0% · VVV 28,6% · POWER 21,8% · HEMI 12,1%. As 20 moedas da BSC continuam
+sem medição enquanto não houver fonte de log gratuita para aquela rede, e a
+janela delas é a de 2,5h que o orçamento de requisições paga — o que é pior, e
+está escrito no código como pior.
 
 ## Parado ou saindo
 
