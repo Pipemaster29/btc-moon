@@ -129,7 +129,7 @@ const det = await ler<{
     string,
     {
       chain: string; nascimento: number; nasceuEm: string; transferencias: number;
-      faixasPerdidas: number; concentracao: number; medidoEm: number;
+      faixasPerdidas: number; ancorada: boolean; concentracao: number; medidoEm: number;
       donos: { endereco: string; recebeu: number; hoje: number; contrato: boolean }[];
     }
   >;
@@ -142,6 +142,15 @@ if (det) {
     checa(`${k}: nasceuEm no passado`, Date.parse(m.nasceuEm) <= Date.now(), `= ${m.nasceuEm}`);
     checa(`${k}: medidoEm no passado`, m.medidoEm <= Date.now() + 60_000);
     checa(`${k}: transferências >= 0`, m.transferencias >= 0, `= ${m.transferencias}`);
+    // Linha sem leitura não pode existir: `mapear` recusa gravar quando a
+    // varredura falhou inteira. Se uma aparecer, o arquivo tem lixo de uma
+    // versão anterior, e o painel lê esse lixo como concentração medida.
+    checa(
+      `${k}: não é varredura vazia com faixas perdidas`,
+      !(m.transferencias === 0 && m.faixasPerdidas > 0),
+      `${m.transferencias} transferências, ${m.faixasPerdidas} faixas perdidas`,
+    );
+    checa(`${k}: ancorada é booleano`, typeof m.ancorada === "boolean", `= ${m.ancorada}`);
     const enderecos = m.donos.map((d) => d.endereco);
     checa(`${k}: sem dono duplicado`, enderecos.length === new Set(enderecos).size);
     checa(

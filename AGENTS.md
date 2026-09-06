@@ -200,7 +200,7 @@ retrato seguinte fechá-la com a hora certa.
 |---|---|---|
 | `data/panorama.json` | o retrato completo, ~70 moedas | `npm run panorama` |
 | `data/historico-AAAA-MM.jsonl` | uma linha por moeda por retrato. **É a memória do projeto** | idem |
-| `data/detentores.json` | concentração por moeda. **17 das 37 com contrato**, e as 20 que faltam são as da BSC, onde não há explorador gratuito | `npm run genese` |
+| `data/detentores.json` | concentração por moeda. **17 medidas de 37 com contrato**, todas de Ethereum e Base. As 20 da BSC não têm fonte de log: 15 de 16 varridas em 06/09 perderam as 41 faixas da janela | `npm run genese` |
 | `data/vesting.json` | emissão por moeda | `npm run vesting` |
 | `data/estudos.json` | estudo por moeda | `npm run estudar` |
 | `data/placar.json` | o painel acertou? | `npm run placar` |
@@ -313,6 +313,14 @@ O modo de falha que este projeto mais teme. Casos reais:
   Toda varredura mais funda devolvia nada, sem avisar.
 - `concentracaoDe` devolvia **ZERO** quando a janela de gênese estava vazia. A C
   tinha 23% do supply em contratos e o painel lia "concentração zero".
+- O lote da BSC de 06/09: 16 moedas varridas, **15 com as 41 faixas da janela
+  falhando** e nada lido — não é lentidão, é que o nó de log da BNB Chain guarda
+  desde 2025-11-10 e a gênese delas é anterior. O script gravava as 16 como
+  `concentracao: 0`. Hoje `mapear` **não grava linha** quando a varredura não
+  leu, e a 16ª (CYS, que leu UMA transferência e nenhuma faixa perdida, passando
+  pelos dois guards) é barrada pela âncora: **zero sem âncora não é medição**,
+  porque a janela sem explorador são 2,5h do nascimento e 4 das 17 moedas com
+  âncora mintam depois disso.
 - `change24h` vinha só do DexScreener, então **39 das 71 moedas** gravavam
   exatamente zero — e a trava de venda dependia desse número.
 

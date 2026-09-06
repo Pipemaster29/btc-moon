@@ -64,6 +64,18 @@ export interface Detentores {
   transferencias: number;
   /** Faixas de log que falharam: acima de zero, a leitura está incompleta. */
   faixasPerdidas: number;
+  /**
+   * A janela começou no PRIMEIRO EVENTO, e não no nascimento do contrato.
+   *
+   * Só é verdade onde o explorador alcança (Ethereum e Base). Na BSC a janela
+   * são as 2,5h que o orçamento de requisições paga, contadas do nascimento — e
+   * 4 das 17 moedas medidas com âncora mintam DEPOIS disso, uma delas 98 dias
+   * depois. Então concentração zero sem âncora não separa "ninguém pegou pedaço
+   * grande" de "a distribuição acontece fora da janela", e `concentracaoDe`
+   * recusa esse caso em vez de entregar um zero que o motor leria como munição
+   * livre. É a armadilha nº 2, e a `ancorada` existe para que ela não volte.
+   */
+  ancorada: boolean;
   donos: DonoDaGenese[];
   /**
    * Fração do supply que os donos da gênese ainda seguram, somada.
@@ -129,5 +141,12 @@ export async function concentracaoDe(symbol: string): Promise<number | null> {
   // voltar, quem responde é `npm run vesting`, que procura a emissão na vida
   // toda.
   if (d.transferencias === 0) return null;
+  // ZERO SEM ÂNCORA NÃO É MEDIÇÃO. O lote da BSC de 06/09 mostrou o buraco que
+  // faltava: 16 moedas varridas, 15 com as 41 faixas falhando (essas o guard
+  // acima já barra) e a CYS com UMA transferência e ZERO faixas perdidas. Ela
+  // passava pelos dois guards e entregava concentração 0,0% ao motor, que lê
+  // isso como munição intacta — o caminho exato do JCT. A janela dela são 2,5h
+  // contadas do nascimento, e 4 das 17 moedas com âncora mintam depois disso.
+  if (d.concentracao === 0 && !d.ancorada) return null;
   return d.concentracao;
 }

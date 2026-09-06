@@ -171,10 +171,22 @@ segurava: com o alcance maior, a C ia de 29,0% para 0,1% e a VVV de 28,6% para
 informação a mais, não substituição.
 
 Medido: BTW 100,0% · JCT 99,9% · CAP 84,5% · ZAMA 70,6% · MORPHO 51,5% · C 29,0%
-· VVV 28,6% · PORTAL 24,7% · POWER 21,8% · HEMI 12,1% · e sete em 0,0%. As 20
-moedas da BSC continuam sem medição enquanto não houver fonte de log gratuita
-para aquela rede, e a janela delas é a de 2,5h que o orçamento de requisições
-paga — o que é pior, e está escrito no código como pior.
+· VVV 28,6% · PORTAL 24,7% · POWER 21,8% · HEMI 12,1% · e sete em 0,0%.
+
+### As 20 da BSC não são lentas, são impossíveis
+
+Eu supunha que a BSC ficaria com uma leitura pior. Rodei as 16 para medir quanto
+pior, e o resultado foi outro: **em 15 delas as 41 faixas da janela falharam** e
+nada foi lido. Não é o nó devagar — é o nó de log da BNB Chain guardando desde
+2025-11-10, com a gênese dessas moedas antes disso. É a mesma falha de 41 de 41
+que o repositório já registrava na AKE, agora medida na lista inteira.
+
+O script gravava as 16 como `concentracao: 0`. **Hoje ele não grava linha
+nenhuma** quando a varredura não leu: zero gravado é pior que ausência, porque a
+moeda passa a parecer medida. E a 16ª — a CYS, que leu UMA transferência com
+zero faixas perdidas e passava pelos dois guards existentes — é barrada por um
+terceiro: **zero sem âncora não é medição**. A janela sem explorador são 2,5h
+contadas do nascimento, e 4 das 17 moedas com âncora mintam depois disso.
 
 ## Parado ou saindo
 

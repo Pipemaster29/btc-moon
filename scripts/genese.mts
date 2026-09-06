@@ -107,12 +107,17 @@ const JANELA_HORAS = 72;
  * que a medição pede, e não há como fechar essa distância pelo nó: 72h da BSC
  * são 576 mil blocos, ou 1.152 faixas, ou mais de meia hora por moeda.
  *
- * FICA ESCRITO QUE ISTO É ORÇAMENTO E NÃO MEDIÇÃO. Se a proporção da Ethereum e
- * da Base valer para a BSC, uma janela de 2,5h ancorada no nascimento perde as
- * moedas que mintam tarde — foram 4 em 17 lá, e as 20 moedas da BSC estão
- * expostas ao mesmo erro sem que possamos vê-lo. Enquanto não houver fonte de
- * log gratuita para a BSC, a concentração dessas moedas é uma leitura pior, e
- * dizer isso é melhor do que deixar o zero parecer resultado.
+ * FICA ESCRITO QUE ISTO É ORÇAMENTO E NÃO MEDIÇÃO — e o lote de 06/09 mostrou
+ * que nem o orçamento resolve. Rodadas 16 moedas da BSC: em **15 delas as 41
+ * faixas da janela FALHARAM** e nada foi lido; a 16ª (CYS) leu uma transferência
+ * só. Não é lentidão, é ausência de fonte: o nó de log da BNB Chain guarda desde
+ * 2025-11-10 e a gênese dessas moedas é anterior — a mesma falha de 41 de 41 que
+ * o AGENTS.md já registrava na AKE, agora medida na lista inteira.
+ *
+ * Então a janela da BSC continua aqui porque ela vale para moeda nascida depois
+ * daquela data, e nada mais. Enquanto não houver fonte de log gratuita para
+ * aquela rede, essas moedas ficam SEM concentração — e `mapear` não grava linha
+ * nenhuma quando a varredura não leu, porque zero gravado é pior que ausência.
  */
 const JANELA_SEM_EXPLORADOR = 20_000;
 
@@ -205,11 +210,12 @@ async function janelaDe(
   token: WatchedToken,
   nascimento: number,
   head: number,
-): Promise<{ inicio: number; janela: number; descricao: string }> {
+): Promise<{ inicio: number; janela: number; ancorada: boolean; descricao: string }> {
   if (!temExplorador(token.chain)) {
     return {
       inicio: nascimento,
       janela: JANELA_SEM_EXPLORADOR,
+      ancorada: false,
       descricao: "a partir do nascimento — SEM ÂNCORA, o explorador não alcança esta rede",
     };
   }
@@ -222,6 +228,7 @@ async function janelaDe(
     return {
       inicio: nascimento,
       janela,
+      ancorada: false,
       descricao: `a partir do nascimento — SEM ÂNCORA, a sonda do 1º evento não terminou${
         sonda?.porque ? ` (${sonda.porque})` : ""
       }`,
@@ -235,19 +242,21 @@ async function janelaDe(
     return {
       inicio: nascimento,
       janela,
+      ancorada: false,
       descricao:
         "ATENÇÃO: nenhuma transferência desde o nascimento — este contrato não é o que guarda o supply",
     };
   }
 
   if (sonda.bloco === nascimento) {
-    return { inicio: nascimento, janela, descricao: "a partir do nascimento (o mint veio no deploy)" };
+    return { inicio: nascimento, janela, ancorada: true, descricao: "a partir do nascimento (o mint veio no deploy)" };
   }
 
   const atraso = ((sonda.bloco - nascimento) * CHAINS[token.chain].secondsPerBlock) / 3600;
   return {
     inicio: sonda.bloco,
     janela,
+    ancorada: true,
     descricao: `a partir do 1º evento, ${atraso.toFixed(1)}h após o nascimento`,
   };
 }
@@ -273,7 +282,7 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
 
   // ONDE A JANELA COMEÇA. O nascimento do contrato só é o começo da distribuição
   // quando o mint está na transação de deploy, e isso é 13 de 17 e não 17 de 17.
-  const { inicio, janela, descricao } = await janelaDe(token, nascimento, head);
+  const { inicio, janela, ancorada, descricao } = await janelaDe(token, nascimento, head);
   const { transfers, failed } = await scanTransfers({
     chain: token.chain,
     token: token.contract,
@@ -285,6 +294,24 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
   console.log(
     `${transfers.length} transferências em ${horas.toFixed(1)}h ${descricao} · ${failed} faixas falharam`,
   );
+
+  // VARREDURA QUE NÃO LEU NADA NÃO VIRA LINHA NO ARQUIVO.
+  //
+  // Zero transferências COM faixas perdidas é "não consegui", e gravar isso como
+  // `concentracao: 0` é a armadilha nº 2 escrita em disco. Medido no lote da BSC
+  // de 06/09: 16 moedas varridas, e em 15 delas as 41 faixas da gênese falharam
+  // — as mesmas 41 de 41 que o AGENTS.md já registrava na AKE. O nó de log da
+  // BNB Chain guarda desde 2025-11-10, e a gênese dessas moedas é anterior.
+  //
+  // Nenhuma delas tinha o que dizer, e as 16 linhas de zero que iam para o
+  // arquivo só serviriam para a moeda parecer medida.
+  if (transfers.length === 0 && failed > 0) {
+    console.log(
+      `${token.symbol}: NÃO MEDIDA — as ${failed} faixas da janela falharam e nada foi lido. ` +
+        `Não é concentração zero, é leitura que não aconteceu, e não vai para o arquivo.`,
+    );
+    return null;
+  }
 
   // Saldo líquido de cada endereço no fim da janela: recebeu menos enviou.
   const liquido = new Map<string, number>();
@@ -309,7 +336,8 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
     return {
       symbol: token.symbol, chain: token.chain, nascimento,
       nasceuEm: quando.toISOString(), transferencias: transfers.length,
-      faixasPerdidas: failed, donos: [], concentracao: 0, medidoEm: Date.now(),
+      faixasPerdidas: failed, ancorada, donos: [], concentracao: 0,
+      medidoEm: Date.now(),
     };
   }
 
@@ -464,7 +492,7 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
   return {
     symbol: token.symbol, chain: token.chain, nascimento,
     nasceuEm: quando.toISOString(), transferencias: transfers.length,
-    faixasPerdidas: failed, donos, concentracao: aindaTem / supply,
+    faixasPerdidas: failed, ancorada, donos, concentracao: aindaTem / supply,
     medidoEm: Date.now(),
   };
 }
