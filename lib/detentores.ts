@@ -87,8 +87,8 @@ export interface Arquivo {
  * há amostra para isso. Ele separa os casos que a medição mostrou serem
  * qualitativamente diferentes. Com a janela ancorada no primeiro evento, as 17
  * moedas de Ethereum e Base leem: BTW 100,0% · JCT 99,9% · CAP 84,5% · ZAMA
- * 70,6% · MORPHO 51,5% de um lado; C 29,0% · VVV 28,6% · POWER 21,8% · HEMI
- * 12,1% · e sete em 0% do outro.
+ * 70,6% · MORPHO 51,5% de um lado; C 29,0% · VVV 28,6% · PORTAL 24,7% · POWER
+ * 21,8% · HEMI 12,1% · e sete em 0,0% do outro.
  */
 export const CONCENTRADA = 0.5;
 

@@ -132,16 +132,43 @@ const SALTOS = 2;
  *
  * Era `200_000` blocos, e o comentário que o justificava dizia "pouco mais de um
  * dia na BNB Chain" — o que é verdade lá e só lá. Os mesmos 200 mil blocos são
- * 111 horas na Base e **667 horas, vinte e sete dias, na Ethereum**. O rastro
- * saía da distribuição e entrava no mercado sem que nada no código dissesse, e
- * o texto ao lado afirmava o contrário do que o número fazia em duas das três
- * redes.
+ * 111 horas na Base e **667 horas, vinte e sete dias, na Ethereum**.
  *
- * Vinte e cinco horas é o que o comentário antigo dizia que estava fazendo, e
- * agora é o que ele faz nas três. O custo não muda: a varredura do salto é
- * FILTRADA por endereço e anda de 5.000 ou 10.000 blocos por vez.
+ * MINHA PRIMEIRA CORREÇÃO FOI PIOR QUE O DEFEITO, e fica escrito porque quase
+ * passou. Eu troquei os 200 mil blocos por 25 horas, que era o que o comentário
+ * dizia estar fazendo, e rodei o lote: o **JCT caiu de 99,9% para 0,0%**. É a
+ * leitura que justifica este arquivo inteiro — seis endereços com 99,9% do
+ * supply e o painel emitindo COMPRA — e eu a apaguei consertando um comentário.
+ * O PORTAL caiu junto, de 8,5% para 0,0%.
+ *
+ * Aí eu medi, em vez de deduzir do texto. Quantas horas depois do primeiro
+ * evento os donos de verdade chegam ao corte de 0,5% do supply:
+ *
+ *   JCT      6 endereços     262,6 · 263,4 · 263,6 · 263,7 · 263,9 · 288,8
+ *   PORTAL   4 endereços      20,7 · 161,3 · 188,7 · 194,3
+ *   BASED, RE, DOS, EPIC      nenhum, em 30 dias
+ *
+ * Onze a doze dias. O contrato de passagem do JCT segura o supply por mais de
+ * dez dias antes de distribuir, e 25 horas param dentro do silêncio. As 336h
+ * cobrem os 288,8 com folga, e a folga é barata: o salto é FILTRADO por
+ * endereço e anda de 10 mil blocos por vez na Ethereum, o que dá 11 faixas.
  */
-const ALCANCE_HORAS = 25;
+const ALCANCE_HORAS = 336;
+
+/**
+ * Teto de faixas por salto, que é o que segura a BNB Chain.
+ *
+ * As 336 horas medidas são 100 mil blocos na Ethereum e **2,7 MILHÕES na BSC**,
+ * onde a faixa filtrada é de 5.000: 538 faixas por salto, vezes dois filtros,
+ * vezes dois saltos. É o que travou a varredura da AKE por meia hora sem sair
+ * do lugar.
+ *
+ * Quarenta faixas dão 200 mil blocos na BSC — exatamente o `ALCANCE` antigo, ou
+ * 25 horas — e não chegam a limitar a Ethereum, onde as 336h cabem em 11. Então
+ * o teto é o orçamento e as horas são a medição, e onde os dois brigam o
+ * orçamento ganha e o relatório diz que ganhou.
+ */
+const FAIXAS_POR_SALTO = 40;
 
 /** Só entra na lista quem recebeu pelo menos isto do supply. */
 const CORTE = 0.005;
@@ -287,26 +314,55 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
   }
 
   // Segue o rastro enquanto os donos da gênese estiverem vazios.
+  //
+  // O alcance é o MENOR entre a medição e o orçamento, e o relatório diz qual
+  // dos dois venceu: onde o orçamento vence, um rastro que morre pode ser
+  // "não há mais ninguém" ou "acabou o dinheiro antes de chegar lá".
+  const alcancePedido = emBlocos(token.chain, ALCANCE_HORAS);
+  const alcanceQueCabe = FAIXAS_POR_SALTO * config.maxLogSpan;
+  const alcance = Math.min(alcancePedido, alcanceQueCabe);
+  if (alcance < alcancePedido) {
+    console.log(
+      `  rastro limitado pelo orçamento: ${((alcance * config.secondsPerBlock) / 3600).toFixed(0)}h ` +
+        `das ${ALCANCE_HORAS}h que a medição pede`,
+    );
+  }
+  //
+  // E SEGUIR O RASTRO NÃO PODE DIMINUIR A CONCENTRAÇÃO. O laço trocava o nível
+  // atual pelo seguinte sem comparar, e um nível que dispersa apagava um nível
+  // que segurava. Apareceu quando o alcance passou de 25h para 336h e o rastro
+  // começou a alcançar o que antes não alcançava:
+  //
+  //   C     29,0% → 0,1%    os donos da gênese seguram 29% HOJE, e o nível
+  //   VVV   28,6% → 0,0%    seguinte, para onde parte foi, segura quase nada
+  //
+  // O corte de 0,3 que decide "chegamos" tinha a C em 0,29: hora e meia de
+  // margem outra vez, do outro lado. Trinta e nove por cento de supply nas mãos
+  // de quatro contratos é um fato medido; o nível seguinte é informação a mais,
+  // não substituição. Então o laço guarda o MAIOR nível e não o último.
+  const quantoSeguram = async (lista: [string, number][]): Promise<number> => {
+    const enderecos = lista.map(([a]) => a);
+    const saldo = await balancesOf(token.chain, token.contract, enderecos);
+    return enderecos.reduce((s2, a) => s2 + toUnits(saldo.get(a) ?? BigInt(0), info.decimals), 0);
+  };
+
   const vistos = new Set(candidatos.map(([a]) => a));
+  let melhor = candidatos;
+  let melhorSaldo = await quantoSeguram(candidatos);
   for (let salto = 1; salto <= SALTOS; salto++) {
     const origens = candidatos.map(([a]) => a);
-    const saldoAtual = await balancesOf(token.chain, token.contract, origens);
-    const guardado = origens.reduce(
-      (s2, a) => s2 + toUnits(saldoAtual.get(a) ?? BigInt(0), info.decimals),
-      0,
-    );
 
     // Se ainda seguram o supply, chegamos. Se esvaziaram, o dono está adiante.
-    if (guardado / supply >= 0.3) break;
+    if (melhorSaldo / supply >= 0.3) break;
 
     const { transfers: saidas } = await scanTransfers({
       chain: token.chain,
       token: token.contract,
       // Do INÍCIO DA JANELA, não do nascimento: onde o mint vem tarde, contar a
       // partir do nascimento gastaria o alcance inteiro antes de a distribuição
-      // começar. Na HEI são 110 horas de blocos vazios contra 25 de alcance.
+      // começar. Na C são 98 dias de blocos vazios antes do primeiro evento.
       fromBlock: inicio,
-      toBlock: Math.min(inicio + emBlocos(token.chain, ALCANCE_HORAS), head),
+      toBlock: Math.min(inicio + alcance, head),
       involving: origens,
     });
 
@@ -363,9 +419,21 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
     if (proximos.length === 0) break;
     for (const [a] of proximos) vistos.add(a);
     candidatos = proximos;
-    console.log(`salto ${salto}: ${proximos.length} endereços receberam do nível anterior`);
+
+    const saldoDoNivel = await quantoSeguram(proximos);
+    const venceu = saldoDoNivel > melhorSaldo;
+    if (venceu) {
+      melhor = proximos;
+      melhorSaldo = saldoDoNivel;
+    }
+    console.log(
+      `salto ${salto}: ${proximos.length} endereços receberam do nível anterior · ` +
+        `seguram ${((saldoDoNivel / supply) * 100).toFixed(1)}% hoje` +
+        (venceu ? "" : `, menos que o nível anterior (${((melhorSaldo / supply) * 100).toFixed(1)}%) — fica o anterior`),
+    );
   }
 
+  candidatos = melhor;
   const enderecos = candidatos.map(([a]) => a);
   const [agora, gas] = await Promise.all([
     balancesOf(token.chain, token.contract, enderecos),

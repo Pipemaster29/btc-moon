@@ -148,15 +148,33 @@ A janela agora é de **72 horas contadas do primeiro evento**, e o primeiro even
 custa uma requisição — o Blockscout devolve em ordem crescente, então a primeira
 página começa nele por mais larga que seja a faixa.
 
-Resultado: **17 moedas medidas em vez de 7**, e três leituras que existiam
-estavam erradas. A C saiu de 0% para **29,0%**; a SYN e a HEI liam zero por
-janela curta demais.
+Resultado: **17 moedas medidas em vez de 7**, e a C saiu de 0% para **29,0%**.
 
-Medido até agora: BTW 100,0% · JCT 99,9% · CAP 84,5% · ZAMA 70,6% · MORPHO 51,5%
-· C 29,0% · VVV 28,6% · POWER 21,8% · HEMI 12,1%. As 20 moedas da BSC continuam
-sem medição enquanto não houver fonte de log gratuita para aquela rede, e a
-janela delas é a de 2,5h que o orçamento de requisições paga — o que é pior, e
-está escrito no código como pior.
+### E a primeira correção quase apagou a medição que sustenta tudo
+
+O rastro que segue o supply do contrato de passagem até a carteira real tinha o
+mesmo defeito de unidade: `ALCANCE = 200_000` blocos, com o comentário "pouco
+mais de um dia na BNB Chain" ao lado — e 667 horas na Ethereum. Troquei por 25
+horas, o que o comentário dizia, rodei o lote, e o **JCT caiu de 99,9% para
+0,0%**. É a leitura que justifica o módulo inteiro.
+
+Aí eu medi em vez de deduzir do texto. Quantas horas depois do primeiro evento
+os donos de verdade chegam ao corte de 0,5% do supply: no JCT, **262,6 a 288,8
+horas** — o contrato de passagem segura o supply por onze dias antes de
+distribuir. O alcance agora é de 336h onde cabe, limitado a 40 faixas por salto
+onde não cabe (a BSC, onde 336h seriam 538 faixas por salto).
+
+E o rastro deixou de poder DIMINUIR a concentração. O laço trocava o nível atual
+pelo seguinte sem comparar, então um nível que dispersa apagava um nível que
+segurava: com o alcance maior, a C ia de 29,0% para 0,1% e a VVV de 28,6% para
+0,0%. O que os donos da gênese seguram hoje é um fato medido; o nível seguinte é
+informação a mais, não substituição.
+
+Medido: BTW 100,0% · JCT 99,9% · CAP 84,5% · ZAMA 70,6% · MORPHO 51,5% · C 29,0%
+· VVV 28,6% · PORTAL 24,7% · POWER 21,8% · HEMI 12,1% · e sete em 0,0%. As 20
+moedas da BSC continuam sem medição enquanto não houver fonte de log gratuita
+para aquela rede, e a janela delas é a de 2,5h que o orçamento de requisições
+paga — o que é pior, e está escrito no código como pior.
 
 ## Parado ou saindo
 

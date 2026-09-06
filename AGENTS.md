@@ -391,6 +391,12 @@ diferentes:
   BNB Chain", que é verdade lá e **667 horas na Ethereum**. O texto afirmava o
   contrário do que o número fazia em duas das três redes.
 
+**E consertar pelo comentário em vez de pela medição foi pior que o defeito.** Eu
+troquei os 200 mil blocos pelas 25 horas que o texto dizia, e o **JCT caiu de
+99,9% para 0,0%** — a leitura que justifica o módulo inteiro. Medido depois: os
+seis donos do JCT só chegam ao corte entre **262,6 e 288,8 horas**. O comentário
+estava errado, o número estava certo por acidente, e o certo era medir os dois.
+
 E o começo da janela é a outra metade do mesmo erro: o nascimento do contrato só
 é o começo da distribuição quando o mint está no deploy, o que é 13 de 17.
 Na **C** a primeira transferência vem **98 dias** depois do contrato existir.
