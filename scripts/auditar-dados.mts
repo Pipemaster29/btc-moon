@@ -84,11 +84,22 @@ if (c) {
       `máx ${c.quedaMaxima}, hoje ${quedaHoje}`);
     checa("exposição de pico 0..1", (c.maiorExposicao ?? 0) >= 0 && (c.maiorExposicao ?? 0) <= 1,
       `= ${c.maiorExposicao}`);
-    // O teto de risco agregado é uma PROMESSA da documentação, e o pico medido é
-    // a prova de que ela foi cumprida. Uma folga pequena porque o risco é somado
-    // antes de a posição existir.
-    checa("risco de pico dentro do teto de 25%", (c.maiorRiscoAberto ?? 0) <= 0.2501,
-      `= ${c.maiorRiscoAberto}`);
+    // O TETO DE 25% É CONFERIDO NA ABERTURA, e o pico medido pode passar dele
+    // sem nenhuma call o ter furado — o que este teste precisou aprender quando
+    // o risco passou a ser medido de onde a posição ESTÁ e não de onde ela
+    // entrou (ver `riscoDaqui` em lib/carteira.ts).
+    //
+    // Uma comprada a 100 com stop em 75 que subiu para 115 tem 120% da margem a
+    // devolver, não 75%: o ganho não realizado já entrou no patrimônio e o stop
+    // continua onde estava. Os dois sobem juntos, e a fração passa do teto.
+    // Medido no retrato de 08/09: 26,9%.
+    //
+    // A FOLGA NÃO PODE SER LARGA, senão o teste deixa de proteger. Metade acima
+    // do teto é o corte: cabe o lucro não realizado de um livro inteiro e ainda
+    // reprova se alguém voltar a somar risco nominal sem teto nenhum, ou se o
+    // teto parar de ser conferido na abertura.
+    checa("risco de pico dentro do teto de 25% mais o lucro não realizado",
+      (c.maiorRiscoAberto ?? 0) <= 0.375, `= ${c.maiorRiscoAberto}`);
     const curva = c.curva ?? [];
     checa("curva ordenada no tempo", curva.every((p, i) => i === 0 || curva[i - 1].t <= p.t));
     checa("curva sem patrimônio negativo", curva.every((p) => p.patrimonio >= 0));
@@ -236,6 +247,42 @@ if (gar) {
   );
   checa("ordenado pela mediana medida", ordenado);
 } else console.log("  (ausente)");
+
+// ---- aferição
+//
+// A tabela de faixas do `lib/garimpo.ts` é o que ORDENA a lista inteira, e ela
+// está fixa no código. Este arquivo é o carimbo de quando ela foi conferida
+// contra uma medição nova — sem ele, o número que ordena a atenção envelhece em
+// silêncio, que é o que o próprio `aferir-garimpo` avisa no topo.
+const afe = await ler<{
+  geradoEm: number; moedas: number; horizonteDias: number; referencia: number;
+  piorDesvio: number; monotonica: boolean;
+  dia: { de: number; n: number; mediana: number; aFavor: number; moedas: number }[];
+  semana: { de: number; n: number; mediana: number; aFavor: number; moedas: number }[];
+}>("data/afericao.json");
+console.log("aferição:");
+if (afe) {
+  checa("geradoEm no passado", afe.geradoEm <= Date.now() + 60_000, `(${new Date(afe.geradoEm).toISOString()})`);
+  // TRINTA DIAS é o corte, e é generoso: a janela da medição são 200 dias de
+  // velas, então ela anda devagar. O que não pode é ninguém saber a idade.
+  const dias = (Date.now() - afe.geradoEm) / 86_400_000;
+  checa("conferida nos últimos 30 dias", dias <= 30, `há ${dias.toFixed(0)} dias`);
+  checa("horizonte de 7 dias", afe.horizonteDias === 7, `= ${afe.horizonteDias}`);
+  checa("referência finita e negativa", Number.isFinite(afe.referencia) && afe.referencia < 0, `= ${afe.referencia}`);
+  // A AFIRMAÇÃO CENTRAL DO GARIMPO: quanto mais subiu, pior o desfecho. Se ela
+  // cair, a tabela deixou de descrever o mundo e nenhum ajuste de mediana
+  // conserta isso — a lista passa a ordenar por uma régua que não vale mais.
+  checa("monotônica: faixa mais alta, desfecho pior", afe.monotonica === true);
+  checa("desvio da tabela viva abaixo de 5 p.p.", afe.piorDesvio <= 0.05, `= ${(afe.piorDesvio * 100).toFixed(1)} p.p.`);
+  for (const [nome, linhas] of [["dia", afe.dia], ["semana", afe.semana]] as const) {
+    checa(`${nome}: tem faixas`, linhas.length > 0, `= ${linhas.length}`);
+    for (const l of linhas) {
+      checa(`${nome} ≥${l.de}: mediana negativa`, l.mediana < 0, `= ${l.mediana}`);
+      checa(`${nome} ≥${l.de}: amostra >= 30`, l.n >= 30, `n = ${l.n}`);
+      checa(`${nome} ≥${l.de}: concordância <= total`, l.aFavor <= l.moedas && l.moedas > 0, `= ${l.aFavor}/${l.moedas}`);
+    }
+  }
+} else console.log("  (ausente — rode npm run aferir-garimpo)");
 
 console.log(falhas === 0 ? "\nTUDO OK" : `\n${falhas} FALHAS`);
 

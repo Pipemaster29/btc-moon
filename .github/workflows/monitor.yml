@@ -235,6 +235,40 @@ jobs:
             # para reencontrar a mesma lista.
             npm run garimpar || echo "garimpo falhou, seguindo"
 
+            # A AFERIÇÃO, UMA VEZ POR DIA — não a cada retrato.
+            #
+            # Ela é quem confere se a tabela de faixas fixa em `lib/garimpo.ts`
+            # ainda descreve o mundo. Essa tabela ORDENA a lista inteira do
+            # garimpo, e o próprio `aferir-garimpo` avisa no topo que "uma tabela
+            # colada num arquivo envelhece em silêncio, que é o pior modo de
+            # falha possível para um número que ordena decisão". Até agora ele
+            # imprimia no terminal de quem o rodasse à mão e ia embora; agora
+            # grava `data/afericao.json`, e a tela mostra a data ao lado da lista.
+            #
+            # UMA VEZ POR DIA E NÃO MAIS: são duas requisições por símbolo sobre
+            # os 528 perpétuos — mais de mil no total, contra as ~570 do garimpo
+            # — e a janela que ela mede são 200 DIAS de velas diárias. Ela anda
+            # devagar por construção: rodá-la a cada retrato gastaria orçamento
+            # da Binance para remedir a mesma coisa. Vinte horas e não vinte e
+            # quatro para não depender de a execução cair sempre no mesmo
+            # horário, que é justamente o que o agendador do GitHub não garante.
+            #
+            # A IDADE VEM DE DENTRO DO ARQUIVO, e não do `mtime` dele. O git não
+            # guarda data de modificação: o runner clona o repositório do zero a
+            # cada execução, então TODO arquivo aparece como recém-escrito. Um
+            # `find -mmin +1200` aqui nunca casaria e a aferição nunca rodaria —
+            # calada, que é o modo de falha que este projeto mais teme. O
+            # `geradoEm` de dentro do JSON é a única data verdadeira.
+            #
+            # Arquivo ausente ou ilegível cai no `else` e RODA, que é o certo:
+            # "não tenho aferição" é o caso mais forte para medir, não o mais
+            # fraco.
+            if node -e "const a=require('./data/afericao.json'); process.exit(Date.now() - a.geradoEm > 20*3600e3 ? 1 : 0)" 2>/dev/null; then
+              echo "aferição conferida há menos de 20 h, pulando"
+            else
+              npm run aferir-garimpo || echo "aferição falhou, seguindo"
+            fi
+
             # A AUDITORIA RODA ANTES DO COMMIT e o resultado vai para o log.
             #
             # Ela existe porque um arquivo de `data/` gerado por uma versão

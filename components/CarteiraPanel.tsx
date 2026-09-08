@@ -152,6 +152,63 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
         </div>
       </div>
 
+      {/* O GIRO, que não estava na tela e por isso o maior defeito da carteira
+          passou seis dias invisível. Ela declara stop de 25%, alvo de 40% e
+          prazo de 14 dias, e a posição mediana vivia TRÊS HORAS — o alvo, o
+          prazo e a liquidação nunca dispararam uma única vez em 36 saídas.
+          Retorno, acertos e motivo de saída não denunciam isso; a mediana de
+          vida da posição, sim. É o número que teria pegado o defeito no dia. */}
+      {c.medianaHoras != null && (
+        <div className="grid gap-4 sm:grid-cols-3 mt-4 text-sm border-t border-black/10 dark:border-white/10 pt-4">
+          <div>
+            <p
+              className="text-black/50 dark:text-white/50"
+              title="Mediana, e não média: uma posição de quatro dias no meio de trinta de três horas puxa a média e esconde o giro"
+            >
+              Vida da posição
+            </p>
+            <p className="text-xl font-semibold tabular-nums">
+              {c.medianaHoras >= 48
+                ? `${(c.medianaHoras / 24).toFixed(1)} dias`
+                : `${c.medianaHoras.toFixed(0)} h`}
+            </p>
+            <p className="text-xs text-black/40 dark:text-white/40">
+              mediana · prazo de {PRAZO_DIAS} dias
+            </p>
+          </div>
+          <div>
+            <p
+              className="text-black/50 dark:text-white/50"
+              title="Taxa e escorregada de ida e volta, 0,90% da margem por posição a 3x. Sempre esteve dentro do retorno; o que faltava era somá-lo."
+            >
+              Pago em custo
+            </p>
+            <p className="text-xl font-semibold tabular-nums">{usd(c.custoTotal)}</p>
+            <p className="text-xs text-black/40 dark:text-white/40">
+              {((c.custoTotal / CAPITAL_INICIAL) * 100).toFixed(1)}% do capital inicial
+            </p>
+          </div>
+          <div>
+            <p
+              className="text-black/50 dark:text-white/50"
+              title="Calls que o painel emitiu e a carteira não pegou. Uma carteira que recusa metade das calls e uma que pega todas dão a mesma aparência de painel — e não respondem a mesma pergunta."
+            >
+              Calls recusadas
+            </p>
+            <p className="text-xl font-semibold tabular-nums">
+              {c.recusadas == null
+                ? "—"
+                : c.recusadas.risco + c.recusadas.margem + c.recusadas.caixa + c.recusadas.queimada}
+            </p>
+            <p className="text-xs text-black/40 dark:text-white/40">
+              {c.recusadas == null
+                ? "ainda não está neste retrato"
+                : `${c.recusadas.risco} pelo teto de risco · ${c.recusadas.queimada} por call queimada`}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* O LADO DO RISCO, que faltava inteiro. O painel mostrava retorno,
           acertos e motivo de saída — tudo do lado do ganho — e com isso não dava
           para julgar se o tamanho da aposta está certo. Uma carteira que rende
@@ -203,9 +260,17 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
             </p>
             {/* O número que responde "está conservadora?": se o pico de risco
                 nunca chega perto do teto, quem segura o tamanho não é o teto —
-                é o risco por call. */}
+                é o risco por call. Hoje ele PRENDE, e é o único dos três
+                limites que prende: 480 calls recusadas por ele contra zero pelo
+                teto de margem e zero por falta de caixa.
+
+                E o pico pode PASSAR do teto sem nenhuma call o ter furado: o
+                teto é conferido quando a call abre, e depois disso o lucro não
+                realizado levanta ao mesmo tempo o patrimônio e o que há a
+                devolver até o stop. Dizer "de um teto de 25%" sem o "na
+                abertura" faria o número parecer defeito. */}
             <p className="text-xs text-black/40 dark:text-white/40">
-              de um teto de 25%
+              de um teto de 25% na abertura
               {(c.maiorRiscoAberto ?? 0) < 0.2 && " · o teto nunca prendeu"}
             </p>
           </div>
@@ -380,6 +445,25 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
         parada não pisca: se o preço tocou o stop às 3h e voltou antes do retrato das 6h, a
         posição estava fechada às 3h. Nas 16 posições medidas até aqui, todas as 16
         esconderam movimento entre os retratos — a mediana escondeu 2,1 p.p. e a maior, 5,0.
+      </p>
+
+      {/* O DEFEITO QUE ESTA TELA NÃO MOSTRAVA, escrito onde ele foi consertado.
+          Vale a pena estar aqui e não só no código: quem olhou este painel nos
+          seis dias anteriores viu um número de patrimônio que media outra coisa
+          que não a estratégia descrita logo acima. */}
+      <p className="text-xs text-black/40 dark:text-white/40 mt-3">
+        <strong>O que mudou em 08/09, e o número anterior media outra coisa:</strong> a
+        carteira fechava a posição em qualquer leitura diferente do lado dela — inclusive em{" "}
+        <em>observar</em> (&ldquo;fase sem vantagem medida&rdquo;, 73% das leituras) e em{" "}
+        <em>evitar</em>. As duas dizem que o painel não tem direção, não que ele virou. O
+        efeito: a posição mediana vivia <strong>3 horas</strong>, 7 das 36 saídas duraram
+        menos de uma, a EPIC foi aberta e fechada seis vezes — e o alvo de{" "}
+        {(ALVO * 100).toFixed(0)}%, o prazo de {PRAZO_DIAS} dias e a liquidação{" "}
+        <strong>nunca dispararam uma única vez</strong>. Hoje só o lado oposto e o{" "}
+        <em>evitar</em> fecham; <em>observar</em> deixa a posição correr. A mediana foi para
+        70 horas e o alvo passou a ser alcançável. Isso <strong>não</strong> quer dizer que a
+        carteira ficou melhor: com 6 encerradas contra 38, a diferença de patrimônio é ruído,
+        e o placar continua dizendo que nenhum viés separa da referência.
       </p>
     </section>
   );

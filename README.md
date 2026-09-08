@@ -249,17 +249,113 @@ lembrar que o painel emite treze calls de uma vez num dia normal, e que cripto
 tem dia em que a lista inteira cai 25% junta. Teto de 50% de margem exposta e de
 25% de risco agregado.
 
+**Dos três limites, um decide tudo e dois são enfeite** — e isso só ficou visível
+quando a carteira passou a contar as calls que recusa. Medido: **480 recusas pelo
+teto de risco, zero pelo teto de margem, zero por falta de caixa**, com a margem
+exposta batendo 34% de um teto de 50%. Duas consequências:
+
+- **Ela encolhe a call para caber em vez de recusá-la inteira.** Sobrando 0,8% de
+  orçamento e chegando uma call de força 2, que pede 2%, ela entra com 40% do
+  tamanho e arrisca exatamente os 0,8% que havia. O teto de 25% continua valendo
+  ao pé da letra; o que muda é que ele passa a ser gasto em vez de sobrar. O piso
+  é um terço do que a força pede — abaixo disso a call vira sombra de si mesma,
+  paga o mesmo pedágio e pesa como posição inteira na estatística. Sem piso, a
+  carteira abre posição de US$ 1,19.
+- **O risco agregado é medido de onde a posição ESTÁ, não de onde ela entrou.** O
+  nominal errava para os dois lados: uma comprada a 100 com stop em 75 que subiu
+  para 115 tem 120% da margem a devolver, não 75% — o ganho não realizado já está
+  no patrimônio e o stop continua onde estava —, e uma que caiu para 90 tem 45%.
+  Chamar as duas de 75% era otimismo num caso e recusa de call sem motivo no
+  outro. Efeito colateral que precisa ser dito antes de parecer defeito: o pico
+  medido pode **passar** dos 25% sem nenhuma call ter furado o teto, porque o
+  teto é conferido na abertura e o lucro posterior levanta os dois lados da
+  fração.
+
+Mais calls entrando não deu mais dinheiro — deu menos, monotonicamente, quanto
+mais entram. É o que se espera de uma estratégia sem vantagem medida, e o placar
+continua dizendo que nenhum viés separa da referência. O que a mudança compra não
+é retorno: é a carteira gastando o orçamento que publica, em vez de deixar 480
+calls na mesa e relatar o resultado de um subconjunto arbitrário delas.
+
 **Quando sai — cinco gatilhos, o primeiro que acontecer:**
 
 | gatilho | por quê |
 |---|---|
-| **o painel mudou de ideia** | a saída principal. A carteira segue as calls, então sai quando a call sai — sem isso ela mediria as minhas regras de saída, não o painel |
+| **o painel mudou de ideia** | a saída principal. A carteira segue as calls, então sai quando a call sai — sem isso ela mediria as minhas regras de saída, não o painel. Mas "mudou de ideia" ≠ "calou": ver logo abaixo |
 | **stop em −25% de preço** | perto de três desvios de UM DIA: o `npm run estudar` mede volatilidade diária de 7% a 10% nestas moedas |
 | **alvo em +40% de preço** | o dobro da assimetria que sustenta a regra de compra: pequena e derretida sobe mais de 20% em 21,0% das semanas |
 | **prazo de 14 dias** | as duas regras direcionais foram medidas em janelas de 7 e 14 dias; depois disso segurar deixa de ser seguir a leitura |
 | **liquidação** | a corretora não espera a regra de saída. A 3x ela fica em −32,9% de preço, depois do stop — mas um salto pode pular o stop e cair direto aqui |
 
-**Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.** Era
+### O maior defeito que esta carteira teve: ela media o piscar da própria leitura
+
+Durante seis dias ela publicou um número de patrimônio que não media a estratégia
+descrita acima. O motivo cabe numa linha: **ela fechava a posição em qualquer
+leitura diferente do lado dela.** E o painel emite quatro leituras, das quais só
+duas são direção:
+
+| leitura | quanto | o que ela diz |
+|---|---|---|
+| `observar` | **73%** | *"fase sem vantagem medida — esta fase não se separou da referência o bastante para sustentar um lado"* |
+| `long` / `short` | 19% | direção |
+| `evitar` | 6% | *"movimento em curso — o painel não tem o que dizer hoje, nem a favor nem contra"* |
+| nulo | 2% | não houve leitura |
+
+Três das quatro dizem, com as próprias palavras, que **não há leitura**. Nenhuma
+delas diz que a leitura virou. Fechar posição nelas não é seguir a call: é sair
+porque quem estava falando ficou quieto.
+
+O que isso fez, medido nas 36 posições encerradas até 08/09:
+
+| | |
+|---|---|
+| vida da posição mediana | **3,0 horas** |
+| saídas em menos de um dia | 29 de 36 |
+| saídas em menos de uma hora | 7 |
+| a EPIC, comprada | aberta e fechada **6 vezes** — uma delas durou 14 minutos |
+| saídas por "painel mudou" | 34 de 36 |
+| vezes que o alvo de +40% disparou | **0** |
+| vezes que o prazo de 14 dias disparou | **0** |
+| vezes que a liquidação disparou | **0** |
+
+Uma carteira que declara stop de 25%, alvo de 40% e prazo de 14 dias, e cuja
+posição mediana vive três horas, não está medindo nenhuma das três coisas que
+declara. E cada ida e volta paga 0,90% da margem em taxa e escorregada — a
+carteira pagou isso 36 vezes, na maior parte para medir a própria oscilação.
+
+**A raiz não era nova, e é o que dói.** O arquivo já tinha a regra certa escrita
+— *"ausência de leitura não é leitura contrária"* — e a aplicava ao `null`, que é
+1,7% dos casos. Os 79% em que a mesma ausência tem outro nome passavam inteiros.
+É a armadilha nº 7 pela terceira vez no mesmo par de decisões, e a cadência de 22
+minutos que este documento comemora mais acima multiplicou as chances de piscar
+sem que ninguém remedisse a carteira depois.
+
+**O conserto, e por que ele não foi o óbvio.** O óbvio seria só o lado oposto
+fechar. Mas em seis dias, 73 moedas e 3.943 emissões direcionais, o painel fez
+**ZERO** reversões de long para short — então essa regra faria a saída por
+"painel mudou" nunca disparar, e a carteira deixaria de seguir as calls para
+medir as regras de saída deste repositório. O corte que sobra separa as duas
+leituras mudas pelo que cada uma afirma: `observar` fala da REGRA (nada mudou, o
+painel nunca teve o que dizer sobre esta fase) e não fecha; `evitar` fala da
+MOEDA de hoje (a alta é forçada, há movimento em curso) e fecha.
+
+| regra de saída | patrimônio | giro | posição mediana | saídas em <1h |
+|---|---|---|---|---|
+| qualquer leitura (o que era) | US$ 964 | 39 | 3,7 h | 9 |
+| **oposto + evitar** (hoje) | US$ 974 | 6 | 70,0 h | 0 |
+| só o oposto | US$ 958 | 4 | 95,5 h | 0 |
+
+**A coluna do patrimônio não é o argumento**, e seria desonesto vendê-la como se
+fosse. Duas razões: com 6 posições encerradas contra 39, dez dólares são ruído; e
+ela **anda entre duas execuções**, porque as posições abertas são marcadas com o
+preço de agora e as velas são buscadas na hora — rodar de novo move qualquer das
+três linhas. As outras quatro colunas contam eventos, não dinheiro, e essas não
+se mexem. `npm run carteira` imprime as três regras toda vez, para que o dia em
+que a amostra decidir de outro jeito seja decidido na mesma tabela.
+
+### Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos
+
+Era
 o maior otimismo desta conta, e não era custo nem execução: era o mapa de saída
 simplesmente não enxergar o meio. Os retratos saem de duas a cinco vezes por dia
 e os gatilhos só eram testados nas pontas, então uma moeda que caísse 30% às 3h
@@ -368,6 +464,59 @@ Então o garimpo é uma **fila de investigação**, e a página diz isso em cima
 tabela. Nenhuma moeda entra na análise completa sozinha: o próximo passo é
 sempre `npm run descobrir`, porque identificar o token errado é o erro mais caro
 daqui e já foi cometido duas vezes.
+
+### A tabela acima está fixa no código, e agora ela tem data
+
+Aquelas medianas não são calculadas ao vivo: são números escritos em
+`lib/garimpo.ts`, e são eles que **ordenam a lista inteira** — a mediana medida
+da faixa é o critério de atenção do garimpo. O `aferir-garimpo` sempre soube
+refazer a medição e o topo dele já avisava que *"uma tabela colada num arquivo
+envelhece em silêncio, que é o pior modo de falha possível para um número que
+ordena decisão"*. Só que ele imprimia no terminal de quem o rodasse à mão e ia
+embora: nada guardava o resultado e nada comparava.
+
+Agora ele grava `data/afericao.json`, confere a tabela viva contra a medição nova
+e reprova em duas condições — desvio acima de 5 p.p. em qualquer faixa, ou perda
+da **monotonicidade**, que é a afirmação central do garimpo (faixa mais alta,
+desfecho pior). O workflow o roda uma vez por dia, e o painel mostra a data ao
+lado da lista, pela mesma razão que o placar mostra a dele: sem a idade do lado,
+o número mais velho da tela se passa pelo mais novo.
+
+Conferida em 08/09, sobre 528 perpétuos:
+
+| faixa | na tabela | medido agora | desvio |
+| --- | --- | --- | --- |
+| +100% num dia | −51,32% | −50,68% | +0,6 p.p. |
+| 50–100% num dia | −22,00% | −21,88% | +0,1 p.p. |
+| 25–50% num dia | −12,68% | −12,69% | −0,0 p.p. |
+| +200% na semana | −42,01% | −41,35% | +0,7 p.p. |
+| 100–200% na semana | −18,75% | −18,39% | +0,4 p.p. |
+
+Maior desvio 0,7 p.p., monotônica nas duas escalas: a tabela de 04/09 continua
+valendo. O ponto não é que ela passou — é que agora existe o teste que ela pode
+reprovar.
+
+### O garimpo escondia as moedas sobre as quais o painel podia falar
+
+O filtro da tela era `!naLista`: mostrava só o que ainda não estava na watchlist.
+A pergunta é legítima — "o que apareceu que eu não conhecia?" — mas jogar a
+resposta contrária no lixo apagava as linhas mais acionáveis. Medido no retrato
+de 08/09: **sete dos 43 achados sumiam por isso**, e entre eles a BULLA na faixa
+"+200% na semana", a segunda mais severa da tabela inteira.
+
+A diferença entre a BULLA e uma linha nova não é pequena. Ela tem contrato
+identificado, leitura on-chain de concentração e emissão, estágio de ciclo e
+histórico de preço — é a única linha da seção sobre a qual o painel **pode**
+afirmar alguma coisa, e era a única que não aparecia. Hoje ela fica numa faixa
+própria, marcada como confirmação e não como achado novo, com link para o
+retrato completo.
+
+Junto disso, quatro colunas que o garimpo já pagava em requisição e jogava fora:
+volume de 24h (o corte de US$ 500 mil é de existência de mercado — sem a coluna
+não dá para ver de que lado dele a moeda está), funding, queda desde o pico ("na
+máxima" e "já devolveu 60%" são a mesma faixa de alta e situações opostas) e a
+contagem do que não coube na tela, que antes era cortada em silêncio em dez
+linhas com 26 elegíveis.
 
 ## Identificar a moeda certa
 
@@ -494,7 +643,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
 | `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
-| `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
+| `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero — e a conferência da tabela fixa em `lib/garimpo.ts` contra ela, gravada em `data/afericao.json` |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |

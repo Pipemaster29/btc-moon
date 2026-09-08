@@ -51,6 +51,83 @@
 export type Lado = "long" | "short";
 export type Motivo = "painel mudou" | "stop" | "alvo" | "prazo" | "liquidada";
 
+/**
+ * QUAL LEITURA DO PAINEL TEM O DIREITO DE FECHAR UMA POSIÇÃO.
+ *
+ * O painel emite quatro coisas, e só duas delas são direção. `lerVies` chama as
+ * outras duas pelo nome do que elas são: "observar" é *"Fase sem vantagem
+ * medida — esta fase não se separou da referência o bastante para sustentar um
+ * lado"*, e "evitar" é *"Movimento em curso — o painel não tem o que dizer hoje
+ * ... nem a favor nem contra"*, com a frase *"isto é sobre QUANDO, não sobre
+ * direção"* escrita dentro dele. As duas dizem, com todas as letras, que não há
+ * leitura. Nenhuma das duas diz que a leitura virou.
+ *
+ * A CARTEIRA FECHAVA NAS DUAS, e o custo disso é a maior distorção já medida
+ * neste arquivo. Sobre as 22.858 emissões desde 02/09:
+ *
+ *   observar   16.766   73%     ← fechava posição
+ *   long        2.935   13%
+ *   evitar      1.395    6%     ← fechava posição
+ *   short       1.372    6%
+ *   null          390    2%     ← já não fechava
+ *
+ * O efeito, medido nas 36 posições encerradas: mediana de 3,6 HORAS por
+ * posição, 29 das 36 saíram em menos de um dia, 7 em menos de uma hora. A EPIC
+ * foi aberta e fechada SEIS vezes, uma delas durando catorze minutos; a B
+ * short, cinco; a HEI e a CLO, quatro cada. Trinta e quatro das 36 saídas foram
+ * "painel mudou", e o alvo de +40%, o prazo de 14 dias e a liquidação NUNCA
+ * dispararam uma única vez — as regras que este arquivo publica eram letra
+ * morta, porque a posição nunca vivia o bastante para chegar a nenhuma delas.
+ *
+ * E não era de graça: cada ida e volta custa 0,45% de margem por lado, 0,90%
+ * somados a 3x. A carteira pagou isso 36 vezes para medir, na maior parte,
+ * o piscar da própria leitura.
+ *
+ * A RAIZ NÃO É NOVA, É A ARMADILHA Nº 7 DO AGENTS.md: um freio que existe numa
+ * metade do caminho não existe. Este arquivo JÁ tinha a regra certa escrita —
+ * *"ausência de leitura não é leitura contrária"* — e a aplicava a `vies ===
+ * null`, que são 1,7% dos casos. Os 79% em que a mesma ausência tem outro nome
+ * passavam inteiros.
+ *
+ * O piso de emissões piorou isso sem ninguém notar: quando os retratos saíam de
+ * 38 em 38 minutos a leitura piscava menos vezes por dia. A cadência de 22
+ * minutos, que o projeto mediu e comemorou, multiplicou as chances de piscar —
+ * e a carteira, que ninguém remediu depois daquela mudança, virou uma máquina
+ * de girar.
+ *
+ *   "qualquer"            o que era: qualquer leitura ≠ lado fecha
+ *   "direcional"          só o lado OPOSTO fecha; sem leitura, a posição corre
+ *                         para o stop, o alvo ou o prazo
+ *   "direcional+evitar"   o meio-termo: o oposto fecha, e "evitar" também,
+ *                         tratando o aviso de squeeze como motivo de sair
+ *
+ * Os três rodam lado a lado em `npm run carteira`, porque a escolha entre eles
+ * é uma medição e não uma opinião — e porque o dia em que ela mudar tem de
+ * aparecer na mesma tabela em que ela foi feita.
+ */
+export type SaidaPainel = "qualquer" | "direcional" | "direcional+evitar";
+
+/**
+ * A leitura de agora contraria a posição a ponto de fechá-la?
+ *
+ * MORA NUMA FUNÇÃO SÓ porque a mesma pergunta é feita em DOIS lugares — a saída
+ * por "painel mudou" e o descongelamento da call queimada — e a armadilha nº 7
+ * é exatamente a de responder as duas de jeitos diferentes. Foi o que aconteceu
+ * com o `null`: a saída o tratava como ausência e o descongelamento o tratava
+ * como leitura contrária, e um único retrato mudo bastava para o moedor voltar.
+ * Agora as duas pontas chamam esta função e não há como divergirem.
+ */
+function contraria(lido: string | null | undefined, lado: Lado, saida: SaidaPainel): boolean {
+  // Ausência de leitura nunca contraria nada. Vale para a moeda que sumiu do
+  // retrato e para a que veio com viés nulo: as duas dizem "não houve leitura".
+  if (lido == null) return false;
+  if (lido === lado) return false;
+  if (saida === "qualquer") return true;
+  // O lado oposto é a única coisa que o painel diz que é DIREÇÃO.
+  if (lido === "long" || lido === "short") return true;
+  return saida === "direcional+evitar" && lido === "evitar";
+}
+
 export interface Aberta {
   symbol: string;
   lado: Lado;
@@ -156,6 +233,16 @@ export interface Fechada {
   resultado: number;
   /** Quantos dias a posição ficou de pé. */
   dias: number;
+  /**
+   * O que a ida e a volta custaram em taxa e escorregada, em DÓLARES.
+   *
+   * Existe porque o custo era invisível: ele entrava embutido no `retorno` e
+   * nunca aparecia como número próprio, então o preço de girar a carteira não
+   * podia ser somado nem posto na tela. A 3x são 0,90% da margem por posição
+   * encerrada, e a carteira encerrou 36 delas em seis dias — a maior parte por
+   * um piscar de leitura que este arquivo agora não trata mais como reversão.
+   */
+  custo: number;
 }
 
 export interface Carteira {
@@ -207,6 +294,41 @@ export interface Carteira {
   maiorRiscoAberto: number;
   /** O patrimônio ao longo do tempo, um ponto por hora no máximo. */
   curva: { t: number; patrimonio: number }[];
+
+  /**
+   * O CUSTO DO GIRO, em dólares, somando abertas e encerradas.
+   *
+   * Não é um número novo na conta — ele sempre esteve dentro do `retorno` de
+   * cada posição. É um número novo na TELA, e por um motivo específico: o painel
+   * mostrava retorno, acertos e motivo de saída, e nada disso denuncia uma
+   * carteira que está pagando pedágio para entrar e sair da mesma moeda seis
+   * vezes. O defeito só ficou visível quando alguém somou.
+   */
+  custoTotal: number;
+  /**
+   * AS CALLS QUE O PAINEL EMITIU E A CARTEIRA NÃO PEGOU, por motivo.
+   *
+   * Não existia, e a ausência dela é o modo de falha que o AGENTS.md chama de
+   * pior: o silêncio. A carteira recusava call por teto de risco, por teto de
+   * margem, por falta de caixa e por call queimada — e a tela mostrava só o que
+   * ela pegou. Uma carteira que recusa metade das calls e uma que pega todas
+   * dão a MESMA aparência de painel, e "quanto eu teria hoje se tivesse
+   * seguido" não é a mesma pergunta nos dois casos.
+   *
+   * É também o número que responde se o teto de risco está apertado demais: com
+   * o pico colado nos 25% o tempo todo, é ele — e não o tamanho por call — que
+   * decide o livro, e quantas calls ele recusa é a medida de quanto isso custa.
+   */
+  recusadas: { risco: number; margem: number; caixa: number; queimada: number };
+  /**
+   * Quanto vive a posição mediana, em HORAS.
+   *
+   * O número que expõe a distância entre o que a carteira diz fazer e o que ela
+   * faz: com stop de 25% de preço, alvo de 40% e prazo de 14 dias declarados, a
+   * mediana era de 3,0 HORAS — e o alvo e o prazo nunca dispararam. É a métrica
+   * que teria pegado o defeito no dia em que ele apareceu, e ela não existia.
+   */
+  medianaHoras: number | null;
 }
 
 // ------------------------------------------------------------------ as regras
@@ -294,6 +416,58 @@ export const EXPOSICAO_MAXIMA = 0.5;
 export const RISCO_TOTAL_MAXIMO = 0.25;
 
 /**
+ * O quanto uma call pode ENCOLHER para caber no que sobrou do orçamento de risco,
+ * antes de ser recusada.
+ *
+ * O TETO RECUSAVA A CALL INTEIRA EM VEZ DE PEGAR O QUE CABIA, e isso é
+ * desperdício medido, não teórico. Sobre o histórico: **480 recusas pelo teto de
+ * risco**, contra ZERO pelo teto de margem e ZERO por falta de caixa. Dos três
+ * limites que este arquivo publica, um decide tudo e dois são enfeite — a margem
+ * exposta bate 33,7% de um teto de 50%, ou seja dois terços do teto de margem
+ * nunca foram tocados.
+ *
+ * O caso concreto: sobram 0,8% de orçamento e chega uma call de força 2, que
+ * pede 2%. A versão anterior recusava, e os 0,8% ficavam parados até alguma
+ * posição fechar. Agora ela entra com 40% do tamanho, arriscando exatamente os
+ * 0,8% que havia. O teto de 25% continua valendo ao pé da letra — o que muda é
+ * que ele passa a ser gasto em vez de sobrar.
+ *
+ * A ORDEM POR FORÇA É O QUE TORNA ISSO SEGURO, e ela já existia: o lote é
+ * percorrido da call mais forte para a mais fraca, então quem encolhe é sempre a
+ * última a chegar, e nunca uma leitura forte para dar lugar a uma fraca.
+ *
+ * O PISO EXISTE PARA NÃO ABRIR SOMBRA DE POSIÇÃO. Uma call que entra com 5% do
+ * tamanho que a força dela pede não é aquela call: ela paga os mesmos 0,90% de
+ * margem em taxa de ida e volta, ocupa a moeda contra uma entrada de verdade
+ * mais tarde, e entra na estatística com o mesmo peso de uma posição inteira.
+ *
+ * MEDIDO SOBRE O HISTÓRICO, e o piso muda o livro de verdade:
+ *
+ *   piso    patrimônio   queda máx   abertas   recusas por risco   menor posição
+ *   1       US$ 982,15     −4,2%        14           480              US$ 12,99
+ *   1/2     US$ 976,63     −4,6%        15           383              US$  7,05
+ *   1/3     US$ 974,35     −4,7%        16           337              US$  7,50   ← hoje
+ *   sem     US$ 966,29     −4,8%        17           136              US$  1,19
+ *
+ * "piso 1" é a régua anterior — recusar em vez de encolher. Sem piso nenhum a
+ * carteira abre posição de UM DÓLAR E DEZENOVE, que é o caso que o piso existe
+ * para barrar. Um terço é escolha, não medição: as três linhas do meio estão
+ * dentro do ruído de seis posições encerradas, e dizer que a medição escolheu
+ * uma delas seria inventar. O que a medição escolhe é só o extremo — "sem piso"
+ * abre sombra de posição e está fora.
+ *
+ * E A COLUNA DO PATRIMÔNIO CAI MONOTONICAMENTE CONFORME MAIS CALLS ENTRAM, o
+ * que é preciso dizer em voz alta em vez de deixar para quem for ler a tabela:
+ * pegar mais calls de uma estratégia sem vantagem medida é pegar mais da mesma
+ * perda esperada. É a mesma frase que o comentário de `RISCO_POR_FORCA` já diz
+ * sobre o tamanho, e o placar continua dizendo que nenhum viés separa da
+ * referência. O que esta mudança compra não é retorno: é a carteira gastando o
+ * orçamento de risco que ela publica, em vez de deixar 480 calls na mesa e
+ * relatar um resultado que veio de um subconjunto arbitrário delas.
+ */
+export const FRACAO_MINIMA_DA_CALL = 1 / 3;
+
+/**
  * Onde a posição morre, em variação de PREÇO.
  *
  * De preço, e não de margem: a 3x isto consome 75% da margem, e é dessa conta
@@ -379,6 +553,60 @@ export const ALAVANCAGEM = 3;
 export const MARGEM_MANUTENCAO = 0.005;
 
 /**
+ * Qual leitura do painel fecha a posição. O tipo `SaidaPainel` explica as três.
+ *
+ * A ESCOLHA SAIU DE UM NÚMERO QUE DECIDE SOZINHO, e não do gosto: em seis dias,
+ * 73 moedas e 3.943 emissões direcionais, o painel fez **ZERO** reversões de
+ * long para short ou de short para long. Nenhuma.
+ *
+ * Isso elimina "direcional" puro, por mais que a semântica o favoreça: sem
+ * reversão direcional, a saída por "painel mudou" simplesmente NUNCA dispara, e
+ * a carteira deixa de seguir as calls para virar "entra na call e sai pelas
+ * minhas regras". O comentário da saída, vinte linhas abaixo, diz por que isso é
+ * inaceitável: *"sem isso a carteira mediria as MINHAS regras de saída, e não o
+ * painel"*. Consertar o giro tirando o painel do mapa de saída não é conserto, é
+ * troca de assunto.
+ *
+ * "direcional+evitar" é o que sobra, e ele separa as duas leituras mudas pelo
+ * que cada uma AFIRMA:
+ *
+ *   "observar"  fala da REGRA, não da moeda de hoje: *"esta fase não se separou
+ *               da referência o bastante para sustentar um lado"*. É a linha de
+ *               base do painel — nada mudou, ele nunca teve o que dizer sobre
+ *               esta fase. Não fecha.
+ *   "evitar"    fala da MOEDA AGORA: *"a alta de X% é forçada"*, *"movimento em
+ *               curso"*. Alguma coisa aconteceu com esta moeda hoje, e o painel
+ *               está avisando. Fecha.
+ *
+ * Medido sobre o histórico real com o caminho de velas de 1h, escala 1x, no
+ * retrato de 08/09:
+ *
+ *   regra                patrim.   giro   mediana da posição   <1h   saídas
+ *   qualquer (era)       US$ 964     39          3,7 h          9    painel 37, stop 2
+ *   direcional+evitar    US$ 974      6         70,0 h          0    painel 4, stop 2
+ *   direcional           US$ 958      4         95,5 h          0    stop 3, ALVO 1
+ *
+ * A COLUNA DO PATRIMÔNIO ANDA ENTRE DUAS EXECUÇÕES e não deve ser citada como
+ * número fixo: as posições abertas são marcadas com o preço de agora, e as velas
+ * de 1h são buscadas na hora. Rodando de novo hoje ela varia alguns dólares em
+ * qualquer das três linhas. As outras quatro colunas não variam — elas contam
+ * eventos, não dinheiro.
+ *
+ * E ELA NÃO É O ARGUMENTO, o que é preciso dizer para ninguém ler a tabela ao
+ * contrário: com 6 posições encerradas contra 39, dez dólares são ruído, e
+ * vender isso como resultado seria exatamente o que este projeto não faz. O
+ * argumento é o resto da tabela. Na régua anterior, o alvo de +40%, o prazo de
+ * 14 dias e a liquidação nunca dispararam UMA VEZ — as três regras existiam no
+ * arquivo e não no mundo, porque a posição mediana morria em horas. (Na coluna
+ * "direcional" o alvo aparece pela primeira vez: n=1, +119% de margem.)
+ *
+ * As três continuam rodando lado a lado em `npm run carteira`, porque no dia em
+ * que a amostra crescer o bastante para decidir de outro jeito, ela decide na
+ * mesma tabela em que foi decidida hoje.
+ */
+export const SAIDA: SaidaPainel = "direcional+evitar";
+
+/**
  * Financiamento presumido quando o histórico não gravou a taxa real.
  *
  * As linhas anteriores a 03/09 não têm o campo. Medido nas moedas da lista, a
@@ -420,14 +648,13 @@ interface Estado {
    * quando o viés dela sair daquele lado — aí é call nova, não a mesma.
    */
   queimadas: Map<string, Lado>;
-  /** Multiplicador do orçamento de risco. 1 é a régua publicada. */
-  escala: number;
   /** O maior patrimônio já visto, e a maior queda a partir dele. */
   pico: number;
   quedaMaxima: number;
   maiorExposicao: number;
   maiorRiscoAberto: number;
   curva: { t: number; patrimonio: number }[];
+  recusadas: { risco: number; margem: number; caixa: number; queimada: number };
 }
 
 /**
@@ -455,11 +682,14 @@ function marcar(estado: Estado, quando: number): void {
     }
   }
 
-  const risco = [...estado.abertas.values()].reduce(
-    (s, p) => s + (RISCO_POR_FORCA[p.forca] ?? 0) * estado.escala,
-    0,
-  );
-  if (risco > estado.maiorRiscoAberto) estado.maiorRiscoAberto = risco;
+  // Em dólares e dividido pelo patrimônio DE ENTÃO, pela mesma razão da
+  // exposição logo acima: 25% de uma conta de mil e 25% de uma de seiscentos não
+  // são o mesmo risco, e é a segunda leitura que diz se o teto está prendendo.
+  const risco = [...estado.abertas.values()].reduce((s, p) => s + riscoDaqui(p), 0);
+  if (patrimonio > 0) {
+    const fracao = risco / patrimonio;
+    if (fracao > estado.maiorRiscoAberto) estado.maiorRiscoAberto = fracao;
+  }
 
   // Um ponto por hora no máximo: o motor roda sobre todos os retratos, e são de
   // duas a cinco execuções por hora. Guardar todas engordaria `carteira.json`
@@ -470,6 +700,62 @@ function marcar(estado: Estado, quando: number): void {
   } else {
     ultimo.patrimonio = patrimonio;
   }
+}
+
+/**
+ * Quanto esta posição AINDA pode custar, em dólares, daqui até o stop.
+ *
+ * O TETO DE 25% SOMAVA O RISCO NOMINAL DA ABERTURA, e isso não é o que a conta
+ * carrega. O teto pergunta "quanto o patrimônio cai se TUDO bater no stop
+ * junto?", e a resposta depende de onde cada posição está AGORA, não de onde ela
+ * entrou. O nominal só está certo no instante em que a call abre.
+ *
+ * E ELE ERRA PARA OS DOIS LADOS, o que é o motivo de o conserto não ser
+ * simplesmente "afrouxar o freio". Uma comprada a 100 com stop em 75, a 3x:
+ *
+ *   preço    retorno marcado    o que ainda se perde até o stop
+ *    100          −0,9%              75% da margem   ← o nominal, e ele acerta
+ *    115         +44,1%             120% da margem   ← o teto reservava 75%
+ *     90         −30,9%              45% da margem   ← o teto reservava 75%
+ *
+ * A posição no lucro tem MAIS a devolver, não menos: o ganho não realizado já
+ * está contado no patrimônio, e o stop continua 40% abaixo do preço de hoje.
+ * Chamar isso de 75% era otimismo — o tipo que este projeto caça. A posição no
+ * prejuízo é o contrário: metade do caminho até o stop já foi andada, e reservar
+ * o orçamento inteiro para ela recusava call por risco que a conta não corre
+ * mais.
+ *
+ * NÃO É TEÓRICO: o pico de risco agregado medido é 25,0% de um teto de 25%, ou
+ * seja o freio está encostado o tempo todo e é ele — e não o tamanho por call —
+ * que decide quantas calls entram. Medido sobre o histórico, a troca ADMITIU
+ * calls no saldo: 36 posições encerradas viraram 38.
+ *
+ * A conta é a mesma que a corretora faz: o retorno de agora menos o retorno que
+ * a posição teria no nível do stop, vezes a margem. Ela usa `sobreMargem`, então
+ * carrega o financiamento já pago junto — e no instante da abertura devolve
+ * exatamente `valor × STOP × ALAVANCAGEM`, que é o nominal de antes.
+ *
+ * O QUE ISSO FAZ COM O NÚMERO NA TELA, e é preciso dizer antes que pareça bug: o
+ * pico passa a poder ULTRAPASSAR os 25%, e passa (27% a 29% nas escalas medidas)
+ * sem nenhuma call ter furado o teto. O teto é conferido quando a call ABRE; um
+ * lucro não realizado depois disso levanta o patrimônio e o que há a devolver ao
+ * mesmo tempo. O teto continua sendo o que ele sempre disse ser — um limite de
+ * quanto se aceita comprometer ao entrar —, e não uma promessa sobre o que o
+ * mercado faz com a posição depois.
+ *
+ * O piso em zero é para a posição que já passou do stop sem o retrato ter
+ * fechado (a moeda sumiu do lote, a âncora recusou o caminho): dela não se perde
+ * mais nada por causa do stop, e um número negativo aqui viraria orçamento de
+ * risco inventado para as calls seguintes.
+ */
+function riscoDaqui(p: Aberta): number {
+  const nivel = p.precoEntrada * (p.lado === "long" ? 1 - STOP : 1 + STOP);
+  // A margem isolada é o teto da perda: abaixo de −100% a corretora já fechou.
+  const noStop = Math.max(-1, sobreMargem(p, nivel));
+  const perda = p.valor * (p.retorno - noStop);
+  // `Number.isFinite` e não `> 0` sozinho: NaN fura os dois lados de uma
+  // comparação, e é a armadilha nº 5 do AGENTS.md.
+  return Number.isFinite(perda) && perda > 0 ? perda : 0;
 }
 
 /** Variação do preço a favor da posição, sem alavancagem e sem custo. */
@@ -677,6 +963,9 @@ function fechar(estado: Estado, p: Aberta, preco: number, quando: number, motivo
     funding: p.funding,
     resultado: devolvido - p.valor,
     dias: (quando - p.abertaEm) / 86_400_000,
+    // Cobrado na ABERTURA como parte do retorno (ver a montagem da posição), e
+    // registrado aqui só para poder ser somado. Não é uma cobrança nova.
+    custo: p.valor * 2 * CUSTO * ALAVANCAGEM,
   });
 }
 
@@ -698,18 +987,19 @@ export function rodar(
   comecouEm: number,
   caminho?: Map<string, Passo[]>,
   escala = 1,
+  saida: SaidaPainel = SAIDA,
 ): Carteira {
   const estado: Estado = {
     caixa: CAPITAL_INICIAL,
     abertas: new Map(),
     fechadas: [],
     queimadas: new Map(),
-    escala,
     pico: CAPITAL_INICIAL,
     quedaMaxima: 0,
     maiorExposicao: 0,
     maiorRiscoAberto: 0,
     curva: [],
+    recusadas: { risco: 0, margem: 0, caixa: 0, queimada: 0 },
   };
 
   const uteis = emissoes
@@ -834,18 +1124,17 @@ export function rodar(
       if (varPreco <= -STOP) fechar(estado, p, atual, quando, "stop");
       else if (varPreco >= ALVO) fechar(estado, p, atual, quando, "alvo");
       else if (dias >= PRAZO_DIAS) fechar(estado, p, atual, quando, "prazo");
-      else if (vies.get(p.symbol) !== p.lado) {
-        // O painel mudou de ideia. Esta é a saída principal: a carteira segue as
-        // calls, então ela sai quando a call sai. Sem isso a carteira mediria as
-        // MINHAS regras de saída, e não o painel.
-        //
-        // Mas AUSÊNCIA de leitura não é leitura contrária, e o código tratava as
-        // duas formas de ausência de jeitos opostos: moeda que sumia do lote não
-        // fechava, e moeda presente com viés NULO fechava como "painel mudou".
-        // As duas dizem a mesma coisa — não houve leitura —, e viés nulo não é
-        // raro: 26 das 1.845 emissões de setembro.
-        const lido = vies.get(p.symbol);
-        if (lido != null) fechar(estado, p, atual, quando, "painel mudou");
+      // O painel mudou de ideia. Esta é a saída principal: a carteira segue as
+      // calls, então ela sai quando a call sai. Sem isso a carteira mediria as
+      // MINHAS regras de saída, e não o painel.
+      //
+      // MAS SEGUIR A CALL NÃO É SAIR QUANDO ELA CALA. Quem decide o que conta
+      // como leitura contrária é `contraria`, e o porquê está no comentário do
+      // tipo `SaidaPainel`: "observar" e "evitar" dizem, cada um com a própria
+      // frase, que o painel não tem direção — e tratá-los como reversão fez a
+      // posição mediana viver 3,6 horas e o alvo de +40% nunca disparar.
+      else if (contraria(vies.get(p.symbol), p.lado, saida)) {
+        fechar(estado, p, atual, quando, "painel mudou");
       }
     }
 
@@ -862,11 +1151,17 @@ export function rodar(
     // retrato em que `lerVies` não respondeu bastava para o moedor voltar. Medido
     // com a mesma moeda em queda de −28% por retrato e um retrato sem leitura
     // intercalado: DOZE stops seguidos e −18,6% do patrimônio, contra o único
-    // stop que a trava promete. É a mesma distinção que a saída por "painel
-    // mudou" faz vinte linhas acima — ela só não estava sendo feita aqui.
+    // stop que a trava promete.
+    //
+    // E A PORTA MAIOR CONTINUAVA ABERTA AO LADO DELA: o conserto de cima cobriu
+    // o `null`, que é 1,7% das leituras, e deixou passar "observar", que é 73%.
+    // `"observar" !== "long"` também é verdadeiro, então um único retrato dizendo
+    // "fase sem vantagem medida" — a leitura mais comum do painel, de longe —
+    // descongelava a call que acabou de estopar e o moedor voltava pela outra
+    // porta. É a armadilha nº 7 do AGENTS.md pela segunda vez no mesmo par de
+    // decisões, e é por isso que as duas pontas agora chamam a MESMA função.
     for (const [sym, lado] of estado.queimadas) {
-      const lido = vies.get(sym);
-      if (lido != null && lido !== lado) estado.queimadas.delete(sym);
+      if (contraria(vies.get(sym), lado, saida)) estado.queimadas.delete(sym);
     }
 
     // A FORÇA DECIDE QUEM ENTRA PRIMEIRO, e antes ela não decidia nada.
@@ -895,7 +1190,10 @@ export function rodar(
     for (const e of porForca) {
       if (e.vies !== "long" && e.vies !== "short") continue;
       if (estado.abertas.has(e.s)) continue;
-      if (estado.queimadas.get(e.s) === e.vies) continue;
+      if (estado.queimadas.get(e.s) === e.vies) {
+        estado.recusadas.queimada++;
+        continue;
+      }
 
       // O FREIO DE PREÇO DE LIXO TAMBÉM VALE PARA ABRIR, e não valia — este era
       // o buraco por onde a catástrofe do topo do arquivo continuava passando
@@ -925,26 +1223,40 @@ export function rodar(
       const risco = base * escala;
 
       const total = patrimonio();
-      // A MARGEM QUE ARRISCA `risco` DO PATRIMÔNIO, e a alavancagem entra aqui.
+
+      // O risco já comprometido, EM DÓLARES e medido de onde cada posição está
+      // agora — ver `riscoDaqui`. A call nova entra pelo nominal dela, que é o
+      // que ela de fato arrisca no instante em que abre.
+      const riscoAberto = [...estado.abertas.values()].reduce((soma, a) => soma + riscoDaqui(a), 0);
+      const orcamento = Math.max(0, total * RISCO_TOTAL_MAXIMO - riscoAberto);
+      const pedido = total * risco;
+      // ENCOLHE PARA CABER em vez de recusar inteira — ver `FRACAO_MINIMA_DA_CALL`
+      // para os 480 desperdícios que isto conserta. Abaixo de um terço do
+      // tamanho que a força pede, a call vira sombra de si mesma e é recusada.
+      const concedido = Math.min(pedido, orcamento);
+      if (concedido < pedido * FRACAO_MINIMA_DA_CALL) {
+        estado.recusadas.risco++;
+        continue;
+      }
+
+      // A MARGEM QUE ARRISCA `concedido` DO PATRIMÔNIO, e a alavancagem entra aqui.
       //
       // O stop de 25% é de PREÇO. A 3x ele consome 75% da margem, então para
       // arriscar 1,5% do patrimônio a margem tem de ser 2% — não 6%. Dividir só
       // pelo stop, como antes, triplicaria o risco de cada call sem que nada na
       // tela dissesse isso: é assim que backtest alavancado quebra sem avisar.
-      const alvo = (total * risco) / (STOP * ALAVANCAGEM);
+      const alvo = concedido / (STOP * ALAVANCAGEM);
       const cabe = Math.max(0, total * EXPOSICAO_MAXIMA - expostoAgora());
-
-      // O risco já comprometido, em fração do patrimônio: cada posição aberta
-      // vale o que ela perderia se batesse no stop.
-      const riscoAberto = [...estado.abertas.values()].reduce(
-        (soma, a) => soma + (RISCO_POR_FORCA[a.forca] ?? 0) * escala,
-        0,
-      );
-      if (riscoAberto + risco > RISCO_TOTAL_MAXIMO) continue;
 
       const valor = Math.min(alvo, cabe, estado.caixa);
       // Posição pequena demais é ruído de arredondamento contra custo fixo.
-      if (valor < 1) continue;
+      if (valor < 1) {
+        // Qual teto mordeu, e não só "não coube": os dois têm consertos
+        // diferentes, e um contador que junta os dois não aponta nenhum.
+        if (cabe <= estado.caixa) estado.recusadas.margem++;
+        else estado.recusadas.caixa++;
+        continue;
+      }
 
       estado.caixa -= valor;
       estado.abertas.set(e.s, {
@@ -993,6 +1305,16 @@ function montar(estado: Estado, comecouEm: number, atualizadoEm: number): Cartei
     if (f.retorno > 0) g.acertos++;
   }
 
+  // A mediana, e não a média: uma posição de quatro dias no meio de trinta de
+  // três horas puxa a média para cima e esconde exatamente o que se quer ver.
+  const horas = estado.fechadas.map((f) => f.dias * 24).sort((a, b) => a - b);
+  const medianaHoras =
+    horas.length === 0
+      ? null
+      : horas.length % 2
+        ? horas[(horas.length - 1) / 2]
+        : (horas[horas.length / 2 - 1] + horas[horas.length / 2]) / 2;
+
   return {
     comecouEm,
     atualizadoEm,
@@ -1010,6 +1332,13 @@ function montar(estado: Estado, comecouEm: number, atualizadoEm: number): Cartei
     maiorExposicao: estado.maiorExposicao,
     maiorRiscoAberto: estado.maiorRiscoAberto,
     curva: estado.curva,
+    // As abertas entram porque a ida E a volta são cobradas na abertura, dentro
+    // do `retorno` — a posição já pagou as duas pontas antes de fechar.
+    custoTotal:
+      estado.fechadas.reduce((s, f) => s + f.custo, 0) +
+      abertas.reduce((s, p) => s + p.valor * 2 * CUSTO * ALAVANCAGEM, 0),
+    medianaHoras,
+    recusadas: estado.recusadas,
   };
 }
 

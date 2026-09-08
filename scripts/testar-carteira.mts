@@ -211,6 +211,114 @@ console.log("\n--- a leitura ausente descongelando a call queimada ---");
   );
 }
 
+console.log("\n--- o giro: qual leitura tem o direito de fechar a posição ---");
+{
+  // O DEFEITO QUE MAIS CUSTOU MEDIÇÃO NESTE ARQUIVO, e ele estava em pé até
+  // 08/09. "observar" é 73% das leituras do painel e diz, com todas as letras,
+  // "fase sem vantagem medida — esta fase não se separou da referência". A
+  // carteira fechava a posição nele como se o painel tivesse virado de lado.
+  //
+  // Efeito medido nas 36 posições encerradas até 08/09: mediana de 3,0 HORAS de
+  // vida, 29 das 36 saindo em menos de um dia, 7 em menos de uma hora, a EPIC
+  // aberta e fechada SEIS vezes. O alvo de 40%, o prazo de 14 dias e a
+  // liquidação não dispararam uma única vez — as três regras que este arquivo
+  // publica não existiam no mundo, porque nenhuma posição vivia até elas.
+  const piscando: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 2, fund: 0 },
+    { t: h(1), s: "X", preco: 1.02, vies: "observar", forca: 0, fund: 0 },
+    { t: h(2), s: "X", preco: 1.03, vies: "long", forca: 2, fund: 0 },
+    { t: h(3), s: "X", preco: 1.04, vies: "observar", forca: 0, fund: 0 },
+    { t: h(4), s: "X", preco: 1.05, vies: "long", forca: 2, fund: 0 },
+  ];
+  const antes = rodar(piscando, T0 * 1000, undefined, 1, "qualquer");
+  const agora = rodar(piscando, T0 * 1000);
+  confere(
+    `"observar" não fecha mais a posição (eram ${antes.encerradas} idas e voltas)`,
+    antes.encerradas === 2 && agora.encerradas === 0 && agora.abertas.length === 1,
+    `qualquer: ${antes.encerradas} saídas · hoje: ${agora.encerradas} saídas, ${agora.abertas.length} aberta`,
+  );
+
+  // E o custo do giro, que era invisível: cada ida e volta paga 0,90% da margem
+  // a 3x, e o número não existia em lugar nenhum da carteira.
+  confere(
+    "o custo do giro agora é somado e aparece",
+    antes.custoTotal > agora.custoTotal && agora.custoTotal > 0,
+    `qualquer US$ ${antes.custoTotal.toFixed(2)} · hoje US$ ${agora.custoTotal.toFixed(2)}`,
+  );
+
+  // "evitar" é o outro lado da mesma escolha, e ele FECHA: ao contrário de
+  // "observar", que fala da regra, ele fala da moeda de hoje — "a alta é
+  // forçada", "movimento em curso". Se ele parasse de fechar, a saída por
+  // "painel mudou" nunca mais dispararia, já que reversão direcional de long
+  // para short aconteceu ZERO vez em 3.943 emissões medidas.
+  const comEvitar = rodar(
+    [
+      { t: h(0), s: "X", preco: 1, vies: "long", forca: 2, fund: 0 },
+      { t: h(1), s: "X", preco: 1.02, vies: "evitar", forca: 2, fund: 0 },
+    ],
+    T0 * 1000,
+  );
+  confere(
+    `"evitar" continua fechando — senão o painel sai do mapa de saída`,
+    comEvitar.encerradas === 1 && comEvitar.fechadas[0]?.motivo === "painel mudou",
+    `${comEvitar.encerradas} saída(s) por ${comEvitar.fechadas[0]?.motivo ?? "—"}`,
+  );
+
+  // O MOEDOR PELA OUTRA PORTA. O descongelamento da call queimada tinha o mesmo
+  // buraco que a saída: soltava com `vies !== lado`, e "observar" !== "long".
+  // Um retrato dizendo "observar" — a leitura MAIS COMUM do painel — bastava
+  // para a moeda que acabou de estopar ser recomprada no retrato seguinte.
+  const moedor: Emissao[] = [];
+  let p = 1;
+  for (let i = 0; i < 12; i++) {
+    moedor.push({ t: h(i * 2), s: "X", preco: p, vies: "long", forca: 3, fund: 0 });
+    p *= 0.72;
+    moedor.push({ t: h(i * 2 + 1), s: "X", preco: p, vies: "observar", forca: 0, fund: 0 });
+  }
+  const comObservar = rodar(moedor, T0 * 1000);
+  const antesDoConserto = rodar(moedor, T0 * 1000, undefined, 1, "qualquer");
+  confere(
+    `"observar" não descongela mais a queimada (eram ${antesDoConserto.encerradas} stops)`,
+    comObservar.encerradas === 1,
+    `${comObservar.encerradas} saída(s), US$ ${comObservar.patrimonio.toFixed(2)}`,
+  );
+}
+
+console.log("\n--- o risco agregado medido de onde a posição está ---");
+{
+  // O teto de 25% somava o risco NOMINAL da abertura. Uma comprada a 100 com
+  // stop em 75 que subiu para 115 tem 120% da margem a devolver, não 75% — o
+  // ganho não realizado já está no patrimônio e o stop continua onde estava. E
+  // uma que caiu para 90 tem 45%, não 75%. O nominal errava para os dois lados.
+  const subindo: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    { t: h(1), s: "X", preco: 1.15, vies: "long", forca: 3, fund: 0 },
+  ];
+  const r = rodar(subindo, T0 * 1000);
+  // Com uma posição só, o pico de risco é o dela: 15% de preço a 3x sobre uma
+  // margem dimensionada para arriscar 3% do patrimônio → 3% × (120/75) = 4,8%.
+  const esperado = 0.03 * (1.2 / 0.75);
+  confere(
+    "posição no lucro passa a ocupar MAIS orçamento, não menos",
+    Math.abs(r.maiorRiscoAberto - esperado) < 0.004,
+    `${(r.maiorRiscoAberto * 100).toFixed(2)}% (nominal diria 3,00%)`,
+  );
+
+  // O piso em zero: posição que já passou do stop sem retrato para fechá-la não
+  // vira orçamento de risco negativo para as calls seguintes.
+  const passou: Emissao[] = [
+    { t: h(0), s: "A", preco: 1, vies: "long", forca: 3, fund: 0 },
+    // A some do lote (não há preço novo), então ela não fecha; B chega depois.
+    { t: h(1), s: "B", preco: 1, vies: "long", forca: 3, fund: 0 },
+  ];
+  const semNegativo = rodar(passou, T0 * 1000);
+  confere(
+    "risco agregado nunca fica negativo",
+    semNegativo.maiorRiscoAberto >= 0 && Number.isFinite(semNegativo.maiorRiscoAberto),
+    `${(semNegativo.maiorRiscoAberto * 100).toFixed(2)}%`,
+  );
+}
+
 console.log("\n--- o caminho entre os retratos, com velas ---");
 {
   // Preço nas duas pontas em 1, e no meio ele foi a 0,70 e voltou. Só nas
@@ -385,10 +493,22 @@ console.log("\n--- quem entra quando o orçamento de risco acaba ---");
     depois.fortes === antes.fortes && depois.fracas === antes.fracas,
     `${depois.fortes}/${depois.fracas} vs ${antes.fortes}/${antes.fracas}`,
   );
+  // A TOLERÂNCIA NÃO É FOLGA DE PONTO FLUTUANTE, e chamá-la disso esconderia o
+  // que ela mede. O teto é conferido quando a call ABRE, contra o patrimônio
+  // daquele instante; abrir cobra 0,90% da margem em taxa, o que ENCOLHE o
+  // patrimônio — então o mesmo risco em dólares vira uma fração um pouco maior
+  // quando `marcar` divide pelo patrimônio já descontado. Medido neste caso:
+  // 25,0029% contra 25%, três milésimos de ponto percentual, e as posições saem
+  // decrescentes (40,00 · 39,99 · 39,97 …) exatamente por isso.
+  //
+  // Um milésimo de fração (0,1 p.p.) é o corte: larga o bastante para o custo de
+  // entrada de um lote inteiro, apertada o bastante para reprovar se alguém
+  // voltar a somar risco nominal em vez do risco de agora, que era o defeito
+  // anterior e valia pontos percentuais inteiros.
   confere(
     "o teto de risco agregado é respeitado",
-    depois.risco <= RISCO_TOTAL_MAXIMO + 1e-9,
-    `${(depois.risco * 100).toFixed(1)}% de ${(RISCO_TOTAL_MAXIMO * 100).toFixed(0)}%`,
+    depois.risco <= RISCO_TOTAL_MAXIMO + 1e-3,
+    `${(depois.risco * 100).toFixed(3)}% de ${(RISCO_TOTAL_MAXIMO * 100).toFixed(0)}%`,
   );
 }
 

@@ -453,6 +453,44 @@ async function anotarTamanho(a: Achado): Promise<void> {
  * `vercel.json` pula o build quando só `data/` mudou. A ORDEM das camadas mora
  * em `lib/guardado.ts` e depende do ambiente.
  */
+/**
+ * A AFERIÇÃO GRAVADA: quando a tabela acima foi conferida pela última vez.
+ *
+ * As `FAIXAS_*` são números fixos neste arquivo e são elas que ORDENAM a lista
+ * — a mediana medida da faixa é o critério de atenção do garimpo inteiro. O
+ * `npm run aferir-garimpo` sempre soube refazer essa medição, e o topo dele
+ * avisa que "uma tabela colada num arquivo envelhece em silêncio". Só que ele
+ * imprimia no terminal e ia embora: nada guardava o resultado e nada comparava.
+ *
+ * Agora ele grava `data/afericao.json`, e a tela mostra a data. É a armadilha nº
+ * 6 aplicada aqui: o número tem de vir com a idade dele do lado, senão o mais
+ * velho do painel se passa pelo mais novo.
+ */
+export interface Afericao {
+  geradoEm: number;
+  universo: number;
+  /** Quantas moedas tinham série suficiente para entrar na conta. */
+  moedas: number;
+  horizonteDias: number;
+  /** Mediana de TODAS as observações — é dela que a distância importa. */
+  referencia: number;
+  dia: { de: number; nome: string; n: number; mediana: number; aFavor: number; moedas: number }[];
+  semana: { de: number; nome: string; n: number; mediana: number; aFavor: number; moedas: number }[];
+  /** Maior distância entre a tabela colada e a medição de agora, em fração. */
+  piorDesvio: number;
+  /** A faixa mais alta continua tendo o desfecho pior? É o que sustenta a tabela. */
+  monotonica: boolean;
+}
+
+export async function getAfericao(): Promise<Afericao | null> {
+  const a = await lerGuardado<Afericao>(
+    "afericao.json",
+    (d) => (Array.isArray((d as Afericao)?.dia) ? (d as Afericao) : null),
+    3600,
+  );
+  return a?.dado ?? null;
+}
+
 export async function getGarimpo(): Promise<Garimpo | null> {
   const g = await lerGuardado<Garimpo>(
     "garimpo.json",

@@ -33,8 +33,10 @@
  * Rode com: npm run aferir-garimpo
  */
 
+import { mkdir, writeFile } from "node:fs/promises";
 import { velas } from "../lib/binance";
 import { comLimite } from "../lib/limite";
+import { FAIXAS_DIA, FAIXAS_SEMANA, type Faixa } from "../lib/garimpo";
 
 /** Custo por lado, o mesmo da carteira: 0,05% de taker mais 0,10% de escorregada. */
 const CUSTO = 0.0015;
@@ -137,7 +139,23 @@ function observar(H: number): Obs[] {
   return obs;
 }
 
-function deriva(obs: Obs[], H: number, campo: "alta1" | "alta7", faixas: [string, number, number][]) {
+/** Uma linha da tabela de deriva, do jeito que `lib/garimpo.ts` a consome. */
+interface Linha {
+  /** Piso da alta, em fração — é por ele que a faixa casa com a tabela viva. */
+  de: number;
+  nome: string;
+  n: number;
+  mediana: number;
+  aFavor: number;
+  moedas: number;
+}
+
+function deriva(
+  obs: Obs[],
+  H: number,
+  campo: "alta1" | "alta7",
+  faixas: [string, number, number][],
+): { referencia: number; linhas: Linha[] } {
   const ref = mediana(obs.map((o) => o.fwd));
   console.log(
     `\n=== ${campo === "alta1" ? "alta de UM dia" : "alta de SETE dias"} → retorno ${H} dias à frente ===`,
@@ -146,6 +164,7 @@ function deriva(obs: Obs[], H: number, campo: "alta1" | "alta7", faixas: [string
     `referência (${obs.length.toLocaleString("pt-BR")} observações, ${new Set(obs.map((o) => o.s)).size} moedas): ${pct(ref)}`,
   );
   console.log("faixa                    n      mediana   vs referência   moedas a favor   subiu");
+  const linhas: Linha[] = [];
   for (const [nome, lo, hi] of faixas) {
     const g = obs.filter((o) => o[campo] >= lo && o[campo] < hi);
     if (g.length < 30) {
@@ -172,7 +191,9 @@ function deriva(obs: Obs[], H: number, campo: "alta1" | "alta7", faixas: [string
       `${aFavor}/${meds.length}`.padStart(14),
       ((g.filter((o) => o.fwd > 0).length / g.length) * 100).toFixed(0).padStart(7) + "%",
     );
+    linhas.push({ de: lo, nome, n: g.length, mediana: med, aFavor, moedas: meds.length });
   }
+  return { referencia: ref, linhas };
 }
 
 const FAIXAS_1D: [string, number, number][] = [
@@ -185,10 +206,21 @@ const FAIXAS_7D: [string, number, number][] = [
 ];
 
 console.log("\n──────────────── 1. A DERIVA: o pump é seguido de quê? ────────────────");
+/**
+ * A medição de 7 dias fica GUARDADA, porque é ela que a tabela viva copia.
+ *
+ * Sem isto, este script imprimia no terminal e ia embora — e o topo dele diz,
+ * com todas as letras, que "uma tabela colada num arquivo envelhece em
+ * silêncio, que é o pior modo de falha possível para um número que ordena
+ * decisão". Ele descrevia o problema e não o resolvia: nada comparava a tabela
+ * de `lib/garimpo.ts` com uma medição nova, e a de lá é de 04/09.
+ */
+let aferido: { referencia: number; dia: Linha[]; semana: Linha[] } | null = null;
 for (const H of [7, 14]) {
   const obs = observar(H);
-  deriva(obs, H, "alta1", FAIXAS_1D);
-  deriva(obs, H, "alta7", FAIXAS_7D);
+  const dia = deriva(obs, H, "alta1", FAIXAS_1D);
+  const semana = deriva(obs, H, "alta7", FAIXAS_7D);
+  if (H === 7) aferido = { referencia: dia.referencia, dia: dia.linhas, semana: semana.linhas };
 }
 
 /**
@@ -395,6 +427,95 @@ for (const [n, q] of [
   ["caiu ≥85% do pico", 0.85], ["caiu ≥95% do pico", 0.95],
 ] as const) {
   linha(n, comprarDerretida(q, 14));
+}
+
+// ------------------------------------------- 4. a tabela viva ainda vale?
+
+/**
+ * A TABELA COLADA EM `lib/garimpo.ts`, CONFERIDA CONTRA A MEDIÇÃO DE AGORA.
+ *
+ * Este é o pedaço que faltava para o aviso do topo deste arquivo deixar de ser
+ * só um aviso. `FAIXAS_DIA` e `FAIXAS_SEMANA` são números fixos no código, e
+ * eles ORDENAM a lista que a pessoa olha — a mediana medida da faixa é o
+ * critério de atenção do garimpo inteiro. Um número desses envelhecendo sem
+ * ninguém notar é exatamente a armadilha nº 6: dado velho ao lado de dado novo,
+ * sem carimbo dizendo qual é qual.
+ *
+ * A DERIVA É ESPERADA E NÃO É ERRO. A janela é rolante (200 dias que andam todo
+ * dia) e o universo muda com as listagens da Binance, então a mediana de hoje
+ * nunca vai bater na terceira casa com a de 04/09. O que importa é a ORDEM —
+ * faixa mais alta continua tendo desfecho pior? — e o tamanho do desvio.
+ */
+const LIMITE_DERIVA = 0.05;
+console.log(
+  `\n──────────────── 4. A TABELA VIVA ainda bate com a medição? ────────────────\n` +
+    `os números fixos em lib/garimpo.ts, contra o que foi medido agora`,
+);
+console.log("faixa                  na tabela    medido agora      desvio        n");
+
+let piorDesvio = 0;
+const conferir = (viva: Faixa[], medidas: Linha[]) => {
+  for (const f of viva) {
+    const m = medidas.find((x) => x.de === f.de);
+    if (!m) {
+      console.log(`${f.rotulo.padEnd(20)} ${pct(f.mediana7d).padStart(11)}   (não medida nesta janela)`);
+      continue;
+    }
+    const desvio = m.mediana - f.mediana7d;
+    if (Math.abs(desvio) > piorDesvio) piorDesvio = Math.abs(desvio);
+    console.log(
+      f.rotulo.padEnd(20),
+      pct(f.mediana7d).padStart(11),
+      pct(m.mediana).padStart(15),
+      ((desvio >= 0 ? "+" : "−") + (Math.abs(desvio) * 100).toFixed(1) + " p.p.").padStart(12),
+      String(m.n).padStart(8),
+      Math.abs(desvio) > LIMITE_DERIVA ? "  ← passou de 5 p.p." : "",
+    );
+  }
+};
+if (aferido) {
+  conferir(FAIXAS_DIA, aferido.dia);
+  conferir(FAIXAS_SEMANA, aferido.semana);
+
+  // A MONOTONICIDADE É O QUE SUSTENTA A TABELA, mais do que qualquer número
+  // isolado: o valor do garimpo é "quanto mais subiu, pior o desfecho". Se essa
+  // ordem quebrar, a tabela deixou de descrever o mundo e nenhum ajuste de
+  // mediana conserta isso.
+  const ordenada = (l: Linha[]) =>
+    [...l].sort((a, b) => a.de - b.de).every((x, i, arr) => i === 0 || x.mediana <= arr[i - 1].mediana);
+  const okDia = ordenada(aferido.dia);
+  const okSemana = ordenada(aferido.semana);
+  console.log(
+    `\nmonotônica (faixa mais alta = desfecho pior)?  dia: ${okDia ? "sim" : "NÃO"}  ·  ` +
+      `semana: ${okSemana ? "sim" : "NÃO"}  ·  maior desvio: ${(piorDesvio * 100).toFixed(1)} p.p.`,
+  );
+  if (!okDia || !okSemana || piorDesvio > LIMITE_DERIVA) {
+    console.log(
+      `AVISO: a tabela de lib/garimpo.ts saiu da medição. Atualize FAIXAS_DIA e\n` +
+        `FAIXAS_SEMANA com os números acima, e diga na mensagem de commit o que mudou.`,
+    );
+  }
+
+  await mkdir("data", { recursive: true });
+  await writeFile(
+    "data/afericao.json",
+    `${JSON.stringify(
+      {
+        geradoEm: Date.now(),
+        universo: universo.length,
+        moedas: series.size,
+        horizonteDias: 7,
+        referencia: aferido.referencia,
+        dia: aferido.dia,
+        semana: aferido.semana,
+        piorDesvio,
+        monotonica: okDia && okSemana,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  console.log(`\ndata/afericao.json gravado — é o carimbo de quando a tabela foi conferida`);
 }
 
 console.log(

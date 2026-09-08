@@ -5,7 +5,7 @@ import { getPlacar } from "@/lib/placar";
 import { getCarteira, remarcar } from "@/lib/carteira";
 import CarteiraPanel from "@/components/CarteiraPanel";
 import GarimpoPanel from "@/components/GarimpoPanel";
-import { getGarimpo } from "@/lib/garimpo";
+import { getAfericao, getGarimpo } from "@/lib/garimpo";
 import { PrecoVivo, VariacaoViva } from "@/components/PrecoVivo";
 import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
@@ -248,11 +248,12 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
 }
 
 export default async function Radar() {
-  const [snapshot, placar, guardada, garimpo] = await Promise.all([
+  const [snapshot, placar, guardada, garimpo, afericao] = await Promise.all([
     getSnapshot(),
     getPlacar(),
     getCarteira(),
     getGarimpo(),
+    getAfericao(),
   ]);
   const rows = snapshot.moedas;
 
@@ -528,7 +529,7 @@ export default async function Radar() {
         {/* Depois da tabela de propósito: estas moedas não têm contrato
             conferido, nem leitura on-chain, nem histórico. Dar a elas o topo da
             página seria dar o mesmo peso visual de uma leitura completa. */}
-        {garimpo && <GarimpoPanel g={garimpo} />}
+        {garimpo && <GarimpoPanel g={garimpo} afericao={afericao} />}
 
         <p className="text-xs text-black/40 dark:text-white/40 max-w-3xl">
           Perpétuo pela API pública da Gate, mercado à vista pelo DexScreener, blockchain

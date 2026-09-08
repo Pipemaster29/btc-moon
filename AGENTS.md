@@ -48,6 +48,13 @@ no código, com número:
   mais forte já medido aqui, e **vendê-lo perde dinheiro em toda largura de stop
   testada**, porque o caminho estopa a posição antes. `npm run garimpar` entrega
   fila de investigação, com essa frase na tela.
+- **A carteira media o piscar da própria leitura, não a estratégia.** Ela fechava
+  a posição em qualquer leitura diferente do lado dela — inclusive em `observar`,
+  que é 73% das leituras e diz textualmente *"fase sem vantagem medida"*.
+  Resultado: posição mediana de **3 horas**, 29 de 36 saídas em menos de um dia,
+  a EPIC aberta e fechada seis vezes, e o alvo de 40%, o prazo de 14 dias e a
+  liquidação **nunca disparando uma única vez**. As três regras que ela publica
+  não existiam no mundo. Consertado em 08/09; a mediana foi para 70 horas.
 
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
@@ -191,7 +198,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
 | `components/vivo.ts` | o relógio único da página que consome essa rota |
-| `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |
+| `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista**, e `getAfericao` diz quando ela foi conferida pela última vez |
 | `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção, disco primeiro no resto |
 
 ### Os dados
@@ -206,6 +213,7 @@ retrato seguinte fechá-la com a hora certa.
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/carteira.json` | a carteira | `npm run carteira` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
+| `data/afericao.json` | **o carimbo de quando a tabela de faixas do garimpo foi conferida.** Ela está fixa no código e ORDENA a lista inteira; sem data ao lado, envelhece em silêncio. Conferida em 08/09: maior desvio 0,7 p.p., monotônica nas duas escalas | `npm run aferir-garimpo`, uma vez por dia no workflow |
 
 ---
 
@@ -223,8 +231,8 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | Alvo | +40% de preço | o dobro da assimetria que sustenta a regra de compra (sobe +20% em 21,0% das semanas) |
 | Prazo | 14 dias | as regras direcionais foram medidas em janelas de 7 e 14 dias |
 | Risco por call | **3% / 2% / 1%** do patrimônio (força 3/2/1) | dobrado em 05/09: na régua anterior o pico de risco agregado era 13% de um teto de 25% e 85% do dinheiro ficava parado — a carteira não conseguia testar se a estratégia quebra a conta, que é para o que ela existe |
-| Risco agregado | teto de 25% | cripto tem dias em que a lista inteira cai 25% junta |
-| Margem exposta | teto de 50% | |
+| Risco agregado | teto de 25% **na abertura**, medido de onde a posição está | cripto tem dias em que a lista inteira cai 25% junta. Somava o nominal da abertura, o que errava para os dois lados: quem está no lucro tem MAIS a devolver até o stop, quem está no prejuízo tem menos |
+| Margem exposta | teto de 50% | nunca prendeu: o pico medido é 34% e as recusas por ele são **zero** |
 | Custo | 0,15% por lado, **sobre o nocional** | a 3x, isso é 0,45% da margem por lado |
 | Financiamento | taxa real da Binance, por 8h | a lista paga de 15% a 20% ao ano |
 | Liquidação | margem de manutenção 0,5% | a 3x, o preço andando 33,2% contra |
@@ -232,6 +240,47 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 **Saída pelo primeiro que acontecer:** o painel mudou de ideia (a principal — a
 carteira segue as calls, então sai quando a call sai), stop, alvo, prazo,
 liquidação.
+
+**Mas "o painel mudou de ideia" não é "o painel calou", e confundir os dois foi o
+maior defeito que esta carteira já teve.** O painel emite quatro coisas e só duas
+são direção:
+
+| leitura | quanto | o que ela diz | fecha? |
+|---|---|---|---|
+| `observar` | 73% | *"fase sem vantagem medida — esta fase não se separou da referência"* — fala da REGRA, não da moeda de hoje | não |
+| `long` / `short` | 19% | direção | sim, o lado oposto |
+| `evitar` | 6% | *"a alta é forçada"*, *"movimento em curso"* — fala da MOEDA agora | sim |
+| nulo | 2% | não houve leitura | não |
+
+A carteira fechava nas quatro. O custo, medido nas 36 posições encerradas até
+08/09: **posição mediana de 3,0 horas**, 29 saídas em menos de um dia, 7 em menos
+de uma hora, a EPIC aberta e fechada **seis vezes** (uma delas durando catorze
+minutos) — e o alvo, o prazo e a liquidação nunca dispararam. Cada volta paga
+0,90% da margem em taxa.
+
+A raiz é a **armadilha nº 7** abaixo: o arquivo JÁ tinha a regra certa escrita
+("ausência de leitura não é leitura contrária") e a aplicava só ao `null`, que é
+1,7% dos casos. Os 79% em que a mesma ausência tem outro nome passavam inteiros.
+E a cadência de 22 minutos, que este documento comemora acima, multiplicou as
+chances de piscar sem que ninguém remedisse a carteira depois.
+
+Por que `evitar` fecha e `observar` não: em seis dias, 73 moedas e 3.943 emissões
+direcionais, o painel fez **ZERO** reversões de long para short. Sem o `evitar`,
+a saída por "painel mudou" nunca dispararia e a carteira deixaria de seguir as
+calls — mediria as regras de saída deste arquivo, que é exatamente o que ela não
+pode fazer. `npm run carteira` imprime as três regras lado a lado.
+
+**Isto não a fez ganhar dinheiro.** Com 6 encerradas contra 38, a diferença de
+patrimônio é ruído. O que mudou é que ela passou a medir a estratégia que
+publica.
+
+**Ela encolhe a call para caber no orçamento em vez de recusá-la.** Medido: **480
+recusas pelo teto de risco**, contra zero pelo teto de margem e zero por falta de
+caixa — dos três limites, um decide tudo e dois são enfeite. Sobrando 0,8% de
+orçamento e chegando uma call de força 2 que pede 2%, ela entra com 40% do
+tamanho. O piso é um terço do que a força pede: abaixo disso a call vira sombra
+de si mesma, paga o mesmo pedágio e conta como posição inteira na estatística.
+Sem piso nenhum a carteira abre posição de US$ 1,19.
 
 **Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.**
 `npm run carteira` busca as velas de 1h da Binance das moedas que podem virar
@@ -265,6 +314,13 @@ só volta a valer quando o viés dela sair daquele lado. Sem isso a carteira
 recomprava a call que acabou de morrer no MESMO retrato — reproduzido com uma
 moeda caindo 28% por retrato e o painel fixo em "long", ela tomou **onze stops
 seguidos** e perdeu 17% do patrimônio na mesma leitura errada.
+
+E o que conta como "sair daquele lado" é a MESMA função que decide a saída — o
+descongelamento tinha o mesmo buraco que ela: soltava com `vies !== lado`, e
+`"observar" !== "long"` é verdadeiro. Um único retrato dizendo a leitura mais
+comum do painel bastava para o moedor voltar pela outra porta. Reproduzido:
+**doze stops**. As duas pontas agora chamam `contraria()`, para não haver como
+divergirem de novo.
 
 **A unidade de cada número importa, e confundi-las já quebrou isto.** `STOP` e
 `ALVO` são variação de PREÇO; `retorno`, `funding` e `RISCO_POR_FORCA` são fração
@@ -381,7 +437,19 @@ O mesmo formato apareceu na trava de call queimada: ela distinguia "não houve
 leitura" de "leitura contrária" na SAÍDA e não no descongelamento, e um único
 retrato mudo bastava para o moedor voltar — doze stops seguidos, −18,6%.
 
-Quando escrever um freio, procure a outra ponta onde a mesma decisão é tomada.
+**E o mesmo par quebrou de novo em 08/09, pela metade que ninguém tinha olhado.**
+O conserto acima cobriu `vies === null`, que é 1,7% das leituras, e deixou passar
+`"observar"`, que é 73%. As duas dizem a mesma coisa — o painel não tem direção —
+e as duas pontas, saída e descongelamento, tratavam `observar` como reversão. A
+saída fez a posição mediana viver 3 horas; o descongelamento reabriu o moedor.
+Foi o mesmo defeito, no mesmo par de decisões, pela terceira vez.
+
+A lição que ficou não é "procure a outra ponta" — essa já estava escrita e não
+bastou. É que **um freio que testa `x !== y` está enumerando o complemento de um
+conjunto que ninguém escreveu**: se `y` é "long", o complemento inclui short,
+observar, evitar e null, e três deles não são o que o freio quer dizer. Hoje as
+duas pontas chamam `contraria()`, que enumera positivamente o que FECHA. A
+correção não foi consertar o segundo lugar: foi tirar a decisão dos dois.
 
 ### 8. Janela medida em BLOCOS não é janela de tempo
 

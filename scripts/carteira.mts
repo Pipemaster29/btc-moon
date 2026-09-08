@@ -9,7 +9,15 @@
  */
 
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
-import { rodar, CAPITAL_INICIAL, RISCO_POR_FORCA, type Emissao, type Passo } from "../lib/carteira";
+import {
+  rodar,
+  CAPITAL_INICIAL,
+  RISCO_POR_FORCA,
+  SAIDA,
+  type Emissao,
+  type Passo,
+  type SaidaPainel,
+} from "../lib/carteira";
 import { velas } from "../lib/binance";
 import { ATIVAS } from "../lib/watchlist";
 
@@ -144,7 +152,30 @@ if (c.abertas.length > 0) {
 console.log(
   `queda máxima ${pct(c.quedaMaxima)} do pico de ${usd(c.pico)}  ·  ` +
     `pico de margem exposta ${(c.maiorExposicao * 100).toFixed(1)}% (teto 50%)  ·  ` +
-    `pico de risco agregado ${(c.maiorRiscoAberto * 100).toFixed(1)}% (teto 25%)`,
+    `pico de risco agregado ${(c.maiorRiscoAberto * 100).toFixed(1)}% (teto 25% na abertura)`,
+);
+
+/**
+ * O GIRO, que é o número que faltava e que denunciou o maior defeito daqui.
+ *
+ * Retorno, acertos e motivo de saída não denunciam uma carteira que entra e sai
+ * da mesma moeda seis vezes pagando pedágio em cada volta. A mediana de vida da
+ * posição, sim — e ela estava em TRÊS HORAS numa carteira que publica stop de
+ * 25%, alvo de 40% e prazo de 14 dias.
+ */
+console.log(
+  `giro: posição mediana de ${c.medianaHoras == null ? "—" : `${c.medianaHoras.toFixed(1)} h`}` +
+    `  ·  ${c.fechadas.filter((f) => f.dias < 1 / 24).length} encerrada(s) em menos de uma hora` +
+    `  ·  ${usd(c.custoTotal)} pagos em taxa e escorregada`,
+);
+
+// AS CALLS QUE O PAINEL EMITIU E A CARTEIRA NÃO PEGOU. Sem esta linha a tela
+// mostra só o que entrou, e uma carteira que recusa metade das calls fica com a
+// mesma cara de uma que pega todas.
+const rec = c.recusadas;
+console.log(
+  `recusadas: ${rec.risco} pelo teto de risco · ${rec.margem} pelo teto de margem · ` +
+    `${rec.caixa} por falta de caixa · ${rec.queimada} por call queimada`,
 );
 
 /**
@@ -169,6 +200,46 @@ console.log(
  * referência, multiplicar o tamanho multiplica uma perda esperada, não um lucro.
  * A tabela existe para mostrar a troca, não para escolher a linha mais alta.
  */
+/**
+ * QUAL LEITURA FECHA A POSIÇÃO — a tabela que escolheu a regra de saída.
+ *
+ * Ela roda toda vez pelo mesmo motivo que a de escala: a escolha entre as três
+ * é uma medição, e medição colada num comentário envelhece em silêncio. Se a
+ * amostra crescer e a resposta mudar, ela muda AQUI, na mesma tabela em que foi
+ * feita — e não numa conversa.
+ *
+ * A coluna que importa não é o patrimônio, e é preciso dizer isso em voz alta:
+ * com seis posições encerradas contra trinta e oito, a diferença de dólares é
+ * ruído. As colunas que decidem são o GIRO e a MEDIANA. Uma carteira que declara
+ * stop de 25%, alvo de 40% e prazo de 14 dias e cuja posição mediana vive três
+ * horas não está medindo nenhuma das três coisas que ela declara.
+ */
+const REGRAS: SaidaPainel[] = ["qualquer", "direcional+evitar", "direcional"];
+console.log(`\nqual leitura fecha a posição — a mesma carteira, só a regra de saída trocada`);
+console.log(`regra                patrimônio   retorno   giro   mediana   <1h   saídas`);
+for (const s of REGRAS) {
+  const r = rodar(emissoes, COMECO, caminho, 1, s);
+  const motivos =
+    Object.entries(r.porMotivo)
+      .map(([m, g]) => `${m} ${g.n}`)
+      .join(", ") || "nenhuma";
+  console.log(
+    `  ${s.padEnd(18)} ` +
+      `${usd(r.patrimonio).padStart(11)} ` +
+      `${pct(r.retorno).padStart(8)} ` +
+      `${String(r.encerradas).padStart(6)} ` +
+      `${(r.medianaHoras == null ? "—" : `${r.medianaHoras.toFixed(1)}h`).padStart(9)} ` +
+      `${String(r.fechadas.filter((f) => f.dias < 1 / 24).length).padStart(5)}   ` +
+      motivos +
+      (s === SAIDA ? "   ← a regra de hoje" : ""),
+  );
+}
+console.log(
+  `  "observar" é 73% das leituras e "evitar" 6%; as duas dizem, com as próprias\n` +
+    `  palavras, que o painel não tem direção. Reversão direcional de fato — long\n` +
+    `  virando short ou o contrário — aconteceu ZERO vez em 3.943 emissões.`,
+);
+
 const ESCALAS = [1, 1.5, 2, 3, 5];
 console.log(`\ntamanho da aposta — o mesmo motor, só o orçamento de risco multiplicado`);
 console.log(`escala   risco/call   patrimônio   retorno   queda máx   margem pico   risco pico`);
