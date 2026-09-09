@@ -284,6 +284,41 @@ if (afe) {
   }
 } else console.log("  (ausente — rode npm run aferir-garimpo)");
 
+// ---- padrões de vela
+//
+// A invariante que importa aqui não é o valor de nenhuma figura — é que o
+// arquivo continue sendo capaz de REPROVAR. Um veredito em que tudo passa, ou em
+// que a direção esperada some, seria sinal de que alguém afrouxou o teste em vez
+// de o padrão ter melhorado.
+const pad = await ler<{
+  geradoEm: number; moedas: number; observacoes: number; horizonteDias: number;
+  referencia: number; concordanciaMinima: number;
+  figuras: { nome: string; n: number; mediana: number; distancia: number; aFavor: number; moedas: number }[];
+  veredito: Record<string, { passa: boolean; porque: string[] }>;
+}>("data/padroes.json");
+console.log("padrões de vela:");
+if (pad) {
+  checa("geradoEm no passado", pad.geradoEm <= Date.now() + 60_000, `(${new Date(pad.geradoEm).toISOString()})`);
+  checa("horizonte de 7 dias", pad.horizonteDias === 7, `= ${pad.horizonteDias}`);
+  checa("amostra grande", pad.observacoes >= 10_000, `= ${pad.observacoes}`);
+  checa("referência finita", Number.isFinite(pad.referencia), `= ${pad.referencia}`);
+  // O corte de concordância é o que mata quase todo candidato deste projeto.
+  // Afrouxá-lo abaixo de 60% seria mudar a régua, não o resultado.
+  checa("concordância mínima em 60%", pad.concordanciaMinima >= 0.6, `= ${pad.concordanciaMinima}`);
+  checa("as oito figuras estão no arquivo", pad.figuras.length === 8, `= ${pad.figuras.length}`);
+  for (const f of pad.figuras) {
+    checa(`${f.nome}: mediana finita`, Number.isFinite(f.mediana), `= ${f.mediana}`);
+    checa(`${f.nome}: distância finita`, Number.isFinite(f.distancia), `= ${f.distancia}`);
+    checa(`${f.nome}: concordância <= total`, f.aFavor <= f.moedas, `= ${f.aFavor}/${f.moedas}`);
+  }
+  // TODO VEREDITO PRECISA DE MOTIVO quando reprova. Um "passa: false" sem
+  // `porque` seria o arquivo dizendo não sem dizer por quê — que é o tipo de
+  // silêncio que este projeto trata como o pior modo de falha.
+  for (const [nome, v] of Object.entries(pad.veredito)) {
+    checa(`${nome}: reprovação tem motivo escrito`, v.passa || v.porque.length > 0, `motivos: ${v.porque.length}`);
+  }
+} else console.log("  (ausente — rode npm run aferir-padroes)");
+
 console.log(falhas === 0 ? "\nTUDO OK" : `\n${falhas} FALHAS`);
 
 // SAI COM CÓDIGO DE ERRO, e não saía.

@@ -56,8 +56,29 @@ no código, com número:
   liquidação **nunca disparando uma única vez**. As três regras que ela publica
   não existiam no mundo. Consertado em 08/09; a mediana foi para 70 horas.
 
+- **As figuras de vela não separam nada aqui.** Martelo, estrela cadente, doji,
+  engolfo e os pavios longos, sobre 87.950 observações de 522 moedas: as SEIS
+  figuras direcionais apontaram para o lado **contrário** ao que a teoria diz, e
+  nenhuma passou de 59% de concordância entre moedas. O que separa é o CONTEXTO
+  sem vela nenhuma dentro — "subiu ≥20% em 7 dias" dá −4,80 p.p. com 76% de
+  concordância, que é o mesmo efeito que o garimpo já ordena a lista por, achado
+  por outro caminho. `conhecimento/01-velas.md`.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
+
+### Material de fora entra por `conhecimento/`, nunca direto no código
+
+Lição de terceiros — thread, curso, vídeo, livro — é o lugar mais fácil de furar
+a regra acima: um texto bem escrito passa sensação de conhecimento sem trazer um
+número. Então ele entra como **lista de hipóteses**, vira função com definição
+fechada, passa pela aferição, e o veredito é escrito de volta no próprio arquivo
+— inclusive quando é "não".
+
+`conhecimento/README.md` tem o padrão de arquivo, os quatro testes e o controle
+que quase sempre falta (medir o contexto SOZINHO, senão atribui-se à figura o que
+era do ambiente). A primeira lição da pasta reprovou 8 de 8, e o "não" dela está
+escrito com o mesmo cuidado que um "sim" teria.
 
 ---
 
@@ -200,6 +221,8 @@ retrato seguinte fechá-la com a hora certa.
 | `components/vivo.ts` | o relógio único da página que consome essa rota |
 | `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista**, e `getAfericao` diz quando ela foi conferida pela última vez |
 | `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção, disco primeiro no resto |
+| `lib/tecnica.ts` | leitura de gráfico reduzida ao que tem definição fechada: pivô, tendência, rompimento. **O que não pode ser testado não entra** |
+| `lib/padroes.ts` | as figuras de vela com definição fechada, para poderem ser medidas. **Instrumento de medição, não emissor de call** — nenhuma delas passou |
 
 ### Os dados
 
@@ -213,6 +236,7 @@ retrato seguinte fechá-la com a hora certa.
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/carteira.json` | a carteira | `npm run carteira` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
+| `data/padroes.json` | o veredito de cada figura de vela, com amostra, concordância, sensibilidade ao corte e estabilidade. **0 de 8 passaram** | `npm run aferir-padroes` |
 | `data/afericao.json` | **o carimbo de quando a tabela de faixas do garimpo foi conferida.** Ela está fixa no código e ORDENA a lista inteira; sem data ao lado, envelhece em silêncio. Conferida em 08/09: maior desvio 0,7 p.p., monotônica nas duas escalas | `npm run aferir-garimpo`, uma vez por dia no workflow |
 
 ---

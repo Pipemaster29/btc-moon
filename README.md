@@ -518,6 +518,61 @@ máxima" e "já devolveu 60%" são a mesma faixa de alta e situações opostas) 
 contagem do que não coube na tela, que antes era cortada em silêncio em dez
 linhas com 26 elegíveis.
 
+## Ler velas: oito figuras, nenhuma passou
+
+Uma lição sobre leitura de candlestick entrou em `conhecimento/`, e como tudo
+aqui, virou hipótese antes de virar regra. Oito figuras com definição fechada em
+`lib/padroes.ts` — martelo, estrela cadente, doji, engolfo dos dois lados, os
+dois pavios de rejeição, vela de expansão — medidas sobre **87.950 observações de
+522 moedas**, com a mesma metodologia do placar: mediana à frente, referência de
+todas as observações, concordância entre moedas.
+
+**As seis figuras direcionais apontaram para o lado contrário ao que a teoria
+diz. Todas as seis.**
+
+| figura | o que ela afirma | vs referência | moedas a favor |
+| --- | --- | --- | --- |
+| martelo | alta | −0,27 p.p. | 56% |
+| estrela cadente | queda | +0,49 p.p. | 55% |
+| engolfo de alta | alta | −0,23 p.p. | 52% |
+| engolfo de baixa | queda | +0,11 p.p. | 51% |
+| rejeição superior | queda | +0,53 p.p. | 56% |
+| rejeição inferior | alta | −0,46 p.p. | 59% |
+
+Nenhuma chega aos 60% de concordância que este projeto exige para dizer que algo
+separou — é a mesma faixa em que os vieses do próprio painel morrem. E quatro das
+oito trocam de sinal entre as duas metades da janela, que é assinatura de
+descrição de regime.
+
+A consistência do erro é mais interessante que o erro: a vela está descrevendo o
+movimento que **acabou de acontecer**, e neste horizonte estas moedas revertem.
+Ler a vela como previsão é ler o passado achando que é futuro.
+
+**A tese do contexto, essa se sustenta — e mais forte do que o enunciado.** A
+lição diz que "contexto importa mais que a figura". A medição diz que o contexto
+importa e a figura não acrescenta nada:
+
+| combinação | só a figura | só o contexto | juntos | a figura acrescenta |
+| --- | --- | --- | --- | --- |
+| estrela + vem de alta | +0,49 | −4,80 | −3,94 | **−0,86** |
+| engolfo-baixa + vem de alta | +0,11 | −4,80 | −3,92 | **−0,88** |
+| doji + vem de alta | +0,14 | −4,80 | −4,14 | **−0,65** |
+| martelo + em suporte | −0,27 | +0,59 | +0,17 | **−0,42** |
+
+A figura acrescentou nada ou piorou em **6 das 15 combinações**, e nas três com o
+contexto mais forte piorou nas três. O controle que revela isso — medir o
+contexto **sozinho** — é o que quase sempre falta nesse tipo de teste: sem ele,
+atribui-se à figura o que era do ambiente.
+
+E o melhor sinal da medição inteira não tem vela nenhuma dentro: **"subiu ≥20% em
+7 dias" separa −4,80 p.p. com 76% das moedas concordando.** É o mesmo efeito que
+`lib/garimpo.ts` já ordena a lista por, reencontrado por um caminho
+independente — o que confirma o sinal, não a operação: vendê-lo mecanicamente
+continua perdendo dinheiro em toda largura de stop testada.
+
+Nada disso virou regra, porque nada passou. `conhecimento/01-velas.md` tem os
+números completos, e `conhecimento/README.md` tem o padrão para a próxima lição.
+
 ## Identificar a moeda certa
 
 O erro mais caro deste projeto foi analisar o token errado — duas vezes. Buscar
@@ -643,6 +698,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
 | `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
+| `npm run aferir-padroes` | as figuras de vela de `conhecimento/01-velas.md` medidas sobre os 528 perpétuos — 0 de 8 passaram |
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero — e a conferência da tabela fixa em `lib/garimpo.ts` contra ela, gravada em `data/afericao.json` |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |

@@ -1,0 +1,702 @@
+{
+  "geradoEm": 1788913253063,
+  "universo": 528,
+  "moedas": 522,
+  "observacoes": 87950,
+  "horizonteDias": 7,
+  "referencia": -0.008831032753902124,
+  "concordanciaMinima": 0.6,
+  "figuras": [
+    {
+      "nome": "doji",
+      "n": 10458,
+      "mediana": -0.0073535891331028,
+      "distancia": 0.0014774436207993236,
+      "aFavor": 263,
+      "moedas": 521,
+      "noSentido": null
+    },
+    {
+      "nome": "martelo",
+      "n": 2937,
+      "mediana": -0.011482558139534915,
+      "distancia": -0.0026515253856327914,
+      "aFavor": 281,
+      "moedas": 501,
+      "noSentido": false
+    },
+    {
+      "nome": "estrela-cadente",
+      "n": 6304,
+      "mediana": -0.0038891973364368893,
+      "distancia": 0.004941835417465235,
+      "aFavor": 286,
+      "moedas": 521,
+      "noSentido": false
+    },
+    {
+      "nome": "engolfo-alta",
+      "n": 7327,
+      "mediana": -0.011103236475312972,
+      "distancia": -0.002272203721410848,
+      "aFavor": 271,
+      "moedas": 522,
+      "noSentido": false
+    },
+    {
+      "nome": "engolfo-baixa",
+      "n": 7854,
+      "mediana": -0.007727395243722901,
+      "distancia": 0.0011036375101792228,
+      "aFavor": 268,
+      "moedas": 522,
+      "noSentido": false
+    },
+    {
+      "nome": "rejeicao-superior",
+      "n": 19056,
+      "mediana": -0.003522085396727548,
+      "distancia": 0.005308947357174576,
+      "aFavor": 294,
+      "moedas": 522,
+      "noSentido": false
+    },
+    {
+      "nome": "rejeicao-inferior",
+      "n": 12021,
+      "mediana": -0.013390063821799525,
+      "distancia": -0.004559031067897401,
+      "aFavor": 309,
+      "moedas": 522,
+      "noSentido": false
+    },
+    {
+      "nome": "expansao",
+      "n": 10515,
+      "mediana": -0.02713487629688749,
+      "distancia": -0.018303843542985365,
+      "aFavor": 360,
+      "moedas": 522,
+      "noSentido": null
+    }
+  ],
+  "comContexto": [
+    {
+      "nome": "martelo",
+      "n": 2937,
+      "mediana": -0.011482558139534915,
+      "distancia": -0.0026515253856327914,
+      "aFavor": 281,
+      "moedas": 501,
+      "noSentido": false
+    },
+    {
+      "nome": "martelo + em suporte",
+      "n": 1398,
+      "mediana": -0.007151188324319824,
+      "distancia": 0.0016798444295823,
+      "aFavor": 190,
+      "moedas": 371,
+      "noSentido": true
+    },
+    {
+      "nome": "martelo + vem de queda",
+      "n": 213,
+      "mediana": 0.024208566108007368,
+      "distancia": 0.03303959886190949,
+      "aFavor": 11,
+      "moedas": 21,
+      "noSentido": true
+    },
+    {
+      "nome": "martelo + volume alto",
+      "n": 448,
+      "mediana": -0.01975980618881218,
+      "distancia": -0.010928773434910055,
+      "aFavor": 62,
+      "moedas": 112,
+      "noSentido": false
+    },
+    {
+      "nome": "martelo + suporte + volume",
+      "n": 164,
+      "mediana": -0.012662528669259876,
+      "distancia": -0.003831495915357752,
+      "aFavor": 10,
+      "moedas": 17,
+      "noSentido": false
+    },
+    {
+      "nome": "engolfo-alta",
+      "n": 7327,
+      "mediana": -0.011103236475312972,
+      "distancia": -0.002272203721410848,
+      "aFavor": 271,
+      "moedas": 522,
+      "noSentido": false
+    },
+    {
+      "nome": "engolfo-alta + em suporte",
+      "n": 3170,
+      "mediana": -0.0028715373547225642,
+      "distancia": 0.00595949539917956,
+      "aFavor": 286,
+      "moedas": 489,
+      "noSentido": true
+    },
+    {
+      "nome": "engolfo-alta + volume alto",
+      "n": 2070,
+      "mediana": -0.0225561739157511,
+      "distancia": -0.013725141161848975,
+      "aFavor": 270,
+      "moedas": 471,
+      "noSentido": false
+    },
+    {
+      "nome": "engolfo-alta + suporte + volume",
+      "n": 763,
+      "mediana": -0.008240141259564515,
+      "distancia": 0.0005908914943376087,
+      "aFavor": 111,
+      "moedas": 220,
+      "noSentido": true
+    },
+    {
+      "nome": "estrela-cadente",
+      "n": 6304,
+      "mediana": -0.0038891973364368893,
+      "distancia": 0.004941835417465235,
+      "aFavor": 286,
+      "moedas": 521,
+      "noSentido": false
+    },
+    {
+      "nome": "estrela + em resistência",
+      "n": 2142,
+      "mediana": -0.003627100829464991,
+      "distancia": 0.005203931924437133,
+      "aFavor": 223,
+      "moedas": 434,
+      "noSentido": false
+    },
+    {
+      "nome": "estrela + vem de alta",
+      "n": 426,
+      "mediana": -0.048243238185911475,
+      "distancia": -0.03941220543200935,
+      "aFavor": 65,
+      "moedas": 114,
+      "noSentido": true
+    },
+    {
+      "nome": "estrela + resistência + volume",
+      "n": 882,
+      "mediana": -0.0018750989269802898,
+      "distancia": 0.006955933826921834,
+      "aFavor": 132,
+      "moedas": 247,
+      "noSentido": false
+    },
+    {
+      "nome": "engolfo-baixa",
+      "n": 7854,
+      "mediana": -0.007727395243722901,
+      "distancia": 0.0011036375101792228,
+      "aFavor": 268,
+      "moedas": 522,
+      "noSentido": false
+    },
+    {
+      "nome": "engolfo-baixa + em resistência",
+      "n": 2688,
+      "mediana": -0.004787329813109531,
+      "distancia": 0.004043702940792593,
+      "aFavor": 239,
+      "moedas": 460,
+      "noSentido": false
+    },
+    {
+      "nome": "engolfo-baixa + vem de alta",
+      "n": 277,
+      "mediana": -0.04800000000000004,
+      "distancia": -0.03916896724609792,
+      "aFavor": 35,
+      "moedas": 60,
+      "noSentido": true
+    },
+    {
+      "nome": "doji",
+      "n": 10458,
+      "mediana": -0.0073535891331028,
+      "distancia": 0.0014774436207993236,
+      "aFavor": 263,
+      "moedas": 521,
+      "noSentido": null
+    },
+    {
+      "nome": "doji + vem de alta",
+      "n": 704,
+      "mediana": -0.05028036919711687,
+      "distancia": -0.041449336443214746,
+      "aFavor": 104,
+      "moedas": 161,
+      "noSentido": null
+    },
+    {
+      "nome": "doji + vem de queda",
+      "n": 462,
+      "mediana": 0.016905701288330244,
+      "distancia": 0.025736734042232368,
+      "aFavor": 65,
+      "moedas": 120,
+      "noSentido": null
+    },
+    {
+      "nome": "expansao",
+      "n": 10515,
+      "mediana": -0.02713487629688749,
+      "distancia": -0.018303843542985365,
+      "aFavor": 360,
+      "moedas": 522,
+      "noSentido": null
+    },
+    {
+      "nome": "expansao + volume alto",
+      "n": 9370,
+      "mediana": -0.02842895892647923,
+      "distancia": -0.019597926172577107,
+      "aFavor": 348,
+      "moedas": 522,
+      "noSentido": null
+    }
+  ],
+  "soContexto": [
+    {
+      "nome": "em suporte",
+      "n": 40136,
+      "mediana": -0.0029430397293214727,
+      "distancia": 0.005887993024580651,
+      "aFavor": 311,
+      "moedas": 520,
+      "noSentido": null
+    },
+    {
+      "nome": "em resistência",
+      "n": 31080,
+      "mediana": -0.007497335310144904,
+      "distancia": 0.0013336974437572202,
+      "aFavor": 243,
+      "moedas": 520,
+      "noSentido": null
+    },
+    {
+      "nome": "volume alto",
+      "n": 21127,
+      "mediana": -0.018946121965660256,
+      "distancia": -0.010115089211758133,
+      "aFavor": 326,
+      "moedas": 522,
+      "noSentido": null
+    },
+    {
+      "nome": "vem de queda (−20% em 7d)",
+      "n": 4338,
+      "mediana": 0.006199788178041454,
+      "distancia": 0.015030820931943578,
+      "aFavor": 278,
+      "moedas": 422,
+      "noSentido": null
+    },
+    {
+      "nome": "vem de alta (+20% em 7d)",
+      "n": 6189,
+      "mediana": -0.05681084570690775,
+      "distancia": -0.04797981295300563,
+      "aFavor": 341,
+      "moedas": 448,
+      "noSentido": null
+    },
+    {
+      "nome": "em suporte + volume alto",
+      "n": 7735,
+      "mediana": -0.006961364427427674,
+      "distancia": 0.0018696683264744496,
+      "aFavor": 258,
+      "moedas": 512,
+      "noSentido": null
+    },
+    {
+      "nome": "em resistência + volume alto",
+      "n": 8065,
+      "mediana": -0.017314702308626972,
+      "distancia": -0.008483669554724849,
+      "aFavor": 316,
+      "moedas": 516,
+      "noSentido": null
+    }
+  ],
+  "sensibilidade": {
+    "doji": [
+      {
+        "escala": 0.7,
+        "n": 15083,
+        "distancia": 0.0018310327539021176
+      },
+      {
+        "escala": 1,
+        "n": 10458,
+        "distancia": 0.0014774436207993236
+      },
+      {
+        "escala": 1.4,
+        "n": 7480,
+        "distancia": 0.0025348265532617043
+      }
+    ],
+    "martelo": [
+      {
+        "escala": 0.7,
+        "n": 4020,
+        "distancia": -0.0021243005363356104
+      },
+      {
+        "escala": 1,
+        "n": 2937,
+        "distancia": -0.0026515253856327914
+      },
+      {
+        "escala": 1.4,
+        "n": 2110,
+        "distancia": -0.0012532083835734564
+      }
+    ],
+    "estrela-cadente": [
+      {
+        "escala": 0.7,
+        "n": 8327,
+        "distancia": 0.004457609709326904
+      },
+      {
+        "escala": 1,
+        "n": 6304,
+        "distancia": 0.004941835417465235
+      },
+      {
+        "escala": 1.4,
+        "n": 4722,
+        "distancia": 0.005872014566886297
+      }
+    ],
+    "engolfo-alta": [
+      {
+        "escala": 0.7,
+        "n": 7327,
+        "distancia": -0.002272203721410848
+      },
+      {
+        "escala": 1,
+        "n": 7327,
+        "distancia": -0.002272203721410848
+      },
+      {
+        "escala": 1.4,
+        "n": 7327,
+        "distancia": -0.002272203721410848
+      }
+    ],
+    "engolfo-baixa": [
+      {
+        "escala": 0.7,
+        "n": 7854,
+        "distancia": 0.0011036375101792228
+      },
+      {
+        "escala": 1,
+        "n": 7854,
+        "distancia": 0.0011036375101792228
+      },
+      {
+        "escala": 1.4,
+        "n": 7854,
+        "distancia": 0.0011036375101792228
+      }
+    ],
+    "rejeicao-superior": [
+      {
+        "escala": 0.7,
+        "n": 36115,
+        "distancia": 0.00321716895111962
+      },
+      {
+        "escala": 1,
+        "n": 19056,
+        "distancia": 0.005308947357174576
+      },
+      {
+        "escala": 1.4,
+        "n": 5071,
+        "distancia": 0.005852731803682232
+      }
+    ],
+    "rejeicao-inferior": [
+      {
+        "escala": 0.7,
+        "n": 27117,
+        "distancia": -0.0021941858495701516
+      },
+      {
+        "escala": 1,
+        "n": 12021,
+        "distancia": -0.004559031067897401
+      },
+      {
+        "escala": 1.4,
+        "n": 2325,
+        "distancia": -0.0019797780569086876
+      }
+    ],
+    "expansao": [
+      {
+        "escala": 0.7,
+        "n": 22379,
+        "distancia": -0.010892833123809897
+      },
+      {
+        "escala": 1,
+        "n": 10515,
+        "distancia": -0.018303843542985365
+      },
+      {
+        "escala": 1.4,
+        "n": 5189,
+        "distancia": -0.029761773756993126
+      }
+    ]
+  },
+  "estabilidade": {
+    "doji": {
+      "primeira": 0.003370305347268787,
+      "segunda": -0.0002245789932252551,
+      "concorda": false
+    },
+    "martelo": {
+      "primeira": 0.002653468166927797,
+      "segunda": -0.008375254207907246,
+      "concorda": false
+    },
+    "estrela-cadente": {
+      "primeira": 0.0058909429230208366,
+      "segunda": 0.004741449984676738,
+      "concorda": true
+    },
+    "engolfo-alta": {
+      "primeira": 0.0010538511147040741,
+      "segunda": -0.00461210464045092,
+      "concorda": false
+    },
+    "engolfo-baixa": {
+      "primeira": -0.0041582171189616934,
+      "segunda": 0.007595789373463724,
+      "concorda": false
+    },
+    "rejeicao-superior": {
+      "primeira": 0.007034000285545461,
+      "segunda": 0.0035958382308125536,
+      "concorda": true
+    },
+    "rejeicao-inferior": {
+      "primeira": -0.0008238141728552639,
+      "segunda": -0.007682625111955055,
+      "concorda": true
+    },
+    "expansao": {
+      "primeira": -0.02422483928108482,
+      "segunda": -0.011787913964295016,
+      "concorda": true
+    }
+  },
+  "veredito": {
+    "doji": {
+      "passa": false,
+      "porque": [
+        "50% das moedas concordam, abaixo de 60%",
+        "não aparece nas duas metades da janela",
+        "a figura não afirma um lado — separa da referência, mas não há regra direcional a extrair"
+      ]
+    },
+    "martelo": {
+      "passa": false,
+      "porque": [
+        "a distância aponta para o lado contrário ao que a figura afirma",
+        "56% das moedas concordam, abaixo de 60%",
+        "não aparece nas duas metades da janela"
+      ]
+    },
+    "estrela-cadente": {
+      "passa": false,
+      "porque": [
+        "a distância aponta para o lado contrário ao que a figura afirma",
+        "55% das moedas concordam, abaixo de 60%"
+      ]
+    },
+    "engolfo-alta": {
+      "passa": false,
+      "porque": [
+        "a distância aponta para o lado contrário ao que a figura afirma",
+        "52% das moedas concordam, abaixo de 60%",
+        "não aparece nas duas metades da janela"
+      ]
+    },
+    "engolfo-baixa": {
+      "passa": false,
+      "porque": [
+        "a distância aponta para o lado contrário ao que a figura afirma",
+        "51% das moedas concordam, abaixo de 60%",
+        "não aparece nas duas metades da janela"
+      ]
+    },
+    "rejeicao-superior": {
+      "passa": false,
+      "porque": [
+        "a distância aponta para o lado contrário ao que a figura afirma",
+        "56% das moedas concordam, abaixo de 60%"
+      ]
+    },
+    "rejeicao-inferior": {
+      "passa": false,
+      "porque": [
+        "a distância aponta para o lado contrário ao que a figura afirma",
+        "59% das moedas concordam, abaixo de 60%"
+      ]
+    },
+    "expansao": {
+      "passa": false,
+      "porque": [
+        "a figura não afirma um lado — separa da referência, mas não há regra direcional a extrair"
+      ]
+    }
+  },
+  "decomposicao": [
+    {
+      "nome": "martelo + em suporte",
+      "soFigura": -0.0026515253856327914,
+      "soContexto": 0.005887993024580651,
+      "juntos": 0.0016798444295823,
+      "ganhoDaFigura": -0.004208148594998351,
+      "n": 1398
+    },
+    {
+      "nome": "martelo + vem de queda",
+      "soFigura": -0.0026515253856327914,
+      "soContexto": 0.015030820931943578,
+      "juntos": 0.03303959886190949,
+      "ganhoDaFigura": 0.018008777929965913,
+      "n": 213
+    },
+    {
+      "nome": "martelo + volume alto",
+      "soFigura": -0.0026515253856327914,
+      "soContexto": -0.010115089211758133,
+      "juntos": -0.010928773434910055,
+      "ganhoDaFigura": 0.0008136842231519226,
+      "n": 448
+    },
+    {
+      "nome": "martelo + suporte + volume",
+      "soFigura": -0.0026515253856327914,
+      "soContexto": 0.0018696683264744496,
+      "juntos": -0.003831495915357752,
+      "ganhoDaFigura": 0.0019618275888833026,
+      "n": 164
+    },
+    {
+      "nome": "engolfo-alta + em suporte",
+      "soFigura": -0.002272203721410848,
+      "soContexto": 0.005887993024580651,
+      "juntos": 0.00595949539917956,
+      "ganhoDaFigura": 0.00007150237459890851,
+      "n": 3170
+    },
+    {
+      "nome": "engolfo-alta + volume alto",
+      "soFigura": -0.002272203721410848,
+      "soContexto": -0.010115089211758133,
+      "juntos": -0.013725141161848975,
+      "ganhoDaFigura": 0.0036100519500908423,
+      "n": 2070
+    },
+    {
+      "nome": "engolfo-alta + suporte + volume",
+      "soFigura": -0.002272203721410848,
+      "soContexto": 0.0018696683264744496,
+      "juntos": 0.0005908914943376087,
+      "ganhoDaFigura": -0.001278776832136841,
+      "n": 763
+    },
+    {
+      "nome": "estrela + em resistência",
+      "soFigura": 0.004941835417465235,
+      "soContexto": 0.0013336974437572202,
+      "juntos": 0.005203931924437133,
+      "ganhoDaFigura": 0.0038702344806799127,
+      "n": 2142
+    },
+    {
+      "nome": "estrela + vem de alta",
+      "soFigura": 0.004941835417465235,
+      "soContexto": -0.04797981295300563,
+      "juntos": -0.03941220543200935,
+      "ganhoDaFigura": -0.008567607520996279,
+      "n": 426
+    },
+    {
+      "nome": "estrela + resistência + volume",
+      "soFigura": 0.004941835417465235,
+      "soContexto": -0.008483669554724849,
+      "juntos": 0.006955933826921834,
+      "ganhoDaFigura": -0.0015277357278030146,
+      "n": 882
+    },
+    {
+      "nome": "engolfo-baixa + em resistência",
+      "soFigura": 0.0011036375101792228,
+      "soContexto": 0.0013336974437572202,
+      "juntos": 0.004043702940792593,
+      "ganhoDaFigura": 0.0027100054970353726,
+      "n": 2688
+    },
+    {
+      "nome": "engolfo-baixa + vem de alta",
+      "soFigura": 0.0011036375101792228,
+      "soContexto": -0.04797981295300563,
+      "juntos": -0.03916896724609792,
+      "ganhoDaFigura": -0.00881084570690771,
+      "n": 277
+    },
+    {
+      "nome": "doji + vem de alta",
+      "soFigura": 0.0014774436207993236,
+      "soContexto": -0.04797981295300563,
+      "juntos": -0.041449336443214746,
+      "ganhoDaFigura": -0.0065304765097908835,
+      "n": 704
+    },
+    {
+      "nome": "doji + vem de queda",
+      "soFigura": 0.0014774436207993236,
+      "soContexto": 0.015030820931943578,
+      "juntos": 0.025736734042232368,
+      "ganhoDaFigura": 0.01070591311028879,
+      "n": 462
+    },
+    {
+      "nome": "expansao + volume alto",
+      "soFigura": -0.018303843542985365,
+      "soContexto": -0.010115089211758133,
+      "juntos": -0.019597926172577107,
+      "ganhoDaFigura": 0.009482836960818974,
+      "n": 9370
+    }
+  ]
+}
