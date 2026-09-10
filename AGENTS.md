@@ -57,12 +57,13 @@ no código, com número:
   não existiam no mundo. Consertado em 08/09; a mediana foi para 70 horas.
 
 - **As figuras de vela não separam nada aqui.** Martelo, estrela cadente, doji,
-  engolfo e os pavios longos, sobre 87.950 observações de 522 moedas: as SEIS
+  engolfo e os pavios longos, sobre 66.053 observações de 522 moedas: as SEIS
   figuras direcionais apontaram para o lado **contrário** ao que a teoria diz, e
-  nenhuma passou de 59% de concordância entre moedas. O que separa é o CONTEXTO
-  sem vela nenhuma dentro — "subiu ≥20% em 7 dias" dá −4,80 p.p. com 76% de
-  concordância, que é o mesmo efeito que o garimpo já ordena a lista por, achado
-  por outro caminho. `conhecimento/01-velas.md`.
+  nenhuma passou de 57% de concordância — quatro ficam em 50% a 53%. O que separa
+  é o CONTEXTO sem vela nenhuma dentro, e não o que a teoria enfatiza: suporte e
+  resistência são cara e coroa (55% e 48%), enquanto "subiu ≥20% em 7 dias" dá
+  −5,55 p.p. com **79%** de concordância — o mesmo efeito que o garimpo já ordena
+  a lista por, achado por outro caminho. `conhecimento/01-velas.md`.
 
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
@@ -475,7 +476,52 @@ observar, evitar e null, e três deles não são o que o freio quer dizer. Hoje 
 duas pontas chamam `contraria()`, que enumera positivamente o que FECHA. A
 correção não foi consertar o segundo lugar: foi tirar a decisão dos dois.
 
-### 8. Janela medida em BLOCOS não é janela de tempo
+### 8. Definição que anda com o índice não é definição
+
+Um classificador que varre "tudo o que veio antes" parece conservador — não olha
+para frente, logo está seguro. Mas ele tem um segundo eixo, e esse ninguém olha:
+**quantas chances de classificar existiam naquele ponto da série.**
+
+`contextoDe` procurava pivôs desde o começo da série para decidir se o preço
+estava num suporte. Numa ETHUSDT de 200 velas, os pivôs de fundo acumulados vão
+de **2 na vela 30 para 17 na vela 190** — dezessete níveis a ±3% cobrem meio
+gráfico. Medido em 120 moedas, a mesma regra classificava **1,52× mais**
+observações como "em suporte" na segunda metade da janela do que na primeira
+(41,8% → 63,7%). A régua crescia junto com o histórico.
+
+**O estrago não foi imprecisão, foi contaminar um teste.** Um dos quatro testes
+que decidem se uma figura passa compara as duas metades da janela justamente para
+separar efeito de regime — e a régua estava mudando entre as metades. Qualquer
+diferença encontrada tinha uma explicação além do mercado, e nenhum número na
+tela dizia isso.
+
+E **meia correção não corrige**: fixar a janela em 60 velas derrubou a deriva de
+1,52× para 1,14×, não para 1,00×, porque o começo da série continuava com janela
+incompleta. Só exigindo a janela CHEIA — o que custa as ~42 primeiras observações
+de cada moeda — a régua fica igual em toda observação.
+
+Quando escrever um classificador que olha para trás, pergunte duas coisas: ele
+olha para frente? **e ele olha a mesma quantidade de coisa em toda observação?**
+A segunda não dá sintoma nenhum.
+
+### 9. Um teste que não roda é pior que teste nenhum
+
+A prova de sensibilidade das figuras roda cada uma em três cortes e reprova
+quando o efeito troca de sinal entre eles. O engolfo não tem corte contínuo — ou
+o corpo cobre o outro ou não cobre —, então as três escalas devolviam
+**exatamente as mesmas 7.327 observações**, e o teste dava "ok" com entusiasmo:
+três números idênticos têm o mesmo sinal por construção.
+
+Um "ok" de um teste que não aconteceu é pior do que não ter o teste, porque ele
+sai da lista de coisas a fazer. Hoje há duas travas: a escala do engolfo percorre
+a convenção de verdade (corpo contra corpo × vela inteira), e o veredito reprova
+qualquer figura cujas três escalas devolvam o mesmo `n`.
+
+Isso também rendeu número: na definição clássica, com pavios, o engolfo tem **4 e
+8 ocorrências em 66.053**. A figura canônica dos manuais praticamente não existe
+aqui.
+
+### 10. Janela medida em BLOCOS não é janela de tempo
 
 Bloco não é segundo, e a razão entre os dois muda 27 vezes dentro deste
 repositório: 0,45 s na BNB Chain, 2 s na Base, 12 s na Ethereum. Uma constante em

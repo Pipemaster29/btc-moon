@@ -523,7 +523,7 @@ linhas com 26 elegíveis.
 Uma lição sobre leitura de candlestick entrou em `conhecimento/`, e como tudo
 aqui, virou hipótese antes de virar regra. Oito figuras com definição fechada em
 `lib/padroes.ts` — martelo, estrela cadente, doji, engolfo dos dois lados, os
-dois pavios de rejeição, vela de expansão — medidas sobre **87.950 observações de
+dois pavios de rejeição, vela de expansão — medidas sobre **66.053 observações de
 522 moedas**, com a mesma metodologia do placar: mediana à frente, referência de
 todas as observações, concordância entre moedas.
 
@@ -532,17 +532,23 @@ diz. Todas as seis.**
 
 | figura | o que ela afirma | vs referência | moedas a favor |
 | --- | --- | --- | --- |
-| martelo | alta | −0,27 p.p. | 56% |
-| estrela cadente | queda | +0,49 p.p. | 55% |
-| engolfo de alta | alta | −0,23 p.p. | 52% |
-| engolfo de baixa | queda | +0,11 p.p. | 51% |
-| rejeição superior | queda | +0,53 p.p. | 56% |
-| rejeição inferior | alta | −0,46 p.p. | 59% |
+| martelo | alta | −0,05 p.p. | 53% |
+| estrela cadente | queda | +0,49 p.p. | 52% |
+| engolfo de alta | alta | −0,06 p.p. | 50% |
+| engolfo de baixa | queda | +0,01 p.p. | 50% |
+| rejeição superior | queda | +0,45 p.p. | 55% |
+| rejeição inferior | alta | −0,49 p.p. | 57% |
 
 Nenhuma chega aos 60% de concordância que este projeto exige para dizer que algo
-separou — é a mesma faixa em que os vieses do próprio painel morrem. E quatro das
-oito trocam de sinal entre as duas metades da janela, que é assinatura de
-descrição de regime.
+separou — quatro delas ficam em 50% a 53%, que é literalmente cara ou coroa. E
+**seis das oito** trocam de sinal entre as duas metades da janela, que é
+assinatura de descrição de regime.
+
+O engolfo rendeu um número que vale por si: na definição clássica, em que a vela
+inteira cobre a anterior com os pavios, há **4 ocorrências em 66.053
+observações**. A figura que os manuais desenham como exemplo canônico de
+dominância praticamente não existe aqui — a que existe é a frouxa, que não separa
+nada.
 
 A consistência do erro é mais interessante que o erro: a vela está descrevendo o
 movimento que **acabou de acontecer**, e neste horizonte estas moedas revertem.
@@ -554,18 +560,21 @@ importa e a figura não acrescenta nada:
 
 | combinação | só a figura | só o contexto | juntos | a figura acrescenta |
 | --- | --- | --- | --- | --- |
-| estrela + vem de alta | +0,49 | −4,80 | −3,94 | **−0,86** |
-| engolfo-baixa + vem de alta | +0,11 | −4,80 | −3,92 | **−0,88** |
-| doji + vem de alta | +0,14 | −4,80 | −4,14 | **−0,65** |
-| martelo + em suporte | −0,27 | +0,59 | +0,17 | **−0,42** |
+| estrela + vem de alta | +0,49 | −5,55 | −5,27 | **−0,27** |
+| engolfo-baixa + vem de alta | +0,01 | −5,55 | −5,06 | **−0,49** |
+| doji + vem de alta | +0,18 | −5,55 | −5,50 | **−0,05** |
+| martelo + em suporte | −0,05 | +0,32 | +0,22 | **−0,10** |
 
-A figura acrescentou nada ou piorou em **6 das 15 combinações**, e nas três com o
-contexto mais forte piorou nas três. O controle que revela isso — medir o
+A figura acrescentou nada ou piorou em **5 das 15 combinações**, e nas **quatro**
+com o contexto mais forte piorou nas quatro. O controle que revela isso — medir o
 contexto **sozinho** — é o que quase sempre falta nesse tipo de teste: sem ele,
 atribui-se à figura o que era do ambiente.
 
-E o melhor sinal da medição inteira não tem vela nenhuma dentro: **"subiu ≥20% em
-7 dias" separa −4,80 p.p. com 76% das moedas concordando.** É o mesmo efeito que
+E aqui a lição erra o alvo de um jeito específico: o contexto que ela enfatiza é
+suporte e resistência, e esses dois são cara e coroa (**+0,32 p.p. com 55%** e
+**+0,19 p.p. com 48%**). O que separa é o MOMENTO — quanto a moeda andou nos sete
+dias anteriores. O melhor sinal da medição inteira não tem vela nenhuma dentro:
+**"subiu ≥20% em 7 dias" separa −5,55 p.p. com 79% das moedas concordando.** É o mesmo efeito que
 `lib/garimpo.ts` já ordena a lista por, reencontrado por um caminho
 independente — o que confirma o sinal, não a operação: vendê-lo mecanicamente
 continua perdendo dinheiro em toda largura de stop testada.

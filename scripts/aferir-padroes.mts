@@ -96,14 +96,17 @@ interface Obs {
 }
 
 /** Todas as velas classificadas, com o retorno de 7 dias à frente. */
-function observar(escala: number, perto: number): Obs[] {
+function observar(escala: number, perto: number, janela?: number): Obs[] {
   const out: Obs[] = [];
   for (const [s, v] of series) {
-    for (let i = 21; i + HORIZONTE < v.length; i++) {
+    // Quem decide o índice mínimo é `contextoDe`, que exige a janela de níveis
+    // cheia e devolve nulo antes disso. Um `21` fixo aqui duplicaria a regra em
+    // dois lugares — e foi assim que a deriva de 1,52x passou despercebida.
+    for (let i = 0; i + HORIZONTE < v.length; i++) {
       const c = v[i].close;
       const f = v[i + HORIZONTE].close;
       if (!(c > 0) || !(f > 0)) continue;
-      const ctx = contextoDe(v, i, perto);
+      const ctx = contextoDe(v, i, perto, janela);
       if (!ctx) continue;
       out.push({ s, t: v[i].time, padroes: padroesDe(v, i, escala), ctx, fwd: f / c - 1 });
     }
@@ -335,6 +338,52 @@ for (const p of FIGURAS) {
   );
 }
 
+// =========================================== 4b. sensibilidade do CONTEXTO
+
+/**
+ * OS CORTES DO CONTEXTO, que são tão convenção quanto os das figuras.
+ *
+ * ESTA SEÇÃO EXISTE PORQUE `lib/padroes.ts` AFIRMAVA QUE ELA EXISTIA. O
+ * comentário do `PERTO` dizia, com essas palavras, que "a aferição roda com 3% e
+ * 8% para isso ficar visível em vez de escondido numa constante" — e a aferição
+ * rodava só com 3%. Um comentário que promete medição que não acontece é pior
+ * que comentário nenhum: ele desliga a pergunta na cabeça de quem lê.
+ *
+ * Os dois cortes importam por motivos diferentes:
+ *
+ *   PERTO    3% é APERTADO para estas moedas — `npm run estudar` mede
+ *            volatilidade diária de 7% a 10%, então 3% é ruído de poucas horas.
+ *            8% é da ordem de um dia normal.
+ *   JANELA   quantas velas para trás um nível continua sendo nível. É a
+ *            constante que consertou a deriva de 1,52x; o valor dela continua
+ *            sendo escolha, e escolha se testa.
+ */
+console.log(
+  `\n──────────────── 4b. SENSIBILIDADE DO CONTEXTO ────────────────\n` +
+    `"em suporte" e "em resistência" dependem de dois cortes de convenção`,
+);
+console.log("corte                        n em suporte   vs referência   moedas a favor");
+const sensContexto: { perto: number; janela: number; suporte: Resultado; resistencia: Resultado }[] = [];
+for (const [perto, janela] of [
+  [0.03, 60],
+  [0.08, 60],
+  [0.03, 30],
+  [0.03, 120],
+] as [number, number][]) {
+  const obs = perto === 0.03 && janela === 60 ? base : observar(1, perto, janela);
+  const sup = medir(`suporte`, obs.filter((o) => o.ctx.emSuporte), obs, "nenhuma");
+  const res = medir(`resistência`, obs.filter((o) => o.ctx.emResistencia), obs, "nenhuma");
+  sensContexto.push({ perto, janela, suporte: sup, resistencia: res });
+  console.log(
+    `perto ${(perto * 100).toFixed(0)}% · janela ${janela}`.padEnd(28),
+    String(sup.n).padStart(13),
+    pp(sup.distancia).padStart(15),
+    `${sup.aFavor}/${sup.moedas}`.padStart(14),
+    `${((sup.aFavor / Math.max(1, sup.moedas)) * 100).toFixed(0)}%`.padStart(6),
+    perto === 0.03 && janela === 60 ? "  ← a convenção" : "",
+  );
+}
+
 // ================================================== 5. estabilidade no tempo
 
 /**
@@ -403,8 +452,27 @@ for (const p of FIGURAS) {
   if (temAmostra && !concOk) porque.push(`${(conc * 100).toFixed(0)}% das moedas concordam, abaixo de 60%`);
 
   const cs = sensibilidade[p].map((c) => c.distancia).filter(Number.isFinite);
-  const cortesOk = cs.length === 3 && new Set(cs.map(Math.sign)).size === 1;
-  if (!cortesOk) porque.push(`o efeito troca de sinal (ou some) entre os cortes`);
+  // O TESTE PRECISA TER RODADO PARA PODER PASSAR, e uma vez ele não rodou: o
+  // engolfo não tinha corte contínuo, as três escalas devolviam exatamente as
+  // mesmas 7.327 observações, e este `Set(...).size === 1` dava "ok" com
+  // entusiasmo — três números idênticos têm mesmo sinal por construção. Um "ok"
+  // de um teste que não aconteceu é pior do que teste nenhum, porque some da
+  // lista de coisas a fazer.
+  //
+  // `lib/padroes.ts` agora faz a escala percorrer a convenção corpo-contra-corpo
+  // × vela-inteira no engolfo, então o teste roda de verdade. Este guarda fica
+  // como rede: se um dia entrar figura sem corte, ela reprova aqui em vez de
+  // passar de graça.
+  const ns = sensibilidade[p].map((c) => c.n);
+  const degenerado = new Set(ns).size === 1;
+  const cortesOk = cs.length === 3 && !degenerado && new Set(cs.map(Math.sign)).size === 1;
+  if (degenerado) {
+    porque.push(
+      `a prova de sensibilidade não roda nesta figura: as três escalas devolvem as mesmas ${ns[0]} observações`,
+    );
+  } else if (!cortesOk) {
+    porque.push(`o efeito troca de sinal (ou some) entre os cortes`);
+  }
 
   const metadesOk = estabilidade[p].concorda;
   if (!metadesOk) porque.push(`não aparece nas duas metades da janela`);
@@ -525,6 +593,7 @@ await writeFile(
       comContexto,
       soContexto,
       sensibilidade,
+      sensContexto,
       estabilidade,
       veredito,
       decomposicao,

@@ -1251,9 +1251,20 @@ export function rodar(
       const valor = Math.min(alvo, cabe, estado.caixa);
       // Posição pequena demais é ruído de arredondamento contra custo fixo.
       if (valor < 1) {
-        // Qual teto mordeu, e não só "não coube": os dois têm consertos
-        // diferentes, e um contador que junta os dois não aponta nenhum.
-        if (cabe <= estado.caixa) estado.recusadas.margem++;
+        // QUAL TETO MORDEU DE VERDADE, e não qualquer um dos dois.
+        //
+        // A versão anterior perguntava só `cabe <= caixa`, o que atribui a
+        // recusa à margem ou ao caixa mesmo quando nenhum dos dois foi o menor —
+        // basta a conta ter encolhido a ponto de a própria call caber em menos
+        // de um dólar, e o contador aponta um teto que estava sobrando. Um
+        // número que manda consertar o lugar errado é pior do que número
+        // nenhum, e aqui ele existe exatamente para dizer onde mexer.
+        //
+        // Sem teto novo para a terceira causa: uma call que nasce abaixo de um
+        // dólar é a conta acabando, e isso já aparece no patrimônio. Ela entra
+        // em `risco` porque é o orçamento de risco que a dimensionou.
+        if (alvo <= cabe && alvo <= estado.caixa) estado.recusadas.risco++;
+        else if (cabe <= estado.caixa) estado.recusadas.margem++;
         else estado.recusadas.caixa++;
         continue;
       }

@@ -175,18 +175,39 @@ export function padroesDe(velas: VelaOHLC[], i: number, escala = 1): Padrao[] {
   // ENGOLFO — o corpo de hoje cobre o corpo de ontem inteiro, e as duas velas
   // são de cores opostas.
   //
-  // COMPARA CORPO COM CORPO e não vela com vela, que é a definição clássica: os
-  // pavios entram na versão "engolfo total" e ela é rara demais para ter
-  // amostra. Onde há duas definições e uma delas não fecha amostra, a medida
-  // honesta é a que fecha — e dizer qual foi usada.
+  // A ESCALA AQUI TROCA A DEFINIÇÃO EM VEZ DE MEXER NUM NÚMERO, e isso conserta
+  // um bug que dava passe livre num teste. O engolfo não tem corte contínuo —
+  // ou o corpo cobre o outro ou não cobre —, então a prova de sensibilidade
+  // rodava com as TRÊS escalas devolvendo exatamente as mesmas 7.327
+  // observações, e o veredito marcava "cortes ok" para uma figura em que o teste
+  // nunca tinha rodado. Um "ok" de um teste que não aconteceu é pior do que não
+  // ter o teste.
+  //
+  // Mas o engolfo TEM uma convenção discutida, e ela é binária: corpo contra
+  // corpo, ou vela inteira contra vela inteira (com os pavios). É essa a
+  // sensibilidade real da figura, e é ela que a escala percorre:
+  //
+  //   frouxo (<0,8)    corpo cobre corpo, e a vela anterior pode ser um doji
+  //   convenção (1)    corpo cobre corpo, anterior com corpo de verdade
+  //   apertado (>1,2)  a vela INTEIRA cobre a anterior, pavios incluídos
   const ant = velas[i - 1];
   if (ant) {
     const b = anatomia(ant);
-    if (b.corpo > 0 && a.corpo > 0) {
-      const topoAnt = Math.max(ant.open, ant.close);
-      const baseAnt = Math.min(ant.open, ant.close);
-      if (a.alta && !b.alta && v.close >= topoAnt && v.open <= baseAnt) out.push("engolfo-alta");
-      if (!a.alta && b.alta && v.open >= topoAnt && v.close <= baseAnt) out.push("engolfo-baixa");
+    const topoAnt = Math.max(ant.open, ant.close);
+    const baseAnt = Math.min(ant.open, ant.close);
+    // No frouxo, a anterior pode ter corpo zero (doji); nos outros dois, não —
+    // "engolfir" um corpo inexistente não é engolfo, é qualquer vela.
+    const anteriorVale = escala < 0.8 ? true : b.corpo > 0;
+    const total = escala > 1.2;
+    if (anteriorVale && a.corpo > 0) {
+      const cobreAlta = total
+        ? v.close >= ant.high && v.open <= ant.low
+        : v.close >= topoAnt && v.open <= baseAnt;
+      const cobreBaixa = total
+        ? v.open >= ant.high && v.close <= ant.low
+        : v.open >= topoAnt && v.close <= baseAnt;
+      if (a.alta && !b.alta && cobreAlta) out.push("engolfo-alta");
+      if (!a.alta && b.alta && cobreBaixa) out.push("engolfo-baixa");
     }
   }
 
@@ -239,62 +260,128 @@ export interface Contexto {
  * CONVENÇÃO, como os cortes das figuras, e com um agravante que precisa ser
  * dito: nestas moedas 3% é ruído de poucas horas — `npm run estudar` mede
  * volatilidade diária de 7% a 10%. Então este corte é APERTADO para o objeto de
- * estudo, e a consequência é que "em suporte" vai ser raro e a amostra vai
- * sofrer. A aferição roda com 3% e 8% para isso ficar visível em vez de
- * escondido numa constante.
+ * estudo.
+ *
+ * A SEÇÃO 4b DE `npm run aferir-padroes` MEDE ISSO, e é bom dizer que ela passou
+ * a existir depois: este comentário afirmava que "a aferição roda com 3% e 8%"
+ * quando a aferição rodava só com 3%. Comentário que promete medição inexistente
+ * é pior que comentário nenhum — ele desliga a pergunta na cabeça de quem lê, e
+ * foi por isso que a deriva de `JANELA_NIVEIS` sobreviveu tanto tempo ali do
+ * lado. Hoje ela roda perto de 3% e 8%, e janela de 30, 60 e 120.
+ *
+ * O que ela devolveu: "em suporte" separa +0,32 p.p. a 3% e +0,30 p.p. a 8%,
+ * com 55% e 56% de concordância. Estável nos cortes e irrelevante nos quatro —
+ * ou seja, o corte não é o problema, o conceito é que não separa.
  */
 export const PERTO = 0.03;
 
 const LADO = 3;
 
-/** Pivôs de fundo — o espelho de `pivosDeTopo` de `lib/tecnica.ts`. */
-export function pivosDeFundo(velas: VelaOHLC[], ate: number): number[] {
+/**
+ * QUANTAS VELAS PARA TRÁS UM NÍVEL CONTINUA VALENDO COMO NÍVEL.
+ *
+ * ESTA CONSTANTE CONSERTA UM BUG QUE INVALIDAVA MEDIÇÃO, e ele merece estar
+ * escrito por inteiro porque não dava sintoma nenhum.
+ *
+ * A primeira versão procurava pivôs desde o COMEÇO da série. O efeito é que a
+ * definição de "está num suporte" não era uma propriedade do mercado — era uma
+ * propriedade de quanto histórico por acaso tinha vindo antes. Medido numa
+ * ETHUSDT de 200 velas, os pivôs de fundo acumulados vão de **2 na vela 30 para
+ * 17 na vela 190**: a mesma condição de mercado tem duas chances de ser
+ * classificada como "em suporte" no começo da janela e dezessete no fim.
+ *
+ * O tamanho do estrago, medido em 120 moedas:
+ *
+ *   "em suporte" na PRIMEIRA metade da série     41,8%
+ *   "em suporte" na SEGUNDA  metade da série     63,7%   ← 1,52x
+ *
+ * E isso não é só uma imprecisão: **contamina o teste de estabilidade**, que é
+ * um dos quatro que decidem se uma figura passa. Esse teste compara as duas
+ * metades da janela justamente para separar efeito de regime — e a régua estava
+ * mudando entre as duas metades junto com o mercado. Qualquer diferença entre as
+ * metades tinha uma explicação além do mercado, e nenhum número dizia isso.
+ *
+ * Com janela fixa, toda observação tem o MESMO número de chances, e a definição
+ * volta a ser sobre o mercado. Sessenta velas é convenção e não medição — a
+ * aferição roda 30, 60 e 120 para o número não se esconder aqui dentro.
+ */
+export const JANELA_NIVEIS = 60;
+
+/**
+ * Os pivôs conhecidos em `ateIndice`, dentro da janela.
+ *
+ * UM PIVÔ NO ÍNDICE `k` SÓ É CONHECIDO EM `k + LADO`, porque a janela do pivô é
+ * simétrica e as `LADO` velas seguintes fazem parte da definição dele. Usar
+ * pivôs além disso é olhar para frente — e a aferição inteira viraria circular
+ * sem nenhum sintoma, que é o modo de falha que este projeto mais teme.
+ *
+ * O corte fica AQUI e não em quem chama. A versão anterior deixava a
+ * responsabilidade dividida: quem chamava passava `i - LADO` e esta função
+ * subtraía outro `LADO` por dentro, o que era seguro por acidente e jogava fora
+ * os três pivôs mais recentes — justamente os mais relevantes para "onde o preço
+ * está agora". Uma trava dividida em dois lugares é a armadilha nº 7.
+ */
+function pivos(velas: VelaOHLC[], ateIndice: number, tipo: "fundo" | "topo", janela: number): number[] {
   const out: number[] = [];
-  for (let i = LADO; i < Math.min(velas.length, ate) - LADO; i++) {
-    let menor = true;
-    for (let j = i - LADO; j <= i + LADO; j++) {
-      if (j !== i && velas[j].low <= velas[i].low) {
-        menor = false;
+  // O último pivô confirmado em `ateIndice`, e o começo da janela móvel.
+  const ultimo = ateIndice - LADO;
+  const inicio = Math.max(LADO, ultimo - janela + 1);
+  for (let k = inicio; k <= ultimo && k + LADO < velas.length; k++) {
+    let extremo = true;
+    for (let j = k - LADO; j <= k + LADO; j++) {
+      if (j === k) continue;
+      const bate =
+        tipo === "fundo" ? velas[j].low <= velas[k].low : velas[j].high >= velas[k].high;
+      if (bate) {
+        extremo = false;
         break;
       }
     }
-    if (menor) out.push(i);
+    if (extremo) out.push(k);
   }
   return out;
 }
 
-/** Pivôs de topo, mas só até `ate` — para nunca olhar para frente. */
-export function pivosDeTopoAte(velas: VelaOHLC[], ate: number): number[] {
-  const out: number[] = [];
-  for (let i = LADO; i < Math.min(velas.length, ate) - LADO; i++) {
-    let maior = true;
-    for (let j = i - LADO; j <= i + LADO; j++) {
-      if (j !== i && velas[j].high >= velas[i].high) {
-        maior = false;
-        break;
-      }
-    }
-    if (maior) out.push(i);
-  }
-  return out;
+/** Pivôs de fundo conhecidos em `ateIndice`. */
+export function pivosDeFundo(velas: VelaOHLC[], ateIndice: number, janela = JANELA_NIVEIS): number[] {
+  return pivos(velas, ateIndice, "fundo", janela);
 }
 
-export function contextoDe(velas: VelaOHLC[], i: number, perto = PERTO): Contexto | null {
-  if (i < 21 || i >= velas.length) return null;
+/** Pivôs de topo conhecidos em `ateIndice`. */
+export function pivosDeTopoAte(velas: VelaOHLC[], ateIndice: number, janela = JANELA_NIVEIS): number[] {
+  return pivos(velas, ateIndice, "topo", janela);
+}
+
+export function contextoDe(
+  velas: VelaOHLC[],
+  i: number,
+  perto = PERTO,
+  janela = JANELA_NIVEIS,
+): Contexto | null {
+  // A JANELA PRECISA ESTAR CHEIA, senão a definição volta a andar.
+  //
+  // Fixar a janela em 60 velas derrubou a deriva de 1,52x para 1,14x e não para
+  // 1,00x, e o que sobrava era o começo da série: em `i = 21` a janela móvel só
+  // tem 16 velas de onde tirar pivô, então as primeiras observações continuavam
+  // com menos chances de cair em "suporte" do que as de depois. Meia correção
+  // não corrige — exigir a janela cheia é o que torna a régua a mesma em toda
+  // observação.
+  //
+  // CUSTA AMOSTRA E É PARA CUSTAR: numa série de 200 velas isto descarta as ~42
+  // primeiras observações elegíveis. Amostra menor com régua fixa vale mais do
+  // que amostra maior com régua que anda, porque a régua que anda entra
+  // exatamente no teste de estabilidade — que compara as duas metades da janela.
+  const minimo = Math.max(21, janela + LADO);
+  if (i < minimo || i >= velas.length) return null;
   const v = velas[i];
   const preco = v.close;
   if (!(preco > 0)) return null;
 
-  // `i` e não `i + 1`: o pivô precisa estar FECHADO antes da vela que se está
-  // classificando. Um pivô que inclui a própria vela — ou as três seguintes, que
-  // é o que a janela simétrica exige — seria olhar para frente, e a aferição
-  // inteira viraria circular sem nenhum sintoma.
-  //
-  // O `- LADO` é o que garante isso: um pivô no índice k só é conhecido depois
-  // de k + LADO, então só valem os pivôs até `i - LADO`.
-  const limite = i - LADO;
-  const fundos = pivosDeFundo(velas, limite).map((k) => velas[k].low);
-  const topos = pivosDeTopoAte(velas, limite).map((k) => velas[k].high);
+  // `i` e não `i + 1`: o pivô precisa estar CONFIRMADO na vela que se está
+  // classificando, e quem garante isso é `pivos`, que só devolve pivôs até
+  // `i - LADO`. O corte mora lá dentro de propósito — ver o comentário dele.
+  const fundos = pivosDeFundo(velas, i, janela).map((k) => velas[k].low);
+  const topos = pivosDeTopoAte(velas, i, janela).map((k) => velas[k].high);
 
   const m20 = velas.slice(i - 20, i).reduce((s, x) => s + x.close, 0) / 20;
   const volRef = mediana(velas.slice(i - 20, i).map((x) => x.volume).filter((x) => x > 0));
