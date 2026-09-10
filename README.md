@@ -353,6 +353,67 @@ três linhas. As outras quatro colunas contam eventos, não dinheiro, e essas n�
 se mexem. `npm run carteira` imprime as três regras toda vez, para que o dia em
 que a amostra decidir de outro jeito seja decidido na mesma tabela.
 
+### O prejuízo, diagnosticado: `npm run diagnostico`
+
+A carteira dizia QUANTO tinha perdido e não dizia POR QUÊ — e sem isso a reação
+natural é mexer no stop até o número ficar bonito, que é a forma mais cara de
+errar: o backtest melhora e a conta não. O diagnóstico responde em cinco partes,
+e a ordem é deliberada.
+
+**1. Duas operações são o prejuízo inteiro.** Das 6 encerradas, 4 no vermelho
+somam −US$ 60,44 e 2 no verde somam +US$ 37,35. Mas as **duas piores sozinhas
+são −US$ 50,66: 84% de todo o prejuízo realizado.** As duas saíram por stop, e o
+dimensionamento funcionou exatamente como projetado — cada uma custou o risco
+orçado da própria call, nem um centavo a mais.
+
+**2. Em múltiplos de risco, a conta é de taxa de acerto.**
+
+| | |
+|---|---|
+| soma | **−0,79R** em 6 operações |
+| taxa de acerto | 33% |
+| ganho médio | +1,11R |
+| perda média | −0,75R |
+| **acerto de empate** | **40%** |
+
+A assimetria está a favor — ganha 1,11 e perde 0,75. Falta acerto: 33% contra os
+40% que empatam.
+
+**3. E aqui o diagnóstico vira outra coisa.** Rodando o motor **400 vezes com o
+lado de cada moeda sorteado** — mesmas entradas, mesmas moedas, mesmo tamanho,
+custo, financiamento e regra de saída, só a direção trocada:
+
+| | |
+|---|---|
+| p10 do sorteio | US$ 940,82 |
+| **mediana do sorteio** | **US$ 991,39** |
+| p90 do sorteio | US$ 1.043,37 |
+| **a carteira de verdade** | **US$ 974,35 — percentil 38** |
+
+O sorteio mediano vai melhor do que o painel. Com 6 operações encerradas isso
+**não** condena o painel — a amostra não distingue as duas coisas. Mas diz uma
+coisa dura e útil: **enquanto for assim, nenhum ajuste de stop, alvo ou tamanho
+conserta o que falta**, porque o que falta é direção medida. É o mesmo veredito
+do placar sobre 21 mil emissões, agora com tamanho de posição e custo dentro.
+
+**4. A superfície de saída confirma.** Stop de 15% a 40% × alvo de 25% a 100%, e
+a variação inteira cabe em US$ 50 — ruído, com 6 operações. Dois achados reais
+saem daí, e nenhum é um parâmetro melhor:
+
+- **O alvo nunca disparou.** 40%, 60% e 100% dão patrimônio idêntico. O prazo
+  também não: 7 e 14 dias são o mesmo número. Das três regras de saída que a
+  carteira publica, duas são decoração — quem fecha é o stop e o painel.
+- **O stop não pode ser alargado sozinho.** A 3x a liquidação fica em 32,8%, e um
+  stop declarado acima disso nunca dispara porque a corretora fecha antes.
+  "Alargar o stop" e "baixar a alavancagem" são a mesma decisão.
+
+**5. O filtro pela deriva medida não pôde ser avaliado.** A ideia é usar o único
+sinal forte do projeto no sentido em que ele sobreviveu — não COMPRAR contra ele:
+uma call de compra numa moeda que subiu ≥20% na semana entra na frente de uma
+deriva de −5,55 p.p. com 79% de concordância. Sobre este histórico o filtro toca
+**2 de 24 pares moeda+lado**. Fica no diagnóstico, sem veredito, até haver
+amostra.
+
 ### Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos
 
 Era
@@ -703,6 +764,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | --- | --- |
 | `npm run placar` | lê o histórico de emissões e mede se o painel acertou |
 | `npm run carteira` | mil dólares de mentira seguindo as calls, e o que sobrou |
+| `npm run diagnostico` | de onde veio o prejuízo, e o teste de permutação que diz se o painel tem direção |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |

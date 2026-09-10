@@ -100,6 +100,16 @@ if (c) {
     // teto parar de ser conferido na abertura.
     checa("risco de pico dentro do teto de 25% mais o lucro não realizado",
       (c.maiorRiscoAberto ?? 0) <= 0.375, `= ${c.maiorRiscoAberto}`);
+    // O TESTE DE SORTEIO, quando o retrato o trouxer. Retratos anteriores a
+    // 10/09 não têm o campo, e isso é ausência legítima — não falha.
+    const so = (c as { sorteio?: { percentil: number; p10: number; mediana: number; p90: number; n: number } | null }).sorteio;
+    if (so) {
+      checa("percentil do sorteio em 0..100", so.percentil >= 0 && so.percentil <= 100, `= ${so.percentil}`);
+      checa("quantis ordenados", so.p10 <= so.mediana && so.mediana <= so.p90, `${so.p10} ${so.mediana} ${so.p90}`);
+      // Poucos sorteios dão um percentil grosso demais para significar algo, e
+      // um percentil grosso na tela ao lado de "não se separa" é pior que nada.
+      checa("sorteios suficientes", so.n >= 100, `= ${so.n}`);
+    }
     const curva = c.curva ?? [];
     checa("curva ordenada no tempo", curva.every((p, i) => i === 0 || curva[i - 1].t <= p.t));
     checa("curva sem patrimônio negativo", curva.every((p) => p.patrimonio >= 0));

@@ -65,8 +65,31 @@ no código, com número:
   −5,55 p.p. com **79%** de concordância — o mesmo efeito que o garimpo já ordena
   a lista por, achado por outro caminho. `conhecimento/01-velas.md`.
 
+- **A carteira não se separa de um sorteio, e é isso que decide o resto.**
+  Rodando o motor 400 vezes com o LADO de cada moeda sorteado — mesmas entradas,
+  mesmas moedas, mesmo tamanho, custo, financiamento e regra de saída —, a nuvem
+  vai de US$ 940 (p10) a US$ 1.043 (p90), com **mediana de US$ 991**. A carteira
+  de verdade está em US$ 974: **percentil 38**, ou seja o sorteio mediano vai
+  melhor. Com 6 operações encerradas isso não condena o painel — mas diz que
+  **nenhum ajuste de stop, alvo ou tamanho conserta o que está faltando**, porque
+  o que falta é direção medida. `npm run diagnostico`.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
+
+### Antes de mexer em parâmetro, rode `npm run diagnostico`
+
+É a ordem que impede o erro mais caro possível aqui: ajustar stop até o backtest
+ficar bonito. O script responde, nesta ordem de propósito:
+
+1. **onde o dinheiro foi** — atribuição por operação, motivo e lado
+2. **em múltiplos de risco (R)** — porque dólar esconde tamanho de posição
+3. **o painel tem direção?** — o teste de permutação acima
+4. **a superfície stop × alvo** — sobre as calls de verdade e o caminho de velas
+5. **filtrar entrada pela deriva medida** — o único sinal forte do projeto, usado
+   no sentido negativo (não comprar contra ele)
+
+A pergunta 3 vem antes da 4 porque ela pode invalidá-la, e invalida.
 
 ### Material de fora entra por `conhecimento/`, nunca direto no código
 
@@ -252,9 +275,9 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | regra | valor | de onde vem |
 |---|---|---|
 | Alavancagem | **3x** | o teto em que o stop ainda dispara antes da liquidação: 25% de preço × 3 = 75% da margem. A 4x seriam 100%, e a corretora fecharia a posição exatamente onde o stop fecharia |
-| Stop | −25% de preço | ~3 desvios de UM DIA; `npm run estudar` mede volatilidade diária de 7% a 10% |
-| Alvo | +40% de preço | o dobro da assimetria que sustenta a regra de compra (sobe +20% em 21,0% das semanas) |
-| Prazo | 14 dias | as regras direcionais foram medidas em janelas de 7 e 14 dias |
+| Stop | −25% de preço | ~3 desvios de UM DIA; `npm run estudar` mede volatilidade diária de 7% a 10%. **Não pode passar de 32,8% a 3x** — acima disso a liquidação vem antes e o stop nunca dispara: "alargar o stop" e "baixar a alavancagem" são a MESMA decisão |
+| Alvo | +40% de preço | o dobro da assimetria que sustenta a regra de compra (sobe +20% em 21,0% das semanas). **Nunca disparou**: 40%, 60% e 100% dão patrimônio idêntico |
+| Prazo | 14 dias | as regras direcionais foram medidas em janelas de 7 e 14 dias. **Nunca disparou** — 7 e 14 dias dão o mesmo resultado; encurtar para 3 piora em US$ 34 |
 | Risco por call | **3% / 2% / 1%** do patrimônio (força 3/2/1) | dobrado em 05/09: na régua anterior o pico de risco agregado era 13% de um teto de 25% e 85% do dinheiro ficava parado — a carteira não conseguia testar se a estratégia quebra a conta, que é para o que ela existe |
 | Risco agregado | teto de 25% **na abertura**, medido de onde a posição está | cripto tem dias em que a lista inteira cai 25% junta. Somava o nominal da abertura, o que errava para os dois lados: quem está no lucro tem MAIS a devolver até o stop, quem está no prejuízo tem menos |
 | Margem exposta | teto de 50% | nunca prendeu: o pico medido é 34% e as recusas por ele são **zero** |

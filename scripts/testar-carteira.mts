@@ -230,7 +230,7 @@ console.log("\n--- o giro: qual leitura tem o direito de fechar a posição ---"
     { t: h(3), s: "X", preco: 1.04, vies: "observar", forca: 0, fund: 0 },
     { t: h(4), s: "X", preco: 1.05, vies: "long", forca: 2, fund: 0 },
   ];
-  const antes = rodar(piscando, T0 * 1000, undefined, 1, "qualquer");
+  const antes = rodar(piscando, T0 * 1000, undefined, { saida: "qualquer" });
   const agora = rodar(piscando, T0 * 1000);
   confere(
     `"observar" não fecha mais a posição (eram ${antes.encerradas} idas e voltas)`,
@@ -276,7 +276,7 @@ console.log("\n--- o giro: qual leitura tem o direito de fechar a posição ---"
     moedor.push({ t: h(i * 2 + 1), s: "X", preco: p, vies: "observar", forca: 0, fund: 0 });
   }
   const comObservar = rodar(moedor, T0 * 1000);
-  const antesDoConserto = rodar(moedor, T0 * 1000, undefined, 1, "qualquer");
+  const antesDoConserto = rodar(moedor, T0 * 1000, undefined, { saida: "qualquer" });
   confere(
     `"observar" não descongela mais a queimada (eram ${antesDoConserto.encerradas} stops)`,
     comObservar.encerradas === 1,
@@ -519,7 +519,7 @@ console.log("\n--- o tamanho da aposta como parâmetro ---");
     { t: h(1), s: "X", preco: 1.5, vies: "long", forca: 2, fund: 0 },
   ];
   const um = rodar(es, T0 * 1000);
-  const dois = rodar(es, T0 * 1000, undefined, 2);
+  const dois = rodar(es, T0 * 1000, undefined, { escala: 2 });
   // Dobrar o orçamento tem de dobrar o RESULTADO em dólar, e não mexer no
   // retorno sobre a margem — que é o que diz que só o tamanho mudou.
   const g1 = um.fechadas[0], g2 = dois.fechadas[0];

@@ -321,6 +321,28 @@ export interface Carteira {
    */
   recusadas: { risco: number; margem: number; caixa: number; queimada: number };
   /**
+   * A CARTEIRA SE SEPARA DE UM SORTEIO DE LADO?
+   *
+   * O número que decide se algum outro número desta tela significa alguma coisa,
+   * e ele não existia. A tela mostrava "patrimônio −2,6%" sem dizer que −2,6%
+   * está no meio da nuvem que sai de sortear se cada call era de compra ou de
+   * venda — ou seja, sem dizer que a amostra não distingue o painel de uma
+   * moeda jogada para o alto.
+   *
+   * Preenchido por `npm run carteira` e não por `rodar`, porque exige rodar o
+   * motor centenas de vezes e `rodar` é uma função pura sobre um cenário só.
+   * Ausente nos retratos gravados antes de 10/09.
+   */
+  sorteio?: {
+    /** Quantos sorteios ficaram ABAIXO da carteira de verdade, em 0..100. */
+    percentil: number;
+    p10: number;
+    mediana: number;
+    p90: number;
+    /** Quantos sorteios foram rodados. */
+    n: number;
+  } | null;
+  /**
    * Quanto vive a posição mediana, em HORAS.
    *
    * O número que expõe a distância entre o que a carteira diz fazer e o que ela
@@ -607,6 +629,50 @@ export const MARGEM_MANUTENCAO = 0.005;
 export const SAIDA: SaidaPainel = "direcional+evitar";
 
 /**
+ * OS LIMITES DE SAÍDA, VIRADOS EM PARÂMETRO PARA PODEREM SER MEDIDOS.
+ *
+ * Eram três constantes fixas, e por isso a pergunta mais cara desta carteira não
+ * tinha resposta: **o stop está no lugar certo?** Ela não é acadêmica. Todo o
+ * prejuízo realizado até 10/09 são DUAS operações, as duas por stop, somando
+ * −US$ 50,67 — enquanto as outras quatro juntas dão +US$ 27,58. Se o stop
+ * estiver apertado demais, ele não está protegendo a conta, está fabricando a
+ * perda dela.
+ *
+ * E a suspeita tem indício: nas duas que estoparam, segurar teria perdido MENOS.
+ * A BLUAI recuperou 24,1% em 35 horas depois do stop e hoje está a −16,0% da
+ * entrada, contra os −25% em que o stop a matou; a UB andou 17,0% a favor em
+ * 85 horas e hoje está a −7,4%. Duas observações não decidem nada — é
+ * exatamente por isso que os limites viram parâmetro e a superfície inteira é
+ * medida em `npm run carteira`, sobre as calls de verdade e o caminho de velas.
+ */
+export interface Limites {
+  /** Variação de PREÇO contra a posição que a fecha. */
+  stop: number;
+  /** Variação de PREÇO a favor que realiza. */
+  alvo: number;
+  /** Dias até a call deixar de ser a mesma call. */
+  prazoDias: number;
+}
+
+export const LIMITES: Limites = { stop: STOP, alvo: ALVO, prazoDias: PRAZO_DIAS };
+
+/**
+ * O que `rodar` aceita além das emissões e do caminho.
+ *
+ * VIROU OBJETO PORQUE JÁ ERAM CINCO POSIÇÕES e entravam mais três. Um sexto
+ * argumento posicional é onde alguém troca `escala` por `stop` sem o compilador
+ * reclamar — os dois são `number`.
+ */
+export interface Opcoes {
+  /** Multiplicador do orçamento de risco. 1 é a régua publicada. */
+  escala?: number;
+  /** Qual leitura do painel fecha a posição. */
+  saida?: SaidaPainel;
+  /** Stop, alvo e prazo. Ausentes, valem os publicados. */
+  limites?: Partial<Limites>;
+}
+
+/**
  * Financiamento presumido quando o histórico não gravou a taxa real.
  *
  * As linhas anteriores a 03/09 não têm o campo. Medido nas moedas da lista, a
@@ -664,7 +730,7 @@ interface Estado {
  * aí que o estado da conta está completo. Chamar antes das aberturas mediria uma
  * exposição que ainda não existe.
  */
-function marcar(estado: Estado, quando: number): void {
+function marcar(estado: Estado, quando: number, lim: Limites): void {
   const exposto = [...estado.abertas.values()].reduce((s, p) => s + p.valor * (1 + p.retorno), 0);
   const patrimonio = estado.caixa + exposto;
   if (!Number.isFinite(patrimonio)) return;
@@ -685,7 +751,7 @@ function marcar(estado: Estado, quando: number): void {
   // Em dólares e dividido pelo patrimônio DE ENTÃO, pela mesma razão da
   // exposição logo acima: 25% de uma conta de mil e 25% de uma de seiscentos não
   // são o mesmo risco, e é a segunda leitura que diz se o teto está prendendo.
-  const risco = [...estado.abertas.values()].reduce((s, p) => s + riscoDaqui(p), 0);
+  const risco = [...estado.abertas.values()].reduce((s, p) => s + riscoDaqui(p, lim), 0);
   if (patrimonio > 0) {
     const fracao = risco / patrimonio;
     if (fracao > estado.maiorRiscoAberto) estado.maiorRiscoAberto = fracao;
@@ -748,8 +814,8 @@ function marcar(estado: Estado, quando: number): void {
  * mais nada por causa do stop, e um número negativo aqui viraria orçamento de
  * risco inventado para as calls seguintes.
  */
-function riscoDaqui(p: Aberta): number {
-  const nivel = p.precoEntrada * (p.lado === "long" ? 1 - STOP : 1 + STOP);
+function riscoDaqui(p: Aberta, lim: Limites): number {
+  const nivel = p.precoEntrada * (p.lado === "long" ? 1 - lim.stop : 1 + lim.stop);
   // A margem isolada é o teto da perda: abaixo de −100% a corretora já fechou.
   const noStop = Math.max(-1, sobreMargem(p, nivel));
   const perda = p.valor * (p.retorno - noStop);
@@ -862,6 +928,7 @@ function percorrer(
   ate: number,
   precoRetrato: number,
   taxa: number,
+  lim: Limites,
 ): boolean {
   // Só vela FECHADA, ainda não percorrida, e que não começou antes da posição
   // existir. `ultimoFunding` é o relógio de onde esta posição parou, e ele avança
@@ -876,8 +943,8 @@ function percorrer(
   if (k === null) return false;
 
   const comprado = p.lado === "long";
-  const nivelStop = p.precoEntrada * (comprado ? 1 - STOP : 1 + STOP);
-  const nivelAlvo = p.precoEntrada * (comprado ? 1 + ALVO : 1 - ALVO);
+  const nivelStop = p.precoEntrada * (comprado ? 1 - lim.stop : 1 + lim.stop);
+  const nivelAlvo = p.precoEntrada * (comprado ? 1 + lim.alvo : 1 - lim.alvo);
 
   for (const v of janela) {
     const abertura = v.abertura * k;
@@ -927,7 +994,7 @@ function percorrer(
       fechar(estado, p, preenche(nivelAlvo, "favor"), v.fechouEm, "alvo");
       return true;
     }
-    if ((v.fechouEm - p.abertaEm) / 86_400_000 >= PRAZO_DIAS) {
+    if ((v.fechouEm - p.abertaEm) / 86_400_000 >= lim.prazoDias) {
       fechar(estado, p, v.fechamento * k, v.fechouEm, "prazo");
       return true;
     }
@@ -986,9 +1053,11 @@ export function rodar(
   emissoes: Emissao[],
   comecouEm: number,
   caminho?: Map<string, Passo[]>,
-  escala = 1,
-  saida: SaidaPainel = SAIDA,
+  opcoes: Opcoes = {},
 ): Carteira {
+  const escala = opcoes.escala ?? 1;
+  const saida = opcoes.saida ?? SAIDA;
+  const lim: Limites = { ...LIMITES, ...opcoes.limites };
   const estado: Estado = {
     caixa: CAPITAL_INICIAL,
     abertas: new Map(),
@@ -1057,7 +1126,7 @@ export function rodar(
       // Precisa de preço do retrato para ancorar as velas na escala certa, e
       // por isso vem depois de `atual` estar em mãos. Sem caminho, ou sem
       // âncora confiável, o motor cai no teste de ponta de sempre.
-      if (atual !== undefined && caminho && percorrer(estado, p, caminho.get(p.symbol) ?? [], quando, atual, taxa)) {
+      if (atual !== undefined && caminho && percorrer(estado, p, caminho.get(p.symbol) ?? [], quando, atual, taxa, lim)) {
         continue;
       }
 
@@ -1082,7 +1151,7 @@ export function rodar(
       // cotação. A saída é pelo último preço conhecido, que é a única coisa
       // honesta a fazer quando não há preço de hoje.
       if (atual === undefined) {
-        if (dias >= PRAZO_DIAS) fechar(estado, p, p.precoAtual, quando, "prazo");
+        if (dias >= lim.prazoDias) fechar(estado, p, p.precoAtual, quando, "prazo");
         continue;
       }
 
@@ -1121,9 +1190,9 @@ export function rodar(
       // A ordem dos testes é a ordem do pior caso: dentro de um intervalo entre
       // retratos o preço passou por lugares que não vemos, e supor que ele
       // tocou o stop antes do alvo é a suposição conservadora.
-      if (varPreco <= -STOP) fechar(estado, p, atual, quando, "stop");
-      else if (varPreco >= ALVO) fechar(estado, p, atual, quando, "alvo");
-      else if (dias >= PRAZO_DIAS) fechar(estado, p, atual, quando, "prazo");
+      if (varPreco <= -lim.stop) fechar(estado, p, atual, quando, "stop");
+      else if (varPreco >= lim.alvo) fechar(estado, p, atual, quando, "alvo");
+      else if (dias >= lim.prazoDias) fechar(estado, p, atual, quando, "prazo");
       // O painel mudou de ideia. Esta é a saída principal: a carteira segue as
       // calls, então ela sai quando a call sai. Sem isso a carteira mediria as
       // MINHAS regras de saída, e não o painel.
@@ -1227,7 +1296,7 @@ export function rodar(
       // O risco já comprometido, EM DÓLARES e medido de onde cada posição está
       // agora — ver `riscoDaqui`. A call nova entra pelo nominal dela, que é o
       // que ela de fato arrisca no instante em que abre.
-      const riscoAberto = [...estado.abertas.values()].reduce((soma, a) => soma + riscoDaqui(a), 0);
+      const riscoAberto = [...estado.abertas.values()].reduce((soma, a) => soma + riscoDaqui(a, lim), 0);
       const orcamento = Math.max(0, total * RISCO_TOTAL_MAXIMO - riscoAberto);
       const pedido = total * risco;
       // ENCOLHE PARA CABER em vez de recusar inteira — ver `FRACAO_MINIMA_DA_CALL`
@@ -1245,7 +1314,7 @@ export function rodar(
       // arriscar 1,5% do patrimônio a margem tem de ser 2% — não 6%. Dividir só
       // pelo stop, como antes, triplicaria o risco de cada call sem que nada na
       // tela dissesse isso: é assim que backtest alavancado quebra sem avisar.
-      const alvo = concedido / (STOP * ALAVANCAGEM);
+      const alvo = concedido / (lim.stop * ALAVANCAGEM);
       const cabe = Math.max(0, total * EXPOSICAO_MAXIMA - expostoAgora());
 
       const valor = Math.min(alvo, cabe, estado.caixa);
@@ -1290,7 +1359,7 @@ export function rodar(
     }
 
     // 3. registrar o estado da conta, DEPOIS das saídas e DEPOIS das aberturas.
-    marcar(estado, quando);
+    marcar(estado, quando, lim);
   }
 
   return montar(estado, comecouEm, ultimo);
@@ -1351,6 +1420,42 @@ function montar(estado: Estado, comecouEm: number, atualizadoEm: number): Cartei
     medianaHoras,
     recusadas: estado.recusadas,
   };
+}
+
+/**
+ * AS MESMAS EMISSÕES COM O LADO DE CADA MOEDA SORTEADO.
+ *
+ * Serve ao teste que vem antes de qualquer ajuste de parâmetro: se a carteira de
+ * verdade não se separar da nuvem de sorteios, o painel não está acrescentando
+ * DIREÇÃO, e mexer em stop é escolher melhor o tamanho de uma aposta sem lado.
+ * Tudo o mais — quando entrar, em que moeda, com que tamanho, custo,
+ * financiamento e regra de saída — fica idêntico.
+ *
+ * O SORTEIO É POR MOEDA E NÃO POR EMISSÃO, e a diferença decide o teste:
+ * sortear cada linha faria a moeda trocar de lado de retrato em retrato, e a
+ * trava de call queimada mais a saída por viés contrário transformariam isso num
+ * moedor — o sorteio perderia por um motivo que não tem nada a ver com direção,
+ * e a carteira de verdade "venceria" um adversário aleijado. Sorteando uma vez
+ * por moeda, a série de cada uma continua coerente e só o lado inverte.
+ *
+ * O gerador é determinístico de propósito: um percentil que muda a cada execução
+ * não é medição, é ruído com cara de número.
+ */
+export function comLadosSorteados(emissoes: Emissao[], semente: number): Emissao[] {
+  let x = (semente * 2654435761) >>> 0;
+  const proximo = () => {
+    x = (x ^ (x << 13)) >>> 0;
+    x = (x ^ (x >>> 17)) >>> 0;
+    x = (x ^ (x << 5)) >>> 0;
+    return x / 4294967296;
+  };
+  const inverter = new Map<string, boolean>();
+  for (const e of emissoes) if (!inverter.has(e.s)) inverter.set(e.s, proximo() < 0.5);
+  return emissoes.map((e) => {
+    if (e.vies !== "long" && e.vies !== "short") return e;
+    if (!inverter.get(e.s)) return e;
+    return { ...e, vies: e.vies === "long" ? "short" : "long" };
+  });
 }
 
 /**

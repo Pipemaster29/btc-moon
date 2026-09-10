@@ -36,7 +36,8 @@
     "vesting": "tsx scripts/vesting.mts",
     "carteira": "tsx scripts/carteira.mts",
     "testar-carteira": "tsx scripts/testar-carteira.mts",
-    "auditar-dados": "tsx scripts/auditar-dados.mts"
+    "auditar-dados": "tsx scripts/auditar-dados.mts",
+    "diagnostico": "tsx scripts/diagnostico.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

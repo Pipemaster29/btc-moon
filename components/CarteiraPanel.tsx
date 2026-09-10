@@ -119,6 +119,45 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
         ainda dispara antes da liquidação —, com financiamento e liquidação cobrados.
       </p>
 
+      {/* O NÚMERO QUE DIZ COMO LER TODOS OS OUTROS DESTA TELA.
+          Sortear o LADO de cada moeda, mantendo entrada, tamanho, custo,
+          financiamento e regra de saída idênticos, dá uma nuvem de resultados. Se
+          a carteira de verdade cai no meio dela, o painel não está acrescentando
+          direção — e o patrimônio sozinho, sem esta frase ao lado, se lê como
+          "a estratégia está perdendo pouco" quando o que ele diz é outra coisa. */}
+      {c.sorteio && (
+        <p
+          className={`text-xs mt-2 border-l-2 pl-2 ${
+            c.sorteio.percentil >= 95
+              ? "text-[#0a7d43] dark:text-[#0ECB81] border-[#0ECB81]/40"
+              : c.sorteio.percentil <= 5
+                ? "text-[#C42B3E] dark:text-[#F6465D] border-[#F6465D]/40"
+                : "text-[#8a6d0b] dark:text-[#F0B90B] border-[#F0B90B]/40"
+          }`}
+        >
+          <strong>
+            {c.sorteio.percentil >= 95
+              ? "O painel separa de um sorteio."
+              : c.sorteio.percentil <= 5
+                ? "O painel está pior que um sorteio."
+                : "Isto ainda não se separa de um sorteio."}
+          </strong>{" "}
+          Sorteando o lado de cada moeda {c.sorteio.n}× — mesmas entradas, mesmo tamanho, mesmo
+          custo, mesma regra de saída —, a nuvem vai de {usd(c.sorteio.p10)} (p10) a{" "}
+          {usd(c.sorteio.p90)} (p90), com mediana de {usd(c.sorteio.mediana)}. Esta carteira está
+          no <strong>percentil {c.sorteio.percentil.toFixed(0)}</strong>.
+          {c.sorteio.percentil > 5 && c.sorteio.percentil < 95 && (
+            <>
+              {" "}
+              Com {c.encerradas} operações encerradas, a amostra não distingue as duas coisas — o
+              que não quer dizer que o painel esteja errado, e sim que ele ainda não se mostrou
+              certo. Enquanto for assim, mexer em stop ou em tamanho é escolher a aposta antes de
+              saber se ela tem lado.
+            </>
+          )}
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-4 mt-4 text-sm">
         <div>
           <p className="text-black/50 dark:text-white/50">Patrimônio</p>

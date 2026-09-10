@@ -11,6 +11,7 @@
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import {
   rodar,
+  comLadosSorteados,
   CAPITAL_INICIAL,
   RISCO_POR_FORCA,
   SAIDA,
@@ -218,7 +219,7 @@ const REGRAS: SaidaPainel[] = ["qualquer", "direcional+evitar", "direcional"];
 console.log(`\nqual leitura fecha a posição — a mesma carteira, só a regra de saída trocada`);
 console.log(`regra                patrimônio   retorno   giro   mediana   <1h   saídas`);
 for (const s of REGRAS) {
-  const r = rodar(emissoes, COMECO, caminho, 1, s);
+  const r = rodar(emissoes, COMECO, caminho, { saida: s });
   const motivos =
     Object.entries(r.porMotivo)
       .map(([m, g]) => `${m} ${g.n}`)
@@ -244,7 +245,7 @@ const ESCALAS = [1, 1.5, 2, 3, 5];
 console.log(`\ntamanho da aposta — o mesmo motor, só o orçamento de risco multiplicado`);
 console.log(`escala   risco/call   patrimônio   retorno   queda máx   margem pico   risco pico`);
 for (const e of ESCALAS) {
-  const r = rodar(emissoes, COMECO, caminho, e);
+  const r = rodar(emissoes, COMECO, caminho, { escala: e });
   // Os rótulos saem de `RISCO_POR_FORCA`, e não de números escritos aqui: eles
   // estavam fixos em 1,5/1,0/0,5% e continuaram imprimindo isso depois que a
   // régua dobrou — a tabela passou a mentir sobre a própria linha de base.
@@ -274,6 +275,45 @@ if (c.encerradas > 0) {
 } else {
   console.log(`\nnenhuma posição encerrada ainda`);
 }
+
+/**
+ * O TESTE QUE DECIDE SE OS OUTROS NÚMEROS SIGNIFICAM ALGUMA COISA.
+ *
+ * As mesmas entradas, nas mesmas moedas, com o mesmo tamanho, custo,
+ * financiamento e regra de saída — só o LADO de cada moeda sorteado. Se a
+ * carteira de verdade cair no meio da nuvem, o painel não está acrescentando
+ * direção, e nenhum ajuste de stop, alvo ou tamanho conserta isso.
+ *
+ * Roda aqui e não só no `npm run diagnostico` porque é o número que deve estar
+ * na tela ao lado do patrimônio: "−2,6%" sozinho se lê como "a estratégia está
+ * perdendo pouco", e "−2,6%, percentil 38 de um sorteio" se lê como o que é.
+ *
+ * Quatrocentas rodadas custam ~5 segundos com o caminho de velas já em memória.
+ */
+const SORTEIOS = 400;
+const nuvem = Array.from({ length: SORTEIOS }, (_, i) =>
+  rodar(comLadosSorteados(emissoes, i + 1), COMECO, caminho).patrimonio,
+).sort((a, b) => a - b);
+const qn = (f: number) => nuvem[Math.min(nuvem.length - 1, Math.floor(f * nuvem.length))];
+const sorteio = {
+  percentil: (nuvem.filter((v) => v < c.patrimonio).length / nuvem.length) * 100,
+  p10: qn(0.1),
+  mediana: qn(0.5),
+  p90: qn(0.9),
+  n: SORTEIOS,
+};
+c.sorteio = sorteio;
+
+console.log(
+  `\nsorteando o lado de cada moeda ${SORTEIOS}x, com todo o resto idêntico:\n` +
+    `  p10 ${usd(sorteio.p10)} · mediana ${usd(sorteio.mediana)} · p90 ${usd(sorteio.p90)}\n` +
+    `  a carteira de verdade ${usd(c.patrimonio)} — percentil ${sorteio.percentil.toFixed(0)}` +
+    (sorteio.percentil >= 95
+      ? "  → separa do sorteio"
+      : sorteio.percentil <= 5
+        ? "  → PIOR que o sorteio"
+        : "  → não dá para separar de um sorteio"),
+);
 
 await mkdir(dir, { recursive: true });
 await writeFile("data/carteira.json", `${JSON.stringify(c, null, 2)}\n`);
