@@ -369,6 +369,46 @@ tabela. Nenhuma moeda entra na análise completa sozinha: o próximo passo é
 sempre `npm run descobrir`, porque identificar o token errado é o erro mais caro
 daqui e já foi cometido duas vezes.
 
+## "O volume explodiu e o preço não andou"
+
+Esta é a tese que chega pronta de todo canal de cripto: quando o volume vai ao
+topo histórico e a cotação fica parada, alguém grande está comprando sem
+empurrar o preço, e isso antecede alta. O MOVR entrou na lista com exatamente
+esse argumento em cima. `npm run aferir-acumulacao` mede a tese sobre o universo
+inteiro antes de ela virar leitura de tela.
+
+**Ela é falsa, e falsa com a mesma força com que o achado do garimpo é
+verdadeiro.** 512 perpétuos, 354 mil observações, salto de volume medido contra
+a mediana dos 90 dias anteriores, retorno de 7 dias à frente:
+
+| salto de volume | preço no dia | n | mediana 7d | vs referência | moedas a favor |
+| --- | --- | --- | --- | --- | --- |
+| ≥10x | livre | 7.497 | −6,96% | −5,68 p.p. | 116/472 |
+| ≥10x | andou ≤5% | 1.885 | −5,33% | −4,05 p.p. | 120/377 |
+| ≥20x | livre | 3.495 | −9,82% | −8,54 p.p. | 88/415 |
+| ≥20x | andou ≤5% | 645 | −7,85% | −6,57 p.p. | 74/256 |
+| ≥40x | livre | 1.500 | −12,56% | −11,28 p.p. | 69/326 |
+| ≥40x | andou ≤5% | 185 | −10,70% | −9,42 p.p. | 32/123 |
+
+A referência de 7 dias é −1,28%. O salto de volume prevê QUEDA, prevê mais queda
+quanto maior o salto, e a conclusão é igual em 14, 30, 60 e 90 dias — no corte
+de 40x com preço parado, 90 dias depois a mediana é −33,54% contra referência de
+−16,67%. A concordância entre moedas vai junto: 32 de 123 no corte mais forte.
+
+**E o "preço parado" suaviza sem inverter.** Comparando as linhas duas a duas,
+exigir que o dia tenha andado menos de 5% melhora o desfecho em 1,6 a 2,6 p.p. —
+e ele continua 4 a 9 p.p. abaixo da referência. Ou seja: volume recorde COM pump
+junto é péssimo, volume recorde SEM pump junto é ruim, e a leitura de que o
+segundo é sinal positivo é justamente o que a medição desmente.
+
+O viés de sobrevivência corre a favor da conclusão, como no garimpo: o universo
+é quem está listado hoje, então as moedas que tiveram volume recorde e foram
+deslistadas depois ficaram de fora.
+
+O que isto **não** mede: comprar semanas DEPOIS, sobre a faixa já formada. Toda
+observação aqui entra no dia do salto. Essa outra tese continua sem medição, e
+por isso continua sem virar regra.
+
 ## Identificar a moeda certa
 
 O erro mais caro deste projeto foi analisar o token errado — duas vezes. Buscar
@@ -395,6 +435,25 @@ olhar quem guarda: na Ethereum a carteira fria da Binance carrega 30 milhões
 redondos do contrato, e na BNB Chain, onde o mesmo endereço existe, todas as
 carteiras de corretora estão zeradas. Corretora não custodia a moeda errada, e
 esse teste vale para qualquer moeda que negocie só em livro central.
+
+**O MOVR é o segundo caso, e o mais extremo.** O `descobrir` o reprovou e estava
+certo pelo critério que aplica: a pool dele na Base tem US$ 9,7 mil e gira US$
+463 por dia, abaixo do piso que separa par que negocia de par que só existe. Foi
+a custódia que decidiu — 84,2% do supply está em carteira de corretora, sendo
+50,81% numa só, a fria da Binance, que carrega 6.385.842 dos 12.568.389 tokens
+do contrato. É a maior concentração em corretora da lista inteira; a segunda é a
+龙虾 com 25,1% e a mediana das medidas é 3,2%.
+
+Ele também mostra por que **o contrato pode ser mais novo que a moeda**. O do
+MOVR nasceu no bloco 47.994.463 da Base, em 30/06/2026, com o supply inteiro
+saindo do endereço zero no próprio bloco da criação — enquanto o perpétuo
+negocia desde dezembro de 2023. Concentração de gênese ali não é distribuição de
+moeda nova: é a fotografia de quem recebeu quando o contrato foi criado, e a
+leitura que vale para esta moeda é a de custódia, que é diária. E o que não deu
+para conferir está escrito junto: o MOVR nasceu como nativo da parachain
+Moonriver, os RPC públicos dela não respondem daqui, então o que está medido é
+que o contrato da Base cobre o circulante publicado — não que não exista supply
+do outro lado.
 
 ## Aposentar uma moeda
 
@@ -495,6 +554,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
 | `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
+| `npm run aferir-acumulacao` | mede se salto de volume com preço parado prevê alta |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |

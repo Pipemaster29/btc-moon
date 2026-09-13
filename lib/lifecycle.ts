@@ -118,6 +118,28 @@ export const CARTEIRAS_CEX = [
   "0xCFFAd3200574698b78f32232aa9D63eABD290703", // 3 moedas · 78 mi de USDT
   "0x43684d03D81d3a4C70da68feBdd61029d426F042", // 3 moedas · 123 mi de USDT
   "0x3cc936b795A188F0e246cBB2D74C5Bd190aeCF18", // 2 moedas · 140 mi de USDT
+
+  // ------------------------------------- as quatro que faltavam, achadas no MOVR
+  //
+  // Vieram da leitura do MOVR e passaram no MESMO teste das de cima, medido em
+  // 13/09/2026 contra as 37 moedas da watchlist que têm contrato: cada uma
+  // guarda pedaço de dez a treze moedas sem relação entre si, e a última tem
+  // 11,5 milhões de USDT parados na Ethereum ao lado.
+  //
+  // ELAS ESTAVAM FALTANDO E ISSO ERA UM ERRO SILENCIOSO. O motor lê "supply fora
+  // de corretora" como munição que ainda não foi gasta, e sem estas quatro ele
+  // contava como munição o que já estava em custódia. Medido, o conserto por
+  // moeda: MOVR 53,16% → 69,28%, SYN 27,84% → 38,25%, EPIC 58,35% → 67,98%,
+  // HEI 85,86% → 93,74%, PORTAL 60,13% → 61,99%. Outras treze moedas se movem
+  // menos de 1 p.p. e nenhuma se move para baixo.
+  //
+  // O rótulo de NOME — Bitvavo nas duas primeiras, Kraken nas duas últimas —
+  // veio de terceiro e não foi conferido. Para esta lista o nome não importa: o
+  // que ela decide é se o saldo conta como custódia, e isso está medido.
+  "0xb0A3a2b60E969afD26561429aA4c1444c57E4411", // 10 moedas
+  "0xaB782bc7D4a2b306825de5a7730034F8F63ee1bC", // 11 moedas
+  "0xd2DD7b597Fd2435b6dB61ddf48544fd931e6869F", // 13 moedas
+  "0x7DAFbA1d69F6C01AE7567Ffd7b046Ca03B706f83", // 13 moedas · 11,5 mi de USDT
 ];
 
 export type Estagio =

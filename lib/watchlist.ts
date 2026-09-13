@@ -82,6 +82,11 @@ export interface WatchedToken {
    * Existe porque a explicação estava escrita na página, presa a um símbolo:
    * ao trocar a moeda, o texto continuaria falando da anterior. Aqui ela anda
    * junto de quem a explica.
+   *
+   * Também serve a moeda COM contrato, quando o contrato sozinho engana: o do
+   * MOVR nasceu em 30/06/2026 com o supply inteiro mintado no bloco da criação,
+   * e a moeda tem perpétuo desde 2023. Quem lê "bloco de nascimento" ali está
+   * lendo a idade do CONTRATO, que não é a idade da moeda.
    */
   note?: string;
 }
@@ -1363,6 +1368,188 @@ export const WATCHLIST: WatchedToken[] = [
     firstBlock: 0,
     wallets: [],
     note: "Lagosta. Leitura completa dos dois lados: perpétuo na Binance com US$ 39,8 milhões de open interest, e o contrato na BSC guardando o bilhão inteiro do supply. A oferta em corretora é a quarta maior da lista — 25,1% do supply contra mediana de 3,2%, sendo 22,5% só na carteira quente da Binance. Todo o supply circula, então market cap e FDV são o mesmo número.",
+  },
+  // ------------------------------------------------------------------------
+  // O MOVR entra pela CUSTÓDIA, e é o caso mais extremo disso na lista.
+  //
+  // `npm run descobrir MOVR=moonriver` reprovou o contrato e estava certo pelo
+  // critério que aplica: a pool da Base tem US$ 9,7 mil e gira US$ 463 por dia,
+  // abaixo do piso de US$ 1.000 que separa par que negocia de par que só existe.
+  // Pelo caminho de sempre a moeda seria "só o perpétuo".
+  //
+  // O que identifica é quem guarda, que é o mesmo teste que resolveu a HEI.
+  // Medido em 13/09 direto do nó da Base, contra o contrato 0x43fE…2B83:
+  //
+  //   supply do contrato        12.568.389 MOVR
+  //   circulante (CMC)          12.488.232 → o contrato é 1,006x, e passa
+  //   preço na pool             US$ 0,7887 contra US$ 0,7985 do perpétuo — 1,2%
+  //   corretoras                84,2% do supply, em onze carteiras
+  //   a maior delas             50,81% numa única — a fria 0xF977 da Binance
+  //
+  // Nenhum homônimo tem a carteira fria da Binance carregando metade do supply.
+  //
+  // OS 84,2% SÃO A MAIOR CONCENTRAÇÃO EM CORRETORA DA LISTA INTEIRA. A segunda é
+  // a 龙虾 com 25,1%, e a mediana das moedas medidas é 3,2%. Isso não é leitura
+  // de manipulação: MOVR é moeda antiga, com perpétuo desde 12/2023, e o supply
+  // dela mora em corretora porque é lá que ela é negociada. O número importa por
+  // outro motivo — é oferta a um clique do livro, e é o que este projeto vigia.
+  //
+  // O CONTRATO É MAIS NOVO QUE A MOEDA, e isso muda o que a leitura on-chain
+  // pode dizer. Ele nasceu no bloco 47.994.463 (30/06/2026) e os 12.568.389
+  // saíram do endereço zero no PRÓPRIO bloco da criação — supply inteiro mintado
+  // de uma vez, três meses atrás, numa moeda com dois anos e meio de perpétuo.
+  // Então: concentração de gênese aqui NÃO é distribuição de moeda nova, é a
+  // fotografia de quem recebeu quando o contrato foi criado. O `npm run genese`
+  // mediria a coisa errada com a janela padrão, e a leitura que vale para esta
+  // moeda é a de custódia, que é diária.
+  //
+  // E O QUE NÃO DEU PARA CONFERIR, escrito porque "não consegui" não é "não
+  // existe": o MOVR nasceu como nativo da parachain Moonriver, e daqui não há
+  // como olhar lá — os três RPC públicos dela (publicnode, dwellir, unitedbloc)
+  // não respondem por este proxy. Se ainda houver supply vivo do lado de lá, o
+  // 1,006x acima está subestimando o total e os 84,2% viram fração de um número
+  // maior. O que está medido é que o contrato da Base cobre o circulante
+  // publicado e que as corretoras guardam a moeda nele.
+  // ------------------------------------------------------------------------
+  {
+    // perp US$ 0,7985 · OI US$ 2,6mi · supply 12,57mi · 84,2% em corretora
+    symbol: "MOVRUSDT",
+    chain: "base",
+    contract: "0x43fEB74608334DDa8c1a6500D185cFC3Ea962B83",
+    // O bloco da criação do contrato, que é onde o mint aconteceu. É a idade do
+    // CONTRATO e não a da moeda — ver a nota acima antes de usar isto como
+    // começo de janela de qualquer coisa.
+    firstBlock: 47994463,
+    wallets: [
+      // As quatro seguintes à fria da Binance passaram no teste de custódia do
+      // próprio projeto — "guarda pedaço de várias moedas sem relação entre
+      // si" —, medido contra as 37 moedas da watchlist que têm contrato: a
+      // fria e a quente da Bitvavo
+      // aparecem em 10 e 11 delas, e as duas da Kraken em 13 cada, uma com US$
+      // 11,5 milhões de USDT parados na Ethereum. Por causa disso entraram em
+      // CARTEIRAS_CEX, onde faltavam. O rótulo do NOME vem de terceiro e não foi
+      // conferido; o que está medido é a função de custódia.
+      //
+      // A TELA MOSTRA DOIS NÚMEROS DIFERENTES, e os dois estão certos: o motor
+      // lê pela lista global e dá 69,28%, a soma dos papéis desta moeda dá
+      // 84,21%. A diferença são as quatro últimas daqui — Binance quente,
+      // Crypto.com, Bybit e KuCoin —, que só aparecem em uma ou duas das 37
+      // porque são carteiras de Base e a watchlist é quase toda BSC e Ethereum.
+      // Uma moeda não basta para a assinatura de custódia fechar, então elas
+      // contam AQUI, onde o saldo foi medido, e não lá, onde valem para todas.
+      {
+        address: "0xF977814e90dA44bFA03b6295A0616a897441aceC",
+        // 6.385.842 MOVR, 50,81% do supply. Já está em CARTEIRAS_CEX desde antes
+        // desta moeda, identificada em outras seis — é a fria da Binance.
+        label: "Binance (fria) · 50,8%",
+        role: "exchange",
+        verified: true,
+      },
+      {
+        address: "0xb0A3a2b60E969afD26561429aA4c1444c57E4411",
+        // 680.804 MOVR, 5,42%. Aparece em 10 das 37 moedas com contrato.
+        label: "Bitvavo (fria) · 5,4%",
+        role: "exchange",
+        verified: false,
+      },
+      {
+        address: "0xaB782bc7D4a2b306825de5a7730034F8F63ee1bC",
+        // 604.784 MOVR, 4,81%. Aparece em 11 das 37.
+        label: "Bitvavo (quente) · 4,8%",
+        role: "exchange",
+        verified: false,
+      },
+      {
+        address: "0xd2DD7b597Fd2435b6dB61ddf48544fd931e6869F",
+        // 392.151 MOVR, 3,12%. Aparece em 13 das 37.
+        label: "Kraken (fria) · 3,1%",
+        role: "exchange",
+        verified: false,
+      },
+      {
+        address: "0x7DAFbA1d69F6C01AE7567Ffd7b046Ca03B706f83",
+        // 348.618 MOVR, 2,77%. Aparece em 13 das 37, com 11,5 milhões de USDT
+        // parados na Ethereum — a assinatura de custódia mais limpa do grupo.
+        label: "Kraken (fria 2) · 2,8%",
+        role: "exchange",
+        verified: false,
+      },
+      // Daqui para baixo o rótulo é SÓ do terceiro que montou a lista. Cada uma
+      // aparece em 1 ou 2 das 37 moedas, o que é pouco para a assinatura de
+      // custódia fechar sozinha — são carteiras de Base, e a watchlist é quase
+      // toda BSC e Ethereum. O saldo está medido; o nome, não.
+      {
+        address: "0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A",
+        // 511.917 MOVR, 4,07%.
+        label: "Binance (quente) · 4,1%",
+        role: "exchange",
+        verified: false,
+      },
+      {
+        address: "0xD3E0341B361134014E0c89378b3e36Bc5020cd97",
+        // 360.939 MOVR, 2,87%.
+        label: "Crypto.com · 2,9%",
+        role: "exchange",
+        verified: false,
+      },
+      {
+        address: "0xBaeD383EDE0e5d9d72430661f3285DAa77E9439F",
+        // 354.792 MOVR, 2,82%.
+        label: "Bybit · 2,8%",
+        role: "exchange",
+        verified: false,
+      },
+      {
+        address: "0x18b0F4547A89fe4C5FE84F258BeA3601FA281e9f",
+        // 350.125 MOVR, 2,79%.
+        label: "KuCoin · 2,8%",
+        role: "exchange",
+        verified: false,
+      },
+      {
+        address: "0xb7333D779C6EcdfC4507A53706B0E173bd086a18",
+        // 299.025 MOVR, 2,38%.
+        label: "Crypto.com (2) · 2,4%",
+        role: "exchange",
+        verified: false,
+      },
+      {
+        address: "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe",
+        // 295.154 MOVR, 2,35%. A carteira mais presente da lista inteira — 22
+        // das 33 moedas quando CARTEIRAS_CEX foi montada, nas três redes.
+        label: "custódia grande · 2,3%",
+        role: "exchange",
+        verified: true,
+      },
+      // Sem rótulo de ninguém, e as duas maiores que sobraram. Ficam como
+      // operacionais porque chamá-las de corretora seria inventar rótulo, que é
+      // o erro que `verified` existe para não deixar passar.
+      {
+        address: "0x739C406443c675E97bbd755527F018f9bAe1e7A5",
+        // 281.158 MOVR, 2,24%, e menos de 1 ETH de gás. Só ENTRA: as 46
+        // transferências mais recentes dela são todas de chegada, de 32 a 65
+        // MOVR por vez e todas do mesmo endereço, sem uma única saída. É
+        // acumuladora, e o que ela acumula é oferta que ainda não se mexeu.
+        label: "acumuladora 2,2%",
+        role: "operational",
+        verified: true,
+      },
+      {
+        address: "0x4e3ae00E8323558fA5Cac04b152238924AA31B60",
+        // 191.321 MOVR, 1,52%.
+        label: "sem rótulo 1,5%",
+        role: "operational",
+        verified: true,
+      },
+    ],
+    note:
+      "Moonriver. O contrato é o da Base, e ele é MAIS NOVO que a moeda: nasceu em 30/06/2026 " +
+      "com os 12,57 milhões mintados no bloco da criação, enquanto o perpétuo negocia desde " +
+      "12/2023. A pool da Base gira US$ 463 por dia e não identificaria nada sozinha — quem " +
+      "identifica é a custódia: 84,2% do supply está em carteira de corretora, sendo 50,8% numa " +
+      "única, a fria da Binance. É a maior concentração em corretora da lista (a segunda é 25,1%). " +
+      "Não dá para olhar a parachain Moonriver daqui, então se sobrou supply vivo do lado de lá " +
+      "esses percentuais são de um total maior.",
   },
 ];
 
