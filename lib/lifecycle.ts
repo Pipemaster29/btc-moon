@@ -30,6 +30,7 @@ import { balancesOf, tokenInfo, toUnits, type Chain } from "./onchain";
 import { circulante, velas, type Circulante } from "./binance";
 import { velasGate } from "./gate";
 import { lerTecnica, type Tecnica } from "./tecnica";
+import { lerAcumulacao, type Acumulacao } from "./acumulacao";
 import type { WatchedToken } from "./watchlist";
 
 /**
@@ -204,6 +205,15 @@ export interface Vida {
    * futura — e cada unlock converte um pedaço dessa promessa em oferta real.
    */
   floatToken: number | null;
+  /**
+   * O evento de volume da moeda: houve dia de volume anormal, e o que veio depois.
+   *
+   * Nulo quando a série não tem os 90 dias de base — e nulo é resposta, não
+   * zero. Vem de `lib/acumulacao.ts`, que carrega junto a medição de que isto
+   * NÃO é sinal de compra: ler o número sem ler o veredito ao lado é o erro que
+   * aquele módulo existe para impedir.
+   */
+  acumulacao: Acumulacao | null;
   /**
    * Estrutura de preço: resistência mais próxima, distância da média, tendência.
    *
@@ -489,6 +499,9 @@ export async function lerVida(
         ? Math.min(circ.atual / onchain.supplyContrato, 1)
         : null,
     unlocks: (circ?.saltos ?? []).map((s) => ({ quando: s.quando, variacao: s.variacao })),
+    // Sobre as MESMAS barras, sem uma requisição a mais: elas já estão aqui, e
+    // ler volume é aritmética em cima delas.
+    acumulacao: lerAcumulacao(barras),
     tecnica: lerTecnica(
       barras.map((b) => ({ close: b.close, high: b.high, low: b.low })),
     ),

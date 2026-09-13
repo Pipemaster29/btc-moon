@@ -758,6 +758,77 @@ export default async function Page({
           </section>
         )}
 
+        {/* O evento de volume. Mesmo formato da estrutura de preço de propósito:
+            são as duas leituras que mais PARECEM sinal e menos medem como tal, e
+            ficar no mesmo formato deixa isso visível. */}
+        {vida?.acumulacao && (
+          <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
+            <h3 className="font-semibold">Evento de volume</h3>
+            <div className="grid gap-4 sm:grid-cols-4 mt-3 text-sm">
+              <div>
+                <p className="text-black/50 dark:text-white/50">Maior dia em 60 dias</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {vida.acumulacao.salto.toFixed(1)}x o normal
+                </p>
+                <p className="text-xs text-black/40 dark:text-white/40">
+                  há {vida.acumulacao.diasDesde} dias · o preço andou{" "}
+                  {(vida.acumulacao.moveuNoDia * 100).toFixed(0)}% no dia
+                </p>
+              </div>
+              <div>
+                <p className="text-black/50 dark:text-white/50">Desde o evento</p>
+                <p
+                  className={`text-lg font-semibold tabular-nums ${
+                    vida.acumulacao.desdeEntao > 0 ? "text-[#0ECB81]" : "text-[#F6465D]"
+                  }`}
+                >
+                  {vida.acumulacao.desdeEntao >= 0 ? "+" : ""}
+                  {(vida.acumulacao.desdeEntao * 100).toFixed(1)}%
+                </p>
+              </div>
+              <div>
+                <p className="text-black/50 dark:text-white/50">Volume agora</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {Number.isFinite(vida.acumulacao.agora)
+                    ? `${vida.acumulacao.agora.toFixed(1)}x`
+                    : "—"}
+                </p>
+                <p className="text-xs text-black/40 dark:text-white/40">
+                  contra a mediana de 90 dias
+                </p>
+              </div>
+              <div>
+                <p className="text-black/50 dark:text-white/50">Contra o preço médio pago</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {Number.isFinite(vida.acumulacao.desconto)
+                    ? `${vida.acumulacao.desconto >= 0 ? "+" : ""}${(vida.acumulacao.desconto * 100).toFixed(0)}%`
+                    : "—"}
+                </p>
+                <p className="text-xs text-black/40 dark:text-white/40">
+                  VWAP de 90 dias
+                  {vida.acumulacao.pressao === null
+                    ? " · agressor não medido nesta praça"
+                    : ` · agressor comprador ${vida.acumulacao.pressao.toFixed(3)}`}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-black/40 dark:text-white/40 mt-3">
+              Isto é fato, não sinal, e a distinção foi medida sobre 512 perpétuos e 354 mil
+              observações. Comprar no dia do salto rende abaixo da referência em TODA faixa
+              testada, e pior quanto maior o salto: ≥10x dá −5,33% em sete dias, ≥20x dá
+              −7,85%, ≥40x dá −10,70%, contra referência de −1,28% — com 32 de 123 moedas a
+              favor na faixa mais forte. Exigir que o preço tenha ficado parado no dia, que é
+              a versão otimista da tese, melhora de 1,6 a 2,6 pontos percentuais e não
+              inverte. Estar barato contra o VWAP também não conserta: depois de um salto,
+              toda faixa de desconto fica de 3,4 a 7,9 pontos abaixo da referência. E o
+              agressor comprador fica preso perto de 0,5 porque no perpétuo toda negociação
+              tem os dois lados — &ldquo;houve compra pesada&rdquo; não é leitura que este
+              dado sustente. Refaça tudo com <span className="font-mono">npm run
+              aferir-acumulacao</span>.
+            </p>
+          </section>
+        )}
+
         {snapshot ? (
           <div className="flex flex-col gap-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

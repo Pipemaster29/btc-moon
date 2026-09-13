@@ -9,6 +9,7 @@ import { getGarimpo } from "@/lib/garimpo";
 import { PrecoVivo, VariacaoViva } from "@/components/PrecoVivo";
 import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
+import { SALTO_NOTAVEL, vereditoDoEvento } from "@/lib/acumulacao";
 
 // Duas chamadas por moeda: dá para atualizar com frequência sem castigar as
 // APIs públicas, que não pedem chave e não deveriam ser abusadas por isso.
@@ -181,6 +182,39 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
       <td className="py-2.5 pr-3 text-right tabular-nums">{money(row.openInterestUsd)}</td>
       <td className="py-2.5 pr-3 text-right tabular-nums">
         {row.perpDominance > 0 ? `${row.perpDominance.toFixed(0)}x` : "—"}
+      </td>
+      {/* O evento de volume. SEM COR de bom ou ruim, e isso é decisão: verde
+          sugeriria compra e vermelho sugeriria venda, e a medição não sustenta
+          nenhum dos dois. O número é fato; o veredito está no `title` e embaixo
+          da tabela. */}
+      <td className="py-2.5 pr-3 text-right">
+        {row.vida?.acumulacao && row.vida.acumulacao.salto >= SALTO_NOTAVEL ? (
+          <span title={vereditoDoEvento(row.vida.acumulacao) ?? undefined}>
+            <span className="tabular-nums font-medium">
+              {row.vida.acumulacao.salto.toFixed(0)}x
+            </span>
+            <p className="text-xs text-black/35 dark:text-white/35 tabular-nums">
+              há {row.vida.acumulacao.diasDesde}d · {signed(row.vida.acumulacao.desdeEntao)}
+            </p>
+          </span>
+        ) : (
+          <span
+            className="text-black/25 dark:text-white/25"
+            title={
+              row.vida?.acumulacao
+                ? `maior dia recente foi ${row.vida.acumulacao.salto.toFixed(1)}x o volume normal — abaixo do corte de ${SALTO_NOTAVEL}x`
+                : row.vida?.acumulacao === null
+                  ? "sem os 90 dias de base para medir salto de volume"
+                  : // Campo AUSENTE, não nulo: o retrato é anterior a esta
+                    // leitura e será preenchido no próximo `npm run panorama`.
+                    // Dizer "sem base" aqui seria afirmar uma medição que não
+                    // chegou a ser tentada."
+                    "retrato ainda sem esta leitura — entra no próximo panorama"
+            }
+          >
+            —
+          </span>
+        )}
       </td>
       <td className="py-2.5 pr-3">
         {row.vida ? (
@@ -463,7 +497,7 @@ export default async function Radar() {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[1400px]">
+          <table className="w-full text-sm min-w-[1500px]">
             <thead className="text-black/45 dark:text-white/45 text-xs">
               <tr>
                 <th className="font-normal pb-2 text-left">Moeda</th>
@@ -497,6 +531,12 @@ export default async function Radar() {
                 <th className="font-normal pb-2 text-right">Open interest</th>
                 <th className="font-normal pb-2 text-right" title="Open interest dividido pela liquidez à vista">
                   Perp ÷ pool
+                </th>
+                <th
+                  className="font-normal pb-2 text-right"
+                  title="Maior dia de volume dos últimos 60 dias, contra a mediana de 90 dias — e o que o preço fez desde então. É fato, não é sinal: medido sobre 512 perpétuos, comprar no dia do salto rende abaixo da referência em toda faixa testada."
+                >
+                  Volume
                 </th>
                 <th className="font-normal pb-2 text-left" title="Onde a moeda está na própria vida">
                   Estágio
@@ -545,6 +585,25 @@ export default async function Radar() {
           empurrada; não mede se alguém vai empurrar, e não distingue um dono com 80% de
           dez mil donos com 80%, o que exigiria a lista de maiores detentores.
           Nada aqui é recomendação de investimento.
+        </p>
+
+        {/* Fica junto da explicação das outras colunas, e não escondido num
+            tooltip: a coluna de volume é a que mais parece descoberta e a que
+            mede pior. Quem vê o 182x tem de ver isto na mesma tela. */}
+        <p className="text-xs text-black/40 dark:text-white/40 max-w-3xl">
+          A coluna <span className="font-medium">volume</span> mostra o maior dia de volume
+          dos últimos 60 dias contra a mediana de 90 — e ela NÃO é sinal de compra, por mais
+          que pareça. Medido sobre 512 perpétuos e 354 mil observações: um salto de 40x com o
+          preço parado no dia rende <span className="font-medium">−10,70%</span> em sete dias
+          contra referência de −1,28%, com 32 de 123 moedas a favor, e piora quanto maior o
+          salto. Exigir que o preço não tenha andado suaviza em 1,6 a 2,6 pontos percentuais
+          e não inverte. Estar barato contra o preço médio pago no período também não
+          conserta: depois de um salto, toda faixa de desconto fica de 3,4 a 7,9 pontos
+          abaixo da referência. E &quot;houve compra pesada&quot; não é leitura que o
+          perpétuo sustente — a fração agressiva compradora nos dias de salto fica entre 0,48
+          e 0,51 em nove de cada dez casos, porque toda negociação tem os dois lados. A
+          coluna serve para saber onde olhar, como o garimpo; refaça a medição com{" "}
+          <span className="font-mono">npm run aferir-acumulacao</span>.
         </p>
       </main>
     </div>

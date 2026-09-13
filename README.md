@@ -405,9 +405,44 @@ O viés de sobrevivência corre a favor da conclusão, como no garimpo: o univer
 é quem está listado hoje, então as moedas que tiveram volume recorde e foram
 deslistadas depois ficaram de fora.
 
+**E "houve compra pesada" não é leitura que o perpétuo sustente.** Este é o
+achado que mais economiza trabalho de quem vier depois: toda negociação tem os
+dois lados, e a fração agressiva compradora fica presa em 0,5 mesmo nos dias de
+volume recorde — p10 = 0,479, mediana = 0,496, p90 = 0,510 sobre 7.627 dias de
+salto ≥10x. Cortar em "compra ≥55%" deixa **sete** observações no universo
+inteiro. Não é que a tese esteja errada nesse corte: é que ela não tem em que ser
+medida. Quem quiser ler compra de verdade tem de ir para a rede — saldo saindo de
+carteira de corretora —, que é o que este projeto já faz por outro caminho.
+
+**Estar barato também não conserta o dia.** Depois de um salto ≥10x, toda faixa
+de preço contra o VWAP de 90 dias fica de 3,4 a 7,9 p.p. abaixo da referência em
+sete dias. E a faixa mais barata de todas, 50% ou mais abaixo do preço médio
+pago, é a **segunda pior** (−9,20%): preço muito abaixo do que o dinheiro pagou
+não é desconto, é a moeda ainda caindo.
+
 O que isto **não** mede: comprar semanas DEPOIS, sobre a faixa já formada. Toda
 observação aqui entra no dia do salto. Essa outra tese continua sem medição, e
 por isso continua sem virar regra.
+
+### A leitura fica na tela de todas as moedas
+
+`lib/acumulacao.ts` roda sobre as barras que a classificação de estágio já
+carrega — nenhuma requisição a mais — e devolve, por moeda: o maior dia de volume
+dos últimos 60 dias contra a mediana de 90, quando foi, quanto o preço andou
+naquele dia, quanto andou desde então, se o volume voltou, e o preço contra o
+VWAP de 90 dias. Vira a coluna **volume** do painel e um bloco na página da
+moeda, **sempre com o número medido ao lado** — a coluna é a que mais parece
+descoberta e a que mede pior, e separar as duas metades em telas diferentes seria
+entregar a que anima sem a que corrige.
+
+A coluna não tem cor de bom nem de ruim, e isso é decisão: verde sugeriria
+compra, vermelho sugeriria venda, e a medição não sustenta nenhum dos dois.
+
+`npm run acumulacao` imprime a fila inteira ordenada por tamanho do evento. Ela é
+de **investigação**, igual à do garimpo: o passo seguinte de qualquer linha é
+`npm run radar TICKER`, não uma ordem. E a coluna `compra` dela existe para ser
+vista colada em 0,50 moeda após moeda — quando ela aparece vazia é porque a Gate
+não separa o agressor, que é diferente de ninguém ter comprado.
 
 ## Identificar a moeda certa
 
@@ -555,6 +590,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
 | `npm run aferir-acumulacao` | mede se salto de volume com preço parado prevê alta |
+| `npm run acumulacao` | a fila de eventos de volume, moeda por moeda |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |

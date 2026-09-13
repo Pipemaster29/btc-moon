@@ -42,9 +42,25 @@
  * listado HOJE, então as moedas que tiveram volume recorde e foram deslistadas
  * depois — as de pior desfecho — ficaram de fora da conta.
  *
+ * A PRESSÃO COMPRADORA NÃO EXISTE COMO LEITURA AQUI, e esta é a parte que mais
+ * economiza trabalho de quem vier depois. A tese diz "houve COMPRA pesada"; no
+ * perpétuo toda negociação tem os dois lados, e a fração agressiva compradora
+ * fica presa em 0,5 mesmo nos dias de volume recorde: p10 = 0,479, mediana =
+ * 0,496, p90 = 0,510 sobre 7.627 dias de salto ≥10x. Cortar em "compra ≥55%"
+ * deixa SETE observações no universo inteiro — não dá nem para medir.
+ *
+ * E ESTAR BARATO NÃO CONSERTA O DIA. Depois de um salto ≥10x, toda faixa de
+ * preço contra o VWAP de 90 dias fica abaixo da referência, de −3,41 a −7,92
+ * p.p. em sete dias. A faixa mais barata de todas, 50% ou mais abaixo do VWAP, é
+ * a SEGUNDA PIOR (−9,20%): preço muito abaixo do que o dinheiro pagou não é
+ * desconto, é a moeda ainda caindo.
+ *
  * O QUE ISTO NÃO MEDE: quem compra DEPOIS que a poeira baixa. Toda observação
  * aqui entra no dia do salto. Uma tese de acumulação que só compre semanas
  * depois, sobre a faixa já formada, é outra medição e não está feita.
+ *
+ * A LEITURA POR MOEDA que sai disto está em `lib/acumulacao.ts`, e aparece na
+ * coluna `volume` do painel. `npm run acumulacao` imprime a fila inteira.
  *
  * CUSTO: uma requisição de velas por símbolo, ~530 no total.
  *
@@ -152,7 +168,23 @@ interface Obs {
   fwd: Map<number, number>;
 }
 
-function observar(saltoMin: number, achatado: number | null): Obs[] {
+/** VWAP da janela: o preço médio que o dinheiro pagou nos `n` dias antes de `i`. */
+function vwap(v: Vela[], i: number, n: number): number {
+  let precoVezesVolume = 0;
+  let volumeTotal = 0;
+  for (let k = Math.max(0, i - n); k < i; k++) {
+    const tipico = (v[k].high + v[k].low + v[k].close) / 3;
+    if (!Number.isFinite(tipico) || !Number.isFinite(v[k].volume)) continue;
+    precoVezesVolume += tipico * v[k].volume;
+    volumeTotal += v[k].volume;
+  }
+  return volumeTotal > 0 ? precoVezesVolume / volumeTotal : NaN;
+}
+
+/** Um filtro sobre o dia `i` da série `v`, além do salto e do achatamento. */
+type Extra = (v: Vela[], i: number) => boolean;
+
+function observar(saltoMin: number, achatado: number | null, extra?: Extra): Obs[] {
   const obs: Obs[] = [];
   for (const [s, v] of series) {
     // A mediana móvel de volume, calculada uma vez por moeda.
@@ -165,6 +197,7 @@ function observar(saltoMin: number, achatado: number | null): Obs[] {
         const andou = Math.abs(v[i].close / v[i].open - 1);
         if (!Number.isFinite(andou) || andou > achatado) continue;
       }
+      if (extra && !extra(v, i)) continue;
       const fwd = new Map<number, number>();
       for (const h of HORIZONTES) {
         if (i + h >= v.length) continue;
@@ -177,6 +210,28 @@ function observar(saltoMin: number, achatado: number | null): Obs[] {
   return obs;
 }
 
+/** A linha de resultado de um grupo, no formato do placar. */
+function linha(cabeca: string, obs: Obs[]): string {
+  const partes: string[] = [];
+  for (const h of HORIZONTES) {
+    const xs = obs.map((o) => o.fwd.get(h)).filter((x): x is number => x !== undefined);
+    const med = mediana(xs);
+    const ref = referencia.get(h)!;
+    // Concordância entre MOEDAS: mediana boa vinda de três moedas é ruído.
+    const porMoeda = new Map<string, number[]>();
+    for (const o of obs) {
+      const x = o.fwd.get(h);
+      if (x !== undefined) porMoeda.set(o.s, [...(porMoeda.get(o.s) ?? []), x]);
+    }
+    const moedas = [...porMoeda.values()];
+    const aFavor = moedas.filter((xs2) => mediana(xs2) > ref).length;
+    partes.push(
+      `${h}d ${pct(med)} (${((med - ref) * 100).toFixed(2)} p.p., ${aFavor}/${moedas.length})`,
+    );
+  }
+  return `${cabeca} · n=${String(obs.length).padStart(5)} · ${partes.join(" · ")}`;
+}
+
 console.log(
   `\nsalto de volume contra a mediana de ${BASE} dias · o que o preço faz depois\n` +
     `${"".padEnd(78, "-")}`,
@@ -184,30 +239,72 @@ console.log(
 
 for (const salto of SALTOS) {
   for (const achatado of ACHATADOS) {
-    const obs = observar(salto, achatado);
-    const cabeca =
-      `≥${String(salto).padStart(2)}x · ` +
-      (achatado === null ? "preço livre  " : `|dia| ≤${(achatado * 100).toFixed(0)}%   `) +
-      `n=${String(obs.length).padStart(5)}`;
-    const partes: string[] = [];
-    for (const h of HORIZONTES) {
-      const xs = obs.map((o) => o.fwd.get(h)).filter((x): x is number => x !== undefined);
-      const med = mediana(xs);
-      const ref = referencia.get(h)!;
-      // Concordância entre MOEDAS: mediana boa vinda de três moedas é ruído.
-      const porMoeda = new Map<string, number[]>();
-      for (const o of obs) {
-        const x = o.fwd.get(h);
-        if (x !== undefined) porMoeda.set(o.s, [...(porMoeda.get(o.s) ?? []), x]);
-      }
-      const moedas = [...porMoeda.values()];
-      const aFavor = moedas.filter((xs2) => mediana(xs2) > ref).length;
-      partes.push(
-        `${h}d ${pct(med)} (${((med - ref) * 100).toFixed(2)} p.p., ${aFavor}/${moedas.length})`,
-      );
-    }
-    console.log(`${cabeca} · ${partes.join(" · ")}`);
+    console.log(
+      linha(
+        `≥${String(salto).padStart(2)}x · ` +
+          (achatado === null ? "preço livre" : `|dia| ≤${(achatado * 100).toFixed(0)}%  `),
+        observar(salto, achatado),
+      ),
+    );
   }
+}
+
+// ------------------------------------------- 2. a pressão compradora não existe
+//
+// A tese diz "houve COMPRA pesada", e este é o pedaço que mostra por que o
+// perpétuo não responde isso: toda negociação tem os dois lados, e a fração
+// agressiva compradora fica presa em 0,5 mesmo nos dias de volume recorde.
+
+{
+  const ps: number[] = [];
+  for (const v of series.values()) {
+    for (let i = BASE; i < v.length; i++) {
+      const base = mediana(v.slice(i - BASE, i).map((k) => k.volume));
+      if (!Number.isFinite(base) || base <= 0) continue;
+      if (v[i].volume / base < 10 || !(v[i].volume > 0) || !(v[i].takerBuy > 0)) continue;
+      ps.push(v[i].takerBuy / v[i].volume);
+    }
+  }
+  const ord = [...ps].sort((a, b) => a - b);
+  const q = (f: number) => ord[Math.floor(ord.length * f)]?.toFixed(3) ?? "—";
+  console.log(
+    `\npressão compradora nos ${ord.length.toLocaleString("pt-BR")} dias de salto ≥10x: ` +
+      `p10 ${q(0.1)} · mediana ${q(0.5)} · p90 ${q(0.9)}`,
+  );
+  const agressiva = (v: Vela[], i: number) =>
+    v[i].volume > 0 && v[i].takerBuy > 0 && v[i].takerBuy / v[i].volume >= 0.55;
+  console.log(linha("≥10x · compra ≥55%  ", observar(10, null, agressiva)));
+  console.log(
+    "  Sete observações no universo inteiro. Não é que a tese esteja errada neste\n" +
+      "  corte: é que ela não tem em que ser medida. 'Compra pesada' não é leitura\n" +
+      "  que o perpétuo sustente.",
+  );
+}
+
+// ------------------------------------ 3. estar barato também não conserta o dia
+//
+// A outra metade da pergunta: se o preço está abaixo do que o dinheiro pagou nos
+// últimos 90 dias, o salto de volume vira oportunidade? Não.
+
+console.log(
+  `\npreço contra o VWAP de ${BASE} dias, DEPOIS de um salto ≥10x\n${"".padEnd(78, "-")}`,
+);
+const FAIXAS: [string, number, number][] = [
+  ["50%+ abaixo  ", -1, -0.5],
+  ["30 a 50% abaixo", -0.5, -0.3],
+  ["15 a 30% abaixo", -0.3, -0.15],
+  ["0 a 15% abaixo ", -0.15, 0],
+  ["0 a 15% acima  ", 0, 0.15],
+  ["15%+ acima     ", 0.15, 99],
+];
+for (const [nome, lo, hi] of FAIXAS) {
+  const naFaixa: Extra = (v, i) => {
+    const w = vwap(v, i, BASE);
+    if (!Number.isFinite(w) || w <= 0) return false;
+    const d = v[i].close / w - 1;
+    return d >= lo && d < hi;
+  };
+  console.log(linha(nome, observar(10, null, naFaixa)));
 }
 
 console.log(

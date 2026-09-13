@@ -186,6 +186,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/detentores.ts` | concentração: quem recebeu o supply na gênese |
 | `lib/vesting.ts` | emissão: o supply travado está parado ou saindo? |
 | `lib/estudo.ts` | como CADA moeda se move — memória, volatilidade, assimetria |
+| `lib/acumulacao.ts` | o evento de volume por moeda. **Carrega a medição de que ele não é sinal de compra** — e a de que pressão compradora não se mede no perpétuo |
 | `lib/placar.ts` | o painel acertou? Lê o histórico de emissões |
 | `lib/carteira.ts` | a carteira fictícia. **Não importa nada de `node:` no topo** — `remarcar` roda no navegador |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
