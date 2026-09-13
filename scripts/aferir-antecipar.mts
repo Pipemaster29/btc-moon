@@ -30,10 +30,15 @@
  * a unidade independente. O sorteio é semeado e a ordem das moedas fixada por
  * símbolo, para duas execuções darem o mesmo intervalo.
  *
- * O LIMITE QUE NÃO SE CONTORNA: a Binance guarda 31 dias de `openInterestHist` e
- * nenhum arquivo do Data Vision traz esta coluna. Não há como medir isto em 2024
- * nem em janela longa. O número é do regime destes trinta dias, e a janela anda
- * sozinha — rode de novo antes de confiar nele.
+ * O LIMITE, E COMO ELE ESTÁ SENDO ATACADO: a Binance guarda 31 dias de
+ * `openInterestHist` e nenhum arquivo do Data Vision traz esta coluna. Não há
+ * como medir isto em 2024 olhando para trás — só para a frente, guardando. É o
+ * que `npm run arquivar` faz, e é daí que este script lê primeiro: o que estiver
+ * no arquivo ALÉM dos 31 dias entra na medição automaticamente, sem mexer aqui.
+ *
+ * A primeira linha da saída diz quantos dias vieram de cada fonte. Enquanto o
+ * arquivo for novo, o número é o mesmo de antes e a linha diz isso; quando ele
+ * passar dos 31 dias, a janela cresce sozinha.
  *
  * CUSTO: duas requisições por símbolo, ~1.050 no total.
  *
@@ -42,6 +47,7 @@
 
 import { velas, type Vela } from "../lib/binance";
 import { comLimite } from "../lib/limite";
+import { arquivoLegivel, lerOi } from "../lib/arquivo";
 
 /** O que conta como pump, em variação de PREÇO sobre a máxima da janela. */
 const PUMP = 0.20;
@@ -95,6 +101,40 @@ async function oiDiario(symbol: string): Promise<Map<string, number>> {
 
 const t0 = Date.now();
 interface Dia { d: string; v: Vela; oi: number }
+
+// -------------------------------------------------------- o arquivo vem PRIMEIRO
+//
+// Ele é o único lugar onde pode existir open interest mais velho que 31 dias.
+// Nulo significa "não consegui ler" e lista vazia significa "não há nada
+// guardado ainda" — as duas seguem para a Binance, mas só a primeira é problema,
+// e por isso ela é dita em voz alta.
+const temArquivo = arquivoLegivel();
+const guardado = temArquivo ? await lerOi() : [];
+if (guardado === null) {
+  console.log("\narquivo: CONFIGURADO E NÃO RESPONDEU — a medição segue só com a Binance");
+}
+const doArquivo = new Map<string, Map<string, Dia>>();
+for (const linha of guardado ?? []) {
+  if (!Number.isFinite(linha.open_interest) || linha.open_interest <= 0) continue;
+  if (!linha.fechamento || !Number.isFinite(linha.fechamento) || linha.fechamento <= 0) continue;
+  const mapa = doArquivo.get(linha.symbol) ?? new Map<string, Dia>();
+  mapa.set(linha.dia, {
+    d: linha.dia,
+    oi: linha.open_interest,
+    v: {
+      time: Math.floor(new Date(`${linha.dia}T00:00:00Z`).getTime() / 1000),
+      open: linha.abertura ?? linha.fechamento,
+      high: linha.maxima ?? linha.fechamento,
+      low: linha.minima ?? linha.fechamento,
+      close: linha.fechamento,
+      volume: linha.volume ?? 0,
+      takerBuy: 0,
+      delta: 0,
+    },
+  });
+  doArquivo.set(linha.symbol, mapa);
+}
+
 const series = new Map<string, Dia[]>();
 await Promise.all(
   universo.map(async (s) => {
@@ -102,19 +142,37 @@ await Promise.all(
       comLimite("binance", 24, () => velas(s, "1d", 60).catch(() => [] as Vela[])),
       oiDiario(s),
     ]);
-    const dias: Dia[] = [];
+    // O arquivo entra por baixo e a Binance por cima: onde os dois têm o mesmo
+    // dia, vale o da praça, que é a fonte. O arquivo só acrescenta passado.
+    const mapa = new Map<string, Dia>(doArquivo.get(s) ?? []);
     for (const v of vs) {
       const d = new Date(v.time * 1000).toISOString().slice(0, 10);
       const oi = ois.get(d);
-      if (oi !== undefined && oi > 0 && v.close > 0) dias.push({ d, v, oi });
+      if (oi !== undefined && oi > 0 && v.close > 0) mapa.set(d, { d, v, oi });
     }
+    const dias = [...mapa.values()].sort((a, b) => (a.d < b.d ? -1 : 1));
     if (dias.length >= 10) series.set(s, dias);
   }),
 );
 
+const diasPorMoeda = Math.max(...[...series.values()].map((d) => d.length), 0);
+const doArquivoSo = [...series.values()].reduce(
+  (max, dias) => Math.max(max, dias.length),
+  0,
+);
 console.log(
   `\n${universo.length} perpétuos · ${series.size} com open interest e velas alinhados · ` +
-    `${[...series.values()][0]?.length ?? 0} dias por moeda · ${((Date.now() - t0) / 1000).toFixed(1)}s`,
+    `${diasPorMoeda} dias na moeda mais longa · ${((Date.now() - t0) / 1000).toFixed(1)}s`,
+);
+console.log(
+  !temArquivo
+    ? "arquivo não configurado: a janela é a da Binance, 31 dias. Ver `npm run arquivar`."
+    : doArquivo.size === 0
+    ? "arquivo vazio: a janela é a da Binance, 31 dias. `npm run arquivar` começa a alargá-la."
+    : `arquivo: ${doArquivo.size} símbolos guardados` +
+      (doArquivoSo > 31
+        ? ` · a janela passou dos 31 dias da Binance e agora tem ${doArquivoSo}`
+        : " · ainda dentro dos 31 dias da Binance"),
 );
 
 interface Obs {

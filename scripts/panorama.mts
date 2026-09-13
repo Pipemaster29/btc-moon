@@ -19,6 +19,7 @@
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { caidas, getPanorama } from "../lib/overview";
 import { fundings } from "../lib/binance";
+import { gravarEmissoes } from "../lib/arquivo";
 
 const DIR = "data";
 const ATUAL = `${DIR}/panorama.json`;
@@ -130,6 +131,34 @@ const pontos: PontoHistorico[] = comPreco.map((r) => ({
 const historico = historicoDoMes(agora);
 await appendFile(historico, pontos.map((p) => JSON.stringify(p)).join("\n") + "\n");
 
+// ---------------------------------------------------- e no arquivo, se houver
+//
+// O JSONL continua sendo a memória principal — é dele que saíram as 68 mil
+// emissões do placar, e ele sobrevive ao banco sumir. O Postgres é o caminho a
+// mais, para quando o arquivo em git ficar pesado (são ~38 MB por mês) e para
+// consulta que grep não faz. Falhar aqui NÃO pode derrubar o retrato: o
+// `gravarEmissoes` devolve nulo e a linha abaixo diz isso, só.
+const noArquivo = await gravarEmissoes(
+  pontos.map((p) => ({
+    symbol: p.s,
+    t: new Date(p.t * 1000).toISOString(),
+    preco: p.preco,
+    liquidez: p.liq,
+    oi_usd: p.oi,
+    dominancia: p.dom,
+    varejo: p.varejo,
+    baleias: p.baleias,
+    saida: p.saida,
+    estagio: p.estagio,
+    vies: p.vies,
+    nota: p.nota,
+    float_cex: p.floatCex,
+    float_token: p.floatTk,
+    market_cap: p.mcap,
+    funding: p.fund,
+  })),
+).catch(() => null);
+
 const porVies = (v: string) => linhas.filter((r) => r.leitura?.vies === v).length;
 console.log(
   `${linhas.length} moedas em ${levou.toFixed(1)}s · ` +
@@ -137,7 +166,8 @@ console.log(
     `${linhas.filter((r) => r.vida?.estagio === "exausta").length} exaustas`,
 );
 console.log(
-  `${ATUAL}: ${mudou ? "atualizado" : "sem mudança"} · ${historico}: +${pontos.length} pontos`,
+  `${ATUAL}: ${mudou ? "atualizado" : "sem mudança"} · ${historico}: +${pontos.length} pontos` +
+    (noArquivo === null ? "" : ` · arquivo: +${noArquivo}`),
 );
 if (caidas.length > 0) {
   console.log(`⚠️ sem dado nesta rodada: ${caidas.join(", ")}`);

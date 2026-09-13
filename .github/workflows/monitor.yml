@@ -216,6 +216,11 @@ jobs:
       # rebasear: cada tentativa regenera em cima do que já está lá.
       - name: Tirar o retrato do panorama
         if: always()
+        env:
+          # Só a gravação do arquivo usa estas duas. Ausentes, `npm run arquivar`
+          # avisa e sai com zero — o resto do passo não muda em nada.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -226,6 +231,10 @@ jobs:
 
             npm run panorama || { echo "panorama falhou, seguindo"; exit 0; }
             npm run carteira || echo "carteira falhou, seguindo"
+            # Guarda no Postgres o open interest que a Binance apaga em 31 dias.
+            # Sem a chave ele sai com zero e diz que não gravou; falhar aqui
+            # nunca pode derrubar o retrato, que é o que a página lê.
+            npm run arquivar || echo "arquivar falhou, seguindo"
             # O garimpo peneira os 526 perpétuos da Binance atrás de moeda que
             # se pareça com o objeto de estudo, para a lista deixar de ser só o
             # que alguém lembrou de apontar. Roda SÓ no retrato de fechamento e

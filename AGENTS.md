@@ -210,6 +210,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/detentores.ts` | concentração: quem recebeu o supply na gênese |
 | `lib/vesting.ts` | emissão: o supply travado está parado ou saindo? |
 | `lib/estudo.ts` | como CADA moeda se move — memória, volatilidade, assimetria |
+| `lib/arquivo.ts` | grava e lê o Postgres do Supabase. **Guarda o open interest que a Binance apaga em 31 dias.** Nulo é "não consegui", vazio é "não há nada", e as duas mensagens são diferentes |
 | `lib/antecipar.ts` | o salto de open interest do último dia FECHADO. **O único sinal daqui que olha para frente** — e a medição de que a chance de pump triplica enquanto a mediana do retorno fica negativa |
 | `lib/acumulacao.ts` | o evento de volume por moeda. **Carrega a medição de que ele não é sinal de compra** — e a de que pressão compradora não se mede no perpétuo. A vela do dia corrente fica FORA da conta de volume e dentro da de preço |
 | `lib/placar.ts` | o painel acertou? Lê o histórico de emissões |
@@ -232,6 +233,8 @@ retrato seguinte fechá-la com a hora certa.
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/carteira.json` | a carteira | `npm run carteira` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
+| `oi_diario` (Postgres) | open interest diário dos 526 perpétuos. **É a única fonte possível de OI acima de 31 dias** — a Binance não serve mais fundo e o Data Vision não tem a coluna | `npm run arquivar` |
+| `emissoes` (Postgres) | o mesmo do histórico JSONL, para quando ele ficar pesado | `npm run panorama` |
 
 ---
 

@@ -561,6 +561,44 @@ Três limites que ficam escritos:
   moedas que pumparam e foram deslistadas sairiam do universo, e são justamente
   as que mais pumparam.
 
+## O arquivo: guardar o que a fonte apaga
+
+A medição do salto de open interest tem um teto que não é de método, é de fonte:
+**a Binance guarda 31 dias** de `openInterestHist` e nem um a mais — testado com
+`limit=500`, que devolve 31 pontos. Nenhum arquivo do Data Vision traz a coluna.
+Então o achado mais útil daqui está preso numa janela que anda sozinha, e não há
+como alargá-la olhando para trás.
+
+Só dá para alargar **para a frente**. `npm run arquivar` pega os 31 dias que a
+Binance ainda serve, para os 526 perpétuos, e faz `upsert` numa tabela do
+Postgres. Cada execução guarda uma sobreposição de um mês inteiro, então perder
+execuções não abre buraco — roda junto do retrato e pronto. Em três meses a
+medição tem três meses; em um ano, um ano. E aí dá para testar o detector em
+regimes diferentes, que é o que hoje não dá.
+
+`npm run aferir-antecipar` já lê de lá primeiro: o que estiver guardado além dos
+31 dias entra na medição **sem mexer no script**, e a primeira linha da saída diz
+de onde veio cada pedaço. Enquanto o arquivo for novo, o número é o mesmo de
+antes — e a linha diz isso em vez de deixar parecer que cresceu.
+
+O segundo motivo é peso: `data/historico-*.jsonl` cresce ~4.960 linhas por dia,
+o que projeta ~38 MB por mês dentro do repositório, e todo clone paga isso para
+sempre. No Postgres são 192 mil linhas por ano para os 526 símbolos.
+
+**O JSONL continua sendo gravado, e isso é decisão.** Ele é a memória que
+sobrevive ao banco sumir, e já provou que serve — foi dele que saíram as 68 mil
+emissões do placar. O Postgres é o caminho a mais, não o substituto.
+
+Nada no projeto depende do arquivo existir. Sem `SUPABASE_SERVICE_ROLE_KEY` o
+coletor avisa na primeira linha e sai com zero; o painel, o retrato, a carteira e
+todas as medições seguem iguais. As três situações — não configurado, configurado
+e sem resposta, respondeu vazio — aparecem com mensagens diferentes, porque só a
+do meio é problema e confundi-las é a armadilha nº 2 do AGENTS.md.
+
+E a regra de "sem chave de API" continua de pé: ela é sobre de onde o DADO vem —
+nós RPC, DexScreener, Binance, FRED, todos públicos e sem cadastro. Onde ele é
+guardado depois é outra coisa, e o projeto já tinha Supabase para o monitor.
+
 ## Identificar a moeda certa
 
 O erro mais caro deste projeto foi analisar o token errado — duas vezes. Buscar
@@ -709,6 +747,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run aferir-acumulacao` | mede se salto de volume com preço parado prevê alta |
 | `npm run acumulacao` | a fila de eventos de volume, moeda por moeda |
 | `npm run antecipar` | a fila do salto de open interest: quem está sendo mexido |
+| `npm run arquivar` | guarda no Postgres o open interest que a Binance apaga em 31 dias |
 | `npm run aferir-antecipar` | a medição que sustenta o salto de open interest |
 | `npm run testar-acumulacao` | os casos-limite da leitura de volume, sem rede |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
