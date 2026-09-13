@@ -111,18 +111,46 @@ export interface Circulante {
   atual: number;
   /** Saltos de pelo menos 2% na janela, do mais antigo ao mais recente. */
   saltos: { quando: number; variacao: number; de: number; para: number }[];
+  /**
+   * O open interest em MOEDA, um ponto por dia, do mais antigo ao mais recente.
+   *
+   * Vem na mesma resposta que o circulante — é o campo principal do endpoint, e
+   * estava sendo jogado fora. Custa zero requisição e é o que `lib/antecipar.ts`
+   * precisa: o salto de OI de um dia para o outro é o único sinal já medido
+   * neste projeto que ANTECIPA um pump em vez de descrevê-lo depois.
+   *
+   * São ~31 dias, que é tudo o que a Binance guarda neste caminho.
+   */
+  oiPorDia: { dia: string; oi: number }[];
 }
 
 export async function circulante(symbol: string): Promise<Circulante | null> {
   const bruto = await pegar<RawOi>(
     `/futures/data/openInterestHist?symbol=${symbol}&period=1d&limit=500`,
   );
+  // O open interest sai da MESMA resposta e não custa requisição nenhuma. Ele é
+  // lido antes do circulante porque sobrevive sozinho: moeda sem
+  // `CMCCirculatingSupply` — e há várias — tem OI mesmo assim, e jogar a série
+  // fora junto com o circulante ausente seria perder o sinal por tabela.
+  const oiPorDia = bruto
+    .map((r) => ({
+      dia: new Date(Number(r.timestamp)).toISOString().slice(0, 10),
+      oi: Number(r.sumOpenInterest),
+    }))
+    .filter((x) => Number.isFinite(x.oi) && x.oi > 0)
+    .sort((a, b) => (a.dia < b.dia ? -1 : 1));
+
   const serie = bruto
     .map((r) => ({ t: Number(r.timestamp), c: Number(r.CMCCirculatingSupply ?? 0) }))
     .filter((x) => x.c > 0)
     .sort((a, b) => a.t - b.t);
 
-  if (serie.length === 0) return null;
+  if (serie.length === 0) {
+    // Sem circulante não há `Circulante`, mas a série de OI existe e alguém a
+    // espera. Devolver nulo aqui apagaria o sinal de todas as moedas sem supply
+    // publicado — que são justamente as mais novas.
+    return oiPorDia.length ? { atual: 0, saltos: [], oiPorDia } : null;
+  }
 
   const saltos: Circulante["saltos"] = [];
   for (let i = 1; i < serie.length; i++) {
@@ -137,7 +165,7 @@ export async function circulante(symbol: string): Promise<Circulante | null> {
     }
   }
 
-  return { atual: serie[serie.length - 1].c, saltos };
+  return { atual: serie[serie.length - 1].c, saltos, oiPorDia };
 }
 
 /**

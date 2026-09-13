@@ -10,6 +10,7 @@ import { PrecoVivo, VariacaoViva } from "@/components/PrecoVivo";
 import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
 import { SALTO_NOTAVEL, vereditoDoEvento } from "@/lib/acumulacao";
+import { SALTO_DE_OI_FRACO, vereditoDaAntecipacao } from "@/lib/antecipar";
 
 // Duas chamadas por moeda: dá para atualizar com frequência sem castigar as
 // APIs públicas, que não pedem chave e não deveriam ser abusadas por isso.
@@ -179,7 +180,26 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
           </span>
         )}
       </td>
-      <td className="py-2.5 pr-3 text-right tabular-nums">{money(row.openInterestUsd)}</td>
+      {/* O salto de OI do último dia fechado entra COLADO no open interest, e não
+          numa coluna nova: é o mesmo número lido de dois jeitos, e separá-los
+          faria a tabela crescer sem dizer mais. Só aparece a partir do corte em
+          que a medição separa — abaixo dele é ruído com aparência de sinal. */}
+      <td className="py-2.5 pr-3 text-right tabular-nums">
+        {money(row.openInterestUsd)}
+        {row.vida?.antecipacao && Math.abs(row.vida.antecipacao.salto) >= SALTO_DE_OI_FRACO && (
+          <p
+            className="text-xs text-black/35 dark:text-white/35"
+            title={
+              vereditoDaAntecipacao(row.vida.antecipacao) ??
+              `open interest ${row.vida.antecipacao.salto >= 0 ? "subiu" : "caiu"} em ${row.vida.antecipacao.dia}`
+            }
+          >
+            {row.vida.antecipacao.salto >= 0 ? "+" : "−"}
+            {Math.abs(row.vida.antecipacao.salto * 100).toFixed(0)}% no dia
+            {row.vida.antecipacao.parado === true && " · preço parado"}
+          </p>
+        )}
+      </td>
       <td className="py-2.5 pr-3 text-right tabular-nums">
         {row.perpDominance > 0 ? `${row.perpDominance.toFixed(0)}x` : "—"}
       </td>
@@ -612,6 +632,22 @@ export default async function Radar() {
         {/* Fica junto da explicação das outras colunas, e não escondido num
             tooltip: a coluna de volume é a que mais parece descoberta e a que
             mede pior. Quem vê o 182x tem de ver isto na mesma tela. */}
+        {/* O único sinal daqui que olha para frente, e por isso o que mais precisa
+            da segunda metade escrita do lado. */}
+        <p className="text-xs text-black/40 dark:text-white/40 max-w-3xl">
+          Embaixo do <span className="font-medium">open interest</span> aparece o salto dele
+          no último dia FECHADO, quando passa de 10%. É o único sinal deste projeto que olha
+          para a frente em vez de descrever o passado, e ele foi medido sobre 526 perpétuos:
+          depois de um salto de 25% a 50%, a moeda sobe 20% ou mais em dois dias em{" "}
+          <span className="font-medium">26,0%</span> [17,5, 33,7] dos casos contra base de
+          7,1% — 3,7x, com o intervalo inteiro acima da base e estável nas duas metades da
+          janela. <span className="font-medium">E não é ordem de compra:</span> o retorno
+          mediano desses mesmos casos é −1,6% contra +0,3% da base, com média +3,6% — um
+          quarto explode e três quartos sangram, com a excursão quase simétrica no caminho.
+          Serve para saber onde olhar. São 31 dias de histórico, que é tudo o que a Binance
+          guarda de open interest.
+        </p>
+
         <p className="text-xs text-black/40 dark:text-white/40 max-w-3xl">
           A coluna <span className="font-medium">volume</span> mostra o maior dia de volume
           dos últimos 60 dias contra a mediana de 90 — e ela NÃO é sinal de compra, por mais

@@ -56,6 +56,13 @@ no código, com número:
   testada**, porque o caminho estopa a posição antes. `npm run garimpar` entrega
   fila de investigação, com essa frase na tela.
 
+- **Dá para ver o pump antes, e não dá para comprá-lo.** O salto de open interest
+  de um dia triplica a chance de a moeda subir 20% em dois dias: 26,0% [17,5,
+  33,7] contra base de 7,12%, monotônico e estável nas duas metades. É o primeiro
+  sinal deste projeto que separa para cima. E o retorno mediano desses casos é
+  −1,6% contra +0,3% da base — um quarto explode, três quartos sangram. Fila de
+  investigação, igual ao garimpo.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -203,6 +210,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/detentores.ts` | concentração: quem recebeu o supply na gênese |
 | `lib/vesting.ts` | emissão: o supply travado está parado ou saindo? |
 | `lib/estudo.ts` | como CADA moeda se move — memória, volatilidade, assimetria |
+| `lib/antecipar.ts` | o salto de open interest do último dia FECHADO. **O único sinal daqui que olha para frente** — e a medição de que a chance de pump triplica enquanto a mediana do retorno fica negativa |
 | `lib/acumulacao.ts` | o evento de volume por moeda. **Carrega a medição de que ele não é sinal de compra** — e a de que pressão compradora não se mede no perpétuo. A vela do dia corrente fica FORA da conta de volume e dentro da de preço |
 | `lib/placar.ts` | o painel acertou? Lê o histórico de emissões |
 | `lib/carteira.ts` | a carteira fictícia. **Não importa nada de `node:` no topo** — `remarcar` roda no navegador |

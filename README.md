@@ -510,6 +510,57 @@ de **investigação**, igual à do garimpo: o passo seguinte de qualquer linha �
 vista colada em 0,50 moeda após moeda — quando ela aparece vazia é porque a Gate
 não separa o agressor, que é diferente de ninguém ter comprado.
 
+## Dá para ver o pump ANTES?
+
+Esta é a pergunta que faltava. Tudo o mais aqui olha para trás: o garimpo mede o
+que vem depois da alta, o estágio classifica o passado, o placar corrige a prova.
+A reclamação que forçou a medição foi direta — "não conseguimos identificar um
+scam pump" —, e o caso foi a **POWER**: em 13/09 ela fez +38% em 24 horas com o
+painel marcando "observar · nota 10" do começo ao fim.
+
+**Existe um sinal, e é o primeiro deste projeto que separa para CIMA.** O salto
+de open interest de um dia para o outro, medido sobre 526 perpétuos e os 31 dias
+que a Binance guarda, com carência de dois dias e intervalo de 95% reamostrando
+moedas:
+
+| salto de OI num dia | n | sobe ≥20% em 2 dias | intervalo | vs base |
+| --- | --- | --- | --- | --- |
+| ≤ −10% | 333 | 11,4% | [7,9, 14,9] | 1,60x |
+| −10 a 0% | 5.088 | 6,8% | [5,9, 7,7] | 0,95x |
+| 0 a +10% | 4.235 | 6,9% | [5,9, 7,6] | 0,97x |
+| +10 a +25% | 362 | 15,5% | [11,8, 19,6] | 2,17x |
+| +25 a +50% | 100 | **26,0%** | [17,5, 33,7] | **3,65x** |
+| ≥ +50% | 65 | 24,6% | [12,5, 34,8] | 3,46x |
+
+A base é 7,12% [6,37, 8,01] sobre 7.347 observações independentes. O intervalo
+dos três cortes de cima fica inteiro acima dela, o efeito é monotônico na subida
+e aparece nas duas metades da janela (3,19x e 3,93x). Com o preço ainda parado no
+dia — a versão que interessa, alguém montando posição sem empurrar a cotação — o
+corte de +20% mede 16,9% [9,1, 27,9], 2,38x.
+
+A ponta de BAIXO também separa (1,60x), e isso diz o que o sinal realmente é: não
+é "alguém comprando", é a moeda **sendo mexida**. Mexer inclui desmontar posição.
+
+**E mesmo assim não é ordem de compra.** No corte de +25 a +50% o retorno mediano
+de dois dias é **−1,6%** contra +0,3% da base, com média +3,6% contra +1,3%.
+Mediana negativa com média positiva é loteria: um quarto explode, três quartos
+sangram. A excursão mediana é quase simétrica — máximo de +7,1% contra mínimo de
+−6,7% no caminho —, então não há assimetria para um stop explorar. Mesma forma do
+achado do garimpo, mesma conclusão: **fila de investigação**. `npm run antecipar`
+imprime a fila; `npm run aferir-antecipar` refaz a medição.
+
+Três limites que ficam escritos:
+
+- **São 31 dias.** É tudo o que a Binance guarda em `openInterestHist`, e nenhum
+  arquivo do Data Vision traz esta coluna. O número é do regime de agosto e
+  setembro de 2026 e a janela anda sozinha.
+- **A POWER não teria sido pega.** O open interest dela subiu 1,4% e 2,0% nos dois
+  dias antes do pump de 36,6%. O detector responde à pergunta geral; o caso que a
+  motivou fica de fora dele.
+- **O viés de sobrevivência corre CONTRA** aqui, ao contrário do garimpo: as
+  moedas que pumparam e foram deslistadas sairiam do universo, e são justamente
+  as que mais pumparam.
+
 ## Identificar a moeda certa
 
 O erro mais caro deste projeto foi analisar o token errado — duas vezes. Buscar
@@ -657,6 +708,8 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
 | `npm run aferir-acumulacao` | mede se salto de volume com preço parado prevê alta |
 | `npm run acumulacao` | a fila de eventos de volume, moeda por moeda |
+| `npm run antecipar` | a fila do salto de open interest: quem está sendo mexido |
+| `npm run aferir-antecipar` | a medição que sustenta o salto de open interest |
 | `npm run testar-acumulacao` | os casos-limite da leitura de volume, sem rede |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |

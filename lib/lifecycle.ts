@@ -31,6 +31,7 @@ import { circulante, velas, type Circulante } from "./binance";
 import { velasGate } from "./gate";
 import { lerTecnica, type Tecnica } from "./tecnica";
 import { lerAcumulacao, type Acumulacao } from "./acumulacao";
+import { lerAntecipacao, type Antecipacao } from "./antecipar";
 import type { WatchedToken } from "./watchlist";
 
 /**
@@ -214,6 +215,16 @@ export interface Vida {
    * aquele módulo existe para impedir.
    */
   acumulacao: Acumulacao | null;
+  /**
+   * O salto de open interest do último dia fechado — o único sinal daqui que
+   * olha para FRENTE.
+   *
+   * Nulo quando a série de OI não veio ou tem menos de dois dias fechados. Vem
+   * de `lib/antecipar.ts`, que carrega a medição junto: a chance de pump
+   * triplica, e a mediana do retorno continua negativa. As duas metades andam
+   * juntas ou a leitura vira ordem de compra, que é o que ela não é.
+   */
+  antecipacao: Antecipacao | null;
   /**
    * Estrutura de preço: resistência mais próxima, distância da média, tendência.
    *
@@ -502,6 +513,16 @@ export async function lerVida(
     // Sobre as MESMAS barras, sem uma requisição a mais: elas já estão aqui, e
     // ler volume é aritmética em cima delas.
     acumulacao: lerAcumulacao(barras),
+    // Sobre a série que `circulante` trouxe na mesma resposta de sempre, e sobre
+    // as barras que já estão aqui: zero requisição a mais.
+    antecipacao: lerAntecipacao(
+      circ?.oiPorDia ?? [],
+      barras.map((b) => ({
+        dia: new Date(b.time * 1000).toISOString().slice(0, 10),
+        open: b.open,
+        close: b.close,
+      })),
+    ),
     tecnica: lerTecnica(
       barras.map((b) => ({ close: b.close, high: b.high, low: b.low })),
     ),
