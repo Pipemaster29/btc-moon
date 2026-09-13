@@ -75,26 +75,38 @@ classificador TERIA dito. Nada media o que ele REALMENTE disse — e o
 `data/historico-AAAA-MM.jsonl` guardava 21 mil emissões ao vivo que nunca foram
 lidas de volta. `npm run placar` lê.
 
-O resultado, sobre 21.127 emissões de 72 moedas entre 20/08 e 01/09:
+**As 68 mil emissões são 1.531 observações.** Este é o primeiro número, e ele
+custou a régua antiga: o painel emite a cada 22 minutos e o horizonte é de 24
+horas, então a mesma call aparecia ~65 vezes com janelas à frente quase
+idênticas. Não são 65 observações, é uma. Com carência de um horizonte inteiro
+entre observações da mesma moeda, **66.675 das 68.206 emissões eram repetição** —
+98% delas. O `n` que parecia enorme era o mesmo dado contado de novo.
 
-| viés | separa da referência | moedas que concordam |
-| --- | --- | --- |
-| short | −0,00 p.p. | 51% |
-| long | +0,07 p.p. | 48% |
-| evitar | −0,35 p.p. | 40% |
-| observar | +0,01 p.p. | 53% |
+O resultado, sobre essas 1.531 observações independentes de 73 moedas entre 20/08
+e 13/09, comparadas com o que as OUTRAS moedas fizeram nas mesmas 24 horas:
 
-**Nenhum viés separou de nada.** A referência — todas as moedas, todo o período —
-é −0,45% em 24h, e os quatro vieses medem isso. Concordância de 50% entre moedas
-é cara ou coroa.
+| viés | n | excesso sobre a maré | intervalo de 95% | moedas a favor |
+| --- | --- | --- | --- | --- |
+| short | 143 | +0,14 p.p. | [−0,52, +0,97] | 45% |
+| long | 248 | +0,00 p.p. | [−0,35, +0,28] | 50% |
+| evitar | 96 | −0,93 p.p. | [−1,87, +1,20] | 43% |
+| observar | 1.013 | +0,00 p.p. | [−0,25, +0,24] | 48% |
+
+**Nenhum viés separou de nada, e agora dá para dizer quanto é "nada".** O
+intervalo do "comprar" vai de −0,35 a +0,28 ponto percentual: se existe vantagem
+ali, ela é menor que um terço de ponto em 24 horas. Concordância de 50% entre
+moedas é cara ou coroa, e nenhum dos quatro intervalos fica inteiro do lado
+favorável — que passou a ser a terceira exigência do veredito, ao lado da
+separação mínima e da concordância.
 
 Doze dias num regime de queda não é amostra para condenar o painel, e o placar
 diz isso na tela. Mas enquanto for assim, o que está no radar é DESCRIÇÃO do
 estado das moedas, não recomendação — e é assim que a página passa a apresentá-lo.
 
-O que separou mais do que o viés foi o ESTÁGIO: "caindo do topo" mede −1,82 p.p.
-abaixo da referência em 1.619 observações, e "nota 60+" mede −5,27 p.p. — só que
-em 45 observações e 2 de 5 moedas, que é pouco para afirmar.
+O que separou mais do que o viés foi o ESTÁGIO: "caindo do topo" mede −1,24 p.p.
+abaixo da referência em 135 observações independentes, e "no topo" −2,16 p.p. em
+31 — amostras pequenas demais para afirmar, e é assim que elas aparecem agora que
+a contagem parou de inflar.
 
 ## Concentração: a moeda tem dono ou tem público?
 
@@ -335,11 +347,29 @@ placar.
 | +100% | 40 | −51,32% | −50,36 p.p. | 5/6 |
 
 É monotônico em toda a escala, igual no horizonte de 14 dias, e aparece nas duas
-metades da janela separadamente (−12,57 e −14,75 p.p. no corte de 25%). Para
-comparação, os vieses que o painel emite separam +0,01 e +0,02 p.p. O viés de
+metades da janela separadamente (−12,57 e −14,75 p.p. no corte de 25%). O viés de
 sobrevivência corre a favor da conclusão: o universo é quem está listado hoje,
 então as moedas que bombaram e foram deslistadas — as de pior desfecho — ficaram
 de fora.
+
+**E ele aguenta a régua corrigida**, que é o teste que a tabela acima não tinha.
+Refeito com maré casada por data, carência de um horizonte entre pumps da mesma
+moeda e intervalo de 95% reamostrando moedas:
+
+| alta do dia | n | excesso sobre a maré | intervalo de 95% | moedas |
+| --- | --- | --- | --- | --- |
+| caiu | 12.356 | +0,08% | [−0,02, +0,21] | 524 |
+| 0 a 10% | 11.653 | −0,03% | [−0,17, +0,11] | 524 |
+| 10 a 25% | 2.183 | −3,32% | [−3,87, −2,63] | 484 |
+| 25 a 50% | 516 | −10,72% | [−12,45, −7,96] | 233 |
+| 50 a 100% | 141 | −21,19% | [−24,66, −14,31] | 98 |
+| +100% | 38 | −46,22% | [−56,93, −26,26] | 33 |
+
+As duas primeiras faixas são o **controle**, e é nelas que a régua se valida: dia
+que caiu e dia que subiu pouco medem zero, com o intervalo em cima do zero. A
+partir de 10% o intervalo descola e nunca mais volta. Para comparação, os vieses
+que o painel emite medem +0,00 e +0,14 p.p. com o intervalo em cima do zero — a
+mesma cara das faixas de controle.
 
 **E ele não vira call, porque o caminho até a queda mata a posição.** Vendido a
 partir do dia da alta, com custo e o financiamento real da Binance dentro:

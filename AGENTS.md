@@ -32,9 +32,12 @@ Este projeto é cheio de coisa que parecia boa e não era. O valor dele está ta
 no que ele afirma quanto no que ele se recusa a afirmar. Três exemplos que estão
 no código, com número:
 
-- **Os vieses do painel não têm vantagem medida.** Sobre 22 mil emissões, short
-  separa +0,01 p.p. da referência, long +0,02, com 46% a 54% de concordância
-  entre moedas. Cara ou coroa. O painel diz isso na própria tela.
+- **Os vieses do painel não têm vantagem medida.** As 68 mil emissões são 1.531
+  observações independentes — 98% eram a mesma call repetida a cada 22 minutos
+  dentro do horizonte de 24h. Sobre elas, contra a maré do mesmo instante: long
+  mede +0,00 p.p. com intervalo de 95% em [−0,35, +0,28], short +0,14 em [−0,52,
+  +0,97]. Cara ou coroa, e agora com o tamanho da incerteza junto. O painel diz
+  isso na própria tela.
 - **A tese da liquidez projetada é espúria.** Em nível o ajuste é 0,71 no lead de
   13 semanas — e 0,72 em lead ZERO. Em variação semanal é −0,004 sobre 770
   semanas. O painel mostra os três números lado a lado.
@@ -44,7 +47,11 @@ no código, com número:
 - **O garimpo acha o padrão e não vira call.** Sobre os 526 perpétuos da
   Binance, uma moeda que sobe ≥25% num dia cai 12,68% na mediana dos 7 dias
   seguintes contra referência de −0,96%, com 102 de 139 moedas concordando —
-  monotônico em toda a escala e estável nas duas metades da janela. É o sinal
+  monotônico em toda a escala e estável nas duas metades da janela. Refeito com a
+  régua corrigida (maré casada por data, carência entre pumps, intervalo por
+  bootstrap de moedas) ele aguenta: −10,72% de excesso em [−12,45, −7,96], e as
+  faixas de CONTROLE — dia que caiu, dia que subiu pouco — medem zero com o
+  intervalo em cima do zero, que é o que valida a régua. É o sinal
   mais forte já medido aqui, e **vendê-lo perde dinheiro em toda largura de stop
   testada**, porque o caminho estopa a posição antes. `npm run garimpar` entrega
   fila de investigação, com essa frase na tela.

@@ -12,19 +12,39 @@ import { lerGuardado } from "./guardado";
 
 export interface Veredito {
   vies: string;
+  /** Observações INDEPENDENTES do grupo, depois da carência. */
   n: number;
-  /** Quanto o viés separa da referência, a favor da direção dele. */
+  /** Quanto o viés separa da referência global, a favor da direção dele. */
   delta: number;
   /** Fração das moedas em que a separação aparece. */
   concordancia: number;
   passa: boolean;
+  /**
+   * Separação contra a maré do MESMO instante, a favor da direção do viés.
+   *
+   * Opcional porque placar.json gravado antes desta medição não tem o campo — e
+   * ausente não é zero. A tela mostra o intervalo quando ele existe e cai na
+   * régua antiga quando não existe.
+   */
+  excesso?: number;
+  /** Intervalo de 95% do excesso, reamostrando moedas. */
+  ic?: [number, number];
 }
 
 export interface Placar {
   geradoEm: number;
   horizonte: number;
   janela: { de: string; ate: string };
+  /** Observações independentes: uma por moeda a cada horizonte inteiro. */
   emissoes: number;
+  /**
+   * Emissões antes da carência.
+   *
+   * O painel emite a cada 22 minutos e o horizonte é de 24h, então a mesma call
+   * aparecia ~65 vezes. Guardar os dois números é o que impede o maior deles de
+   * parecer amostra: 68 mil emissões são 1,5 mil observações independentes.
+   */
+  emissoesBrutas?: number;
   moedas: number;
   /** Mediana de TODAS as observações: sem ela nenhum viés significa nada. */
   referencia: number;

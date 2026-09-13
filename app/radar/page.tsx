@@ -383,39 +383,61 @@ export default async function Radar() {
                   roda no workflow — ele pode ter dias. Mostrar as duas datas é o
                   que impede a segunda de se passar pela primeira. */}
               <span className="text-xs text-black/40 dark:text-white/40 tabular-nums">
-                {placar.emissoes.toLocaleString("pt-BR")} emissões · {placar.moedas} moedas ·{" "}
-                {placar.janela.de.slice(0, 10)} a {placar.janela.ate.slice(0, 10)}
+                {placar.emissoes.toLocaleString("pt-BR")} observações independentes
+                {placar.emissoesBrutas != null && (
+                  <> de {placar.emissoesBrutas.toLocaleString("pt-BR")} emissões</>
+                )}{" "}
+                · {placar.moedas} moedas · {placar.janela.de.slice(0, 10)} a{" "}
+                {placar.janela.ate.slice(0, 10)}
                 {placar.geradoEm > 0 && (
                   <> · medido em {new Date(placar.geradoEm).toISOString().slice(0, 10)}</>
                 )}
               </span>
             </div>
             <p className="text-xs text-black/55 dark:text-white/55 mt-1.5">
-              Cada viés que esteve nesta tela, comparado com o que o preço fez{" "}
-              {placar.horizonte}h depois. A referência — todas as moedas, todo o período —
-              é {(placar.referencia * 100).toFixed(2)}%, e é dela que a distância importa:
-              numa semana de queda geral um viés negativo não errou, apenas descreveu o
-              mercado.
+              Cada viés que esteve nesta tela, comparado com o que as OUTRAS moedas fizeram
+              nas mesmas {placar.horizonte}h — numa semana de queda geral um viés negativo
+              não errou, apenas descreveu o mercado. Entre colchetes vai o intervalo de 95%,
+              reamostrando moedas: um viés só passa quando ele fica inteiro do lado favorável.
+              {placar.emissoesBrutas != null && (
+                <>
+                  {" "}
+                  A contagem é de observações INDEPENDENTES: o painel emite a cada 22 minutos
+                  e o horizonte é de {placar.horizonte}h, então a mesma call aparecia dezenas
+                  de vezes e só a primeira de cada janela conta.
+                </>
+              )}
             </p>
             <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2.5 text-xs tabular-nums">
-              {placar.vereditos.map((v) => (
-                <span key={v.vies} className="flex items-baseline gap-1.5">
-                  <span className="font-medium">{v.vies}</span>
-                  <span className={v.passa ? "text-[#0a7d43] dark:text-[#0ECB81]" : "text-black/45 dark:text-white/45"}>
-                    {v.delta >= 0 ? "+" : "−"}
-                    {Math.abs(v.delta * 100).toFixed(2)} p.p.
+              {placar.vereditos.map((v) => {
+                // O excesso é a régua nova e o delta é a antiga. Retrato gravado
+                // antes da medição não tem a nova, e aí a antiga aparece — nunca
+                // um zero inventado no lugar dela.
+                const valor = v.excesso ?? v.delta;
+                return (
+                  <span key={v.vies} className="flex items-baseline gap-1.5">
+                    <span className="font-medium">{v.vies}</span>
+                    <span className={v.passa ? "text-[#0a7d43] dark:text-[#0ECB81]" : "text-black/45 dark:text-white/45"}>
+                      {valor >= 0 ? "+" : "−"}
+                      {Math.abs(valor * 100).toFixed(2)} p.p.
+                    </span>
+                    {v.ic && (
+                      <span className="text-black/35 dark:text-white/35">
+                        [{(v.ic[0] * 100).toFixed(2)}, {(v.ic[1] * 100).toFixed(2)}]
+                      </span>
+                    )}
+                    <span className="text-black/35 dark:text-white/35">
+                      {(v.concordancia * 100).toFixed(0)}% das moedas · {v.n} obs
+                    </span>
                   </span>
-                  <span className="text-black/35 dark:text-white/35">
-                    {(v.concordancia * 100).toFixed(0)}% das moedas
-                  </span>
-                </span>
-              ))}
+                );
+              })}
             </div>
             {placar.vereditos.every((v) => !v.passa) && (
               <p className="text-xs text-[#C42B3E] dark:text-[#F6465D] mt-2">
-                Nenhum viés separou da referência com concordância entre moedas nesta janela.
-                Trate o que está abaixo como descrição do estado das moedas, não como
-                recomendação.
+                Nenhum viés separou da maré do mercado com o intervalo inteiro do lado
+                favorável. Trate o que está abaixo como descrição do estado das moedas, não
+                como recomendação.
               </p>
             )}
           </section>

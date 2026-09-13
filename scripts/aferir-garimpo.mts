@@ -123,18 +123,114 @@ interface Obs {
   alta1: number;
   alta7: number;
   fwd: number;
+  /**
+   * Retorno à frente MENOS a mediana de todas as moedas que começam no MESMO
+   * dia. É o que separa "este pump foi seguido de queda" de "esta semana foi
+   * ruim para a lista inteira".
+   *
+   * NaN quando o dia não tem moedas suficientes para definir maré — e NaN é
+   * resposta, não zero: um dia com cinco moedas não diz o que o mercado fez.
+   */
+  excesso: number;
+}
+
+/** Moedas mínimas num dia para ele ter maré. Abaixo disso não é mercado. */
+const MOEDAS_PARA_MARE = 30;
+
+/** A maré de cada dia, por horizonte: mediana do retorno à frente de todas. */
+function mares(H: number): Map<number, number> {
+  const porDia = new Map<number, number[]>();
+  for (const v of series.values()) {
+    for (let i = 0; i + H < v.length; i++) {
+      const c = v[i].close, f = v[i + H].close;
+      if (c > 0 && f > 0) porDia.set(v[i].time, [...(porDia.get(v[i].time) ?? []), f / c - 1]);
+    }
+  }
+  const m = new Map<number, number>();
+  for (const [t, xs] of porDia) if (xs.length >= MOEDAS_PARA_MARE) m.set(t, mediana(xs));
+  return m;
 }
 
 function observar(H: number): Obs[] {
+  const mare = mares(H);
   const obs: Obs[] = [];
   for (const [s, v] of series) {
     for (let i = 7; i + H < v.length; i++) {
       const c = v[i].close, a = v[i - 1].close, b = v[i - 7].close, f = v[i + H].close;
       if (!(c > 0 && a > 0 && b > 0 && f > 0)) continue;
-      obs.push({ s, t: v[i].time, alta1: c / a - 1, alta7: c / b - 1, fwd: f / c - 1 });
+      const fwd = f / c - 1;
+      const m = mare.get(v[i].time);
+      obs.push({
+        s, t: v[i].time, alta1: c / a - 1, alta7: c / b - 1, fwd,
+        excesso: m === undefined ? NaN : fwd - m,
+      });
     }
   }
   return obs;
+}
+
+/**
+ * Intervalo de 95% do excesso, reamostrando MOEDAS e não observações.
+ *
+ * A moeda é a unidade independente: as observações de uma mesma moeda se
+ * parecem entre si. O sorteio é semeado e a ordem das moedas fixada por símbolo,
+ * senão duas execuções dão intervalos diferentes sobre o mesmo dado.
+ */
+function sorteio(semente: number): () => number {
+  let a = semente >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const VOLTAS = 300;
+
+function intervalo(grupo: Obs[]): [number, number] {
+  const porM = new Map<string, number[]>();
+  for (const o of grupo) {
+    if (!Number.isFinite(o.excesso)) continue;
+    porM.set(o.s, [...(porM.get(o.s) ?? []), o.excesso]);
+  }
+  const moedas = [...porM.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .map(([, xs]) => xs);
+  if (moedas.length < 5) return [NaN, NaN];
+
+  const proximo = sorteio(moedas.length * 7919 + grupo.length);
+  const meds: number[] = [];
+  for (let b = 0; b < VOLTAS; b++) {
+    const amostra: number[] = [];
+    for (let k = 0; k < moedas.length; k++) amostra.push(...moedas[Math.floor(proximo() * moedas.length)]);
+    meds.push(mediana(amostra));
+  }
+  meds.sort((a, b) => a - b);
+  return [meds[Math.floor(VOLTAS * 0.025)], meds[Math.floor(VOLTAS * 0.975)]];
+}
+
+/**
+ * A CARÊNCIA: o mesmo pump contado uma vez só.
+ *
+ * Um pump não dura um dia. Uma moeda que sobe 40% costuma subir de novo no dia
+ * seguinte, e as janelas à frente dos dois dias se sobrepõem quase inteiras —
+ * não são duas observações, é uma. Aqui, dentro de cada moeda, uma observação
+ * da faixa só entra quando o horizonte inteiro já passou desde a anterior.
+ */
+function comCarencia(g: Obs[], H: number): Obs[] {
+  const porMoeda = new Map<string, Obs[]>();
+  for (const o of g) porMoeda.set(o.s, [...(porMoeda.get(o.s) ?? []), o]);
+  const saida: Obs[] = [];
+  for (const [, lista] of [...porMoeda.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    let ultimo = -Infinity;
+    for (const o of [...lista].sort((a, b) => a.t - b.t)) {
+      if (o.t - ultimo < H * 86_400) continue;
+      saida.push(o);
+      ultimo = o.t;
+    }
+  }
+  return saida;
 }
 
 function deriva(obs: Obs[], H: number, campo: "alta1" | "alta7", faixas: [string, number, number][]) {
@@ -190,6 +286,49 @@ for (const H of [7, 14]) {
   deriva(obs, H, "alta1", FAIXAS_1D);
   deriva(obs, H, "alta7", FAIXAS_7D);
 }
+
+/**
+ * A MESMA DERIVA, COM A RÉGUA CORRIGIDA.
+ *
+ * A tabela de cima é a régua histórica do projeto — mediana contra a referência
+ * global — e ela fica onde está porque é com ela que os números publicados foram
+ * medidos. Esta aqui refaz as faixas de pump com as três correções que
+ * `aferir-acumulacao` trouxe:
+ *
+ *   maré casada por DATA   separa o pump da semana ruim do mercado inteiro
+ *   carência de H dias     o mesmo pump conta uma vez, não uma por dia
+ *   intervalo por moeda    diz se a separação é maior que o ruído
+ *
+ * O que se espera ver: o mesmo sinal, com `n` bem menor e o intervalo longe do
+ * zero. Se um dia o intervalo encostar no zero, o achado que sustenta o garimpo
+ * inteiro precisa ser reescrito — e é para isso que estas linhas existem.
+ */
+console.log("\n──────────── 1b. A MESMA DERIVA, COM MARÉ, CARÊNCIA E INTERVALO ────────────");
+for (const H of [7, 14]) {
+  const obs = observar(H);
+  console.log(`\n=== alta de UM dia → ${H} dias à frente ===`);
+  console.log("faixa                    n      excesso    intervalo de 95%     moedas");
+  for (const [nome, lo, hi] of FAIXAS_1D) {
+    const bruto = obs.filter((o) => o.alta1 >= lo && o.alta1 < hi && Number.isFinite(o.excesso));
+    const g = comCarencia(bruto, H);
+    if (g.length < 30) {
+      console.log(`${nome.padEnd(22)} ${String(g.length).padStart(6)}   (amostra pequena, não conclui)`);
+      continue;
+    }
+    const [ic0, ic1] = intervalo(g);
+    console.log(
+      nome.padEnd(22),
+      String(g.length).padStart(6),
+      pct(mediana(g.map((o) => o.excesso))).padStart(11),
+      `[${(ic0 * 100).toFixed(2)}, ${(ic1 * 100).toFixed(2)}]`.padStart(20),
+      String(new Set(g.map((o) => o.s)).size).padStart(9),
+    );
+  }
+}
+console.log(
+  "\n  O `n` cai porque o mesmo pump deixou de ser contado em dias seguidos. O que\n" +
+    "  importa é o intervalo: enquanto ele não encostar no zero, o achado está de pé.",
+);
 
 /**
  * ESTABILIDADE: o efeito aparece nas duas metades da janela, separadamente?
