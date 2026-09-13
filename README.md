@@ -378,28 +378,64 @@ esse argumento em cima. `npm run aferir-acumulacao` mede a tese sobre o universo
 inteiro antes de ela virar leitura de tela.
 
 **Ela é falsa, e falsa com a mesma força com que o achado do garimpo é
-verdadeiro.** 512 perpétuos, 354 mil observações, salto de volume medido contra
-a mediana dos 90 dias anteriores, retorno de 7 dias à frente:
+verdadeiro.** 512 perpétuos, cada evento comparado com o que o RESTO DO MERCADO
+fez nos mesmos dias, carência de 14 dias entre eventos da mesma moeda, intervalo
+de 95% reamostrando moedas — as três correções estão explicadas logo abaixo:
 
-| salto de volume | preço no dia | n | mediana 7d | vs referência | moedas a favor |
+| salto de volume | preço no dia | n | excesso 7d | intervalo de 95% | moedas |
 | --- | --- | --- | --- | --- | --- |
-| ≥10x | livre | 7.497 | −6,96% | −5,68 p.p. | 116/472 |
-| ≥10x | andou ≤5% | 1.885 | −5,33% | −4,05 p.p. | 120/377 |
-| ≥20x | livre | 3.495 | −9,82% | −8,54 p.p. | 88/415 |
-| ≥20x | andou ≤5% | 645 | −7,85% | −6,57 p.p. | 74/256 |
-| ≥40x | livre | 1.500 | −12,56% | −11,28 p.p. | 69/326 |
-| ≥40x | andou ≤5% | 185 | −10,70% | −9,42 p.p. | 32/123 |
+| ≥10x | livre | 2.570 | −4,79% | [−5,44, −4,11] | 472 |
+| ≥10x | andou ≤5% | 1.127 | −3,55% | [−4,26, −2,75] | 377 |
+| ≥20x | livre | 1.368 | −7,31% | [−8,18, −6,31] | 415 |
+| ≥20x | andou ≤5% | 454 | −6,30% | [−8,16, −4,26] | 256 |
+| ≥40x | livre | 702 | −10,45% | [−11,73, −9,21] | 326 |
+| ≥40x | andou ≤5% | 148 | −9,21% | [−11,93, −4,71] | 123 |
 
-A referência de 7 dias é −1,28%. O salto de volume prevê QUEDA, prevê mais queda
-quanto maior o salto, e a conclusão é igual em 14, 30, 60 e 90 dias — no corte
-de 40x com preço parado, 90 dias depois a mediana é −33,54% contra referência de
-−16,67%. A concordância entre moedas vai junto: 32 de 123 no corte mais forte.
+O salto de volume prevê QUEDA, prevê mais queda quanto maior o salto, e a
+conclusão é igual em 14 e 30 dias. **Nenhum intervalo toca o zero**, e o efeito
+aparece nas duas metades da janela separadamente: −4,22% na primeira, −5,31% na
+segunda.
 
 **E o "preço parado" suaviza sem inverter.** Comparando as linhas duas a duas,
-exigir que o dia tenha andado menos de 5% melhora o desfecho em 1,6 a 2,6 p.p. —
-e ele continua 4 a 9 p.p. abaixo da referência. Ou seja: volume recorde COM pump
-junto é péssimo, volume recorde SEM pump junto é ruim, e a leitura de que o
-segundo é sinal positivo é justamente o que a medição desmente.
+exigir que o dia tenha andado menos de 5% melhora cerca de um ponto percentual —
+e o desfecho continua bem abaixo de zero. Ou seja: volume recorde COM pump junto
+é péssimo, volume recorde SEM pump junto é ruim, e a leitura de que o segundo é
+sinal positivo é justamente o que a medição desmente.
+
+### As três correções, e o que cada uma mudou
+
+A primeira versão desta medição usava a régua do projeto inteiro — mediana
+contra a referência global, mais concordância entre moedas. Ela tem três buracos
+que ninguém tinha medido, e o resultado de tapar cada um está escrito porque
+conserto sem antes-e-depois é fé:
+
+- **A referência global confunde evento com maré.** Salto de volume acontece em
+  dia de mercado agitado, e mercado agitado é seguido de queda geral — comparar
+  com a mediana de TODO o período atribui ao evento o que era do mercado. A
+  correção é o excesso sobre a mediana das moedas que começam no MESMO dia.
+  **Medido, muda pouco**: no ≥10x vai de −5,68 p.p. para −5,41%, no ≥40x de
+  −11,28 para −10,96. O atalho global não estava mentindo. Testado também contra
+  o achado principal do garimpo, na janela de 200 dias dele: −11,82 p.p. pela
+  régua velha contra −11,01% de excesso.
+- **O mesmo evento era contado várias vezes.** Um salto não dura um dia: o MOVR
+  fez 182x em 27/08 e ainda 112x, 22x e 24x nos três dias seguintes, cada um
+  virando uma observação com janelas à frente sobrepostas. Com carência de 14
+  dias o `n` do ≥10x cai de 7.497 para **2.570** — dois terços eram repetição — e
+  o efeito encolhe de −5,41% para −4,79%. Continua de pé com um terço da amostra
+  que se dizia ter.
+- **Mediana sem intervalo não diz se é ruído.** Entra um bootstrap que reamostra
+  MOEDAS, não observações, porque é a moeda que é a unidade independente. Todo
+  intervalo desta medição exclui o zero, inclusive o do corte mais escasso.
+
+O sorteio do bootstrap é **semeado**, e a ordem das moedas é fixada por símbolo:
+sem as duas coisas o intervalo se mexia na segunda casa a cada execução, e aí não
+dá para saber se a diferença é o mercado ou o sorteio — que é exatamente a dúvida
+que conferir deveria eliminar.
+
+**O tamanho do efeito depende da janela, e isso vale para o garimpo também.** A
+faixa de alta de 25 a 50% mede −11,01% de excesso nos últimos 200 dias e −6,93%
+sobre os quatro anos inteiros. Mesmo sinal, metade do tamanho. Quem usa o número
+de 200 dias como constante está usando o regime recente.
 
 O viés de sobrevivência corre a favor da conclusão, como no garimpo: o universo
 é quem está listado hoje, então as moedas que tiveram volume recorde e foram
@@ -415,9 +451,9 @@ medida. Quem quiser ler compra de verdade tem de ir para a rede — saldo saindo
 carteira de corretora —, que é o que este projeto já faz por outro caminho.
 
 **Estar barato também não conserta o dia.** Depois de um salto ≥10x, toda faixa
-de preço contra o VWAP de 90 dias fica de 3,4 a 7,9 p.p. abaixo da referência em
-sete dias. E a faixa mais barata de todas, 50% ou mais abaixo do preço médio
-pago, é a **segunda pior** (−9,20%): preço muito abaixo do que o dinheiro pagou
+de preço contra o VWAP de 90 dias fica abaixo do mercado do mesmo dia, de −4,39%
+a −7,40% em sete dias. E a faixa mais barata de todas, 50% ou mais abaixo do
+preço médio pago, é a **pior** delas: preço muito abaixo do que o dinheiro pagou
 não é desconto, é a moeda ainda caindo.
 
 O que isto **não** mede: comprar semanas DEPOIS, sobre a faixa já formada. Toda
@@ -591,6 +627,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
 | `npm run aferir-acumulacao` | mede se salto de volume com preço parado prevê alta |
 | `npm run acumulacao` | a fila de eventos de volume, moeda por moeda |
+| `npm run testar-acumulacao` | os casos-limite da leitura de volume, sem rede |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |

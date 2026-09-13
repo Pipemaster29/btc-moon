@@ -813,17 +813,19 @@ export default async function Page({
               </div>
             </div>
             <p className="text-xs text-black/40 dark:text-white/40 mt-3">
-              Isto é fato, não sinal, e a distinção foi medida sobre 512 perpétuos e 354 mil
-              observações. Comprar no dia do salto rende abaixo da referência em TODA faixa
-              testada, e pior quanto maior o salto: ≥10x dá −5,33% em sete dias, ≥20x dá
-              −7,85%, ≥40x dá −10,70%, contra referência de −1,28% — com 32 de 123 moedas a
-              favor na faixa mais forte. Exigir que o preço tenha ficado parado no dia, que é
-              a versão otimista da tese, melhora de 1,6 a 2,6 pontos percentuais e não
-              inverte. Estar barato contra o VWAP também não conserta: depois de um salto,
-              toda faixa de desconto fica de 3,4 a 7,9 pontos abaixo da referência. E o
-              agressor comprador fica preso perto de 0,5 porque no perpétuo toda negociação
-              tem os dois lados — &ldquo;houve compra pesada&rdquo; não é leitura que este
-              dado sustente. Refaça tudo com <span className="font-mono">npm run
+              Isto é fato, não sinal, e a distinção foi medida sobre 512 perpétuos — cada
+              evento comparado com o que o resto do mercado fez nos MESMOS dias, com carência
+              de 14 dias entre eventos da mesma moeda e intervalo de 95% por reamostragem de
+              moedas. Comprar no dia do salto rende abaixo do mercado em TODA faixa testada,
+              e pior quanto maior o salto: ≥10x dá −4,79% [−5,44, −4,11] em sete dias, ≥20x
+              dá −7,31% [−8,18, −6,31], ≥40x dá −10,45% [−11,73, −9,21]. Nenhum intervalo
+              toca o zero, e o efeito aparece nas duas metades da janela. Exigir que o preço
+              tenha ficado parado no dia, que é a versão otimista da tese, melhora cerca de
+              um ponto e não inverte: −9,21% no corte de 40x. Estar barato contra o VWAP
+              também não conserta — a faixa mais barata de todas, 50% ou mais abaixo, é a
+              pior. E o agressor comprador fica preso perto de 0,5 porque no perpétuo toda
+              negociação tem os dois lados: &ldquo;houve compra pesada&rdquo; não é leitura
+              que este dado sustente. Refaça tudo com <span className="font-mono">npm run
               aferir-acumulacao</span>.
             </p>
           </section>

@@ -52,6 +52,16 @@ no código, com número:
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
+**E a régua tem três buracos conhecidos.** A metodologia do `placar` e do
+`aferir-garimpo` — mediana à frente contra a referência global, mais concordância
+entre moedas — foi auditada em `scripts/aferir-acumulacao.mts`, que traz as três
+correções e o antes-e-depois de cada uma: referência casada por DATA em vez de
+global (muda pouco: 0,3 p.p. na acumulação, 0,8 p.p. no garimpo, então o atalho
+antigo não estava mentindo), carência entre eventos da mesma moeda (muda MUITO o
+`n`: dois terços das observações eram o mesmo evento contado em dias seguidos) e
+intervalo por bootstrap de MOEDAS, não de observações. Medição nova neste projeto
+deveria nascer com as três.
+
 ---
 
 ## Como rodar
@@ -186,7 +196,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/detentores.ts` | concentração: quem recebeu o supply na gênese |
 | `lib/vesting.ts` | emissão: o supply travado está parado ou saindo? |
 | `lib/estudo.ts` | como CADA moeda se move — memória, volatilidade, assimetria |
-| `lib/acumulacao.ts` | o evento de volume por moeda. **Carrega a medição de que ele não é sinal de compra** — e a de que pressão compradora não se mede no perpétuo |
+| `lib/acumulacao.ts` | o evento de volume por moeda. **Carrega a medição de que ele não é sinal de compra** — e a de que pressão compradora não se mede no perpétuo. A vela do dia corrente fica FORA da conta de volume e dentro da de preço |
 | `lib/placar.ts` | o painel acertou? Lê o histórico de emissões |
 | `lib/carteira.ts` | a carteira fictícia. **Não importa nada de `node:` no topo** — `remarcar` roda no navegador |
 | `lib/overview.ts` | junta tudo numa linha por moeda |

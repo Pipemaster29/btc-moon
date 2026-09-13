@@ -593,17 +593,19 @@ export default async function Radar() {
         <p className="text-xs text-black/40 dark:text-white/40 max-w-3xl">
           A coluna <span className="font-medium">volume</span> mostra o maior dia de volume
           dos últimos 60 dias contra a mediana de 90 — e ela NÃO é sinal de compra, por mais
-          que pareça. Medido sobre 512 perpétuos e 354 mil observações: um salto de 40x com o
-          preço parado no dia rende <span className="font-medium">−10,70%</span> em sete dias
-          contra referência de −1,28%, com 32 de 123 moedas a favor, e piora quanto maior o
-          salto. Exigir que o preço não tenha andado suaviza em 1,6 a 2,6 pontos percentuais
-          e não inverte. Estar barato contra o preço médio pago no período também não
-          conserta: depois de um salto, toda faixa de desconto fica de 3,4 a 7,9 pontos
-          abaixo da referência. E &quot;houve compra pesada&quot; não é leitura que o
-          perpétuo sustente — a fração agressiva compradora nos dias de salto fica entre 0,48
-          e 0,51 em nove de cada dez casos, porque toda negociação tem os dois lados. A
-          coluna serve para saber onde olhar, como o garimpo; refaça a medição com{" "}
-          <span className="font-mono">npm run aferir-acumulacao</span>.
+          que pareça. Medido sobre 512 perpétuos, comparando cada evento com o que o RESTO DO
+          MERCADO fez nos mesmos dias, com carência de 14 dias entre eventos da mesma moeda e
+          intervalo de 95%: um salto de 40x rende{" "}
+          <span className="font-medium">−10,45%</span> [−11,73, −9,21] em sete dias abaixo do
+          mercado, um de 20x rende −7,31% e um de 10x rende −4,79%. Nenhum intervalo toca o
+          zero, e vale nas duas metades da janela. Exigir que o preço não tenha andado no dia
+          — a versão otimista da tese — melhora cerca de um ponto percentual e não inverte:
+          −9,21% no corte de 40x. Estar barato contra o preço médio pago também não conserta;
+          a faixa mais barata de todas, 50% abaixo do VWAP, é a pior. E &quot;houve compra
+          pesada&quot; não é leitura que o perpétuo sustente — a fração agressiva compradora
+          nos dias de salto fica entre 0,48 e 0,51 em nove de cada dez casos, porque toda
+          negociação tem os dois lados. A coluna serve para saber onde olhar, como o garimpo;
+          refaça a medição com <span className="font-mono">npm run aferir-acumulacao</span>.
         </p>
       </main>
     </div>
