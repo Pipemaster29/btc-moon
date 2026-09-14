@@ -412,7 +412,30 @@ retrato mudo bastava para o moedor voltar — doze stops seguidos, −18,6%.
 
 Quando escrever um freio, procure a outra ponta onde a mesma decisão é tomada.
 
-### 8. Janela medida em BLOCOS não é janela de tempo
+### 8. "Respondeu" não é "está pronto" — e restaurar apaga o que veio antes
+
+Custou 16 mil linhas e a medição inteira, na primeira carga do arquivo.
+
+O projeto Supabase estava PAUSADO. Chamei o restore, e o status ficou em
+`COMING_UP`. Em vez de esperar o status virar `ACTIVE_HEALTHY`, esperei o
+endpoint REST responder — e ele responde ANTES, porque o gateway sobe antes do
+banco. Com o REST de pé, apliquei a migration e gravei as 16.284 linhas. Tudo
+deu certo: `select count(*)` devolveu 16.284, com 528 símbolos e 31 dias.
+
+Minutos depois a tabela **não existia mais**. A restauração terminou de rodar e
+substituiu o banco inteiro pelo estado de origem — junto com a migration e a
+carga, que tinham ido para um estado transitório.
+
+O modo de falha é o da armadilha nº 2 usando outra porta: **a fonte respondeu,
+então eu tratei "respondeu" como "está pronto"**. E o agravante é que aqui nem
+`null` teria ajudado, porque não houve erro em lugar nenhum — todo passo
+devolveu sucesso, e o sucesso foi apagado depois.
+
+A regra: em restauração de projeto, o único sinal que vale é o STATUS do
+projeto (`ACTIVE_HEALTHY`), não o endpoint respondendo. E depois de qualquer
+restore, confira que o que você escreveu ainda está lá.
+
+### 9. Janela medida em BLOCOS não é janela de tempo
 
 Bloco não é segundo, e a razão entre os dois muda 27 vezes dentro deste
 repositório: 0,45 s na BNB Chain, 2 s na Base, 12 s na Ethereum. Uma constante em

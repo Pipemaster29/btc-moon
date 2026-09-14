@@ -164,15 +164,22 @@ console.log(
   `\n${universo.length} perpétuos · ${series.size} com open interest e velas alinhados · ` +
     `${diasPorMoeda} dias na moeda mais longa · ${((Date.now() - t0) / 1000).toFixed(1)}s`,
 );
+// As três situações têm três mensagens, e `doArquivo.size === 0` NÃO distingue
+// duas delas: ele é zero tanto quando a consulta falhou quanto quando não há
+// nada guardado. Testar só o tamanho imprimia "não respondeu" e "vazio" em
+// linhas seguidas, uma contradizendo a outra — a armadilha nº 2 do AGENTS.md
+// dentro do próprio conserto dela. Quem separa é o `guardado === null`.
 console.log(
   !temArquivo
     ? "arquivo não configurado: a janela é a da Binance, 31 dias. Ver `npm run arquivar`."
-    : doArquivo.size === 0
-    ? "arquivo vazio: a janela é a da Binance, 31 dias. `npm run arquivar` começa a alargá-la."
-    : `arquivo: ${doArquivo.size} símbolos guardados` +
-      (doArquivoSo > 31
-        ? ` · a janela passou dos 31 dias da Binance e agora tem ${doArquivoSo}`
-        : " · ainda dentro dos 31 dias da Binance"),
+    : guardado === null
+      ? "→ a janela desta medição é só a da Binance, 31 dias, porque o arquivo não respondeu."
+      : doArquivo.size === 0
+        ? "arquivo vazio: a janela é a da Binance, 31 dias. `npm run arquivar` começa a alargá-la."
+        : `arquivo: ${doArquivo.size} símbolos guardados` +
+          (doArquivoSo > 31
+            ? ` · a janela passou dos 31 dias da Binance e agora tem ${doArquivoSo}`
+            : " · ainda dentro dos 31 dias da Binance"),
 );
 
 interface Obs {

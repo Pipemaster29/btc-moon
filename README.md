@@ -589,6 +589,11 @@ sempre. No Postgres são 192 mil linhas por ano para os 526 símbolos.
 sobrevive ao banco sumir, e já provou que serve — foi dele que saíram as 68 mil
 emissões do placar. O Postgres é o caminho a mais, não o substituto.
 
+**O arquivo está de pé desde 14/09/2026**, com 16.284 linhas, 528 símbolos e os
+31 dias de 15/08 a 14/09 — a janela inteira que a Binance servia naquele dia,
+congelada antes de ela andar. A partir daqui cada dia que o coletor roda é um dia
+que deixa de se perder.
+
 Nada no projeto depende do arquivo existir. Sem `SUPABASE_SERVICE_ROLE_KEY` o
 coletor avisa na primeira linha e sai com zero; o painel, o retrato, a carteira e
 todas as medições seguem iguais. As três situações — não configurado, configurado
