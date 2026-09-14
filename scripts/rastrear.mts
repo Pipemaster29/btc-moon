@@ -283,6 +283,8 @@ if (vida) {
     motores: motor?.motores ?? 0,
     motoresMedidos: motor?.medidos ?? 0,
     concentracao: motor?.concentracao ?? null,
+    // Nulo aqui é 'este script não lê carteira', não 'não há cofre'.
+    emCofre: null,
     perfil: null,
     perfilR: null,
     perfilLag: null,

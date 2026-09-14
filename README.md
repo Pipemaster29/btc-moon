@@ -561,6 +561,32 @@ Três limites que ficam escritos:
   moedas que pumparam e foram deslistadas sairiam do universo, e são justamente
   as que mais pumparam.
 
+### "O market cap é curto, então vai subir"
+
+Medida junto, porque chega toda semana e nunca tinha número. Sobre os 526
+perpétuos, market cap do dia contra a chance de a moeda subir 20% nos dois dias
+seguintes, com carência e intervalo de 95%:
+
+| market cap | n | pump ≥20% em 2d | vs base |
+| --- | --- | --- | --- |
+| até 10 mi | 615 | 7,0% [4,6, 9,9] | **0,88x** |
+| 10 a 25 mi | 2.128 | 7,5% [6,0, 8,8] | **0,94x** |
+| 25 a 50 mi | 1.576 | 8,2% [6,5, 10,2] | 1,03x |
+| 50 a 100 mi | 1.200 | 8,8% [6,7, 11,3] | 1,10x |
+| 100 a 300 mi | 890 | 8,1% [6,2, 10,2] | 1,02x |
+| 300 mi a 1 bi | 546 | 11,0% [8,0, 14,5] | 1,38x |
+| acima de 1 bi | 607 | 6,4% [4,4, 8,5] | 0,81x |
+
+Base 7,95%. **A relação não é monotônica e aponta para o lado errado da tese:** as
+duas faixas menores ficam ABAIXO da base, o pico fica no meio da escala, e a
+única faixa cujo intervalo separa é a de 300 milhões a 1 bilhão — o oposto de
+"curto". Com sete faixas testadas, uma separar por pouco é o que o acaso entrega;
+o que o acaso não explica é a ponta pequena ficar abaixo da base duas vezes.
+
+Moeda pequena é mais fácil de empurrar — isso continua verdade e é a razão de o
+projeto existir. O que a medição desmente é o passo seguinte, o de que ser
+pequena torne a alta mais PROVÁVEL.
+
 ## O arquivo: guardar o que a fonte apaga
 
 A medição do salto de open interest tem um teto que não é de método, é de fonte:

@@ -1082,11 +1082,126 @@ export const WATCHLIST: WatchedToken[] = [
     contract: "0x9dC44ae5BE187ECA9e2A67e33f27A4c91cEA1223",
     // Bloco de criação por busca binária sobre `eth_getCode`: 03/04/2025.
     firstBlock: 22187906,
-    wallets: [],
+    // ----------------------------------------------------------------------
+    // OS 79% QUE "NÃO CIRCULAM" SÃO COFRES DE TRÊS ASSINATURAS, e essa é a
+    // diferença entre duas leituras opostas da mesma moeda.
+    //
+    // O painel dizia, sobre a POWER: "79% do supply do contrato NÃO CIRCULA, e
+    // a varredura de emissão não acha contrato de alocação que explique a maior
+    // parte disso — sobre esse pedaço não dá para afirmar nem uma coisa nem
+    // outra". Era verdade e era pouco: float pequeno sustenta alta enquanto o
+    // resto estiver PRESO, e ninguém tinha olhado se estava.
+    //
+    // Medido em 14/09, lendo `getThreshold()` e `getOwners()` de cada um: são
+    // dez cofres Gnosis Safe somando 83,1% do supply, e o maior deles exige
+    // TRÊS de cinco assinaturas. Não há cronograma em lugar nenhum — o que
+    // `npm run vesting` procura e não acha não existe mesmo.
+    //
+    // A leitura vira o oposto da fácil: o "float baixo" da POWER não é escassez
+    // programada, é 83% do supply a três assinaturas de virar oferta. É a mesma
+    // distinção que o papel `multisig` existe para carregar, e a razão de ele
+    // ser separado de `lock`.
+    // ----------------------------------------------------------------------
+    wallets: [
+      {
+        address: "0x9EBA6157b4841A57C4cd3359C2bf95ee0A0363df",
+        // 218.000.001 tokens — MAIS que o circulante inteiro (210 mi) num
+        // endereço só, e é o mesmo 21,8% que o motor já descontava como
+        // concentração de gênese sem saber o que era.
+        label: "cofre 3-de-5 (21,8%)",
+        role: "multisig",
+        verified: true,
+      },
+      {
+        address: "0x4e0a04BAe389054006aC87B6EfF796A23207E140",
+        label: "cofre 3-de-5 (21,7%)",
+        role: "multisig",
+        verified: true,
+      },
+      {
+        address: "0x32061777Cb6e7928F659e85EDe103A89f76c1f19",
+        label: "cofre 3-de-5 (13,6%)",
+        role: "multisig",
+        verified: true,
+      },
+      {
+        address: "0x7EeeAd4571b12BC3e331E6Ce2D954E1528aC2921",
+        // NÃO é Safe: `getThreshold()` não responde. É um LockReleaseTokenPool,
+        // o contrato que segura o lastro de uma ponte — o token fica preso aqui
+        // enquanto existir o espelho na outra rede, e é por isso que ele entra
+        // como `lock` mesmo sem ter cronograma. É também a explicação do
+        // fragmento de 45 milhões na BNB Chain que já enganou a identificação
+        // desta moeda uma vez.
+        label: "ponte · lastro travado (10,2%)",
+        role: "lock",
+        verified: true,
+      },
+      {
+        address: "0x00e1E59dd0aa61aC337c488890555E281d4f0A37",
+        label: "cofre 3-de-5 (9,2%)",
+        role: "multisig",
+        verified: true,
+      },
+      {
+        address: "0x82c56756e07Bf2eD5C7a93a347304f9FAAb2399a",
+        label: "cofre 3-de-5 (4,4%)",
+        role: "multisig",
+        verified: true,
+      },
+      {
+        address: "0x9Defc44F35DBc88C68D8771AA674172bCA4acD8C",
+        label: "cofre 3-de-4 (2,9%)",
+        role: "multisig",
+        verified: true,
+      },
+      {
+        address: "0x0ce72708a7310288B870aB067D6D1f569f0f667D",
+        label: "cofre 3-de-4 (2,8%)",
+        role: "multisig",
+        verified: true,
+      },
+      {
+        address: "0x00c1f5AF52644A848697Df30f42ad816817C1639",
+        // DUAS assinaturas de três. É o mais frouxo dos dez, e o AGENTS.md tem
+        // o caso da BTW para lembrar o que isso significa: 72,9% do supply dela
+        // se movia quando duas pessoas concordassem.
+        label: "cofre 2-de-3 (2,5%)",
+        role: "multisig",
+        verified: true,
+      },
+      {
+        address: "0x9fFa5f75f0b9df97cBDc6e9B731Cfbaf70A6411f",
+        label: "cofre 3-de-4 (2,2%)",
+        role: "multisig",
+        verified: true,
+      },
+      {
+        address: "0x4596A11eb835de16E9bf0605A37351a8ceE48398",
+        // 2 de 2: as duas assinaturas são obrigatórias, o que é mais travado que
+        // 3-de-5 em número mas mais frágil em pessoas — some um signatário e o
+        // saldo fica preso para sempre.
+        label: "cofre 2-de-2 (2,0%)",
+        role: "multisig",
+        verified: true,
+      },
+      {
+        address: "0xffa8DB7B38579e6A2D14f9B347a9acE4d044cD54",
+        // A única CARTEIRA COMUM entre os grandes: sem código, uma chave só.
+        // 20,7 milhões de tokens que dependem de uma pessoa apertar um botão,
+        // e 9,8% de tudo o que circula.
+        label: "carteira comum (2,1%)",
+        role: "operational",
+        verified: true,
+      },
+    ],
     note:
       "Estava como só perpétuo porque a busca de contrato parou na BNB Chain, onde o endereço é " +
-      "fragmento de ponte (45 mi contra 210 mi circulando). Na Ethereum o mesmo endereço guarda o " +
-      "bilhão inteiro. Só 21% do supply circula, e as corretoras conhecidas seguram 3,4% dele.",
+      "fragmento de ponte (45 mi contra 210 mi circulando) — o fragmento é o lastro do " +
+      "LockReleaseTokenPool que aparece nas carteiras. Na Ethereum o mesmo endereço guarda o " +
+      "bilhão inteiro. Só 21% do supply circula, e o que segura os outros 79% foi medido em " +
+      "14/09: DEZ COFRES multi-assinatura somando 83,1%, o maior deles exigindo três de cinco " +
+      "assinaturas, e nenhum contrato de alocação com cronograma. O float baixo aqui não é " +
+      "escassez programada — é oferta a três assinaturas de distância.",
   },
   {
     // Humanity Protocol. Achada pelo nome do projeto, e não pelo ticker: "H" é o

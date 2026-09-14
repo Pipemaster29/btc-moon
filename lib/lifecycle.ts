@@ -172,6 +172,14 @@ export interface Vida {
   dias: number;
   /** Fração do supply parada em carteira de corretora. Nulo quando não dá para afirmar. */
   floatCex: number | null;
+  /**
+   * Fração do supply em cofre mapeado (`multisig` ou `lock` na watchlist).
+   *
+   * Nulo quando nenhuma carteira de cofre foi mapeada nesta moeda — e nulo aqui
+   * é "ninguém olhou", não "não há". A diferença decide se a tela diz "não dá
+   * para afirmar" ou diz onde o supply está.
+   */
+  emCofre: number | null;
   /** O contrato lido representa a moeda inteira? Nulo quando não dá para saber. */
   contratoRepresenta: boolean | null;
   /**
@@ -400,21 +408,50 @@ export interface FloatOnChain {
   supplyCirculante: number | null;
   /** supply do contrato ÷ circulante. Longe de 1 = contrato é fragmento. */
   coerencia: number | null;
+  /**
+   * Fração do supply em COFRE mapeado: papéis `multisig` e `lock` da watchlist.
+   *
+   * ESTE CAMPO EXISTE PORQUE A LEITURA NÃO CHEGAVA NA DECISÃO. A POWER tem
+   * 79% do supply fora de circulação, e o painel dizia — corretamente, para o
+   * que ele sabia — "sobre esse pedaço não dá para afirmar nem uma coisa nem
+   * outra". Em 14/09 os endereços foram lidos: são DEZ cofres Gnosis Safe
+   * somando 83,1%, com `getThreshold()` devolvendo três de cinco no maior
+   * deles. A informação passou a existir na watchlist e mesmo assim a tela
+   * continuou dizendo "não dá para afirmar", porque `supplySumido` só
+   * consultava `npm run vesting`, que procura contrato de ALOCAÇÃO com
+   * cronograma — e cofre de assinatura não é isso.
+   *
+   * Ter o dado e não usá-lo é pior do que não tê-lo: dá a impressão de que foi
+   * olhado. Este campo é a ponte entre as duas coisas.
+   *
+   * Nulo quando não há carteira de cofre mapeada — que é diferente de zero.
+   */
+  emCofre: number | null;
 }
 
 async function floatEmCorretora(
   chain: Chain,
   contract: string,
   circ: Circulante | null,
+  cofres: string[] = [],
 ): Promise<FloatOnChain | null> {
   try {
     const info = await tokenInfo(chain, contract);
     const supply = toUnits(info.totalSupply, info.decimals);
     if (!(supply > 0)) return null;
 
-    const saldos = await balancesOf(chain, contract, CARTEIRAS_CEX);
+    // Os dois conjuntos vão no MESMO multicall: o custo de saber onde está o
+    // supply travado é zero requisição a mais.
+    const saldos = await balancesOf(chain, contract, [...CARTEIRAS_CEX, ...cofres]);
+
     let total = 0;
-    for (const v of saldos.values()) total += toUnits(v, info.decimals);
+    for (const a of CARTEIRAS_CEX) {
+      total += toUnits(saldos.get(a.toLowerCase()) ?? BigInt(0), info.decimals);
+    }
+    let travado = 0;
+    for (const a of cofres) {
+      travado += toUnits(saldos.get(a.toLowerCase()) ?? BigInt(0), info.decimals);
+    }
 
     const coerencia = circ && circ.atual > 0 ? supply / circ.atual : null;
     const representa = coerencia === null || coerencia >= COERENTE_MIN;
@@ -424,6 +461,7 @@ async function floatEmCorretora(
       supplyContrato: supply,
       supplyCirculante: circ?.atual ?? null,
       coerencia,
+      emCofre: cofres.length === 0 || !representa ? null : travado / supply,
     };
   } catch {
     return null;
@@ -444,7 +482,12 @@ export async function lerVida(
     circulante(token.symbol).catch(() => null),
   ]);
   const onchain = token.contract
-    ? await floatEmCorretora(token.chain, token.contract, circ)
+    ? await floatEmCorretora(
+        token.chain,
+        token.contract,
+        circ,
+        token.wallets.filter((w) => w.role === "multisig" || w.role === "lock").map((w) => w.address),
+      )
     : null;
   const floatCex = onchain?.fracao ?? null;
 
@@ -500,6 +543,7 @@ export async function lerVida(
     preco,
     dias: barras.length,
     floatCex,
+    emCofre: onchain?.emCofre ?? null,
     contratoRepresenta:
       onchain?.coerencia == null ? null : onchain.fracao !== null,
     coberturaContrato: onchain?.coerencia ?? null,
@@ -722,6 +766,13 @@ export interface SinaisAgora {
    * Fração do supply ainda com quem a recebeu na gênese. Nulo quando não varrida.
    */
   concentracao: number | null;
+  /**
+   * Fração do supply em cofre mapeado. Nulo quando ninguém olhou.
+   *
+   * Chega aqui para `supplySumido` parar de chamar de "sumido" o que já foi
+   * encontrado. Ver o comentário de `FloatOnChain.emCofre`.
+   */
+  emCofre: number | null;
   /**
    * Como ESTA moeda se move, medido nela: devolve o movimento, continua, ou não
    * tem memória. Nulo quando `npm run estudar` nunca rodou nela.
@@ -1037,8 +1088,17 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   const emitindo = agora.emissao !== null && agora.emissao >= 0.5;
   // Trinta por cento do supply sem circular e sem cofre que o explique. O corte
   // é o mesmo de `lib/vesting`, e vale pelo que separa: a POWER tem 57,2%.
+  // SUMIDO É O QUE NINGUÉM ACHOU, e a distinção passou a existir em 14/09. A
+  // condição olhava só para `emissao`, que vem de `npm run vesting` e procura
+  // contrato de ALOCAÇÃO com cronograma. Cofre de assinatura não é isso, então
+  // uma moeda com 83% do supply em dez Safes mapeados e conferidos continuava
+  // classificada como "não dá para afirmar" — com o dado na watchlist, medido,
+  // ignorado. Metade do corte de 30% é o que está fora de circulação; a outra
+  // metade é o que sobra depois de descontar o que já foi encontrado.
+  const achado = (agora.emCofre ?? 0);
+  const semExplicacao = (agora.foraDeCirculacao ?? 0) - achado;
   const supplySumido =
-    agora.foraDeCirculacao !== null && agora.foraDeCirculacao >= 0.3 && agora.emissao === null;
+    agora.foraDeCirculacao !== null && semExplicacao >= 0.3 && agora.emissao === null;
   const pct = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(0)}%`;
 
   // A regra de tempo vem antes de tudo, porque ela não discute direção: durante
@@ -1397,6 +1457,34 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   // fino é a condição para pouco dinheiro mover muito preço, e isso pressupõe
   // que o supply de fora do livro está preso. Com metade dele num lugar que a
   // varredura não alcança, a premissa não está estabelecida.
+  // O supply fora de circulação está EM COFRE MAPEADO, e isso é outra história
+  // que a de não saber. Não é escassez programada: cofre de N assinaturas não
+  // tem data, tem gente. O AGENTS.md separa `lock` de `multisig` exatamente por
+  // isso — "uma trava por cronograma tem data; um cofre 2-de-3 tem apenas duas
+  // pessoas", e chamar os dois de travado subestima a oferta pelo pior fator
+  // possível.
+  if (
+    vida.estagio === "nunca subiu" &&
+    floatBaixo &&
+    vida.emCofre !== null &&
+    vida.emCofre >= 0.3
+  ) {
+    return {
+      vies: "observar",
+      forca: 1,
+      ateQuando: textoAteQuando(vida),
+      titulo: "Livro fino porque o supply está em cofre, não porque acabou",
+      porque:
+        `Amplitude de ${vida.amplitude.toFixed(1)}x e ` +
+        `${((vida.floatCex ?? 0) * 100).toFixed(2)}% do supply em corretora: o livro está fino, ` +
+        `que normalmente é a condição para pouco dinheiro mover muito preço. Só que ` +
+        `${(vida.emCofre * 100).toFixed(0)}% do supply está em COFRE MULTI-ASSINATURA mapeado, e ` +
+        `cofre não tem data de liberação — tem signatários. Enquanto eles não moverem, a ` +
+        `escassez vale; no dia em que moverem, a oferta aparece inteira de uma vez e sem aviso. ` +
+        `É o oposto de um cronograma, que ao menos se pode ler com antecedência.`,
+    };
+  }
+
   if (vida.estagio === "nunca subiu" && floatBaixo && supplySumido) {
     return {
       vies: "observar",

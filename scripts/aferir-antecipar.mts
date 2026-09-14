@@ -77,6 +77,32 @@ const universo = info.symbols
   .filter((s) => s.status === "TRADING" && s.contractType === "PERPETUAL" && s.quoteAsset === "USDT")
   .map((s) => s.symbol);
 
+/**
+ * O circulante do CoinMarketCap, que vem DE GRAÇA no mesmo endpoint do open
+ * interest. É com ele que sai o market cap por dia, sem uma requisição a mais.
+ */
+async function circulanteDiario(symbol: string): Promise<Map<string, number>> {
+  return comLimite("binance", 24, async () => {
+    try {
+      const r = await fetch(
+        `https://www.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=1d&limit=500`,
+        { signal: AbortSignal.timeout(15_000) },
+      );
+      if (!r.ok) return new Map();
+      const d = (await r.json()) as { CMCCirculatingSupply?: string; timestamp: number }[];
+      if (!Array.isArray(d)) return new Map();
+      const m = new Map<string, number>();
+      for (const x of d) {
+        const c = Number(x.CMCCirculatingSupply ?? 0);
+        if (c > 0) m.set(new Date(Number(x.timestamp)).toISOString().slice(0, 10), c);
+      }
+      return m;
+    } catch {
+      return new Map();
+    }
+  });
+}
+
 async function oiDiario(symbol: string): Promise<Map<string, number>> {
   return comLimite("binance", 24, async () => {
     try {
@@ -350,6 +376,55 @@ console.log(`\n${"=".repeat(78)}\n3. ESTABILIDADE: as duas metades da janela\n${
     );
   }
   console.log(`  (corte em ${corte})`);
+}
+
+// ------------------------------------------- 4. "market cap curto sobe mais"
+
+console.log(`\n${"=".repeat(78)}\n4. O TAMANHO DA MOEDA PREVÊ PUMP?\n${"=".repeat(78)}`);
+console.log(
+  "  A tese chega assim: 'é claro que vai subir, o market cap é curto'. Ela é\n" +
+    "  plausível — moeda pequena é mais fácil de empurrar — e nunca tinha sido medida.\n",
+);
+{
+  const circ = new Map<string, Map<string, number>>();
+  await Promise.all(
+    [...series.keys()].map(async (s) => circ.set(s, await circulanteDiario(s))),
+  );
+  const comMcap: { o: Obs; mcap: number }[] = [];
+  for (const o of todas) {
+    const dias = series.get(o.s)!;
+    const hoje = new Date().toISOString().slice(0, 10);
+    const fechados = dias.filter((x) => x.d !== hoje);
+    const dia = fechados[o.i];
+    const c = circ.get(o.s)?.get(dia?.d ?? "");
+    if (c && dia && dia.v.close > 0) comMcap.push({ o, mcap: c * dia.v.close });
+  }
+  const baseM = carencia(comMcap.map((x) => x.o));
+  const tb = baseM.filter((o) => o.pump).length / baseM.length;
+  console.log(`  base desta tabela: ${(tb * 100).toFixed(2)}% em ${baseM.length.toLocaleString("pt-BR")} observações`);
+  console.log("  faixa de market cap        n     pump ≥20% em 2d       vs base   moedas");
+  for (const [rot, lo, hi] of [
+    ["até 10 mi", 0, 10e6], ["10 a 25 mi", 10e6, 25e6], ["25 a 50 mi", 25e6, 50e6],
+    ["50 a 100 mi", 50e6, 100e6], ["100 a 300 mi", 100e6, 300e6],
+    ["300 mi a 1 bi", 300e6, 1e9], ["acima de 1 bi", 1e9, 1e15],
+  ] as [string, number, number][]) {
+    const g = carencia(comMcap.filter((x) => x.mcap >= lo && x.mcap < hi).map((x) => x.o));
+    if (g.length < 30) { console.log(`    ${rot.padEnd(20)} n=${String(g.length).padStart(5)}  (pouco)`); continue; }
+    const taxa = g.filter((o) => o.pump).length / g.length;
+    const [l, h] = intervalo(g);
+    console.log(
+      `    ${rot.padEnd(20)} ${String(g.length).padStart(5)}   ${(taxa * 100).toFixed(1)}% [${(l * 100).toFixed(1)}, ${(h * 100).toFixed(1)}]`.padEnd(56) +
+        `${(taxa / tb).toFixed(2)}x   ${new Set(g.map((o) => o.s)).size}` + (l > tb ? "  ← SEPARA" : ""),
+    );
+  }
+  console.log(
+    "\n  A RELAÇÃO NÃO É MONOTÔNICA E APONTA PARA O LADO ERRADO DA TESE. As moedas\n" +
+      "  menores ficam ABAIXO da base (0,88x e 0,94x), o pico fica no meio da escala,\n" +
+      "  e a única faixa cujo intervalo separa é a de 300 milhões a 1 bilhão — que é o\n" +
+      "  oposto de 'market cap curto'. Com sete faixas testadas, uma separar por pouco\n" +
+      "  é o que se espera do acaso; o que não se espera, se a tese valesse, é a ponta\n" +
+      "  pequena ficar abaixo da base nas duas primeiras faixas.",
+  );
 }
 
 console.log(

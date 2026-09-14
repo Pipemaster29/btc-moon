@@ -177,6 +177,7 @@ async function relerVies(
       perfilSigmas: estudo?.melhorLag?.sigmas ?? null,
       emissao: antiga.motor?.emissao ?? null,
       foraDeCirculacao: (await vestingDe(viva.symbol))?.foraDeCirculacao ?? null,
+      emCofre: vida.emCofre,
       alta24h: viva.change24h,
     });
   } catch {

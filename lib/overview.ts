@@ -315,6 +315,7 @@ export async function getPanorama(): Promise<PanoramaRow[]> {
         perfilSigmas: estudo?.melhorLag?.sigmas ?? null,
         emissao: motor?.emissao ?? null,
         foraDeCirculacao: (await vestingDe(token.symbol))?.foraDeCirculacao ?? null,
+        emCofre: vida.emCofre,
         alta24h: row.change24h,
       });
       return { ...row, vida, leitura, motor };

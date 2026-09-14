@@ -69,6 +69,8 @@ const leituras = vidas.map((v) => {
       motores: 0,
       motoresMedidos: 0,
       concentracao: null,
+      // Nulo aqui é 'este script não lê carteira', não 'não há cofre'.
+      emCofre: null,
       perfil: null,
       perfilR: null,
       perfilLag: null,
