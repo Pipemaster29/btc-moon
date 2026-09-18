@@ -886,10 +886,16 @@ export function rodar(
     // calls, mesmo orçamento, livros opostos — e a diferença era a ordem de um
     // arquivo.
     //
-    // Hoje isto está dormente, porque o teto não chega a prender: o pico medido
-    // de risco agregado é 13% de 25%. Ele acorda no dia em que o painel emitir
-    // muita call junta, ou no dia em que alguém aumentar o tamanho da aposta —
-    // que é justamente a pergunta que a tabela de escala existe para responder.
+    // ISTO JÁ ESTEVE DORMENTE E NÃO ESTÁ MAIS. A versão anterior deste comentário
+    // dizia que o teto não chegava a prender, com pico de risco agregado em 13%
+    // de 25% — número medido ANTES de o orçamento por call dobrar, em 05/09. A
+    // carteira real marca `maiorRiscoAberto` em 0,25 hoje: o teto prende, e
+    // portanto esta ordenação decide de verdade quais calls entram.
+    //
+    // Confirmado em 400 caminhos pelo `npm run simular`: na régua publicada o
+    // risco agregado no pico é 25,0% na mediana dos caminhos — encostado no teto
+    // —, e dobrar o orçamento não dobra o risco, faz caber metade das calls. De
+    // 1x para cima o que a escala mexe é concentração, não tamanho.
     const porForca = [...lote].sort((a, b) => (b.forca ?? 0) - (a.forca ?? 0));
 
     for (const e of porForca) {

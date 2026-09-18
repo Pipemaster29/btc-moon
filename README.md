@@ -294,6 +294,102 @@ deixou de ter esse problema —, e a profundidade real da pool, já que o custo 
 0,15% por lado, fixo, e numa pool de dois mil dólares uma ordem de sessenta já
 move mais que isso.
 
+## Mil caminhos que ela não andou
+
+A carteira acima tem **64 posições fechadas em 14,2 dias** e marca −9,35%. Esse
+número não distingue estratégia de azar, e dá para mostrar isso em três linhas:
+a média por posição é −4,70% da margem com desvio de 42,6 pontos, o intervalo de
+95% dessa média vai de **−14,8% a +6,1%** — zero está dentro dele — e **84% do
+prejuízo vem de três posições**. Para o intervalo excluir zero seriam precisas
+umas 316 posições, uns setenta dias de espera.
+
+`npm run simular` responde hoje. Ele reamostra o histórico em blocos contíguos,
+fabrica mil históricos sintéticos e roda **o motor de verdade da carteira** em
+cima de cada um — nada ali reimplementa stop, alvo, custo ou dimensionamento,
+porque um Monte Carlo que reescreve as regras mede a reescrita.
+
+**Ele não prevê padrão nenhum, e isso está no topo do arquivo.** Monte Carlo
+propaga a incerteza de um gerador que já é o dado; todo caminho que sai de lá já
+estava na amostra que entrou. Quem procura padrão aqui é o garimpo e o estudo.
+
+**A reamostragem é em bloco porque as posições não são independentes.** Sobre
+2.415 pares de moedas em 29 dias a correlação diária média é **+0,105**, com 67%
+dos pares positivos, e no pior dia a mediana de 72 moedas foi **−5,6%**. A
+carteira carrega até 13 posições ao mesmo tempo, e a 3x um dia desses tira 16,8%
+da margem de todas de uma vez. Sorteio independente espalha esse dia entre
+caminhos diferentes e some justamente com a ruína, que é o único número que a
+simulação existe para produzir.
+
+**E o que viaja no bloco é retorno, não preço.** Emendar preço faria a moeda
+saltar de patamar em cada costura, inventando stop e alvo que nunca existiram —
+sem erro e sem aviso, com a distribuição saindo plausível. O teste de regressão
+mede exatamente isso: na fita de teste a emenda de preço teria saltado **11,1x**
+e o caminho gerado não passa de **1,013**.
+
+### O que os 400 caminhos de 90 dias dizem
+
+| | p5 | mediana | p95 | afunda abaixo de US$ 500 |
+|---|---|---|---|---|
+| painel como ele é | US$ 570 | **US$ 775** | US$ 1.082 | 1,3% |
+| o avesso do painel | US$ 1.006 | US$ 1.421 | US$ 2.015 | 0,0% |
+| moeda trocada | US$ 433 | US$ 1.002 | US$ 2.349 | 10,3% |
+
+A conta perde dinheiro em **90% dos caminhos**, com queda máxima mediana de
+−32,2%. Mas ela **não quebra**: afunda abaixo da metade em 1,3% e nunca chega a
+um quarto. Na régua publicada, a carteira sangra — não estoura.
+
+**A linha do avesso não é um achado, e o script recusa lê-la como tal.** Nos 14
+dias de amostra a moeda mediana fez −12,4% e 20 de 32 caíram, enquanto **69,7%
+das calls do painel são compradas**. Inverter um painel comprado numa janela que
+caiu é vender o que caiu — a maior parte daqueles US$ 680 é a janela, não o
+painel. É o mesmo formato da tese de liquidez que este README já enterra.
+
+Quem responde a pergunta é a terceira linha, porque a troca de moeda **preserva
+a mistura de lados** (verificado no portão: 1.725 compradas e 1.854 vendidas,
+antes e depois). Contra ela o painel perde a mediana por US$ 209 e ganha em
+**30,5% dos caminhos [26,2%–35,2%]** — o intervalo não cobre 50%. Com a ressalva
+de que moeda carrega volatilidade junto: perder ali pode ser escolher a moeda
+errada **ou** escolher volátil demais para um stop de 25% a 3x, e a simulação
+não separa os dois.
+
+### O tamanho da aposta, que nunca tinha sido simulado
+
+A régua de 3%/2%/1% e os tetos de 50% e 25% foram escolhidos por raciocínio. O
+`escala` multiplica o orçamento de risco e nada mais, então dá para varrer:
+
+| orçamento por call | mediana em 90 dias | afunda abaixo de US$ 500 |
+|---|---|---|
+| metade (1,5/1,0/0,5%) | US$ 1.069 | 0,0% |
+| **a régua publicada** | US$ 775 | **1,3%** |
+| o dobro (6/4/2%) | US$ 545 | **40,0%** |
+| o triplo (9/6/3%) | US$ 548 | 43,3% |
+
+**A régua publicada está na beirada.** Dobrá-la leva 40% dos caminhos abaixo de
+metade da conta. E ela derrubou um número que estava escrito no código: o
+comentário do motor dizia que a ordenação por força estava dormente porque o
+teto agregado nunca prendia, com pico de 13% de 25% — medido **antes** de o
+orçamento dobrar, em 05/09. Hoje a carteira real marca 0,25 cravado e a
+simulação devolve 25,0% na mediana dos caminhos. O teto prende, e acima de 1x a
+escala deixa de medir tamanho: com o teto fixo, dobrar o orçamento por call faz
+**caber metade das calls**, e as que cabem são as de força maior.
+
+### O que este número não é
+
+A amostra única são **14,2 dias** — `forca` só passou a ser gravada em 02/09, e
+sem ela não há como dimensionar posição. Um caminho de 90 dias reusa cada dia
+real 6,3 vezes, e **reamostragem nunca gera evento que não esteja na amostra**:
+o pior dia daqui é a lista caindo 5,6% na mediana, e o dia que de fato quebra
+uma conta alavancada não está nos 14 dias. **Toda probabilidade de ruína acima é
+piso, não estimativa.**
+
+A mediana varia US$ 130 entre blocos de 12h e 48h, o que o script marca como
+amplitude GRANDE: por enquanto a leitura é tanto sobre os 14 dias de amostra
+quanto sobre a carteira. Isso encolhe sozinho conforme o histórico cresce.
+
+E stop e alvo só são testados nas pontas dos retratos, porque não há velas
+sintéticas — as mesmas pontas que escondem 2,1 p.p. de excursão na mediana,
+sempre a favor da carteira.
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.
@@ -490,6 +586,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | --- | --- |
 | `npm run placar` | lê o histórico de emissões e mede se o painel acertou |
 | `npm run carteira` | mil dólares de mentira seguindo as calls, e o que sobrou |
+| `npm run simular` | mil caminhos que a carteira poderia ter andado, e a ruína neles |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |

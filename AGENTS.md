@@ -41,6 +41,13 @@ no código, com número:
 - **"No topo" deixou de ser regra de venda.** O número que a sustentava vinha de
   uma janela de medição diferente da que roda ao vivo. Refeita na janela certa:
   −3,1 p.p. com p = 0,187.
+- **A carteira não mede nada ainda, e agora isso tem número.** São 64 posições
+  fechadas em 14,2 dias; o intervalo de 95% da média por posição vai de −14,8% a
+  +6,1% e 84% do prejuízo vem de TRÊS posições. `npm run simular` responde o que
+  o relógio só responde em setenta dias: sobre 400 caminhos de 90 dias a conta
+  perde dinheiro em 90% deles e afunda abaixo da metade em 1,3% — ela sangra, não
+  quebra. E a simulação diz na tela que toda ruína dela é PISO, porque a amostra
+  única são 14 dias e reamostragem não inventa cauda.
 - **O garimpo acha o padrão e não vira call.** Sobre os 526 perpétuos da
   Binance, uma moeda que sobe ≥25% num dia cai 12,68% na mediana dos 7 dias
   seguintes contra referência de −0,96%, com 102 de 139 moedas concordando —
@@ -61,6 +68,7 @@ npm install
 npm run dev          # a aplicação
 npm run panorama     # o retrato de todas as moedas → data/panorama.json
 npm run carteira     # a carteira fictícia → data/carteira.json
+npm run simular      # mil caminhos dessa carteira → data/simulacao.json (uns 4 min)
 ```
 
 Não há chave, `.env` nem banco. O estado inteiro mora em `data/`.
@@ -188,6 +196,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/estudo.ts` | como CADA moeda se move — memória, volatilidade, assimetria |
 | `lib/placar.ts` | o painel acertou? Lê o histórico de emissões |
 | `lib/carteira.ts` | a carteira fictícia. **Não importa nada de `node:` no topo** — `remarcar` roda no navegador |
+| `lib/simulacao.ts` | fabrica históricos sintéticos por reamostragem em bloco. **Não reimplementa regra nenhuma** — quem roda em cima deles é o `rodar` da carteira |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
 | `components/vivo.ts` | o relógio único da página que consome essa rota |
@@ -206,6 +215,7 @@ retrato seguinte fechá-la com a hora certa.
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/carteira.json` | a carteira | `npm run carteira` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
+| `data/simulacao.json` | a distribuição de patrimônio da carteira em mil caminhos | `npm run simular` |
 
 ---
 
@@ -279,6 +289,49 @@ código diferente de zero quando algum caso falha, então serve de portão.
 `npm run auditar-dados` confere as invariantes de tudo que está em `data/`.
 
 ---
+
+## A simulação da carteira
+
+`npm run simular` existe porque a carteira, com 64 posições em 14,2 dias, ainda
+não mede nada: o intervalo de 95% da média por posição cobre o zero e três stops
+respondem por 84% do prejuízo. Ele fabrica históricos sintéticos e **roda o motor
+de verdade** em cima deles — `lib/simulacao.ts` não tem uma linha de stop, alvo,
+custo ou dimensionamento, porque um Monte Carlo que reescreve as regras mede a
+reescrita, e este repositório já tem o caso do `SALTO_ABSURDO` que existia numa
+metade do caminho e não na outra.
+
+**Ele não prevê padrão, e a primeira frase do arquivo diz isso.** Monte Carlo
+propaga a incerteza de um gerador que já é o dado. Quem procura padrão aqui é o
+`lib/garimpo.ts` e o `lib/estudo.ts`.
+
+| decisão | por quê, com número |
+|---|---|
+| reamostragem em **bloco** | as posições não são independentes: correlação diária média de +0,105 em 2.415 pares, 67% positivos, e no pior dia a mediana de 72 moedas foi −5,6%. Sorteio independente some com a ruína, que é o único número que a simulação produz |
+| o bloco carrega **retorno**, não preço | emendar preço salta de patamar em cada costura e inventa stop e alvo, em silêncio. No portão, a emenda de preço saltaria 11,1x e o caminho gerado não passa de 1,013 |
+| bloco não atravessa vão > 6h | senão o buraco viaja para dentro de todo caminho que o sortear, e o financiamento corre com o relógio. Hoje não corta nada: o maior vão da janela é 4,7h |
+| só as 32 moedas com call direcional | as outras nunca abrem posição. Verificado: 90.243 emissões caem para 39.772 com patrimônio, fechadas e queda máxima **idênticos** |
+| semente fixa no código | mesmo motivo do `COMECO` da carteira. Probabilidade de ruína que oscila entre execuções não é medição |
+| permutação com gerador **próprio** | com um gerador só, o controle cairia em blocos diferentes dos do cenário e a diferença misturaria o sorteio. Com dois, a comparação é pareada |
+
+**Os dois controles medem coisas diferentes, e um deles é armadilha.** O avesso
+inverte a direção mantendo moeda, força e instante; a moeda trocada reatribui os
+sinais entre moedas mantendo a mistura de lados. O avesso ganha do painel por
+US$ 680 — e **isso não é achado**: a janela de 14 dias tem mediana de −12,4% com
+20 de 32 moedas caindo, e 69,7% das calls do painel são compradas. O script mede
+essa deriva e recusa a leitura na própria tela. Quem responde é a moeda trocada,
+onde o painel perde por US$ 209 e ganha em 30,5% dos caminhos [26,2%–35,2%].
+
+**O resultado que muda decisão** é o do tamanho: a régua publicada deixa 1,3% dos
+caminhos abaixo de metade da conta e o dobro dela deixa 40%. E o teto agregado de
+25% PRENDE hoje — 25,0% na mediana dos caminhos, 0,25 cravado na carteira real —,
+o que aposentou o comentário do motor que dizia que a ordenação por força estava
+dormente com pico de 13%. Acima de 1x a escala deixa de ser tamanho: com o teto
+fixo, dobrar o orçamento por call faz caber metade das calls.
+
+`npm run testar-simulacao` é o portão, com 30 casos e saída diferente de zero. O
+`npm run auditar-dados` confere as invariantes do arquivo gravado — quantis em
+ordem, proporções dentro do próprio intervalo, ruína aninhada, queda máxima com o
+sinal certo.
 
 ## Armadilhas conhecidas
 
@@ -415,6 +468,27 @@ escreva ao lado que é orçamento, para ninguém ler o corte como medição.
 
 ---
 
+### 9. Um controle que não controla é pior que nenhum
+
+Um Monte Carlo dá um cenário e um controle, e a diferença entre os dois é lida
+como efeito. Ela só é o efeito se o controle mudar **uma** coisa.
+
+O avesso do painel — inverter toda call mantendo moeda, força e instante — parece
+o controle perfeito, e não é. O painel emite 69,7% de calls compradas, e a janela
+de amostra tem mediana de −12,4% com 20 de 32 moedas caindo. Inverter um painel
+comprado numa janela que caiu é vender o que caiu: o avesso ganha US$ 680 de
+mediana em 90 dias e **quase tudo isso é a direção da janela**. Publicado sem a
+medida da deriva ao lado, esse número lê-se como "inverta as calls".
+
+O outro controle tem o defeito pelo outro lado, e menor: trocar as moedas de
+sinal preserva a mistura de lados — verificado no portão, 1.725 compradas e 1.854
+vendidas antes e depois — mas moeda carrega volatilidade junto. Perder para ele
+pode ser escolher a moeda errada OU escolher volátil demais para um stop de 25% a
+3x, e a simulação não separa os dois. Isso está escrito ao lado da linha.
+
+**Quando montar um controle, pergunte o que ele muda além do que você quis
+mudar** — e se não souber, meça a deriva do que sobrou e imprima junto.
+
 ## Como escrever código aqui
 
 **Comentário explica POR QUE, com número.** O padrão do repositório é alto e é
@@ -450,8 +524,15 @@ O que funciona: a leitura on-chain (concentração, emissão, custódia), a
 identificação de contrato, o estudo por moeda, e a honestidade sobre o resto.
 
 O que **não** está demonstrado: que os vieses do painel tenham vantagem. O placar
-mede que não têm, e a carteira fictícia existe para medir isso de novo, com
-tamanho de posição e custo dentro da conta.
+mede que não têm; a carteira fictícia mede de novo com tamanho de posição e custo
+dentro da conta; e a simulação mede a terceira vez, em distribuição em vez de
+ponto — contra o controle que preserva a mistura de lados, o painel ganha em
+30,5% dos caminhos [26,2%–35,2%], e o intervalo não cobre 50%.
+
+O que a simulação ACRESCENTOU: na régua publicada a conta sangra sem quebrar
+(perde em 90% dos caminhos, afunda abaixo da metade em 1,3%), e o dobro da régua
+leva isso a 40%. Com a ressalva que está na tela do script e que não deve sumir
+daqui: a amostra única são 14 dias, então toda ruína medida é PISO.
 
 **Não transforme o painel em recomendação enquanto o placar disser o que ele diz
 hoje.**

@@ -237,6 +237,66 @@ if (gar) {
   checa("ordenado pela mediana medida", ordenado);
 } else console.log("  (ausente)");
 
+// ---- simulação
+//
+// O ARQUIVO É TODO FEITO DE QUANTIS, e quantil fora de ordem é o modo de falha
+// silencioso desta família: p95 abaixo de p5 não estoura nada, só publica uma
+// distribuição invertida com cara de medição. As proporções têm a mesma
+// fragilidade pelo outro lado — probabilidade de ruína fora de 0..1, ou fora do
+// próprio intervalo de confiança, é conta errada que a tela não denuncia.
+interface Faixa { p5: number; p25: number; p50: number; p75: number; p95: number }
+interface Prop { p: number; lo: number; hi: number; k: number; n: number }
+interface Resumo {
+  n: number; final: Faixa; quedaMaxima: Faixa; riscoAberto: Faixa;
+  perde: Prop; metade: Prop; quarto: Prop;
+}
+const sim = await ler<{
+  geradoEm: number; caminhos: number; dias: number;
+  amostra: { diasUnicos: number; retratos: number; moedas: number };
+  janela: { fracaoLong: number };
+  painel: Resumo; invertido: Resumo; embaralhado: Resumo;
+  escalas: { escala: number; resumo: Resumo }[];
+  blocos: { horas: number; resumo: Resumo }[];
+}>("data/simulacao.json");
+console.log("\nsimulação:");
+if (sim) {
+  checa("geradoEm no passado", sim.geradoEm <= Date.now() + 60_000, `(${new Date(sim.geradoEm).toISOString()})`);
+  checa("tem caminhos e horizonte", sim.caminhos > 0 && sim.dias > 0, `(${sim.caminhos} × ${sim.dias}d)`);
+  checa(
+    "a amostra existe e é menor que o horizonte simulado",
+    sim.amostra.diasUnicos > 0 && sim.amostra.retratos > 0 && sim.amostra.moedas > 0,
+    `(${sim.amostra.diasUnicos.toFixed(1)}d, ${sim.amostra.retratos} retratos, ${sim.amostra.moedas} moedas)`,
+  );
+  checa("fração de calls compradas em 0..1", sim.janela.fracaoLong >= 0 && sim.janela.fracaoLong <= 1,
+    `(${sim.janela.fracaoLong.toFixed(3)})`);
+
+  const ordenada = (f: Faixa) =>
+    [f.p5, f.p25, f.p50, f.p75, f.p95].every((x) => Number.isFinite(x)) &&
+    f.p5 <= f.p25 && f.p25 <= f.p50 && f.p50 <= f.p75 && f.p75 <= f.p95;
+  const saoProp = (x: Prop) =>
+    x.n > 0 && x.k >= 0 && x.k <= x.n && x.p >= 0 && x.p <= 1 && x.lo >= 0 && x.hi <= 1 && x.lo <= x.p && x.p <= x.hi;
+
+  const todos: [string, Resumo][] = [
+    ["painel", sim.painel],
+    ["avesso", sim.invertido],
+    ["moeda trocada", sim.embaralhado],
+    ...sim.escalas.map((e) => [`escala ${e.escala}x`, e.resumo] as [string, Resumo]),
+    ...sim.blocos.map((b) => [`bloco ${b.horas}h`, b.resumo] as [string, Resumo]),
+  ];
+  for (const [nome, r] of todos) {
+    checa(`${nome}: quantis em ordem`, ordenada(r.final) && ordenada(r.quedaMaxima) && ordenada(r.riscoAberto));
+    checa(`${nome}: proporções coerentes com o intervalo`, saoProp(r.perde) && saoProp(r.metade) && saoProp(r.quarto));
+    checa(`${nome}: patrimônio positivo e finito`, r.final.p5 > 0 && Number.isFinite(r.final.p95), `(p5 ${r.final.p5.toFixed(0)})`);
+    // Queda máxima é fração NEGATIVA do pico — a unidade já quebrou coisa neste
+    // repositório, e aqui ela quebraria calada.
+    checa(`${nome}: queda máxima entre −100% e 0`, r.quedaMaxima.p5 >= -1 && r.quedaMaxima.p95 <= 0,
+      `(${(r.quedaMaxima.p5 * 100).toFixed(1)}% a ${(r.quedaMaxima.p95 * 100).toFixed(1)}%)`);
+    // Afundar abaixo de um quarto implica ter afundado abaixo de metade.
+    checa(`${nome}: ruína aninhada (−75% ⊆ −50%)`, r.quarto.k <= r.metade.k, `(${r.quarto.k} ≤ ${r.metade.k})`);
+    checa(`${nome}: caminhos batem`, r.n === r.perde.n && r.perde.n === r.metade.n, `(${r.n})`);
+  }
+} else console.log("  (ausente)");
+
 console.log(falhas === 0 ? "\nTUDO OK" : `\n${falhas} FALHAS`);
 
 // SAI COM CÓDIGO DE ERRO, e não saía.
