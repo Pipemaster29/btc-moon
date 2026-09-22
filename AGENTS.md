@@ -226,7 +226,8 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | Risco agregado | teto de 25% | cripto tem dias em que a lista inteira cai 25% junta |
 | Margem exposta | teto de 50% | |
 | Custo | 0,15% por lado, **sobre o nocional** | a 3x, isso é 0,45% da margem por lado |
-| Financiamento | taxa real da Binance, por 8h | a lista paga de 15% a 20% ao ano |
+| Impacto | `σ × √(Q/V)` na barra da entrada | lei da raiz sobre o livro do PERPÉTUO, que é quem serve esta ordem — não a pool. Medido: 0,033% na média contra os 0,15% fixos, máximo 0,075%. Serve para o custo **saber do tamanho**, não para mudar o número de hoje |
+| Financiamento | taxa real da Binance, **nas marcas de 00/08/16 UTC** | não é contínuo: paga quem está de pé no instante. 42 das 104 posições vivem menos de 8h, e é nelas que o modelo contínuo errava |
 | Liquidação | margem de manutenção 0,5% | a 3x, o preço andando 33,2% contra |
 
 **Saída pelo primeiro que acontecer:** o painel mudou de ideia (a principal — a
@@ -234,17 +235,40 @@ carteira segue as calls, então sai quando a call sai), stop, alvo, prazo,
 liquidação.
 
 **Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.**
-`npm run carteira` busca as velas de 1h da Binance das moedas que podem virar
-posição e percorre o caminho: a saída é no NÍVEL DA ORDEM, não no extremo da
-vela, e na abertura quando a vela saltou por cima do nível. Ordem parada não
-pisca — testar só as pontas dava à carteira uma paciência que ninguém tem, e
-sempre na direção que a favorece.
+`npm run carteira` busca as velas das moedas que podem virar posição e percorre
+o caminho: a saída é no NÍVEL DA ORDEM, não no extremo da vela, e na abertura
+quando a vela saltou por cima do nível. Ordem parada não pisca — testar só as
+pontas dava à carteira uma paciência que ninguém tem, e sempre na direção que a
+favorece.
+
+**Duas resoluções, e a fina é a que importa.** A vela que CONTÉM a entrada é
+descartada de propósito (ela carrega os minutos anteriores à posição existir, e
+herdar a mínima deles inventaria perda) — então vela de 1h cega o motor por até
+60 minutos logo depois de abrir, que é quando estas moedas mais andam. 1500
+velas de 15 min são 15,6 dias e a carteira já tem 20, então são as duas: 15 min
+onde alcançam, 1h antes disso. A cegueira de entrada cai de 60 para 15 minutos.
 
 As velas vêm do perpétuo e os preços da carteira vêm do retrato, que prefere a
 pool. O caminho é **ancorado** pela razão entre os dois e recusado inteiro fora
-de 0,8–1,25, porque razão de 1,4 não é base de mercado, é outra moeda. Sem velas
-— e há moeda sem série — o motor cai no teste de ponta de sempre, e o script diz
-quantas ficaram assim.
+de 0,8–1,25, porque razão de 1,4 não é base de mercado, é outra moeda.
+
+**E a âncora vale para o preço, não só para o caminho** — este foi o bug mais
+caro que a carteira teve. Ela recusava o caminho e o motor caía no teste de
+ponta usando **o mesmo preço recusado** para marcar, disparar stop e alvo, e
+abrir posição: o freio existia numa metade do caminho e não na outra (armadilha
+7, logo abaixo). A HEI, 13/09 às 00h20, gravou US$ 0,1933 com o perpétuo em US$
+0,11606 — razão 1,67 — e **fechou no alvo a +205,1% da margem**, sendo que o
+alvo é +40% de preço, que a 3x são +120%. Era o maior ganho do livro inteiro e o
+preço nunca existiu na praça em que ela opera. Medido: 225 das 43.156 linhas com
+vela para comparar estão fora da faixa, **211 delas da HEI**, cuja pool descola
+do perpétuo em 15,6% dos retratos. Hoje a leitura desmentida **marca pelo preço
+do perpétuo e não abre posição nenhuma**, e o número aparece no terminal e na
+tela.
+
+Sem velas — e há moeda sem série — o motor cai no teste de ponta de sempre, e o
+script diz quantas ficaram assim. Lá o stop e o alvo também preenchem **no nível
+da ordem**: fechar no preço do retrato dava ao alvo o movimento inteiro e ao
+stop a queda inteira, otimista de um lado e pessimista do outro.
 
 Medido nas 16 posições carregadas até 04/09: **todas as 16** esconderam
 movimento entre retratos, mediana 2,1 p.p., maior 5,0 p.p. (SKYAI). E o que isso
@@ -256,9 +280,23 @@ duas leituras lado a lado para isso continuar visível.
 um número enganoso: as regras do painel foram ajustadas ao longo dos dois meses
 gravados, todas depois de ver os dados.
 
+**Dentro da vela, quem está mais perto da entrada dispara primeiro.** O motor
+testava liquidação antes de stop, sob o argumento de que a vela não diz em que
+ordem o preço passou. O argumento vale entre stop e alvo, que ficam em lados
+OPOSTOS da entrada; não vale entre stop e liquidação, que ficam do mesmo lado,
+um atrás do outro — preço dentro de uma barra é contínuo, e vindo de cima ele
+cruzou o stop no caminho. A **SIREN**, 09/09 às 22h: a vela abriu em 0,02805,
+bem acima do stop em 0,021487, e desceu até 0,01745. Fechava a −100%; hoje sai
+no stop, a −79%. Vinte e um pontos de margem na pior linha do livro. O salto de
+verdade — vela que ABRE além do nível — continua liquidando, e há teste para os
+dois lados.
+
 **O que ela não cobra:** a diferença entre o preço do retrato e o preço real de
-execução; a profundidade da pool (o custo é fixo, e numa pool de US$ 2 mil uma
-ordem de US$ 60 move mais que isso).
+execução (a ordem sai segundos ou minutos depois do retrato). A profundidade
+saiu desta lista: ver a linha "Impacto" na tabela acima. O exemplo antigo — a
+pool à vista de US$ 2 mil da C — media a **praça errada**: esta carteira é
+perpétuo, e quem serve a ordem dela é o livro da Binance, cuja mediana de volume
+por hora nestas moedas é US$ 270 mil.
 
 **A call queimada não se repete.** Depois de um stop ou uma liquidação, a moeda
 só volta a valer quando o viés dela sair daquele lado. Sem isso a carteira
@@ -380,6 +418,18 @@ quando o lixo chegasse — US$ 1.000 viravam US$ 1,4×10²⁸.
 O mesmo formato apareceu na trava de call queimada: ela distinguia "não houve
 leitura" de "leitura contrária" na SAÍDA e não no descongelamento, e um único
 retrato mudo bastava para o moedor voltar — doze stops seguidos, −18,6%.
+
+**E de novo na âncora, que é a terceira vez e a mais cara.** Ela recusava o
+caminho de velas quando o perpétuo desmentia o preço do retrato — "não é base de
+mercado, é outra moeda" — e o motor caía no teste de ponta usando EXATAMENTE
+aquele preço recusado para marcar, disparar stop e alvo, e abrir posição. A HEI
+fechou no alvo a +205,1% da margem num preço que nunca existiu no perpétuo; o
+alvo é +120% da margem. Foi o maior ganho do livro inteiro. O freio julgava o
+preço numa metade e a outra metade nem sabia que havia julgamento.
+
+Note o formato repetido nas três: **o freio e o buraco estavam no mesmo
+arquivo**, a poucas linhas um do outro. Não é falta de revisão, é que "onde mais
+esta decisão é tomada?" não é a pergunta que ocorre quando se escreve a guarda.
 
 Quando escrever um freio, procure a outra ponta onde a mesma decisão é tomada.
 

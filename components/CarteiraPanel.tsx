@@ -212,6 +212,29 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
         </div>
       )}
 
+      {/* O QUE O MOTOR RECUSOU, que é metade do que ele faz e não aparecia.
+          Esta linha existe por causa de um bug específico: a âncora recusava o
+          preço do retrato para percorrer o caminho de velas quando o perpétuo o
+          desmentia, e o teste de ponta usava esse mesmo preço para disparar
+          stop e alvo. A HEI fechou no alvo a +205% da margem num preço que
+          nunca existiu na praça em que esta carteira opera. O conserto está no
+          código; o número fica aqui para não virar conserto invisível. */}
+      {c.diagnostico && (
+        <p className="text-xs text-black/40 dark:text-white/40 mt-4 border-t border-black/10 dark:border-white/10 pt-4">
+          <span
+            className="font-medium"
+            title="Razão entre o preço do retrato e o fechamento do perpétuo fora de 0,8–1,25: não é base entre praças, é leitura ruim"
+          >
+            {c.diagnostico.desmentidas}
+          </span>{" "}
+          leitura(s) de preço o perpétuo desmentiu — {c.diagnostico.substituidas} marcadas pelo
+          preço dele, nenhuma abriu posição. Impacto de mercado medido em{" "}
+          {c.diagnostico.comImpacto} de {c.diagnostico.comImpacto + c.diagnostico.semImpacto}{" "}
+          aberturas, médio {(c.diagnostico.impactoMedio * 100).toFixed(3)}% contra os 0,15% de
+          custo fixo por ponta.
+        </p>
+      )}
+
       {c.abertas.length > 0 && (
         <div className="mt-5 overflow-x-auto">
           <p className="text-[10px] tracking-widest text-black/40 dark:text-white/40 uppercase mb-2">

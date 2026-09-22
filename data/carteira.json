@@ -1,48 +1,70 @@
 {
   "comecouEm": 1788379200000,
   "atualizadoEm": 1790083011000,
-  "caixa": 612.5106524110377,
-  "patrimonio": 886.2752200247381,
-  "retorno": -0.11372477997526187,
+  "caixa": 572.4781359267721,
+  "patrimonio": 830.1036655190125,
+  "retorno": -0.1698963344809875,
   "abertas": [
+    {
+      "symbol": "VELVET",
+      "lado": "long",
+      "abertaEm": 1789344132000,
+      "precoEntrada": 0.0506468,
+      "valor": 21.8566365035873,
+      "forca": 2,
+      "risco": 0.019999999999999997,
+      "custo": 0.010125309614872938,
+      "precoAtual": 0.05997,
+      "retorno": 0.5338132587262665,
+      "funding": 0.00830955,
+      "ultimoFunding": 1790083011000,
+      "ultimaTaxa": 0.00016785,
+      "precoLiquidacao": 0.03401776733333333
+    },
     {
       "symbol": "BASED",
       "lado": "long",
       "abertaEm": 1789592252000,
       "precoEntrada": 0.06224,
-      "valor": 36.10568896869366,
+      "valor": 33.12504349757184,
       "forca": 3,
+      "risco": 0.03,
+      "custo": 0.010959688275691144,
       "precoAtual": 0.06611,
-      "retorno": 0.17483205374847383,
-      "funding": 0.002703935968750005,
+      "retorno": 0.1729426314415327,
+      "funding": 0.00263367,
       "ultimoFunding": 1790083011000,
       "ultimaTaxa": 0.00005,
       "precoLiquidacao": 0.04180453333333333
     },
     {
-      "symbol": "VELVET",
+      "symbol": "BTR",
       "lado": "long",
-      "abertaEm": 1789745046000,
-      "precoEntrada": 0.05846,
-      "valor": 24.89700862855203,
+      "abertaEm": 1789653218000,
+      "precoEntrada": 0.05,
+      "valor": 22.388088131318003,
       "forca": 2,
-      "precoAtual": 0.05997,
-      "retorno": 0.06402960235093301,
-      "funding": 0.004459278935416663,
+      "risco": 0.02,
+      "custo": 0.010590811992582945,
+      "precoAtual": 0.0502305,
+      "retorno": -0.008587171992583603,
+      "funding": 0.011826360000000001,
       "ultimoFunding": 1790083011000,
-      "ultimaTaxa": 0.00016785,
-      "precoLiquidacao": 0.03926563333333333
+      "ultimaTaxa": 0.00049935,
+      "precoLiquidacao": 0.03358333333333333
     },
     {
       "symbol": "PRL",
       "lado": "long",
       "abertaEm": 1790051472000,
       "precoEntrada": 0.117774,
-      "valor": 24.14751291791538,
+      "valor": 22.602429326533027,
       "forca": 2,
+      "risco": 0.02,
+      "custo": 0.011192853449769882,
       "precoAtual": 0.11735,
-      "retorno": -0.02045177669703953,
-      "funding": 0.0006514302708333333,
+      "retorno": -0.022602259875976083,
+      "funding": 0.00060906,
       "ultimoFunding": 1790083011000,
       "ultimaTaxa": 0.00013569,
       "precoLiquidacao": 0.07910487
@@ -52,39 +74,29 @@
       "lado": "long",
       "abertaEm": 1790072098000,
       "precoEntrada": 0.0868,
-      "valor": 23.74799738856932,
+      "valor": 22.23712475851408,
       "forca": 2,
+      "risco": 0.02,
+      "custo": 0.010092997000819783,
       "precoAtual": 0.085967,
-      "retorno": -0.037860123426478626,
-      "funding": 0.00006980084583333334,
+      "retorno": -0.03888331958146507,
+      "funding": 0,
       "ultimoFunding": 1790083011000,
       "ultimaTaxa": 0.00005,
       "precoLiquidacao": 0.05830066666666667
-    },
-    {
-      "symbol": "BTR",
-      "lado": "long",
-      "abertaEm": 1789728179000,
-      "precoEntrada": 0.0508768,
-      "valor": 24.47203542220724,
-      "forca": 2,
-      "precoAtual": 0.0502305,
-      "retorno": -0.05697916817337083,
-      "funding": 0.009869460015624993,
-      "ultimoFunding": 1790083011000,
-      "ultimaTaxa": 0.00049935,
-      "precoLiquidacao": 0.03417225066666667
     },
     {
       "symbol": "SIREN",
       "lado": "long",
       "abertaEm": 1789745046000,
       "precoEntrada": 0.0247,
-      "valor": 24.90298534503484,
+      "valor": 23.27471955158897,
       "forca": 2,
+      "risco": 0.02,
+      "custo": 0.011575332189279468,
       "precoAtual": 0.02393,
-      "retorno": -0.1194645375439777,
-      "funding": 0.01694227033749999,
+      "retorno": -0.12295167939575719,
+      "funding": 0.017854079999999998,
       "ultimoFunding": 1790083011000,
       "ultimaTaxa": 0.00061123,
       "precoLiquidacao": 0.016590166666666666
@@ -94,11 +106,13 @@
       "lado": "long",
       "abertaEm": 1790054062000,
       "precoEntrada": 0.006832,
-      "valor": 24.204427383066644,
+      "valor": 22.657370026243257,
       "forca": 2,
+      "risco": 0.019999999999999997,
+      "custo": 0.010771343611914605,
       "precoAtual": 0.00653843,
-      "retorno": -0.13815631828906896,
-      "funding": 0.00024677496354166665,
+      "retorno": -0.1402072069374419,
+      "funding": 0.0005263199999999999,
       "ultimoFunding": 1790083011000,
       "ultimaTaxa": 0.00005,
       "precoLiquidacao": 0.004588826666666667
@@ -106,27 +120,31 @@
     {
       "symbol": "HANA",
       "lado": "long",
-      "abertaEm": 1789725357000,
-      "precoEntrada": 0.01499,
-      "valor": 24.27980539294334,
+      "abertaEm": 1789641475000,
+      "precoEntrada": 0.01505,
+      "valor": 22.3921739505759,
       "forca": 2,
+      "risco": 0.02,
+      "custo": 0.011693259943038308,
       "precoAtual": 0.01436,
-      "retorno": -0.1440454508654833,
-      "funding": 0.008961394828124998,
+      "retorno": -0.15849098818224092,
+      "funding": 0.0092562,
       "ultimoFunding": 1790083011000,
       "ultimaTaxa": 0.00031219,
-      "precoLiquidacao": 0.010068283333333332
+      "precoLiquidacao": 0.010108583333333332
     },
     {
       "symbol": "BANK",
       "lado": "long",
       "abertaEm": 1789876993000,
       "precoEntrada": 0.03607,
-      "valor": 24.314142604700383,
+      "valor": 22.735725409897096,
       "forca": 2,
+      "risco": 0.02,
+      "custo": 0.01070551130670701,
       "precoAtual": 0.0341952,
-      "retorno": -0.1650878459011307,
-      "funding": 0.00015771005416666644,
+      "retorno": -0.16527922715367105,
+      "funding": -0.00135642,
       "ultimoFunding": 1790083011000,
       "ultimaTaxa": 0.00005,
       "precoLiquidacao": 0.024227016666666663
@@ -136,11 +154,13 @@
       "lado": "short",
       "abertaEm": 1789902955000,
       "precoEntrada": 0.2061,
-      "valor": 34.603181900901745,
+      "valor": 32.360910683515684,
       "forca": 3,
+      "risco": 0.03,
+      "custo": 0.012697066028050957,
       "precoAtual": 0.2186,
-      "retorno": -0.185577404773926,
-      "funding": -0.005373104687500001,
+      "retorno": -0.18936436548947694,
+      "funding": -0.005283209999999999,
       "ultimoFunding": 1790083011000,
       "ultimaTaxa": 0.00017454,
       "precoLiquidacao": 0.2737695
@@ -148,30 +168,34 @@
     {
       "symbol": "RIF",
       "lado": "short",
-      "abertaEm": 1789725357000,
-      "precoEntrada": 0.08222,
-      "valor": 12.136989119824515,
+      "abertaEm": 1789733209000,
+      "precoEntrada": 0.0828843,
+      "valor": 11.301129121809424,
       "forca": 1,
+      "risco": 0.01,
+      "custo": 0.01042255033067101,
       "precoAtual": 0.0892558,
-      "retorno": -0.2638560904298297,
-      "funding": -0.0018624695312499998,
+      "retorno": -0.23923920511330196,
+      "funding": -0.0017999999999999997,
       "ultimoFunding": 1790083011000,
       "ultimaTaxa": 0.00005,
-      "precoLiquidacao": 0.10921556666666667
+      "precoLiquidacao": 0.1100979785
     },
     {
       "symbol": "ON",
       "lado": "long",
-      "abertaEm": 1789653218000,
-      "precoEntrada": 0.146022,
-      "valor": 23.77846858138093,
+      "abertaEm": 1789527237000,
+      "precoEntrada": 0.163936,
+      "valor": 22.508577275674284,
       "forca": 2,
+      "risco": 0.02,
+      "custo": 0.01117968852777254,
       "precoAtual": 0.127169,
-      "retorno": -0.39912263953110405,
-      "funding": 0.0027905936750000034,
+      "retorno": -0.6871137893632204,
+      "funding": 0.00310446,
       "ultimoFunding": 1790083011000,
       "ultimaTaxa": 0.00005,
-      "precoLiquidacao": 0.09807811000000001
+      "precoLiquidacao": 0.11011034666666666
     }
   ],
   "fechadas": [
@@ -184,24 +208,24 @@
       "precoSaida": 0.02296,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.061847287969981325,
-      "funding": 0.00003991666666666667,
-      "resultado": 1.485320283194966,
+      "retorno": 0.06005409434877756,
+      "funding": 0,
+      "resultado": 1.3500021678697642,
       "dias": 0.0887037037037037
     },
     {
       "symbol": "PRL",
       "lado": "long",
       "abertaEm": 1788841416000,
-      "fechadaEm": 1790051472000,
+      "fechadaEm": 1790051400000,
       "precoEntrada": 0.129875,
       "precoSaida": 0.117774,
       "forca": 2,
       "motivo": "prazo",
-      "retorno": -0.2999264229143283,
-      "funding": 0.011403805012499983,
-      "resultado": -7.6359941534909055,
-      "dias": 14.005277777777778
+      "retorno": -0.3012638527605841,
+      "funding": 0.01118382,
+      "resultado": -7.647549659219955,
+      "dias": 14.004444444444445
     },
     {
       "symbol": "BEAT",
@@ -212,9 +236,9 @@
       "precoSaida": 0.0885573,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.065398936035227,
-      "funding": 0.0005144318197916666,
-      "resultado": 1.5697305766386869,
+      "retorno": 0.06357289160687081,
+      "funding": 0.00051618,
+      "resultado": 1.4288234654535898,
       "dias": 0.2834259259259259
     },
     {
@@ -226,9 +250,9 @@
       "precoSaida": 0.00700641,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.04784675457387894,
-      "funding": 0.000020031250000000002,
-      "resultado": 1.1520361748625305,
+      "retorno": 0.04563146298078737,
+      "funding": 0,
+      "resultado": 1.0286283325267291,
       "dias": 0.04451388888888889
     },
     {
@@ -240,9 +264,9 @@
       "precoSaida": 0.0878,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.0013485465705293997,
-      "funding": 0.000150483075,
-      "resultado": 0.03221800893273041,
+      "retorno": -0.00031166337401840154,
+      "funding": 0,
+      "resultado": -0.006973394751319972,
       "dias": 0.12368055555555556
     },
     {
@@ -254,9 +278,9 @@
       "precoSaida": 0.02269,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.04348879221041936,
-      "funding": 0.000018640625,
-      "resultado": 1.0374514829304005,
+      "retorno": 0.04230002571577104,
+      "funding": 0,
+      "resultado": 0.9449027802948677,
       "dias": 0.04142361111111111
     },
     {
@@ -268,9 +292,9 @@
       "precoSaida": 0.0227473,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.1927817714504976,
-      "funding": 0.0008453984989583327,
-      "resultado": 4.788811003190933,
+      "retorno": 0.19208165709531697,
+      "funding": 0.00070914,
+      "resultado": 4.464451207974072,
       "dias": 1.926712962962963
     },
     {
@@ -282,24 +306,24 @@
       "precoSaida": 0.0889,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.04222802613868502,
-      "funding": 0.0002593880489583333,
-      "resultado": 1.0144229354365244,
+      "retorno": 0.0409327904904786,
+      "funding": 0,
+      "resultado": 0.9207210912641948,
       "dias": 0.13024305555555554
     },
     {
       "symbol": "HOME",
       "lado": "long",
-      "abertaEm": 1789776213000,
+      "abertaEm": 1789728179000,
       "fechadaEm": 1789992958000,
-      "precoEntrada": 0.00605148,
+      "precoEntrada": 0.005634,
       "precoSaida": 0.00696929,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.4450024579183313,
-      "funding": 0.0009986327239583336,
-      "resultado": 11.16084433196222,
-      "dias": 2.5086226851851854
+      "retorno": 0.7001100415729015,
+      "funding": 0.00075438,
+      "resultado": 15.92312398996713,
+      "dias": 3.0645717592592594
     },
     {
       "symbol": "UB",
@@ -310,9 +334,9 @@
       "precoSaida": 0.17003,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": -0.5406949562341179,
-      "funding": -0.00007497916666666668,
-      "resultado": -19.74713941632686,
+      "retorno": -0.5429026432412215,
+      "funding": -0.00015000000000000001,
+      "resultado": -18.557165828114407,
       "dias": 0.16662037037037036
     },
     {
@@ -324,24 +348,24 @@
       "precoSaida": 0.0886,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.026117516296123553,
-      "funding": 0.00026559518854166674,
-      "resultado": 0.6449943732170276,
+      "retorno": 0.024743756217950934,
+      "funding": 0,
+      "resultado": 0.5713286219740574,
       "dias": 0.21268518518518517
     },
     {
       "symbol": "UB",
       "lado": "short",
-      "abertaEm": 1789393224000,
+      "abertaEm": 1789592252000,
       "fechadaEm": 1789870183000,
-      "precoEntrada": 0.135971,
+      "precoEntrada": 0.126985,
       "precoSaida": 0.15464,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": -0.4184198474847501,
-      "funding": -0.0024841614583333313,
-      "resultado": -14.697898012821867,
-      "dias": 5.520358796296296
+      "retorno": -0.6632305733559032,
+      "funding": -0.0014999999999999998,
+      "resultado": -21.95991041823777,
+      "dias": 3.2167939814814814
     },
     {
       "symbol": "BEAT",
@@ -352,24 +376,24 @@
       "precoSaida": 0.0883,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.04656278829749428,
-      "funding": 0.0002058546020833333,
-      "resultado": 1.1540549230934012,
+      "retorno": 0.04438519971943874,
+      "funding": 0.00040542000000000003,
+      "resultado": 1.0291580737819572,
       "dias": 0.16355324074074074
     },
     {
       "symbol": "BP",
       "lado": "short",
-      "abertaEm": 1789741104000,
+      "abertaEm": 1789776213000,
       "fechadaEm": 1789852247000,
-      "precoEntrada": 0.6604,
+      "precoEntrada": 0.6395,
       "precoSaida": 0.7016,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": -0.19442268802051785,
-      "funding": -0.0017366093749999997,
-      "resultado": -2.388922758111674,
-      "dias": 1.2863773148148148
+      "retorno": -0.29942134480062554,
+      "funding": -0.0009,
+      "resultado": -3.5158332607997504,
+      "dias": 0.8800231481481482
     },
     {
       "symbol": "BEAT",
@@ -380,37 +404,51 @@
       "precoSaida": 0.0878,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.016338525974435136,
-      "funding": 0.0001507039041666667,
-      "resultado": 0.4064055355317677,
+      "retorno": 0.015453594287229387,
+      "funding": 0.00018041999999999998,
+      "resultado": 0.3598565556903637,
       "dias": 0.2101736111111111
     },
     {
       "symbol": "B",
       "lado": "short",
-      "abertaEm": 1789764224000,
+      "abertaEm": 1789776213000,
       "fechadaEm": 1789819584000,
-      "precoEntrada": 0.1915,
+      "precoEntrada": 0.1844,
       "precoSaida": 0.2047,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": -0.2151998667555971,
-      "funding": -0.0005886449937500002,
-      "resultado": -8.06160136095675,
-      "dias": 0.6407407407407407
+      "retorno": -0.34222969826584165,
+      "funding": -0.00068295,
+      "resultado": -12.06158307042493,
+      "dias": 0.5019791666666666
     },
     {
       "symbol": "HEI",
       "lado": "long",
-      "abertaEm": 1789772979000,
+      "abertaEm": 1789766507000,
       "fechadaEm": 1789776213000,
-      "precoEntrada": 0.13983,
+      "precoEntrada": 0.13835,
       "precoSaida": 0.142308,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.04414771321202493,
-      "funding": 0.00001684375,
-      "resultado": 1.1119913021248529,
+      "retorno": 0.07560092516820095,
+      "funding": 0.00015000000000000001,
+      "resultado": 1.7801648340332399,
+      "dias": 0.11233796296296296
+    },
+    {
+      "symbol": "BEAT",
+      "lado": "long",
+      "abertaEm": 1789772979000,
+      "fechadaEm": 1789776213000,
+      "precoEntrada": 0.0877326,
+      "precoSaida": 0.0883342,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.010007855692269009,
+      "funding": 0.00015000000000000001,
+      "resultado": 0.23595622820757,
       "dias": 0.03743055555555556
     },
     {
@@ -422,52 +460,52 @@
       "precoSaida": 0.0230501,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.47938003753940617,
-      "funding": -0.03604354228229166,
-      "resultado": 11.017287710546771,
+      "retorno": 0.48438219786483105,
+      "funding": -0.04259346000000001,
+      "resultado": 11.119254518602904,
       "dias": 8.998900462962963
-    },
-    {
-      "symbol": "EPIC",
-      "lado": "long",
-      "abertaEm": 1788995474000,
-      "fechadaEm": 1789764224000,
-      "precoEntrada": 0.3756,
-      "precoSaida": 0.399,
-      "forca": 2,
-      "motivo": "painel mudou",
-      "retorno": 0.17430635749041193,
-      "funding": 0.003594600976041662,
-      "resultado": 4.006934253539253,
-      "dias": 8.897569444444445
     },
     {
       "symbol": "BEAT",
       "lado": "long",
-      "abertaEm": 1789262145000,
+      "abertaEm": 1789764224000,
+      "fechadaEm": 1789766507000,
+      "precoEntrada": 0.0868,
+      "precoSaida": 0.0883616,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.04280423622106792,
+      "funding": 0,
+      "resultado": 1.0028503038537053,
+      "dias": 0.02642361111111111
+    },
+    {
+      "symbol": "EPIC",
+      "lado": "long",
+      "abertaEm": 1788992708000,
+      "fechadaEm": 1789764224000,
+      "precoEntrada": 0.3767,
+      "precoSaida": 0.399,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.1616775307251313,
+      "funding": 0.0038846999999999996,
+      "resultado": 3.7914840703855255,
+      "dias": 8.929583333333333
+    },
+    {
+      "symbol": "BEAT",
+      "lado": "long",
+      "abertaEm": 1789268852000,
       "fechadaEm": 1789745046000,
-      "precoEntrada": 0.0867,
+      "precoEntrada": 0.0874,
       "precoSaida": 0.089208,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.07440057520062314,
-      "funding": 0.0033814317197916693,
-      "resultado": 1.804335385486116,
-      "dias": 5.5891319444444445
-    },
-    {
-      "symbol": "B",
-      "lado": "short",
-      "abertaEm": 1789522343000,
-      "fechadaEm": 1789745046000,
-      "precoEntrada": 0.2045,
-      "precoSaida": 0.1784,
-      "forca": 3,
-      "motivo": "painel mudou",
-      "retorno": 0.37563476831936343,
-      "funding": -0.0017496827447916674,
-      "resultado": 13.57610314117408,
-      "dias": 2.5775810185185186
+      "retorno": 0.04879391589380028,
+      "funding": 0.0031297499999999997,
+      "resultado": 1.0991371085622461,
+      "dias": 5.51150462962963
     },
     {
       "symbol": "SKYAI",
@@ -478,38 +516,24 @@
       "precoSaida": 0.0501,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": 0.10207600297361583,
-      "funding": -0.0003493593749999999,
-      "resultado": 1.2119251000751419,
+      "retorno": 0.10084196074734272,
+      "funding": -0.00030000000000000003,
+      "resultado": 1.1322885503113298,
       "dias": 0.7763541666666667
     },
     {
       "symbol": "SIREN",
       "lado": "long",
-      "abertaEm": 1789224483000,
+      "abertaEm": 1789258811000,
       "fechadaEm": 1789728179000,
-      "precoEntrada": 0.02599,
+      "precoEntrada": 0.02542,
       "precoSaida": 0.02618,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": -0.004005203650787048,
-      "funding": 0.01693671577083334,
-      "resultado": -0.0924728008425042,
-      "dias": 5.829814814814815
-    },
-    {
-      "symbol": "H",
-      "lado": "short",
-      "abertaEm": 1789666132000,
-      "fechadaEm": 1789725357000,
-      "precoEntrada": 0.08862,
-      "precoSaida": 0.0826,
-      "forca": 3,
-      "motivo": "painel mudou",
-      "retorno": 0.19607091625681267,
-      "funding": -0.0012794470625000006,
-      "resultado": 6.986230839687181,
-      "dias": 0.6854745370370371
+      "retorno": 0.06030604829046328,
+      "funding": 0.01800111,
+      "resultado": 1.384484274324567,
+      "dias": 5.4325
     },
     {
       "symbol": "BP",
@@ -520,122 +544,150 @@
       "precoSaida": 0.6333,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": -0.5573428915916762,
-      "funding": -0.013524375000000002,
-      "resultado": -7.297541163435796,
+      "retorno": -0.5573672665916762,
+      "funding": -0.013500000000000009,
+      "resultado": -7.277178300986313,
       "dias": 10.018055555555556
-    },
-    {
-      "symbol": "AKE",
-      "lado": "short",
-      "abertaEm": 1789592252000,
-      "fechadaEm": 1789666132000,
-      "precoEntrada": 0.01933,
-      "precoSaida": 0.02125,
-      "forca": 3,
-      "motivo": "painel mudou",
-      "retorno": -0.3065976190938096,
-      "funding": -0.0003847916666666667,
-      "resultado": -11.065933102964628,
-      "dias": 0.8550925925925926
     },
     {
       "symbol": "HEI",
       "lado": "long",
-      "abertaEm": 1789641475000,
+      "abertaEm": 1789618266000,
       "fechadaEm": 1789653218000,
-      "precoEntrada": 0.1387,
+      "precoEntrada": 0.141,
       "precoSaida": 0.1441,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.10832863957177168,
-      "funding": -0.0005297931406249999,
-      "resultado": 2.5722280727188824,
-      "dias": 0.13591435185185186
+      "retorno": 0.059669987443319104,
+      "funding": -0.004378170000000001,
+      "resultado": 1.329165575851107,
+      "dias": 0.40453703703703703
     },
     {
       "symbol": "EVAA",
       "lado": "long",
-      "abertaEm": 1789589681000,
+      "abertaEm": 1789560598000,
       "fechadaEm": 1789641475000,
-      "precoEntrada": 0.4302,
+      "precoEntrada": 0.4402,
       "precoSaida": 0.4519,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.14198817228666327,
-      "funding": 0.0003367928458333333,
-      "resultado": 3.4162182316338594,
-      "dias": 0.5994675925925926
+      "retorno": 0.06860845388718509,
+      "funding": 0.0005063400000000001,
+      "resultado": 1.533226604204291,
+      "dias": 0.9360763888888889
+    },
+    {
+      "symbol": "ACE",
+      "lado": "long",
+      "abertaEm": 1789616643000,
+      "fechadaEm": 1789618266000,
+      "precoEntrada": 0.151157,
+      "precoSaida": 0.15169,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.0008117538751110098,
+      "funding": 0,
+      "resultado": 0.01811122253354469,
+      "dias": 0.018784722222222223
+    },
+    {
+      "symbol": "HEI",
+      "lado": "long",
+      "abertaEm": 1789604295000,
+      "fechadaEm": 1789616643000,
+      "precoEntrada": 0.1399,
+      "precoSaida": 0.1421,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.035578897165987576,
+      "funding": 0,
+      "resultado": 0.7941681320023513,
+      "dias": 0.14291666666666666
+    },
+    {
+      "symbol": "ACE",
+      "lado": "long",
+      "abertaEm": 1789589681000,
+      "fechadaEm": 1789604295000,
+      "precoEntrada": 0.149704,
+      "precoSaida": 0.15244,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.04581449183489013,
+      "funding": -0.0010831200000000001,
+      "resultado": 1.0112887283427874,
+      "dias": 0.16914351851851853
     },
     {
       "symbol": "BASED",
       "lado": "long",
       "abertaEm": 1788381471000,
-      "fechadaEm": 1789592252000,
+      "fechadaEm": 1789591500000,
       "precoEntrada": 0.06886,
       "precoSaida": 0.06224,
       "forca": 3,
       "motivo": "prazo",
-      "retorno": -0.30451851467214885,
-      "funding": 0.007107245430208342,
-      "resultado": -12.180740586885953,
-      "dias": 14.013668981481482
+      "retorno": -0.3075111692766544,
+      "funding": 0.007256759999999999,
+      "resultado": -12.300446771066174,
+      "dias": 14.004965277777778
     },
     {
       "symbol": "HOME",
       "lado": "long",
       "abertaEm": 1788381471000,
-      "fechadaEm": 1789592252000,
+      "fechadaEm": 1789591500000,
       "precoEntrada": 0.00591701,
       "precoSaida": 0.005316,
       "forca": 2,
       "motivo": "prazo",
-      "retorno": -0.3089113870285274,
-      "funding": -0.004808395429166665,
-      "resultado": -8.221833648371923,
-      "dias": 14.013668981481482
+      "retorno": -0.3092688670333073,
+      "funding": -0.00554601,
+      "resultado": -8.22848284349486,
+      "dias": 14.004965277777778
     },
     {
       "symbol": "SKYAI",
       "lado": "short",
       "abertaEm": 1788381471000,
-      "fechadaEm": 1789592252000,
+      "fechadaEm": 1789591500000,
       "precoEntrada": 0.05713,
       "precoSaida": 0.0613,
       "forca": 1,
       "motivo": "prazo",
-      "retorno": -0.21906746684078038,
-      "funding": -0.008906802369791678,
-      "resultado": -2.9135471715150203,
-      "dias": 14.013668981481482
+      "retorno": -0.22049275218839443,
+      "funding": -0.009399060000000002,
+      "resultado": -2.9311672253705527,
+      "dias": 14.004965277777778
     },
     {
       "symbol": "HEI",
       "lado": "long",
-      "abertaEm": 1789560598000,
+      "abertaEm": 1789456905000,
       "fechadaEm": 1789589681000,
-      "precoEntrada": 0.1317,
+      "precoEntrada": 0.1217,
       "precoSaida": 0.1412,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.2197475752888142,
-      "funding": -0.012346664127083334,
-      "resultado": 5.268512384022234,
-      "dias": 0.3366087962962963
+      "retorno": 0.4834558857177108,
+      "funding": -0.01338948,
+      "resultado": 10.685835924616196,
+      "dias": 1.5367592592592592
     },
     {
       "symbol": "TAG",
       "lado": "short",
-      "abertaEm": 1789224483000,
+      "abertaEm": 1789213874000,
       "fechadaEm": 1789560598000,
-      "precoEntrada": 0.0006748,
+      "precoEntrada": 0.0006873,
       "precoSaida": 0.0007542,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": -0.3598848679109546,
-      "funding": -0.0021086116385416677,
-      "resultado": -4.15354343033353,
-      "dias": 3.8902199074074075
+      "retorno": -0.3001296329878747,
+      "funding": -0.0023261099999999997,
+      "resultado": -3.4365526529002626,
+      "dias": 4.01300925925926
     },
     {
       "symbol": "RIF",
@@ -646,10 +698,24 @@
       "precoSaida": 0.0783879,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": 0.012444171158891,
-      "funding": -0.0009417594458333339,
-      "resultado": 0.1478017483792584,
+      "retorno": 0.009795731952504202,
+      "funding": -0.00041987999999999997,
+      "resultado": 0.10925463530590562,
       "dias": 3.3382175925925925
+    },
+    {
+      "symbol": "EVAA",
+      "lado": "long",
+      "abertaEm": 1789522343000,
+      "fechadaEm": 1789527237000,
+      "precoEntrada": 0.4481,
+      "precoSaida": 0.4551,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.033426793864144023,
+      "funding": 0,
+      "resultado": 0.756784787212009,
+      "dias": 0.05664351851851852
     },
     {
       "symbol": "ON",
@@ -660,38 +726,108 @@
       "precoSaida": 0.1842,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.440065468370833,
-      "funding": 0.004684531629166665,
-      "resultado": 10.03756459837394,
+      "retorno": 0.4349550698919046,
+      "funding": 0.00527334,
+      "resultado": 9.916850787618962,
       "dias": 5.513622685185185
     },
     {
-      "symbol": "H",
-      "lado": "short",
-      "abertaEm": 1789280191000,
-      "fechadaEm": 1789393224000,
-      "precoEntrada": 0.0832,
-      "precoSaida": 0.08274,
-      "forca": 3,
+      "symbol": "ACE",
+      "lado": "long",
+      "abertaEm": 1789423590000,
+      "fechadaEm": 1789456905000,
+      "precoEntrada": 0.150185,
+      "precoSaida": 0.1574,
+      "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.009647955409455237,
-      "funding": -0.002061416947916668,
-      "resultado": 0.3437007795510141,
-      "dias": 1.3082523148148149
+      "retorno": 0.13586639761970595,
+      "funding": -0.0016078800000000001,
+      "resultado": 3.003450301209636,
+      "dias": 0.38559027777777777
+    },
+    {
+      "symbol": "ACE",
+      "lado": "long",
+      "abertaEm": 1789413232000,
+      "fechadaEm": 1789417090000,
+      "precoEntrada": 0.1515,
+      "precoSaida": 0.15285,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.016966439346874536,
+      "funding": 0,
+      "resultado": 0.3758965223455455,
+      "dias": 0.04465277777777778
+    },
+    {
+      "symbol": "ACE",
+      "lado": "long",
+      "abertaEm": 1789391925000,
+      "fechadaEm": 1789405481000,
+      "precoEntrada": 0.1501,
+      "precoSaida": 0.15184,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.025487984582687136,
+      "funding": -0.0016985700000000002,
+      "resultado": 0.5596663095034842,
+      "dias": 0.15689814814814815
+    },
+    {
+      "symbol": "ACE",
+      "lado": "long",
+      "abertaEm": 1789315544000,
+      "fechadaEm": 1789387741000,
+      "precoEntrada": 0.15085,
+      "precoSaida": 0.151886,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.01607787336204149,
+      "funding": -0.0052517399999999995,
+      "resultado": 0.35714052741912994,
+      "dias": 0.8356134259259259
+    },
+    {
+      "symbol": "BANK",
+      "lado": "long",
+      "abertaEm": 1788381471000,
+      "fechadaEm": 1789341300000,
+      "precoEntrada": 0.03511,
+      "precoSaida": 0.02630014474751198,
+      "forca": 2,
+      "motivo": "stop",
+      "retorno": -0.7674111509938941,
+      "funding": 0.005049239999999999,
+      "resultado": -20.42935716941749,
+      "dias": 11.109131944444444
+    },
+    {
+      "symbol": "ACE",
+      "lado": "long",
+      "abertaEm": 1789297679000,
+      "fechadaEm": 1789301575000,
+      "precoEntrada": 0.15133,
+      "precoSaida": 0.152007,
+      "forca": 2,
+      "motivo": "painel mudou",
+      "retorno": 0.0035200666719752798,
+      "funding": 0,
+      "resultado": 0.07817267390019111,
+      "dias": 0.045092592592592594
     },
     {
       "symbol": "CYS",
       "lado": "long",
       "abertaEm": 1788958986000,
-      "fechadaEm": 1789272000000,
+      "fechadaEm": 1789271100000,
       "precoEntrada": 0.1641,
       "precoSaida": 0.12307499999999999,
       "forca": 2,
       "motivo": "stop",
-      "retorno": -0.760672476384375,
-      "funding": 0.0016724763843749997,
-      "resultado": -19.301216175078338,
-      "dias": 3.622847222222222
+      "retorno": -0.7617826251301576,
+      "funding": 0.0016499999999999998,
+      "resultado": -19.269380307440258,
+      "dias": 3.6124305555555556
     },
     {
       "symbol": "B",
@@ -702,52 +838,66 @@
       "precoSaida": 0.207527,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": -0.31138611103397784,
-      "funding": -0.003938902242708331,
-      "resultado": -11.9845408217091,
+      "retorno": -0.31295225337543287,
+      "funding": -0.00416886,
+      "resultado": -12.009027590128877,
       "dias": 4.502199074074074
     },
     {
       "symbol": "HEI",
       "lado": "long",
-      "abertaEm": 1789140184000,
+      "abertaEm": 1789156322000,
       "fechadaEm": 1789258811000,
-      "precoEntrada": 0.114602,
-      "precoSaida": 0.1933,
+      "precoEntrada": 0.112003,
+      "precoSaida": 0.11639107883817428,
       "forca": 2,
-      "motivo": "alvo",
-      "retorno": 2.0507062042116253,
-      "funding": 0.00041491060312500013,
-      "resultado": 46.78111835371432,
-      "dias": 1.3729976851851853
-    },
-    {
-      "symbol": "H",
-      "lado": "short",
-      "abertaEm": 1789208465000,
-      "fechadaEm": 1789224483000,
-      "precoEntrada": 0.08926,
-      "precoSaida": 0.08268,
-      "forca": 3,
       "motivo": "painel mudou",
-      "retorno": 0.21241732495908094,
-      "funding": -0.000265633271875,
-      "resultado": 7.304856164265125,
-      "dias": 0.1853935185185185
+      "retorno": 0.10607076129915156,
+      "funding": 0.0005872200000000001,
+      "resultado": 2.4020712598925087,
+      "dias": 1.1862152777777777
     },
     {
-      "symbol": "BTW",
+      "symbol": "RIF",
+      "lado": "short",
+      "abertaEm": 1789207178000,
+      "fechadaEm": 1789211300000,
+      "precoEntrada": 0.0788837,
+      "precoSaida": 0.0783952,
+      "forca": 1,
+      "motivo": "painel mudou",
+      "retorno": 0.008582590263720137,
+      "funding": 0,
+      "resultado": 0.09846900738494213,
+      "dias": 0.04770833333333333
+    },
+    {
+      "symbol": "TAG",
+      "lado": "short",
+      "abertaEm": 1789189375000,
+      "fechadaEm": 1789207178000,
+      "precoEntrada": 0.0006846,
+      "precoSaida": 0.0006936,
+      "forca": 1,
+      "motivo": "painel mudou",
+      "retorno": -0.04975674453197028,
+      "funding": -0.00015000000000000001,
+      "resultado": -0.5702813529580428,
+      "dias": 0.20605324074074075
+    },
+    {
+      "symbol": "RIF",
       "lado": "short",
       "abertaEm": 1789178735000,
-      "fechadaEm": 1789208465000,
-      "precoEntrada": 0.501,
-      "precoSaida": 0.5538,
-      "forca": 3,
+      "fechadaEm": 1789189375000,
+      "precoEntrada": 0.0792571,
+      "precoSaida": 0.07854,
+      "forca": 1,
       "motivo": "painel mudou",
-      "retorno": -0.3243555189800334,
-      "funding": -0.0008121456906249998,
-      "resultado": -11.319686951202893,
-      "dias": 0.3440972222222222
+      "retorno": 0.016876218563100134,
+      "funding": 0,
+      "resultado": 0.19400193449622982,
+      "dias": 0.12314814814814815
     },
     {
       "symbol": "TAG",
@@ -758,24 +908,10 @@
       "precoSaida": 0.000737875,
       "forca": 1,
       "motivo": "stop",
-      "retorno": -0.758753546875,
-      "funding": -0.00024645312499999993,
-      "resultado": -8.502093941152268,
+      "retorno": -0.7610384878528076,
+      "funding": -0.00030000000000000003,
+      "resultado": -8.498677385551051,
       "dias": 0.5476736111111111
-    },
-    {
-      "symbol": "AVAAI",
-      "lado": "long",
-      "abertaEm": 1789167813000,
-      "fechadaEm": 1789172173000,
-      "precoEntrada": 0.008638,
-      "precoSaida": 0.008827,
-      "forca": 2,
-      "motivo": "painel mudou",
-      "retorno": 0.05661748615613156,
-      "funding": 0.000022708333333333334,
-      "resultado": 1.3285981475389086,
-      "dias": 0.050462962962962966
     },
     {
       "symbol": "SIREN",
@@ -786,9 +922,9 @@
       "precoSaida": 0.0262,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": -0.0033118803795710366,
-      "funding": 0.000048018046875,
-      "resultado": -0.07578348363513854,
+      "retorno": -0.005689463355860826,
+      "funding": 0,
+      "resultado": -0.12866673415772567,
       "dias": 0.02230324074074074
     },
     {
@@ -800,24 +936,10 @@
       "precoSaida": 0.0935288,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.1931430112805994,
-      "funding": 0.0007116170458333334,
-      "resultado": 4.469990749037443,
+      "retorno": 0.19174907076361486,
+      "funding": 0.00075,
+      "resultado": 4.4351564430259,
       "dias": 1.6693402777777777
-    },
-    {
-      "symbol": "AVAAI",
-      "lado": "long",
-      "abertaEm": 1788995474000,
-      "fechadaEm": 1789140184000,
-      "precoEntrada": 0.008174,
-      "precoSaida": 0.008893,
-      "forca": 2,
-      "motivo": "painel mudou",
-      "retorno": 0.2538601511715535,
-      "funding": 0.0010253394083333336,
-      "resultado": 5.8329067976518765,
-      "dias": 1.6748842592592592
     },
     {
       "symbol": "TAG",
@@ -828,9 +950,9 @@
       "precoSaida": 0.0005761,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": 0.02345800641025646,
-      "funding": -0.000006083333333333333,
-      "resultado": 0.2621268476713716,
+      "retorno": 0.02044194208259436,
+      "funding": 0,
+      "resultado": 0.22803195986854874,
       "dias": 0.013518518518518518
     },
     {
@@ -842,9 +964,9 @@
       "precoSaida": 0.0005779,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": 0.4660396435997846,
-      "funding": -0.0074673386041666685,
-      "resultado": 6.189614992273908,
+      "retorno": 0.4642522503594583,
+      "funding": -0.00754986,
+      "resultado": 6.160687617984276,
       "dias": 6.8982986111111115
     },
     {
@@ -856,9 +978,9 @@
       "precoSaida": 0.085845,
       "forca": 2,
       "motivo": "stop",
-      "retorno": -0.761733587271875,
-      "funding": 0.002733587271875,
-      "resultado": -20.379502101139813,
+      "retorno": -0.7636005725325412,
+      "funding": 0.0023145600000000002,
+      "resultado": -20.38500878218551,
       "dias": 3.4397337962962964
     },
     {
@@ -870,66 +992,52 @@
       "precoSaida": 0.18665,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.05241810465646107,
-      "funding": 0.00009091666666666669,
-      "resultado": 1.2650029958086293,
+      "retorno": 0.04824767363291043,
+      "funding": 0.00015000000000000001,
+      "resultado": 1.1318472428667228,
       "dias": 0.20203703703703704
-    },
-    {
-      "symbol": "SIREN",
-      "lado": "long",
-      "abertaEm": 1788381471000,
-      "fechadaEm": 1788994800000,
-      "precoEntrada": 0.02865,
-      "precoSaida": 0.019511154076366718,
-      "forca": 2,
-      "motivo": "liquidada",
-      "retorno": -1,
-      "funding": 0.029052782865624988,
-      "resultado": -26.64107472983723,
-      "dias": 7.098715277777778
-    },
-    {
-      "symbol": "BANK",
-      "lado": "long",
-      "abertaEm": 1788381471000,
-      "fechadaEm": 1788994800000,
-      "precoEntrada": 0.03511,
-      "precoSaida": 0.026332500000000002,
-      "forca": 2,
-      "motivo": "stop",
-      "retorno": -0.7660441223197917,
-      "funding": 0.007044122319791672,
-      "resultado": -20.398443930008334,
-      "dias": 7.098715277777778
-    },
-    {
-      "symbol": "CLO",
-      "lado": "long",
-      "abertaEm": 1788832974000,
-      "fechadaEm": 1788994800000,
-      "precoEntrada": 0.1189,
-      "precoSaida": 0.089175,
-      "forca": 2,
-      "motivo": "stop",
-      "retorno": -0.7627624117739583,
-      "funding": 0.003762411773958332,
-      "resultado": -19.53627348727725,
-      "dias": 1.872986111111111
     },
     {
       "symbol": "TUT",
       "lado": "long",
       "abertaEm": 1788381471000,
-      "fechadaEm": 1788992708000,
+      "fechadaEm": 1788992100000,
       "precoEntrada": 0.0253922,
-      "precoSaida": 0.0227922,
+      "precoSaida": 0.01904415,
       "forca": 2,
-      "motivo": "painel mudou",
-      "retorno": -0.2903637875880015,
-      "funding": -0.025817157741666687,
-      "resultado": -7.7374603544555995,
-      "dias": 7.074502314814815
+      "motivo": "stop",
+      "retorno": -0.7376296961221992,
+      "funding": -0.022259159999999993,
+      "resultado": -19.652699780032414,
+      "dias": 7.067465277777778
+    },
+    {
+      "symbol": "SIREN",
+      "lado": "long",
+      "abertaEm": 1788381471000,
+      "fechadaEm": 1788992100000,
+      "precoEntrada": 0.02865,
+      "precoSaida": 0.0214875,
+      "forca": 2,
+      "motivo": "stop",
+      "retorno": -0.7898419533966101,
+      "funding": 0.02955798000000001,
+      "resultado": -21.038243892727714,
+      "dias": 7.067465277777778
+    },
+    {
+      "symbol": "CLO",
+      "lado": "long",
+      "abertaEm": 1788832974000,
+      "fechadaEm": 1788992100000,
+      "precoEntrada": 0.1189,
+      "precoSaida": 0.089175,
+      "forca": 2,
+      "motivo": "stop",
+      "retorno": -0.7647982249253675,
+      "funding": 0.00387828,
+      "resultado": -19.531576212044257,
+      "dias": 1.841736111111111
     },
     {
       "symbol": "HEI",
@@ -940,9 +1048,9 @@
       "precoSaida": 0.1619,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.45232710923393266,
-      "funding": 0.0005403177083333333,
-      "resultado": 11.536757706535454,
+      "retorno": 0.45087956605435264,
+      "funding": 0.00045000000000000004,
+      "resultado": 11.465411563892335,
       "dias": 1.2007060185185185
     },
     {
@@ -954,9 +1062,9 @@
       "precoSaida": 0.3989,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.023295305046480027,
-      "funding": 0.0003960279489583333,
-      "resultado": 0.6246707100508999,
+      "retorno": 0.020599745134164113,
+      "funding": 0.00054489,
+      "resultado": 0.5510110884240831,
       "dias": 1.3216203703703704
     },
     {
@@ -968,9 +1076,9 @@
       "precoSaida": 0.1858,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.10071293896919661,
-      "funding": 0.000778132459375,
-      "resultado": 2.6866445202872065,
+      "retorno": 0.09857366298796756,
+      "funding": 0.00075,
+      "resultado": 2.6244737388685024,
       "dias": 1.6597800925925925
     },
     {
@@ -982,9 +1090,9 @@
       "precoSaida": 0.12988,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": -0.1390730703597994,
-      "funding": 0.0014068949729166664,
-      "resultado": -3.621310627463732,
+      "retorno": -0.14038767151729867,
+      "funding": 0.00072744,
+      "resultado": -3.6453169852370984,
       "dias": 0.4766782407407407
     },
     {
@@ -996,9 +1104,9 @@
       "precoSaida": 18.92,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": -0.08683492543963074,
-      "funding": -0.00025618085104166667,
-      "resultado": -3.3604118612572336,
+      "retorno": -0.08815141576232595,
+      "funding": 0,
+      "resultado": -3.4015458965402274,
       "dias": 0.08054398148148148
     },
     {
@@ -1010,9 +1118,9 @@
       "precoSaida": 0.196585,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": -0.26379827455765725,
-      "funding": -0.0010882189416666667,
-      "resultado": -10.405689183276625,
+      "retorno": -0.26602701318978417,
+      "funding": -0.0019506,
+      "resultado": -10.466060532131586,
       "dias": 0.48832175925925925
     },
     {
@@ -1024,24 +1132,24 @@
       "precoSaida": 0.1205,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.023963603617829024,
-      "funding": 0.0023008800093750007,
-      "resultado": 0.6443081326500355,
+      "retorno": 0.01892346731238022,
+      "funding": 0.0034417500000000004,
+      "resultado": 0.5080335742982953,
       "dias": 1.6488888888888888
     },
     {
       "symbol": "BLUAI",
       "lado": "long",
       "abertaEm": 1788381471000,
-      "fechadaEm": 1788778800000,
+      "fechadaEm": 1788777900000,
       "precoEntrada": 0.01275,
       "precoSaida": 0.0095625,
       "forca": 2,
       "motivo": "stop",
-      "retorno": -0.7658607953947917,
-      "funding": 0.006860795394791665,
-      "resultado": -20.37888240665798,
-      "dias": 4.598715277777778
+      "retorno": -0.7687067128783196,
+      "funding": 0.007438169999999999,
+      "resultado": -20.446892295490724,
+      "dias": 4.588298611111111
     },
     {
       "symbol": "HEI",
@@ -1052,9 +1160,9 @@
       "precoSaida": 0.1503,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.0010066245348465809,
-      "funding": 0.000006726599999999999,
-      "resultado": 0.026999423791082222,
+      "retorno": -0.00031603135314809197,
+      "funding": 0,
+      "resultado": -0.008455675444839272,
       "dias": 0.020555555555555556
     },
     {
@@ -1066,9 +1174,9 @@
       "precoSaida": 0.3951,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.03725146076281818,
-      "funding": 0.000009140625,
-      "resultado": 0.9970020511881614,
+      "retorno": 0.034752000601863314,
+      "funding": 0,
+      "resultado": 0.9278756373099952,
       "dias": 0.0203125
     },
     {
@@ -1080,9 +1188,9 @@
       "precoSaida": 0.1778,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": 0.018067459066594502,
-      "funding": -0.00006302799895833332,
-      "resultado": 0.7191671939821376,
+      "retorno": 0.013560326655216413,
+      "funding": 0,
+      "resultado": 0.5385554560660921,
       "dias": 0.04137731481481482
     },
     {
@@ -1094,9 +1202,9 @@
       "precoSaida": 0.11614,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.014875452921419743,
-      "funding": 0.00007872170104166667,
-      "resultado": 0.39881565820558507,
+      "retorno": 0.012406233012371372,
+      "funding": 0,
+      "resultado": 0.3319162428184228,
       "dias": 0.04048611111111111
     },
     {
@@ -1108,9 +1216,9 @@
       "precoSaida": 0.5508,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": -0.5187273716895341,
-      "funding": -0.005269437500000004,
-      "resultado": -6.897299673597445,
+      "retorno": -0.5185968091895341,
+      "funding": -0.005399999999999999,
+      "resultado": -6.892064462218758,
       "dias": 3.903287037037037
     },
     {
@@ -1122,9 +1230,9 @@
       "precoSaida": 0.1515,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.26346130440341264,
-      "funding": -0.000040360909375000005,
-      "resultado": 7.026475431829468,
+      "retorno": 0.26247808910657244,
+      "funding": 0,
+      "resultado": 6.986264770398986,
       "dias": 0.07957175925925926
     },
     {
@@ -1136,9 +1244,9 @@
       "precoSaida": 0.11607,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.01102824056282466,
-      "funding": 0.00011122654791666666,
-      "resultado": 0.2943830628786266,
+      "retorno": 0.007962353736161477,
+      "funding": 0,
+      "resultado": 0.21211355549612065,
       "dias": 0.039733796296296295
     },
     {
@@ -1150,9 +1258,9 @@
       "precoSaida": 0.4002,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.05531707064238323,
-      "funding": 0.0000014592197916666666,
-      "resultado": 1.4639460203405292,
+      "retorno": 0.052887514830796005,
+      "funding": -0.00000807,
+      "resultado": 1.3970244513563372,
       "dias": 0.05707175925925926
     },
     {
@@ -1164,9 +1272,9 @@
       "precoSaida": 0.172,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": 0.1326604937511051,
-      "funding": -0.0003862555239583333,
-      "resultado": 5.272581599899695,
+      "retorno": 0.13022175693508525,
+      "funding": -0.00018324000000000001,
+      "resultado": 5.166343067194937,
       "dias": 0.2199074074074074
     },
     {
@@ -1178,9 +1286,9 @@
       "precoSaida": 0.11577,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.25277012371525737,
-      "funding": 0.009061640015624997,
-      "resultado": 6.72922039013832,
+      "retorno": 0.25018372957575674,
+      "funding": 0.00926328,
+      "resultado": 6.658470745626392,
       "dias": 3.6600462962962963
     },
     {
@@ -1192,9 +1300,9 @@
       "precoSaida": 0.1784,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": -0.0021528971352770786,
-      "funding": -0.00013569346875,
-      "resultado": -0.0854397726721956,
+      "retorno": -0.004612253290828728,
+      "funding": 0,
+      "resultado": -0.18272502919651146,
       "dias": 0.05741898148148148
     },
     {
@@ -1206,9 +1314,9 @@
       "precoSaida": 0.176888,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": 0.06639110022806212,
-      "funding": -0.00014266962604166667,
-      "resultado": 2.6241799040573,
+      "retorno": 0.06349703359393277,
+      "funding": -0.00080319,
+      "resultado": 2.505880131717177,
       "dias": 0.05803240740740741
     },
     {
@@ -1220,9 +1328,9 @@
       "precoSaida": 0.3979,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.019152086948249533,
-      "funding": 0.000006208333333333333,
-      "resultado": 0.5164768328177942,
+      "retorno": 0.016761309066524822,
+      "funding": 0,
+      "resultado": 0.45140322007807754,
       "dias": 0.013796296296296296
     },
     {
@@ -1234,9 +1342,9 @@
       "precoSaida": 0.1202,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": -0.004169127905208219,
-      "funding": 0.00016912790520833332,
-      "resultado": -0.11181463252112778,
+      "retorno": -0.005742896247005474,
+      "funding": 0,
+      "resultado": -0.15382784169488062,
       "dias": 0.13864583333333333
     },
     {
@@ -1248,9 +1356,9 @@
       "precoSaida": 0.3961,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.01848853815021204,
-      "funding": 0.00002738541666666667,
-      "resultado": 0.49750944174857636,
+      "retorno": 0.015121361448695029,
+      "funding": 0,
+      "resultado": 0.4063799334864804,
       "dias": 0.060856481481481484
     },
     {
@@ -1262,9 +1370,9 @@
       "precoSaida": 0.0274687,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": -0.12800674744906024,
-      "funding": -0.00007349479166666668,
-      "resultado": -1.7209628774520525,
+      "retorno": -0.12955677300853125,
+      "funding": 0,
+      "resultado": -1.739614979840523,
       "dias": 0.16332175925925926
     },
     {
@@ -1276,9 +1384,9 @@
       "precoSaida": 0.3966,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.013799806783536438,
-      "funding": 0.000066046875,
-      "resultado": 0.3707079771558952,
+      "retorno": 0.010331229020742065,
+      "funding": 0.00015000000000000001,
+      "resultado": 0.27721605161355356,
       "dias": 0.14677083333333332
     },
     {
@@ -1290,9 +1398,9 @@
       "precoSaida": 0.1203,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.0009282621585693381,
-      "funding": 0.000080078125,
-      "resultado": 0.02480641615911594,
+      "retorno": -0.0015690922160898789,
+      "funding": 0.00015000000000000001,
+      "resultado": -0.04188606368344239,
       "dias": 0.1779513888888889
     },
     {
@@ -1304,9 +1412,9 @@
       "precoSaida": 0.1525,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.14221971342865236,
-      "funding": 0.00025786458333333336,
-      "resultado": 3.7514062221370565,
+      "retorno": 0.14019959600624193,
+      "funding": 0.00030000000000000003,
+      "resultado": 3.6943912723656602,
       "dias": 0.5730324074074075
     },
     {
@@ -1318,9 +1426,9 @@
       "precoSaida": 0.3987,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.529844180328169,
-      "funding": 0.000960495611458333,
-      "resultado": 14.112230654875315,
+      "retorno": 0.528135221307835,
+      "funding": 0.0010006799999999999,
+      "resultado": 14.063561024301283,
       "dias": 2.7330208333333332
     },
     {
@@ -1332,9 +1440,9 @@
       "precoSaida": 17.63,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": 0.013408019252168318,
-      "funding": -0.0004485597927083333,
-      "resultado": 0.5331790766920577,
+      "retorno": 0.012483480501118655,
+      "funding": -0.00039084000000000005,
+      "resultado": 0.49590346623269,
       "dias": 0.25653935185185184
     },
     {
@@ -1346,9 +1454,9 @@
       "precoSaida": 0.1441375,
       "forca": 3,
       "motivo": "stop",
-      "retorno": -0.7574126510416667,
-      "funding": -0.001587348958333335,
-      "resultado": -30.285599299491665,
+      "retorno": -0.758658844385058,
+      "funding": -0.0016499999999999998,
+      "resultado": -30.331977930710117,
       "dias": 2.432048611111111
     },
     {
@@ -1360,9 +1468,9 @@
       "precoSaida": 0.1205,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.003415292404166621,
-      "funding": 0.00008470759583333334,
-      "resultado": 0.09033958531288633,
+      "retorno": 0.0008332984038449225,
+      "funding": 0,
+      "resultado": 0.022021537596874197,
       "dias": 0.14023148148148148
     },
     {
@@ -1374,9 +1482,9 @@
       "precoSaida": 0.0253258,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": 0.1120501378382754,
-      "funding": -0.00007249479166666667,
-      "resultado": 1.4918717315929158,
+      "retorno": 0.10949268223310997,
+      "funding": -0.00015000000000000001,
+      "resultado": 1.4565499325810194,
       "dias": 0.16109953703703703
     },
     {
@@ -1388,9 +1496,9 @@
       "precoSaida": 0.0781117,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": 0.025522076060649195,
-      "funding": -0.000038401041666666666,
-      "resultado": 0.33978044366831917,
+      "retorno": 0.024959156448284597,
+      "funding": -0.00015000000000000001,
+      "resultado": 0.33200964809894984,
       "dias": 0.08533564814814815
     },
     {
@@ -1402,9 +1510,9 @@
       "precoSaida": 0.4462,
       "forca": 3,
       "motivo": "painel mudou",
-      "retorno": 0.24048879526559394,
-      "funding": -0.0009790316479166667,
-      "resultado": 9.527497349935423,
+      "retorno": 0.23623388033168582,
+      "funding": 0,
+      "resultado": 9.352884764917235,
       "dias": 0.19924768518518518
     },
     {
@@ -1416,9 +1524,9 @@
       "precoSaida": 0.1579,
       "forca": 2,
       "motivo": "painel mudou",
-      "retorno": 0.25585817959793694,
-      "funding": 0.000011901041666666667,
-      "resultado": 6.706714053001402,
+      "retorno": 0.2536797556082916,
+      "funding": 0,
+      "resultado": 6.645727367511746,
       "dias": 0.02644675925925926
     },
     {
@@ -1430,9 +1538,9 @@
       "precoSaida": 0.2369,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": -0.026218337636440037,
-      "funding": 0.0008455416666666666,
-      "resultado": -0.3487397388026672,
+      "retorno": -0.02760603332592622,
+      "funding": 0.0009,
+      "resultado": -0.3670372355796445,
       "dias": 0.783587962962963
     },
     {
@@ -1444,9 +1552,9 @@
       "precoSaida": 0.08586,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": 0.010601584718269197,
-      "funding": 0.00009360871666666666,
-      "resultado": 0.13776088343191972,
+      "retorno": 0.00867563032107967,
+      "funding": 0,
+      "resultado": 0.11267037381792733,
       "dias": 0.06694444444444445
     },
     {
@@ -1458,1596 +1566,1596 @@
       "precoSaida": 0.0006755,
       "forca": 1,
       "motivo": "painel mudou",
-      "retorno": -0.2163064438914835,
-      "funding": -0.0007036874999999999,
-      "resultado": -2.876480979054561,
+      "retorno": -0.21808635629888842,
+      "funding": -0.0009,
+      "resultado": -2.8987552653521504,
       "dias": 0.52125
     }
   ],
-  "acertos": 59,
-  "encerradas": 92,
+  "acertos": 64,
+  "encerradas": 98,
   "porMotivo": {
     "painel mudou": {
-      "n": 79,
-      "retornoMedio": 0.03231374696646688
+      "n": 85,
+      "retornoMedio": 0.03222499964439421
     },
     "stop": {
-      "n": 7,
-      "retornoMedio": -0.7618913701516369
-    },
-    "liquidada": {
-      "n": 1,
-      "retornoMedio": -1
-    },
-    "alvo": {
-      "n": 1,
-      "retornoMedio": 2.0507062042116253
+      "n": 9,
+      "retornoMedio": -0.7637186964685506
     },
     "prazo": {
       "n": 4,
-      "retornoMedio": -0.2831059478639463
+      "retornoMedio": -0.2846341603147351
     }
   },
   "porLado": {
     "short": {
-      "n": 33,
-      "retornoMedio": -0.12645417640835802,
-      "acertos": 15
+      "n": 30,
+      "retornoMedio": -0.16073239505498485,
+      "acertos": 13
     },
     "long": {
-      "n": 59,
-      "retornoMedio": 0.022217231415611535,
-      "acertos": 44
+      "n": 68,
+      "retornoMedio": -0.006631001294894724,
+      "acertos": 51
     }
   },
-  "pico": 1011.4558321852709,
-  "quedaMaxima": -0.17157306438771602,
-  "maiorExposicao": 0.3511753812649648,
+  "pico": 1010.3104579807485,
+  "quedaMaxima": -0.19964019764346153,
+  "maiorExposicao": 0.35078194334348256,
   "maiorRiscoAberto": 0.25,
   "curva": [
     {
       "t": 1788379577000,
-      "patrimonio": 997.1237841914365
+      "patrimonio": 996.6177904063304
     },
     {
       "t": 1788384939000,
-      "patrimonio": 994.8226548237936
+      "patrimonio": 994.3306054429811
     },
     {
       "t": 1788389472000,
-      "patrimonio": 992.9943049860083
+      "patrimonio": 992.5084801256622
     },
     {
       "t": 1788393674000,
-      "patrimonio": 992.0712354501884
+      "patrimonio": 991.5298384406354
     },
     {
       "t": 1788408614000,
-      "patrimonio": 987.9294932544385
+      "patrimonio": 987.4273097710131
     },
     {
       "t": 1788426507000,
-      "patrimonio": 974.8399994207887
+      "patrimonio": 974.31394814008
     },
     {
       "t": 1788443389000,
-      "patrimonio": 974.4515749950909
+      "patrimonio": 973.8689384894367
     },
     {
       "t": 1788448933000,
-      "patrimonio": 984.5072836839793
+      "patrimonio": 983.9180058455198
     },
     {
       "t": 1788457661000,
-      "patrimonio": 990.0739284309636
+      "patrimonio": 989.3047681095995
     },
     {
       "t": 1788468925000,
-      "patrimonio": 991.1593625524555
+      "patrimonio": 990.3501847203321
     },
     {
       "t": 1788477161000,
-      "patrimonio": 998.9089029294888
+      "patrimonio": 998.06831296071
     },
     {
       "t": 1788484534000,
-      "patrimonio": 995.317379615281
+      "patrimonio": 994.5317356779883
     },
     {
       "t": 1788503615000,
-      "patrimonio": 995.6171604892733
+      "patrimonio": 994.7360675000696
     },
     {
       "t": 1788522379000,
-      "patrimonio": 998.4543989170177
+      "patrimonio": 997.5488390141855
     },
     {
       "t": 1788538498000,
-      "patrimonio": 993.6026088729218
+      "patrimonio": 992.6141316610481
     },
     {
       "t": 1788542364000,
-      "patrimonio": 996.5713299908044
+      "patrimonio": 995.593639525544
     },
     {
       "t": 1788546445000,
-      "patrimonio": 990.7499846500217
+      "patrimonio": 989.7851971657708
     },
     {
       "t": 1788550537000,
-      "patrimonio": 989.0205149723972
+      "patrimonio": 988.0668175190051
     },
     {
       "t": 1788554654000,
-      "patrimonio": 990.8276300333964
+      "patrimonio": 989.8842199120006
     },
     {
       "t": 1788558873000,
-      "patrimonio": 989.4008766466469
+      "patrimonio": 988.4659498351195
     },
     {
       "t": 1788562851000,
-      "patrimonio": 993.0282416217976
+      "patrimonio": 992.1040494272379
     },
     {
       "t": 1788566836000,
-      "patrimonio": 994.0654153995814
+      "patrimonio": 993.051631499342
     },
     {
       "t": 1788570769000,
-      "patrimonio": 988.3977707309425
+      "patrimonio": 987.3980002155772
     },
     {
       "t": 1788574715000,
-      "patrimonio": 988.2758041888135
+      "patrimonio": 987.2284433782863
     },
     {
       "t": 1788578636000,
-      "patrimonio": 986.8780878333862
+      "patrimonio": 985.8335066570075
     },
     {
       "t": 1788582567000,
-      "patrimonio": 993.5829149450419
+      "patrimonio": 992.5438794241622
     },
     {
       "t": 1788586456000,
-      "patrimonio": 999.0138900623476
+      "patrimonio": 997.9804308436244
     },
     {
       "t": 1788590279000,
-      "patrimonio": 994.3384206311068
+      "patrimonio": 993.2814337296174
     },
     {
       "t": 1788594016000,
-      "patrimonio": 996.3836542293216
+      "patrimonio": 995.2720098641228
     },
     {
       "t": 1788597852000,
-      "patrimonio": 995.8980818432223
+      "patrimonio": 994.7928962546878
     },
     {
       "t": 1788601669000,
-      "patrimonio": 994.89018002184
+      "patrimonio": 993.7890007395638
     },
     {
       "t": 1788605999000,
-      "patrimonio": 1005.45540633561
+      "patrimonio": 1004.3561439198721
     },
     {
       "t": 1788610046000,
-      "patrimonio": 1001.4903092496429
+      "patrimonio": 1000.3971780734312
     },
     {
       "t": 1788613662000,
-      "patrimonio": 1004.3311774334047
+      "patrimonio": 1003.1794195065135
     },
     {
       "t": 1788617604000,
-      "patrimonio": 1011.4558321852709
+      "patrimonio": 1010.3104579807485
     },
     {
       "t": 1788621532000,
-      "patrimonio": 1005.0406659459077
+      "patrimonio": 1003.7769793245143
     },
     {
       "t": 1788625475000,
-      "patrimonio": 1005.5950501553721
+      "patrimonio": 1004.314311373648
     },
     {
       "t": 1788629172000,
-      "patrimonio": 1005.1318794214569
+      "patrimonio": 1003.8561046562074
     },
     {
       "t": 1788632923000,
-      "patrimonio": 1008.6495798813472
+      "patrimonio": 1007.333979965686
     },
     {
       "t": 1788636824000,
-      "patrimonio": 1008.7386705167863
+      "patrimonio": 1007.4376452183946
     },
     {
       "t": 1788640934000,
-      "patrimonio": 1006.7526114113037
+      "patrimonio": 1005.3840859104084
     },
     {
       "t": 1788644869000,
-      "patrimonio": 1011.0533191018299
+      "patrimonio": 1009.6444970709487
     },
     {
       "t": 1788648560000,
-      "patrimonio": 1011.0049291680943
+      "patrimonio": 1009.6187602086563
     },
     {
       "t": 1788652657000,
-      "patrimonio": 1007.8592610775777
+      "patrimonio": 1006.3460972855223
     },
     {
       "t": 1788656519000,
-      "patrimonio": 1009.6796457682199
+      "patrimonio": 1008.0786879154607
     },
     {
       "t": 1788660387000,
-      "patrimonio": 1001.5159673299449
+      "patrimonio": 999.9385767948529
     },
     {
       "t": 1788664251000,
-      "patrimonio": 996.1532056997928
+      "patrimonio": 994.5916425938478
     },
     {
       "t": 1788668148000,
-      "patrimonio": 991.0025987820593
+      "patrimonio": 989.4540993116262
     },
     {
       "t": 1788673418000,
-      "patrimonio": 988.1195367067712
+      "patrimonio": 986.5791828215155
     },
     {
       "t": 1788678401000,
-      "patrimonio": 988.0297499376411
+      "patrimonio": 986.3074013339099
     },
     {
       "t": 1788683415000,
-      "patrimonio": 991.7916299219523
+      "patrimonio": 989.9839244295422
     },
     {
       "t": 1788687022000,
-      "patrimonio": 994.6884231315495
+      "patrimonio": 992.8907167200912
     },
     {
       "t": 1788692840000,
-      "patrimonio": 997.6235669312598
+      "patrimonio": 995.7515561456537
     },
     {
       "t": 1788697699000,
-      "patrimonio": 1000.1283273688255
+      "patrimonio": 998.2631863185906
     },
     {
       "t": 1788702207000,
-      "patrimonio": 996.1975381024438
+      "patrimonio": 994.3363327441489
     },
     {
       "t": 1788707166000,
-      "patrimonio": 992.3095807232814
+      "patrimonio": 990.3843721027854
     },
     {
       "t": 1788711840000,
-      "patrimonio": 1000.7684677813907
+      "patrimonio": 998.658897076873
     },
     {
       "t": 1788717108000,
-      "patrimonio": 1005.6483552956764
+      "patrimonio": 1003.5296659176079
     },
     {
       "t": 1788722300000,
-      "patrimonio": 1005.3300192343157
+      "patrimonio": 1003.2141110327527
     },
     {
       "t": 1788725980000,
-      "patrimonio": 1004.6162194073909
+      "patrimonio": 1002.5029369345805
     },
     {
       "t": 1788729600000,
-      "patrimonio": 1006.5996382662101
+      "patrimonio": 1004.4194245972564
     },
     {
       "t": 1788734931000,
-      "patrimonio": 1006.2274900538099
+      "patrimonio": 1004.0435258176268
     },
     {
       "t": 1788738716000,
-      "patrimonio": 1008.936090719857
+      "patrimonio": 1006.7481731865904
     },
     {
       "t": 1788743762000,
-      "patrimonio": 1007.156278168145
+      "patrimonio": 1004.9702205383915
     },
     {
       "t": 1788748007000,
-      "patrimonio": 997.7199824048851
+      "patrimonio": 995.4870477453255
     },
     {
       "t": 1788752777000,
-      "patrimonio": 995.4689347466432
+      "patrimonio": 993.2410521535624
     },
     {
       "t": 1788756822000,
-      "patrimonio": 995.1019486130372
+      "patrimonio": 992.7015091870664
     },
     {
       "t": 1788761981000,
-      "patrimonio": 1005.2113507362378
+      "patrimonio": 1002.7376822508122
     },
     {
       "t": 1788765674000,
-      "patrimonio": 1003.9542603968284
+      "patrimonio": 1001.3182961680402
     },
     {
       "t": 1788770979000,
-      "patrimonio": 1006.0454843778674
+      "patrimonio": 1003.4227253086242
     },
     {
       "t": 1788774961000,
-      "patrimonio": 1003.42954001751
+      "patrimonio": 1000.8138788169226
     },
     {
       "t": 1788778647000,
-      "patrimonio": 986.088139930896
+      "patrimonio": 983.4905082659131
     },
     {
       "t": 1788782248000,
-      "patrimonio": 985.2333707144157
+      "patrimonio": 982.5295854865774
     },
     {
       "t": 1788786770000,
-      "patrimonio": 986.3572587204925
+      "patrimonio": 983.6639554632011
     },
     {
       "t": 1788791340000,
-      "patrimonio": 984.878337274541
+      "patrimonio": 982.194177639736
     },
     {
       "t": 1788795852000,
-      "patrimonio": 976.2246305700863
+      "patrimonio": 973.442387425046
     },
     {
       "t": 1788800572000,
-      "patrimonio": 983.8553143753961
+      "patrimonio": 981.0749303564688
     },
     {
       "t": 1788805195000,
-      "patrimonio": 980.511972680546
+      "patrimonio": 977.7416486297179
     },
     {
       "t": 1788809463000,
-      "patrimonio": 978.8117409847843
+      "patrimonio": 976.0469054389636
     },
     {
       "t": 1788813412000,
-      "patrimonio": 974.0684543452069
+      "patrimonio": 971.3185392989665
     },
     {
       "t": 1788817410000,
-      "patrimonio": 972.8474521252324
+      "patrimonio": 970.1087301254715
     },
     {
       "t": 1788821229000,
-      "patrimonio": 969.658680712206
+      "patrimonio": 966.9359713378497
     },
     {
       "t": 1788826015000,
-      "patrimonio": 966.8152661860996
+      "patrimonio": 964.007326571686
     },
     {
       "t": 1788830395000,
-      "patrimonio": 960.239280286619
+      "patrimonio": 957.4039274039527
     },
     {
       "t": 1788834042000,
-      "patrimonio": 956.1800919051573
+      "patrimonio": 953.3713466943917
     },
     {
       "t": 1788838856000,
-      "patrimonio": 954.5042881743752
+      "patrimonio": 951.6653632328962
     },
     {
       "t": 1788842841000,
-      "patrimonio": 955.8151592554879
+      "patrimonio": 952.9786290581744
     },
     {
       "t": 1788846912000,
-      "patrimonio": 959.6323075153147
+      "patrimonio": 956.8006338706186
     },
     {
       "t": 1788851380000,
-      "patrimonio": 955.0027296334198
+      "patrimonio": 952.1876463117792
     },
     {
       "t": 1788855245000,
-      "patrimonio": 955.8217507433517
+      "patrimonio": 952.9237287881678
     },
     {
       "t": 1788859201000,
-      "patrimonio": 958.8215853549796
+      "patrimonio": 955.9295910035605
     },
     {
       "t": 1788863058000,
-      "patrimonio": 958.7955184982325
+      "patrimonio": 955.9191201954627
     },
     {
       "t": 1788866992000,
-      "patrimonio": 957.772889154089
+      "patrimonio": 954.9059583831407
     },
     {
       "t": 1788870799000,
-      "patrimonio": 961.577976587379
+      "patrimonio": 958.7106190870961
     },
     {
       "t": 1788874668000,
-      "patrimonio": 958.8073254456252
+      "patrimonio": 955.9478155112056
     },
     {
       "t": 1788878572000,
-      "patrimonio": 964.1167700695253
+      "patrimonio": 961.1872797967458
     },
     {
       "t": 1788882446000,
-      "patrimonio": 962.5737694325471
+      "patrimonio": 959.5839921386482
     },
     {
       "t": 1788886362000,
-      "patrimonio": 963.1430794871651
+      "patrimonio": 960.1600002661177
     },
     {
       "t": 1788890610000,
-      "patrimonio": 961.2488023796191
+      "patrimonio": 958.2751829158827
     },
     {
       "t": 1788894852000,
-      "patrimonio": 958.3064514270563
+      "patrimonio": 955.3453908257461
     },
     {
       "t": 1788899047000,
-      "patrimonio": 959.0344817027396
+      "patrimonio": 956.085212146588
     },
     {
       "t": 1788903175000,
-      "patrimonio": 957.9207405407354
+      "patrimonio": 954.9791438738262
     },
     {
       "t": 1788907422000,
-      "patrimonio": 957.9276641015061
+      "patrimonio": 954.9974891763454
     },
     {
       "t": 1788911610000,
-      "patrimonio": 952.8359323206835
+      "patrimonio": 949.87099954643
     },
     {
       "t": 1788915848000,
-      "patrimonio": 952.6975806485352
+      "patrimonio": 949.7352801759159
     },
     {
       "t": 1788920001000,
-      "patrimonio": 946.7792338553263
+      "patrimonio": 943.8356186363799
     },
     {
       "t": 1788924135000,
-      "patrimonio": 941.5627485094727
+      "patrimonio": 938.622268608109
     },
     {
       "t": 1788928207000,
-      "patrimonio": 944.2788851979678
+      "patrimonio": 941.3398448015789
     },
     {
       "t": 1788932496000,
-      "patrimonio": 941.4142769604409
+      "patrimonio": 938.4865675470422
     },
     {
       "t": 1788937103000,
-      "patrimonio": 940.6442038553034
+      "patrimonio": 937.7202354244216
     },
     {
       "t": 1788941236000,
-      "patrimonio": 939.7967972780755
+      "patrimonio": 936.8543591354671
     },
     {
       "t": 1788945472000,
-      "patrimonio": 938.4382667626717
+      "patrimonio": 935.4936601314964
     },
     {
       "t": 1788950314000,
-      "patrimonio": 937.5953985059203
+      "patrimonio": 934.6590683004081
     },
     {
       "t": 1788953918000,
-      "patrimonio": 939.2366621779047
+      "patrimonio": 936.3085077060998
     },
     {
       "t": 1788957998000,
-      "patrimonio": 945.4207709019073
+      "patrimonio": 942.4444642867365
     },
     {
       "t": 1788962227000,
-      "patrimonio": 944.8042519320948
+      "patrimonio": 941.8332008004887
     },
     {
       "t": 1788966178000,
-      "patrimonio": 943.4235038162374
+      "patrimonio": 940.4520873337317
     },
     {
       "t": 1788970135000,
-      "patrimonio": 937.5239105227038
+      "patrimonio": 934.5776180879395
     },
     {
       "t": 1788974086000,
-      "patrimonio": 933.2409712180008
+      "patrimonio": 930.3132912433063
     },
     {
       "t": 1788978381000,
-      "patrimonio": 930.3833306698663
+      "patrimonio": 927.4612870882355
     },
     {
       "t": 1788982335000,
-      "patrimonio": 925.0934630081005
+      "patrimonio": 922.1769277603418
     },
     {
       "t": 1788986386000,
-      "patrimonio": 924.2941127990443
+      "patrimonio": 921.3824216668465
     },
     {
       "t": 1788990067000,
-      "patrimonio": 903.5797139255748
+      "patrimonio": 878.7371105913043
     },
     {
       "t": 1788994560000,
-      "patrimonio": 862.4962293731033
+      "patrimonio": 861.6588745088898
     },
     {
       "t": 1788998498000,
-      "patrimonio": 868.6033446822244
+      "patrimonio": 867.0086523466205
     },
     {
       "t": 1789002410000,
-      "patrimonio": 860.5368625594135
+      "patrimonio": 858.4537075509633
     },
     {
       "t": 1789006367000,
-      "patrimonio": 860.5559495036557
+      "patrimonio": 858.5018955575333
     },
     {
       "t": 1789010164000,
-      "patrimonio": 867.3841984528435
+      "patrimonio": 866.8449595848792
     },
     {
       "t": 1789014037000,
-      "patrimonio": 867.5422480643394
+      "patrimonio": 865.4731551789813
     },
     {
       "t": 1789018604000,
-      "patrimonio": 869.93099263057
+      "patrimonio": 867.3034599640171
     },
     {
       "t": 1789023562000,
-      "patrimonio": 872.2863956404751
+      "patrimonio": 870.3041686327074
     },
     {
       "t": 1789027835000,
-      "patrimonio": 873.7760281611286
+      "patrimonio": 872.0026756306927
     },
     {
       "t": 1789032277000,
-      "patrimonio": 869.7219787753663
+      "patrimonio": 869.443378741346
     },
     {
       "t": 1789036076000,
-      "patrimonio": 865.9730900957577
+      "patrimonio": 865.872569342968
     },
     {
       "t": 1789040612000,
-      "patrimonio": 862.2334390584398
+      "patrimonio": 862.0575476123055
     },
     {
       "t": 1789044885000,
-      "patrimonio": 852.9399099405668
+      "patrimonio": 852.4771839713776
     },
     {
       "t": 1789048551000,
-      "patrimonio": 856.4279565018817
+      "patrimonio": 855.4337085319062
     },
     {
       "t": 1789052991000,
-      "patrimonio": 860.1299011100382
+      "patrimonio": 859.6353092750995
     },
     {
       "t": 1789056947000,
-      "patrimonio": 864.9533342171785
+      "patrimonio": 864.3093096615723
     },
     {
       "t": 1789060876000,
-      "patrimonio": 860.4491494909166
+      "patrimonio": 859.4870470159723
     },
     {
       "t": 1789064780000,
-      "patrimonio": 858.1213286840714
+      "patrimonio": 857.5156176754116
     },
     {
       "t": 1789068675000,
-      "patrimonio": 854.9869928291746
+      "patrimonio": 854.0372542309901
     },
     {
       "t": 1789072695000,
-      "patrimonio": 855.0303461978095
+      "patrimonio": 854.0000213579717
     },
     {
       "t": 1789076605000,
-      "patrimonio": 850.7051756641877
+      "patrimonio": 849.857417568646
     },
     {
       "t": 1789081134000,
-      "patrimonio": 847.2954305812245
+      "patrimonio": 846.1812060287652
     },
     {
       "t": 1789085524000,
-      "patrimonio": 850.2237666646517
+      "patrimonio": 849.1077041780102
     },
     {
       "t": 1789089977000,
-      "patrimonio": 846.9001706621125
+      "patrimonio": 845.5016016782004
     },
     {
       "t": 1789093815000,
-      "patrimonio": 841.0437352591912
+      "patrimonio": 840.0434934628028
     },
     {
       "t": 1789097622000,
-      "patrimonio": 840.786547629446
+      "patrimonio": 840.0076292304202
     },
     {
       "t": 1789101354000,
-      "patrimonio": 840.2508142248935
+      "patrimonio": 838.7159824482603
     },
     {
       "t": 1789105169000,
-      "patrimonio": 839.544313793323
+      "patrimonio": 838.1776633420822
     },
     {
       "t": 1789109272000,
-      "patrimonio": 840.6092594222753
+      "patrimonio": 839.3424668768155
     },
     {
       "t": 1789113245000,
-      "patrimonio": 840.4565882886852
+      "patrimonio": 838.7810784050013
     },
     {
       "t": 1789117098000,
-      "patrimonio": 841.3026597558646
+      "patrimonio": 840.0843919392682
     },
     {
       "t": 1789120943000,
-      "patrimonio": 837.9243952514325
+      "patrimonio": 836.4376072025151
     },
     {
       "t": 1789124597000,
-      "patrimonio": 839.9908278520741
+      "patrimonio": 838.9196971868373
     },
     {
       "t": 1789128488000,
-      "patrimonio": 840.2998962797433
+      "patrimonio": 837.4142069530769
     },
     {
       "t": 1789132382000,
-      "patrimonio": 846.3084028346121
+      "patrimonio": 842.5492355804026
     },
     {
       "t": 1789136248000,
-      "patrimonio": 848.9426205905023
+      "patrimonio": 846.3735445556465
     },
     {
       "t": 1789140184000,
-      "patrimonio": 852.167997060763
+      "patrimonio": 841.9999547327609
     },
     {
       "t": 1789144000000,
-      "patrimonio": 854.2138380109673
+      "patrimonio": 844.7486435210509
     },
     {
       "t": 1789147911000,
-      "patrimonio": 852.5440477631379
+      "patrimonio": 842.0110691758766
     },
     {
       "t": 1789151773000,
-      "patrimonio": 857.8807986214111
+      "patrimonio": 847.8009496583591
     },
     {
       "t": 1789155436000,
-      "patrimonio": 862.3066616457504
+      "patrimonio": 852.596674134528
     },
     {
       "t": 1789159040000,
-      "patrimonio": 862.2478887995114
+      "patrimonio": 852.5143858855079
     },
     {
       "t": 1789163260000,
-      "patrimonio": 871.1121902208815
+      "patrimonio": 860.8987134751811
     },
     {
       "t": 1789166897000,
-      "patrimonio": 876.7745587686438
+      "patrimonio": 866.861293050991
     },
     {
       "t": 1789171293000,
-      "patrimonio": 876.3272549746387
+      "patrimonio": 865.2722957314373
     },
     {
       "t": 1789175689000,
-      "patrimonio": 872.1611936405058
+      "patrimonio": 862.0505356284023
     },
     {
       "t": 1789179716000,
-      "patrimonio": 871.767042566986
+      "patrimonio": 862.5651338821121
     },
     {
       "t": 1789183972000,
-      "patrimonio": 871.0180625471808
+      "patrimonio": 862.1391918436512
     },
     {
       "t": 1789188314000,
-      "patrimonio": 870.5713215432864
+      "patrimonio": 860.2045864210618
     },
     {
       "t": 1789192146000,
-      "patrimonio": 872.341728576982
+      "patrimonio": 861.3063840788034
     },
     {
       "t": 1789196069000,
-      "patrimonio": 872.5726335083862
+      "patrimonio": 862.1196363386752
     },
     {
       "t": 1789200529000,
-      "patrimonio": 870.1600471094705
+      "patrimonio": 864.1695368813316
     },
     {
       "t": 1789204442000,
-      "patrimonio": 859.0486135888123
+      "patrimonio": 860.3686172378946
     },
     {
       "t": 1789208465000,
-      "patrimonio": 861.4839310176874
+      "patrimonio": 859.1789468263366
     },
     {
       "t": 1789212588000,
-      "patrimonio": 860.5575310661318
+      "patrimonio": 857.5812875128628
     },
     {
       "t": 1789216709000,
-      "patrimonio": 865.2639996435466
+      "patrimonio": 858.3826497035811
     },
     {
       "t": 1789220598000,
-      "patrimonio": 864.1667273554451
+      "patrimonio": 858.4498341195983
     },
     {
       "t": 1789224483000,
-      "patrimonio": 866.1372781941218
+      "patrimonio": 860.0472708558295
     },
     {
       "t": 1789228378000,
-      "patrimonio": 872.0822498491945
+      "patrimonio": 866.3114485075315
     },
     {
       "t": 1789232423000,
-      "patrimonio": 871.4686140796005
+      "patrimonio": 866.1255928575633
     },
     {
       "t": 1789237083000,
-      "patrimonio": 870.7771051030858
+      "patrimonio": 865.1463827720079
     },
     {
       "t": 1789240884000,
-      "patrimonio": 870.3644858281259
+      "patrimonio": 864.6529878150179
     },
     {
       "t": 1789244918000,
-      "patrimonio": 866.2418220464862
+      "patrimonio": 860.6810992860413
     },
     {
       "t": 1789248910000,
-      "patrimonio": 866.7924387897943
+      "patrimonio": 861.0268415446247
     },
     {
       "t": 1789253124000,
-      "patrimonio": 865.137032237883
+      "patrimonio": 859.2317093243657
     },
     {
       "t": 1789257290000,
-      "patrimonio": 912.6911745187915
+      "patrimonio": 860.6412921430899
     },
     {
       "t": 1789261233000,
-      "patrimonio": 907.4444476262247
+      "patrimonio": 855.5850005655334
     },
     {
       "t": 1789264847000,
-      "patrimonio": 903.9966791446597
+      "patrimonio": 852.4227562913356
     },
     {
       "t": 1789268852000,
-      "patrimonio": 890.6821331198087
+      "patrimonio": 836.3726222234613
     },
     {
       "t": 1789273581000,
-      "patrimonio": 890.777672299478
+      "patrimonio": 837.3417850841499
     },
     {
       "t": 1789277452000,
-      "patrimonio": 890.2846061396115
+      "patrimonio": 837.4106085225721
     },
     {
       "t": 1789281499000,
-      "patrimonio": 885.2458645399124
+      "patrimonio": 835.2639499581593
     },
     {
       "t": 1789285774000,
-      "patrimonio": 882.1011591897777
+      "patrimonio": 834.573874810925
     },
     {
       "t": 1789290939000,
-      "patrimonio": 883.4078176357698
+      "patrimonio": 835.1560161783075
     },
     {
       "t": 1789294897000,
-      "patrimonio": 880.5769967486887
+      "patrimonio": 832.5698237823849
     },
     {
       "t": 1789298979000,
-      "patrimonio": 885.7922748395724
+      "patrimonio": 837.0784087926959
     },
     {
       "t": 1789302873000,
-      "patrimonio": 884.5838909271841
+      "patrimonio": 836.0394724578398
     },
     {
       "t": 1789306520000,
-      "patrimonio": 885.3446488131116
+      "patrimonio": 837.0655842329068
     },
     {
       "t": 1789310373000,
-      "patrimonio": 883.0820487011642
+      "patrimonio": 836.5678389460861
     },
     {
       "t": 1789314251000,
-      "patrimonio": 881.4123722083667
+      "patrimonio": 831.4800451147808
     },
     {
       "t": 1789318127000,
-      "patrimonio": 881.3588203754713
+      "patrimonio": 830.780261318583
     },
     {
       "t": 1789322189000,
-      "patrimonio": 883.1734986162776
+      "patrimonio": 832.7355280375849
     },
     {
       "t": 1789326442000,
-      "patrimonio": 887.5521994072689
+      "patrimonio": 835.7305571450823
     },
     {
       "t": 1789331487000,
-      "patrimonio": 885.3709963619714
+      "patrimonio": 835.6136719176166
     },
     {
       "t": 1789336526000,
-      "patrimonio": 882.464421016438
+      "patrimonio": 831.775580011947
     },
     {
       "t": 1789340494000,
-      "patrimonio": 874.2874123629622
+      "patrimonio": 819.4232652806259
     },
     {
       "t": 1789344132000,
-      "patrimonio": 875.4742315638445
+      "patrimonio": 821.8676218014411
     },
     {
       "t": 1789347987000,
-      "patrimonio": 877.4649659535054
+      "patrimonio": 824.4803317406307
     },
     {
       "t": 1789352019000,
-      "patrimonio": 879.1216154547279
+      "patrimonio": 826.9742349436232
     },
     {
       "t": 1789356206000,
-      "patrimonio": 876.9807529126327
+      "patrimonio": 828.0156159912842
     },
     {
       "t": 1789359932000,
-      "patrimonio": 877.7990141404853
+      "patrimonio": 827.4307649640887
     },
     {
       "t": 1789363714000,
-      "patrimonio": 879.972539371464
+      "patrimonio": 827.6226205159755
     },
     {
       "t": 1789367600000,
-      "patrimonio": 878.9125005665995
+      "patrimonio": 826.6330158534372
     },
     {
       "t": 1789371499000,
-      "patrimonio": 880.6905881307518
+      "patrimonio": 831.7888925648859
     },
     {
       "t": 1789375415000,
-      "patrimonio": 877.6651515856529
+      "patrimonio": 828.8805831699062
     },
     {
       "t": 1789379410000,
-      "patrimonio": 877.1931698945363
+      "patrimonio": 826.7567282580173
     },
     {
       "t": 1789383481000,
-      "patrimonio": 876.6105763203743
+      "patrimonio": 823.8315180811612
     },
     {
       "t": 1789387741000,
-      "patrimonio": 877.5078404735647
+      "patrimonio": 825.3365659650956
     },
     {
       "t": 1789391925000,
-      "patrimonio": 877.9365173233017
+      "patrimonio": 824.5667045563835
     },
     {
       "t": 1789395833000,
-      "patrimonio": 874.5702805769248
+      "patrimonio": 820.4094251931284
     },
     {
       "t": 1789400320000,
-      "patrimonio": 876.7065909959545
+      "patrimonio": 823.6278010067083
     },
     {
       "t": 1789404190000,
-      "patrimonio": 882.0232989395586
+      "patrimonio": 830.0099800685164
     },
     {
       "t": 1789408058000,
-      "patrimonio": 886.174637593546
+      "patrimonio": 831.550823117352
     },
     {
       "t": 1789411935000,
-      "patrimonio": 885.6147809801348
+      "patrimonio": 830.6205078225648
     },
     {
       "t": 1789415801000,
-      "patrimonio": 883.2117435715222
+      "patrimonio": 828.532765189768
     },
     {
       "t": 1789419700000,
-      "patrimonio": 883.8769187494304
+      "patrimonio": 829.8263546796998
     },
     {
       "t": 1789423590000,
-      "patrimonio": 884.3424475076222
+      "patrimonio": 828.5337994790733
     },
     {
       "t": 1789427485000,
-      "patrimonio": 883.7874413224746
+      "patrimonio": 829.2685031704802
     },
     {
       "t": 1789431383000,
-      "patrimonio": 885.5773533386988
+      "patrimonio": 830.1042120638754
     },
     {
       "t": 1789435234000,
-      "patrimonio": 883.9319886811644
+      "patrimonio": 827.1313491092936
     },
     {
       "t": 1789439103000,
-      "patrimonio": 882.8084878638994
+      "patrimonio": 826.2525261933513
     },
     {
       "t": 1789442995000,
-      "patrimonio": 885.0560980444163
+      "patrimonio": 828.0423194349439
     },
     {
       "t": 1789446852000,
-      "patrimonio": 883.5909282007434
+      "patrimonio": 826.0529271031032
     },
     {
       "t": 1789450495000,
-      "patrimonio": 882.3454865361027
+      "patrimonio": 823.6571313139872
     },
     {
       "t": 1789454947000,
-      "patrimonio": 884.7798498251406
+      "patrimonio": 828.6284946603423
     },
     {
       "t": 1789458644000,
-      "patrimonio": 883.7630488665652
+      "patrimonio": 831.1061106614998
     },
     {
       "t": 1789462410000,
-      "patrimonio": 879.0803717901753
+      "patrimonio": 827.147466202764
     },
     {
       "t": 1789467346000,
-      "patrimonio": 881.5985284357523
+      "patrimonio": 828.0574917143188
     },
     {
       "t": 1789472627000,
-      "patrimonio": 881.6376890886929
+      "patrimonio": 828.9353111911007
     },
     {
       "t": 1789477674000,
-      "patrimonio": 881.2957356850268
+      "patrimonio": 829.8997169362924
     },
     {
       "t": 1789482564000,
-      "patrimonio": 877.1252248161443
+      "patrimonio": 822.425816158008
     },
     {
       "t": 1789487508000,
-      "patrimonio": 897.6427271885367
+      "patrimonio": 843.3693737205793
     },
     {
       "t": 1789491931000,
-      "patrimonio": 892.1176465348838
+      "patrimonio": 840.6712856531743
     },
     {
       "t": 1789496738000,
-      "patrimonio": 889.6628241796891
+      "patrimonio": 837.0264565858771
     },
     {
       "t": 1789501359000,
-      "patrimonio": 896.8452749587271
+      "patrimonio": 843.0596005877209
     },
     {
       "t": 1789505906000,
-      "patrimonio": 897.4113574207985
+      "patrimonio": 844.0350342820852
     },
     {
       "t": 1789511076000,
-      "patrimonio": 899.389268840509
+      "patrimonio": 845.9930630894357
     },
     {
       "t": 1789515759000,
-      "patrimonio": 898.5097998551441
+      "patrimonio": 846.2703994820445
     },
     {
       "t": 1789520498000,
-      "patrimonio": 901.420327629125
+      "patrimonio": 846.0033258888485
     },
     {
       "t": 1789524144000,
-      "patrimonio": 897.8471387168697
+      "patrimonio": 843.8200089546403
     },
     {
       "t": 1789529009000,
-      "patrimonio": 894.3044163239537
+      "patrimonio": 846.8795223622557
     },
     {
       "t": 1789534337000,
-      "patrimonio": 900.700823485843
+      "patrimonio": 854.5521944955946
     },
     {
       "t": 1789539436000,
-      "patrimonio": 902.8530850810821
+      "patrimonio": 844.1778933626804
     },
     {
       "t": 1789544008000,
-      "patrimonio": 902.3983991774911
+      "patrimonio": 842.7495586254483
     },
     {
       "t": 1789549024000,
-      "patrimonio": 899.1928690024895
+      "patrimonio": 836.7230613837219
     },
     {
       "t": 1789553857000,
-      "patrimonio": 899.002987916037
+      "patrimonio": 835.9861260017664
     },
     {
       "t": 1789558358000,
-      "patrimonio": 901.5340231334221
+      "patrimonio": 840.4632322670329
     },
     {
       "t": 1789562016000,
-      "patrimonio": 904.359715299707
+      "patrimonio": 838.5384212155509
     },
     {
       "t": 1789565727000,
-      "patrimonio": 904.7037474758665
+      "patrimonio": 831.6579773189862
     },
     {
       "t": 1789570712000,
-      "patrimonio": 902.4340712997923
+      "patrimonio": 823.0539875462149
     },
     {
       "t": 1789575272000,
-      "patrimonio": 901.6740431788604
+      "patrimonio": 821.682307039858
     },
     {
       "t": 1789580330000,
-      "patrimonio": 900.9280511302056
+      "patrimonio": 823.9611461801572
     },
     {
       "t": 1789585213000,
-      "patrimonio": 901.2892010863211
+      "patrimonio": 827.2009339399827
     },
     {
       "t": 1789589681000,
-      "patrimonio": 901.9924387983374
+      "patrimonio": 827.3860611470723
     },
     {
       "t": 1789593589000,
-      "patrimonio": 907.3665944571392
+      "patrimonio": 832.7536015617999
     },
     {
       "t": 1789598296000,
-      "patrimonio": 906.9925322561436
+      "patrimonio": 834.3475816358911
     },
     {
       "t": 1789602850000,
-      "patrimonio": 906.1540883904586
+      "patrimonio": 837.2065830126426
     },
     {
       "t": 1789607104000,
-      "patrimonio": 906.4744289256269
+      "patrimonio": 835.4894440117728
     },
     {
       "t": 1789611006000,
-      "patrimonio": 902.660917203411
+      "patrimonio": 834.3451979977942
     },
     {
       "t": 1789615158000,
-      "patrimonio": 896.5903871216954
+      "patrimonio": 835.0853560067022
     },
     {
       "t": 1789619792000,
-      "patrimonio": 891.030644630262
+      "patrimonio": 832.265821185601
     },
     {
       "t": 1789624597000,
-      "patrimonio": 890.4297014323326
+      "patrimonio": 834.3840233431267
     },
     {
       "t": 1789629668000,
-      "patrimonio": 887.3681814157228
+      "patrimonio": 841.931122640608
     },
     {
       "t": 1789633364000,
-      "patrimonio": 888.3496468753996
+      "patrimonio": 839.7960628027195
     },
     {
       "t": 1789638013000,
-      "patrimonio": 890.2115179837697
+      "patrimonio": 839.4446856359025
     },
     {
       "t": 1789642766000,
-      "patrimonio": 892.0414684334968
+      "patrimonio": 842.0079070401691
     },
     {
       "t": 1789646967000,
-      "patrimonio": 891.9275597006379
+      "patrimonio": 840.1989881941688
     },
     {
       "t": 1789651190000,
-      "patrimonio": 894.3312774198356
+      "patrimonio": 843.9289197533471
     },
     {
       "t": 1789656005000,
-      "patrimonio": 893.6143491221753
+      "patrimonio": 840.4893641032754
     },
     {
       "t": 1789660032000,
-      "patrimonio": 885.9880356079575
+      "patrimonio": 834.5806706492685
     },
     {
       "t": 1789664429000,
-      "patrimonio": 889.9487267475126
+      "patrimonio": 841.7149156084407
     },
     {
       "t": 1789668910000,
-      "patrimonio": 892.1616366037264
+      "patrimonio": 843.1974288235788
     },
     {
       "t": 1789672741000,
-      "patrimonio": 893.2963452470852
+      "patrimonio": 843.1189044788191
     },
     {
       "t": 1789676347000,
-      "patrimonio": 893.3593294064121
+      "patrimonio": 840.4180086955907
     },
     {
       "t": 1789680249000,
-      "patrimonio": 895.3901450391556
+      "patrimonio": 841.2579751161676
     },
     {
       "t": 1789684632000,
-      "patrimonio": 897.0326131623932
+      "patrimonio": 842.7152747452666
     },
     {
       "t": 1789688805000,
-      "patrimonio": 896.7216730636734
+      "patrimonio": 842.703685287654
     },
     {
       "t": 1789693196000,
-      "patrimonio": 898.109696809403
+      "patrimonio": 847.3147958845227
     },
     {
       "t": 1789698060000,
-      "patrimonio": 899.3949571656606
+      "patrimonio": 844.6982136588892
     },
     {
       "t": 1789701917000,
-      "patrimonio": 902.875905755911
+      "patrimonio": 847.1323212689447
     },
     {
       "t": 1789705905000,
-      "patrimonio": 904.7346350165786
+      "patrimonio": 850.6118069028408
     },
     {
       "t": 1789710270000,
-      "patrimonio": 905.0565170290713
+      "patrimonio": 848.7139710913102
     },
     {
       "t": 1789714739000,
-      "patrimonio": 906.3288559543939
+      "patrimonio": 847.514882938696
     },
     {
       "t": 1789718434000,
-      "patrimonio": 908.7678074567909
+      "patrimonio": 849.4172823473941
     },
     {
       "t": 1789722837000,
-      "patrimonio": 913.1906298838898
+      "patrimonio": 848.2614065617305
     },
     {
       "t": 1789727226000,
-      "patrimonio": 913.4718664863043
+      "patrimonio": 849.354872138749
     },
     {
       "t": 1789731142000,
-      "patrimonio": 911.6028765330452
+      "patrimonio": 847.8686176128708
     },
     {
       "t": 1789735509000,
-      "patrimonio": 915.8549463812744
+      "patrimonio": 853.849379993303
     },
     {
       "t": 1789740000000,
-      "patrimonio": 925.7887553295559
+      "patrimonio": 864.5728454269449
     },
     {
       "t": 1789743623000,
-      "patrimonio": 931.1068105907883
+      "patrimonio": 870.4552854984165
     },
     {
       "t": 1789748054000,
-      "patrimonio": 928.7628621287604
+      "patrimonio": 869.9703636151036
     },
     {
       "t": 1789751988000,
-      "patrimonio": 934.5585678386514
+      "patrimonio": 874.8406436732749
     },
     {
       "t": 1789756117000,
-      "patrimonio": 935.8463840504351
+      "patrimonio": 877.1782421094838
     },
     {
       "t": 1789760164000,
-      "patrimonio": 934.3464443575867
+      "patrimonio": 876.3411677702851
     },
     {
       "t": 1789764224000,
-      "patrimonio": 945.3908890619573
+      "patrimonio": 883.0053131009089
     },
     {
       "t": 1789768689000,
-      "patrimonio": 946.4686932972743
+      "patrimonio": 884.7034403325124
     },
     {
       "t": 1789772979000,
-      "patrimonio": 940.2896712233164
+      "patrimonio": 880.5512921471698
     },
     {
       "t": 1789777257000,
-      "patrimonio": 945.3583646982888
+      "patrimonio": 885.692666631719
     },
     {
       "t": 1789781163000,
-      "patrimonio": 942.7697991313167
+      "patrimonio": 883.0609726310205
     },
     {
       "t": 1789785844000,
-      "patrimonio": 943.58723451691
+      "patrimonio": 883.7465921391869
     },
     {
       "t": 1789790484000,
-      "patrimonio": 942.9001937640494
+      "patrimonio": 883.2516558625309
     },
     {
       "t": 1789795176000,
-      "patrimonio": 940.7156788666964
+      "patrimonio": 881.1449374204906
     },
     {
       "t": 1789799630000,
-      "patrimonio": 939.2617262163062
+      "patrimonio": 879.7393981500895
     },
     {
       "t": 1789804365000,
-      "patrimonio": 931.0810589783945
+      "patrimonio": 871.814258752045
     },
     {
       "t": 1789808193000,
-      "patrimonio": 929.4721120294212
+      "patrimonio": 870.3535653178642
     },
     {
       "t": 1789812078000,
-      "patrimonio": 932.0345052459365
+      "patrimonio": 872.987717703922
     },
     {
       "t": 1789815682000,
-      "patrimonio": 931.7938338513787
+      "patrimonio": 872.6030884918906
     },
     {
       "t": 1789819584000,
-      "patrimonio": 932.5167831035984
+      "patrimonio": 872.9847702683633
     },
     {
       "t": 1789823464000,
-      "patrimonio": 933.7689375356175
+      "patrimonio": 874.0286589599232
     },
     {
       "t": 1789827359000,
-      "patrimonio": 927.0897078842063
+      "patrimonio": 867.4473038857515
     },
     {
       "t": 1789832120000,
-      "patrimonio": 925.3999001314851
+      "patrimonio": 865.8392224346103
     },
     {
       "t": 1789836443000,
-      "patrimonio": 930.6391858390643
+      "patrimonio": 870.7567789730119
     },
     {
       "t": 1789840341000,
-      "patrimonio": 932.5408740248962
+      "patrimonio": 872.5949748884718
     },
     {
       "t": 1789844184000,
-      "patrimonio": 930.8870621751191
+      "patrimonio": 871.0272067417968
     },
     {
       "t": 1789847847000,
-      "patrimonio": 932.9038432311802
+      "patrimonio": 872.947827667949
     },
     {
       "t": 1789852247000,
-      "patrimonio": 929.4684561912509
+      "patrimonio": 869.4932127956449
     },
     {
       "t": 1789856229000,
-      "patrimonio": 930.4005255939567
+      "patrimonio": 870.4709245942986
     },
     {
       "t": 1789860767000,
-      "patrimonio": 928.7696439166573
+      "patrimonio": 868.9934476196634
     },
     {
       "t": 1789865061000,
-      "patrimonio": 930.0545291576295
+      "patrimonio": 869.8165244040385
     },
     {
       "t": 1789869065000,
-      "patrimonio": 923.6590355543909
+      "patrimonio": 863.5942622122828
     },
     {
       "t": 1789873265000,
-      "patrimonio": 906.9850227841831
+      "patrimonio": 847.7863663670964
     },
     {
       "t": 1789876993000,
-      "patrimonio": 912.1556344621515
+      "patrimonio": 852.8981038761312
     },
     {
       "t": 1789881636000,
-      "patrimonio": 911.6405680994567
+      "patrimonio": 852.4788700329462
     },
     {
       "t": 1789885282000,
-      "patrimonio": 912.0307521016163
+      "patrimonio": 853.5137293657164
     },
     {
       "t": 1789889755000,
-      "patrimonio": 898.4615723277598
+      "patrimonio": 840.6993845353268
     },
     {
       "t": 1789893548000,
-      "patrimonio": 892.7814594466045
+      "patrimonio": 835.1084495931134
     },
     {
       "t": 1789897591000,
-      "patrimonio": 884.923594107758
+      "patrimonio": 827.8206731776222
     },
     {
       "t": 1789901533000,
-      "patrimonio": 865.0315632863164
+      "patrimonio": 808.8588607168667
     },
     {
       "t": 1789905895000,
-      "patrimonio": 867.9725167918251
+      "patrimonio": 811.6308643141479
     },
     {
       "t": 1789910582000,
-      "patrimonio": 871.0128960343758
+      "patrimonio": 814.4262956064242
     },
     {
       "t": 1789914631000,
-      "patrimonio": 872.4209028355433
+      "patrimonio": 815.7907450128127
     },
     {
       "t": 1789918570000,
-      "patrimonio": 873.870051203231
+      "patrimonio": 817.0696292501781
     },
     {
       "t": 1789922505000,
-      "patrimonio": 873.1471333710972
+      "patrimonio": 816.6903262447602
     },
     {
       "t": 1789926181000,
-      "patrimonio": 880.6327193886484
+      "patrimonio": 823.8499705308918
     },
     {
       "t": 1789930046000,
-      "patrimonio": 878.8541989481648
+      "patrimonio": 822.1622847588485
     },
     {
       "t": 1789933700000,
-      "patrimonio": 879.5474708319375
+      "patrimonio": 822.8206879186278
     },
     {
       "t": 1789937367000,
-      "patrimonio": 881.6906176342801
+      "patrimonio": 824.8091314503238
     },
     {
       "t": 1789941080000,
-      "patrimonio": 883.2434870921352
+      "patrimonio": 826.1892738956269
     },
     {
       "t": 1789945266000,
-      "patrimonio": 883.1458029235491
+      "patrimonio": 826.214166019676
     },
     {
       "t": 1789949568000,
-      "patrimonio": 882.713698306156
+      "patrimonio": 825.7483979560637
     },
     {
       "t": 1789953169000,
-      "patrimonio": 884.8753076200776
+      "patrimonio": 827.6106089716393
     },
     {
       "t": 1789957510000,
-      "patrimonio": 890.1466598829743
+      "patrimonio": 832.7754363729607
     },
     {
       "t": 1789961161000,
-      "patrimonio": 888.2628756447332
+      "patrimonio": 831.0831730586503
     },
     {
       "t": 1789966000000,
-      "patrimonio": 885.8694830956832
+      "patrimonio": 828.9855458552372
     },
     {
       "t": 1789969872000,
-      "patrimonio": 888.1465338570722
+      "patrimonio": 831.1237405804022
     },
     {
       "t": 1789973781000,
-      "patrimonio": 888.125179875932
+      "patrimonio": 831.2212382422952
     },
     {
       "t": 1789977631000,
-      "patrimonio": 889.6083813050288
+      "patrimonio": 832.6988387828377
     },
     {
       "t": 1789982138000,
-      "patrimonio": 894.4393075016683
+      "patrimonio": 837.119080811632
     },
     {
       "t": 1789986319000,
-      "patrimonio": 900.3164327006521
+      "patrimonio": 842.9051574108648
     },
     {
       "t": 1789990318000,
-      "patrimonio": 900.6277051062558
+      "patrimonio": 843.2682610726994
     },
     {
       "t": 1789994352000,
-      "patrimonio": 901.3685557698311
+      "patrimonio": 844.0129447777218
     },
     {
       "t": 1789998893000,
-      "patrimonio": 900.2115930870597
+      "patrimonio": 842.9393423520396
     },
     {
       "t": 1790002846000,
-      "patrimonio": 899.4035728002402
+      "patrimonio": 842.2102270095123
     },
     {
       "t": 1790006944000,
-      "patrimonio": 899.2868309609134
+      "patrimonio": 842.2119901502977
     },
     {
       "t": 1790010741000,
-      "patrimonio": 894.0062079138854
+      "patrimonio": 837.2629492803503
     },
     {
       "t": 1790014617000,
-      "patrimonio": 895.5246491973423
+      "patrimonio": 838.5019194203353
     },
     {
       "t": 1790019266000,
-      "patrimonio": 897.097739161381
+      "patrimonio": 839.933581582384
     },
     {
       "t": 1790023564000,
-      "patrimonio": 900.1359722099091
+      "patrimonio": 842.8325814541377
     },
     {
       "t": 1790027527000,
-      "patrimonio": 899.9362963743501
+      "patrimonio": 842.5641261176403
     },
     {
       "t": 1790031334000,
-      "patrimonio": 901.7220042779522
+      "patrimonio": 844.2923965961637
     },
     {
       "t": 1790035239000,
-      "patrimonio": 902.9294711419304
+      "patrimonio": 845.3010836208344
     },
     {
       "t": 1790038911000,
-      "patrimonio": 903.8513413195037
+      "patrimonio": 846.1966390396652
     },
     {
       "t": 1790042759000,
-      "patrimonio": 903.4337360505223
+      "patrimonio": 845.7231829084435
     },
     {
       "t": 1790046398000,
-      "patrimonio": 901.5829006365896
+      "patrimonio": 843.8696469944507
     },
     {
       "t": 1790050037000,
-      "patrimonio": 904.8225880525824
+      "patrimonio": 846.8917584390059
     },
     {
       "t": 1790054062000,
-      "patrimonio": 900.2074726133515
+      "patrimonio": 842.9131995463458
     },
     {
       "t": 1790058420000,
-      "patrimonio": 899.1254508738824
+      "patrimonio": 841.7455692487937
     },
     {
       "t": 1790062792000,
-      "patrimonio": 898.0184130073269
+      "patrimonio": 840.9259028528844
     },
     {
       "t": 1790066585000,
-      "patrimonio": 893.9976511310124
+      "patrimonio": 837.0504364754457
     },
     {
       "t": 1790070829000,
-      "patrimonio": 889.7906549703829
+      "patrimonio": 833.1663369508399
     },
     {
       "t": 1790075369000,
-      "patrimonio": 882.9261506095245
+      "patrimonio": 826.8414993455885
     },
     {
       "t": 1790079238000,
-      "patrimonio": 881.4662135750261
+      "patrimonio": 825.4624650379659
     },
     {
       "t": 1790083011000,
-      "patrimonio": 886.2752200247381
+      "patrimonio": 830.1036655190125
     }
-  ]
+  ],
+  "diagnostico": {
+    "desmentidas": 216,
+    "substituidas": 216,
+    "comImpacto": 107,
+    "semImpacto": 3,
+    "impactoMedio": 0.00033068633497439903,
+    "impactoMaximo": 0.0007535983513491808
+  }
 }

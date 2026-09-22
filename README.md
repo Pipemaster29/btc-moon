@@ -277,10 +277,49 @@ a TUT, a 12,5% de preço, metade do stop —, então as duas leituras dão o mes
 patrimônio. É um freio que ainda não foi acionado, e o script imprime os dois
 números lado a lado para continuar sendo possível ver qual é qual.
 
+São **duas resoluções**, e a fina é a que importa. A vela que contém a entrada é
+descartada de propósito — ela carrega os minutos anteriores à posição existir, e
+herdar a mínima deles inventaria uma perda, que é pior do que uma perda não
+vista. Com vela de uma hora isso cega o motor por até sessenta minutos logo
+depois de abrir, que é justamente quando estas moedas mais andam: a call saiu
+porque alguma coisa acabou de acontecer. 1500 velas de quinze minutos cobrem
+15,6 dias e a carteira já tem 20, então vão as duas — quinze minutos onde
+alcançam, uma hora antes disso —, e a cegueira de entrada cai de 60 para 15
+minutos.
+
 As velas vêm do perpétuo e os preços da carteira vêm do retrato, que prefere a
 pool à vista onde ela existe. O caminho é **ancorado** pela razão entre os dois
 — medida entre 0,96 e 1,08 nessas 16 posições — e recusado inteiro fora da faixa
 de 0,8 a 1,25: uma razão de 1,4 não é base de mercado, é outra moeda.
+
+**E aí estava o bug mais caro que esta carteira teve.** A âncora recusava o
+CAMINHO e o motor caía no teste de ponta usando **o mesmo preço recusado** para
+marcar a posição, disparar stop e alvo, e abrir posição nova. O freio julgava o
+preço numa metade do código e a outra metade nem sabia que havia julgamento.
+
+A **HEI**, 13/09 às 00h20: o retrato gravou US$ 0,1933 com o perpétuo em
+US$ 0,11606 — razão de 1,67, uma impressão ruim de pool. A posição fechou no
+**alvo a +205,1% da margem**. O alvo é +40% de preço, que a 3x são +120%: ordem
+parada em +40% não executa em +68%, e o preço nem existiu na praça onde esta
+carteira opera. Era o maior ganho do livro inteiro e era inventado.
+
+Não era caso isolado: medidas as 43.156 linhas que têm vela para comparar, 225
+estão fora da faixa — e **211 delas são da HEI**, cuja pool descola do perpétuo
+em 15,6% dos retratos. Hoje a leitura desmentida é marcada pelo preço do
+perpétuo, convertido pela última âncora aceita daquela moeda, e **não abre
+posição nenhuma**: ela serve para não deixar uma posição de pé congelada no
+escuro, e não para começar uma. O número está no terminal e na tela.
+
+**E dentro da vela, quem está mais perto da entrada dispara primeiro.** O motor
+testava liquidação antes de stop, sob o argumento de que a vela diz onde o preço
+esteve e não em que ordem — supor o pior seria conservador. O argumento vale
+entre stop e alvo, que ficam em lados **opostos** da entrada. Não vale entre
+stop e liquidação, que ficam do mesmo lado, um atrás do outro: preço dentro de
+uma barra é contínuo, e para chegar à liquidação vindo de cima ele **cruzou o
+stop no caminho**. A **SIREN**, 09/09 às 22h, abriu a vela em 0,02805 — bem
+acima do stop em 0,021487 — e desceu até 0,01745. Fechava a −100%; hoje sai no
+stop, a −79%. Vinte e um pontos de margem na pior linha do livro. O salto de
+verdade — a vela que **abre** já além do nível — continua liquidando.
 
 **Ela começa hoje, não sobre o histórico.** Rodar o motor para trás sobre os dois
 meses gravados daria um número imediato e enganoso: as regras do painel foram
@@ -288,11 +327,35 @@ ajustadas ao longo desses dois meses — o freio de perfil, o de emissão, a tra
 de alta — e todas foram escritas depois de ver os dados. Um resultado
 retrospectivo mediria o quanto eu ajustei o painel olhando para o passado.
 
-**O que a conta não cobra, e cada um empurra o número para cima:** a diferença
-entre o preço do retrato e o preço em que a ordem de ENTRADA sairia — a saída
-deixou de ter esse problema —, e a profundidade real da pool, já que o custo é
-0,15% por lado, fixo, e numa pool de dois mil dólares uma ordem de sessenta já
-move mais que isso.
+**O que a conta não cobra, e empurra o número para cima:** a diferença entre o
+preço do retrato e o preço em que a ordem de ENTRADA sairia — a saída deixou de
+ter esse problema.
+
+**A profundidade saiu dessa lista, e o motivo é que o exemplo antigo media a
+praça errada.** Ele dizia "numa pool de dois mil dólares uma ordem de sessenta
+já move mais que 0,15%" — mas esta carteira é **perpétuo**, e quem serve a ordem
+dela é o livro da Binance, não a pool à vista. Medido no livro certo, o volume
+por hora nestas moedas tem mediana de US$ 270 mil e a ordem desta conta pesa
+0,006% dele no decil de cima. O custo agora carrega um termo de impacto —
+`σ × √(Q/V)`, a lei da raiz, com a amplitude da própria barra —, e ele cobra
+**0,033% na média contra os 0,15% fixos**, com máximo de 0,075%: cerca de um
+quinto, real e não dominante.
+
+O que esse termo acrescenta não é o tamanho de hoje. É o custo passar a **saber
+do tamanho**: fixo em 0,15%, uma carteira de mil e uma de um milhão pagariam o
+mesmo por ordem na mesma moeda, o que é falso e sempre para o lado que favorece
+o resultado. Com o termo, a conta que crescer encontra o freio sozinha, na moeda
+rala antes da grossa.
+
+**O financiamento também deixou de ser aproximação.** Ele era cobrado de forma
+contínua, pro rata das horas; a Binance liquida em três instantes por dia —
+00:00, 08:00 e 16:00 UTC — e cobra de quem está com a posição de pé naquele
+instante. Quem abre às 08h10 e fecha às 15h50 não paga nada; quem abre às 07h50
+e fecha às 08h10 paga um período inteiro. Medido nas 104 posições: no agregado
+os dois modelos empatam (722,95 períodos contra 723), e **cada linha** erra até
+0,89 de período, com 42 das 104 vivendo menos de oito horas. Não muda o
+patrimônio e muda cada posição — é a regra da corretora em vez de uma
+aproximação dela.
 
 ## O ciclo, em quatro estágios
 

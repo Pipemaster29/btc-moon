@@ -341,6 +341,206 @@ console.log("\n--- o caminho entre os retratos, com velas ---");
   );
 }
 
+console.log("\n--- o perpétuo desmentindo o retrato (a HEI de 13/09) ---");
+{
+  // O BUG MAIS CARO QUE A CARTEIRA TINHA, e ele vivia na costura entre dois
+  // freios. A âncora recusava o caminho de velas quando o preço do retrato e o
+  // do perpétuo discordavam além de 0,8–1,25 — "não é base de mercado, é outra
+  // moeda". E aí o motor caía no teste de ponta E USAVA O MESMO PREÇO RECUSADO
+  // para marcar, disparar stop e alvo, e abrir posição.
+  //
+  // A HEI, 13/09 às 00h20: retrato em US$ 0,1933 com o perpétuo em US$ 0,11606,
+  // razão 1,67. Fechou no ALVO a +205,1% da margem — sendo que o alvo é +40% de
+  // preço, que a 3x é +120%. Foi o maior ganho do livro e o preço nunca existiu
+  // na praça em que esta carteira opera. Medido: 225 das 43.156 linhas com vela
+  // para comparar estão fora da faixa, 211 delas da HEI.
+  const velasBoas: Passo[] = [0, 1, 2, 3].map((i) => ({
+    abriuEm: h(i) * 1000,
+    fechouEm: h(i + 1) * 1000,
+    abertura: 1,
+    maxima: 1.01,
+    minima: 0.99,
+    fechamento: 1,
+  }));
+  const mentira: Emissao[] = [
+    { t: h(1), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    { t: h(2), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    // A pool imprime +67% enquanto o perpétuo não saiu de 1,00.
+    { t: h(3), s: "X", preco: 1.67, vies: "long", forca: 3, fund: 0 },
+  ];
+
+  // Sem vela para conferir, o motor não tem como saber e o alvo dispara — é o
+  // modo cego dele, e está certo que seja assim. Serve de contraste: é isto que
+  // acontecia COM vela também.
+  const cego = rodar(mentira, T0 * 1000);
+  confere(
+    "sem vela para conferir, o alvo dispara (o contraste)",
+    cego.fechadas[0]?.motivo === "alvo",
+    `${cego.fechadas[0]?.motivo ?? "aberta"}`,
+  );
+
+  const comVela = rodar(mentira, T0 * 1000, new Map([["X", velasBoas]]));
+  confere(
+    "o perpétuo desmente e o alvo NÃO dispara (era +205%)",
+    comVela.encerradas === 0 && comVela.abertas.length === 1,
+    `${comVela.encerradas} saída(s), ${comVela.abertas.length} aberta(s)`,
+  );
+  confere(
+    "a linha desmentida é contada e substituída pelo perpétuo",
+    comVela.diagnostico?.desmentidas === 1 &&
+      comVela.diagnostico?.substituidas === 1 &&
+      Math.abs((comVela.abertas[0]?.precoAtual ?? 0) - 1) < 1e-9,
+    `${comVela.diagnostico?.desmentidas} desmentida(s), marcada a ${comVela.abertas[0]?.precoAtual}`,
+  );
+
+  // E o preço derivado do perpétuo NÃO abre posição: ele é bom para não deixar
+  // uma posição de pé congelada no escuro, e não para começar uma.
+  const soMentira: Emissao[] = [
+    { t: h(1), s: "Y", preco: 1, vies: "observar", forca: null, fund: 0 },
+    { t: h(2), s: "Y", preco: 1, vies: "observar", forca: null, fund: 0 },
+    { t: h(3), s: "Y", preco: 1.67, vies: "long", forca: 3, fund: 0 },
+  ];
+  const naoAbre = rodar(soMentira, T0 * 1000, new Map([["Y", velasBoas]]));
+  confere(
+    "preço derivado marca, mas não abre posição",
+    naoAbre.abertas.length === 0,
+    `${naoAbre.abertas.length} aberta(s)`,
+  );
+}
+
+console.log("\n--- stop antes de liquidação quando o preço CAMINHOU (a SIREN) ---");
+{
+  // A SIREN, 09/09 às 22h. A vela abriu em 0,02805 — bem acima do stop em
+  // 0,021487 — e desceu até 0,01745, abaixo também da liquidação em 0,019243.
+  // O motor testava liquidação ANTES de stop dentro da vela, sob o argumento de
+  // que a vela não diz em que ordem o preço passou, e fechou a −100%.
+  //
+  // O argumento vale entre stop e alvo, que ficam em lados OPOSTOS da entrada.
+  // Não vale entre stop e liquidação, que ficam do mesmo lado, um atrás do
+  // outro: preço dentro de uma barra é contínuo, e vindo de cima ele cruzou o
+  // stop no caminho. A ordem parada foi servida em −25%, a −76% da margem.
+  // Vinte e quatro pontos de margem inventados na pior linha do livro.
+  const es: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    { t: h(3), s: "X", preco: 0.85, vies: "long", forca: 3, fund: 0 },
+  ];
+  const comoASiren: Passo[] = [
+    { abriuEm: h(0) * 1000, fechouEm: h(1) * 1000, abertura: 1, maxima: 1.01, minima: 0.99, fechamento: 1 },
+    // Abre em 0,98, MUITO acima do stop em 0,75, e mergulha a 0,62 — abaixo da
+    // liquidação, que com o custo de entrada fica em 0,6713.
+    { abriuEm: h(1) * 1000, fechouEm: h(2) * 1000, abertura: 0.98, maxima: 0.99, minima: 0.62, fechamento: 0.85 },
+    { abriuEm: h(2) * 1000, fechouEm: h(3) * 1000, abertura: 0.85, maxima: 0.86, minima: 0.84, fechamento: 0.85 },
+  ];
+  const r = rodar(es, T0 * 1000, new Map([["X", comoASiren]]));
+  const f = r.fechadas[0];
+  confere(
+    "caminhou até a liquidação: sai no STOP (era −100%)",
+    f?.motivo === "stop" && Math.abs((f?.precoSaida ?? 0) - (1 - STOP)) < 1e-9,
+    `${f?.motivo} a ${f?.precoSaida?.toFixed(4)} · ${((f?.retorno ?? 0) * 100).toFixed(1)}%`,
+  );
+
+  // E o contrário continua valendo, que é o que impede este conserto de virar um
+  // presente: quando a vela ABRE já além da liquidação houve salto, ninguém foi
+  // servido no stop, e quem fechou foi a corretora. É o caso que o bloco de
+  // cima já trava, repetido aqui do lado do seu oposto para os dois lerem juntos.
+  const comSalto: Passo[] = comoASiren.map((v, i) =>
+    i === 1 ? { ...v, abertura: 0.6, maxima: 0.6, minima: 0.55 } : v,
+  );
+  const liq = rodar(es, T0 * 1000, new Map([["X", comSalto]]));
+  confere(
+    "saltou por cima do stop e da liquidação: LIQUIDADA",
+    liq.fechadas[0]?.motivo === "liquidada" && liq.fechadas[0]?.retorno === -1,
+    `${liq.fechadas[0]?.motivo} a ${((liq.fechadas[0]?.retorno ?? 0) * 100).toFixed(0)}%`,
+  );
+}
+
+console.log("\n--- o financiamento cobrado quando a corretora cobra ---");
+{
+  // Não é contínuo, e era assim que estava modelado. A Binance liquida
+  // financiamento às 00:00, 08:00 e 16:00 UTC, de quem está com a posição de pé
+  // NAQUELE instante. Medido nas 104 posições da carteira, o agregado empata —
+  // 722,95 períodos contra 723 — e cada linha erra: até 0,89 de período, com 42
+  // das 104 vivendo menos de oito horas, que é a faixa em que o contínuo cobra
+  // uma fração de algo que na vida real é zero ou um.
+  const dia = Date.parse("2026-01-01T00:00:00Z") / 1000;
+  const em = (hh: number, mm: number) => dia + hh * 3600 + mm * 60;
+  const taxa = 0.001;
+
+  // Abre às 08h10 e fecha às 15h50: nenhuma marca no meio, nada a pagar. O
+  // modelo contínuo cobrava 7,67/8 de período — 0,288% da margem a 3x.
+  const entreMarcas = rodar(
+    [
+      { t: em(8, 10), s: "X", preco: 1, vies: "long", forca: 3, fund: taxa },
+      { t: em(15, 50), s: "X", preco: 1, vies: "observar", forca: null, fund: taxa },
+    ],
+    dia * 1000,
+  );
+  confere(
+    "7h40 inteiramente entre marcas não paga nada",
+    entreMarcas.fechadas[0]?.funding === 0,
+    `${((entreMarcas.fechadas[0]?.funding ?? -1) * 100).toFixed(3)}% da margem`,
+  );
+
+  // Abre às 07h50 e fecha às 08h10: vinte minutos que ATRAVESSAM a marca das
+  // 08h, e a corretora cobra o período inteiro. O contínuo cobrava 0,33/8.
+  const cruzaMarca = rodar(
+    [
+      { t: em(7, 50), s: "X", preco: 1, vies: "long", forca: 3, fund: taxa },
+      { t: em(8, 10), s: "X", preco: 1, vies: "observar", forca: null, fund: taxa },
+    ],
+    dia * 1000,
+  );
+  confere(
+    "20 min atravessando a marca pagam um período inteiro",
+    Math.abs((cruzaMarca.fechadas[0]?.funding ?? 0) - taxa * ALAVANCAGEM) < 1e-12,
+    `${((cruzaMarca.fechadas[0]?.funding ?? 0) * 100).toFixed(3)}% da margem`,
+  );
+}
+
+console.log("\n--- o impacto de mercado, que o custo fixo não sabia medir ---");
+{
+  // O topo de `lib/carteira.ts` listava PROFUNDIDADE como não modelada e citava
+  // uma pool à vista de dois mil dólares. Mas a carteira é perpétuo: quem serve
+  // a ordem dela é o livro da Binance. O termo é `σ × √(Q/V)`, com a amplitude
+  // da própria barra e o volume que ela negociou.
+  const es: Emissao[] = [{ t: h(1), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 }];
+  const barra = (dolares?: number): Passo[] => [
+    {
+      abriuEm: h(1) * 1000,
+      fechouEm: h(2) * 1000,
+      abertura: 1,
+      maxima: 1.05,
+      minima: 0.95,
+      fechamento: 1,
+      dolares,
+    },
+  ];
+  const grossa = rodar(es, T0 * 1000, new Map([["X", barra(1e9)]]));
+  const rala = rodar(es, T0 * 1000, new Map([["X", barra(1e4)]]));
+  const cega = rodar(es, T0 * 1000, new Map([["X", barra(undefined)]]));
+
+  const custoFixo = 2 * 0.0015 * ALAVANCAGEM;
+  confere(
+    "barra rala custa mais que barra grossa",
+    (rala.abertas[0]?.custo ?? 0) > (grossa.abertas[0]?.custo ?? 0),
+    `${((rala.abertas[0]?.custo ?? 0) * 100).toFixed(3)}% vs ${((grossa.abertas[0]?.custo ?? 0) * 100).toFixed(3)}%`,
+  );
+  confere(
+    "barra grossa fica perto do custo fixo",
+    Math.abs((grossa.abertas[0]?.custo ?? 0) - custoFixo) < 5e-4,
+    `${((grossa.abertas[0]?.custo ?? 0) * 100).toFixed(4)}% contra ${(custoFixo * 100).toFixed(2)}%`,
+  );
+  // Barra sem volume é "não consegui medir", não "não houve impacto": o custo
+  // fixo fica sozinho — o comportamento anterior — e a contagem diz quantas.
+  confere(
+    "barra sem volume não inventa impacto, e é contada",
+    Math.abs((cega.abertas[0]?.custo ?? 0) - custoFixo) < 1e-12 &&
+      cega.diagnostico?.semImpacto === 1 &&
+      cega.diagnostico?.comImpacto === 0,
+    `custo ${((cega.abertas[0]?.custo ?? 0) * 100).toFixed(2)}%, ${cega.diagnostico?.semImpacto} sem medida`,
+  );
+}
+
 console.log("\n--- quem entra quando o orçamento de risco acaba ---");
 {
   // 40 calls de força 1 (0,5% cada = 20%) chegando ANTES de 10 de força 3

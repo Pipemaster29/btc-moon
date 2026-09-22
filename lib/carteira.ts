@@ -26,9 +26,18 @@
  *                   segundos ou minutos depois, e numa moeda que anda 100% num
  *                   dia esses minutos custam. (A SAÍDA deixou de ter esse
  *                   problema — ver `Passo` abaixo.)
- *   PROFUNDIDADE    o custo de 0,15% por lado é uma estimativa fixa. Numa pool
- *                   de dois mil dólares — a C tem exatamente isso — uma ordem de
- *                   sessenta dólares já move o preço mais do que isso.
+ *
+ * E UMA QUE SAIU DESTA LISTA, porque virou número:
+ *
+ *   PROFUNDIDADE    era "o custo de 0,15% por lado é estimativa fixa", com o
+ *                   exemplo da pool à vista de dois mil dólares da C. O exemplo
+ *                   estava na praça errada: esta carteira é PERPÉTUO, e quem
+ *                   serve a ordem dela é o livro da Binance, não a pool.
+ *                   Medido no livro certo — ver `IMPACTO_MAXIMO` —, o volume
+ *                   por hora tem mediana de US$ 270 mil e a ordem desta conta
+ *                   pesa 0,006% dele no decil de cima. O termo de impacto
+ *                   entrou e cobra 0,033% na média contra os 0,15% fixos: cerca
+ *                   de um quinto, real e não dominante. Fica medido, não suposto.
  *
  * O que ELA MODELA e é fácil esquecer que precisa modelar: é PERPÉTUO a 3x, não
  * mercado à vista — ela opera vendido, e vendido não existe à vista. Então
@@ -60,6 +69,41 @@ export interface Aberta {
   /** Dólares alocados na entrada, já descontado o custo. */
   valor: number;
   forca: number;
+  /**
+   * Quanto do patrimônio ESTA posição arrisca até o stop, em fração.
+   *
+   * Era deduzido da FORÇA na hora de somar o risco agregado, e não do tamanho
+   * que a posição recebeu. Agora é medido: `valor × STOP × ALAVANCAGEM ÷
+   * patrimônio`, na hora da abertura. É o que a conta perde se esta posição
+   * bater no stop.
+   *
+   * E AQUI VAI A PARTE HONESTA: com as constantes de hoje isto não muda uma
+   * única posição, e dá para mostrar por quê em vez de esperar para ver. O
+   * tamanho só é apertado abaixo do orçamento quando o teto de margem ou o
+   * caixa mordem, e os dois vivem em 50% do patrimônio; 50% de margem a 3x com
+   * stop de 25% são 37,5% de risco agregado, bem acima do teto de 25%. Ou seja:
+   * toda posição que seria apertada já é RECUSADA pelo teto antes. Medido na
+   * carteira real, as doze abertas têm `risco` igual ao orçamento da força na
+   * casa do bilionésimo.
+   *
+   * Então isto é contabilidade que passou a estar certa, não resultado que
+   * mudou. Ela importa no dia em que `EXPOSICAO_MAXIMA`, `STOP` ou
+   * `ALAVANCAGEM` mudarem e as duas contas se separarem — e aí ela já está
+   * certa, em vez de descobrir o erro pelo número esquisito na tela.
+   */
+  risco: number;
+  /**
+   * Custo de ida e volta desta posição, em fração da MARGEM.
+   *
+   * Era a constante `2 × CUSTO × ALAVANCAGEM` para todo mundo. Virou campo
+   * porque o impacto de mercado depende da moeda e da hora: a mesma ordem de
+   * cem dólares é invisível numa barra de um milhão e não é numa de dez mil.
+   *
+   * Já vem com as DUAS pontas dentro, cobradas na abertura — é a mesma escolha
+   * conservadora de antes, e ela existe para a marcação a mercado não mostrar
+   * um lucro que a saída ainda vai comer.
+   */
+  custo: number;
   /** Último preço visto, para marcar a posição a mercado. */
   precoAtual: number;
   /** Retorno SOBRE A MARGEM, já alavancado e com custos e financiamento dentro. */
@@ -137,6 +181,17 @@ export interface Passo {
   maxima: number;
   minima: number;
   fechamento: number;
+  /**
+   * Quanto o perpétuo NEGOCIOU nesta barra, em dólares.
+   *
+   * Vem de graça na mesma resposta de velas que já era buscada, e responde a
+   * única coisa que o topo deste arquivo listava como não modelada e não dizia
+   * o tamanho: a PROFUNDIDADE. Ordem grande contra barra rala anda o preço.
+   *
+   * Opcional porque nem toda origem de vela o traz — e onde não vem, o custo
+   * fixo fica sozinho, que é exatamente o comportamento anterior.
+   */
+  dolares?: number;
 }
 
 export interface Fechada {
@@ -207,6 +262,13 @@ export interface Carteira {
   maiorRiscoAberto: number;
   /** O patrimônio ao longo do tempo, um ponto por hora no máximo. */
   curva: { t: number; patrimonio: number }[];
+  /**
+   * O que o motor recusou e o que ele não conseguiu medir.
+   *
+   * Opcional porque a página lê `data/carteira.json` do GitHub raw, que pode ter
+   * sido gravado antes deste campo existir.
+   */
+  diagnostico?: Diagnostico;
 }
 
 // ------------------------------------------------------------------ as regras
@@ -329,10 +391,70 @@ export const PRAZO_DIAS = 14;
 /**
  * Custo de ida e volta, por lado.
  *
- * 0,05% de taxa de taker mais 0,10% de escorregada. É estimativa, e a nota no
- * topo do arquivo diz por que ela é otimista nas moedas de pool rasa.
+ * 0,05% de taxa de taker mais 0,10% de escorregada. É estimativa, e ela é FIXA:
+ * não sabe do tamanho da ordem nem de quanto o mercado estava negociando na
+ * hora. O `IMPACTO_*` abaixo é a parte que sabe.
  */
 export const CUSTO = 0.0015;
+
+/**
+ * O IMPACTO DE MERCADO, que é a linha "PROFUNDIDADE" do topo deste arquivo
+ * finalmente virando número.
+ *
+ * O topo dizia que o custo de 0,15% ignora a profundidade e citava a pool à
+ * vista da C, de dois mil dólares. Mas a carteira é PERPÉTUO: quem serve a
+ * ordem dela é o livro da Binance, não a pool — e o livro da Binance é outra
+ * ordem de grandeza. Medir na praça errada teria inflado o custo por um
+ * fenômeno que não acontece nesta.
+ *
+ * O modelo é a lei da raiz, que é o padrão da literatura de microestrutura:
+ * o impacto anda com a VOLATILIDADE da barra e com a RAIZ da participação —
+ * `σ × √(Q/V)`, com Q o nocional da ordem e V o que a barra negociou. Ela é um
+ * modelo e não uma medição deste livro: não há execução real aqui para
+ * calibrar, e a constante multiplicativa fica em 1.
+ *
+ * MEDIDO PELO PRÓPRIO MOTOR, nas 107 aberturas de 110 que tinham barra legível
+ * (as outras 3 caem no custo fixo sozinho e são contadas, não zeradas):
+ *
+ *   volume por hora do perpétuo   p10 US$ 67 mil · mediana US$ 270 mil · p90 US$ 1,1 mi
+ *   nocional da ordem ÷ volume    p90 0,0061%
+ *   impacto cobrado               médio 0,0331% · máximo 0,0754%
+ *
+ * Ou seja: numa conta de mil dólares o impacto é cerca de um QUINTO do custo
+ * fixo de 0,15% por ponta. Não é dominante e não é desprezível — na margem, com
+ * as duas pontas e a alavancagem, ele leva o custo de 0,90% para 1,01% a 1,27%.
+ *
+ * E o que ele acrescenta de verdade não é o tamanho de hoje: é o custo passar a
+ * SABER do tamanho. Fixo em 0,15%, uma carteira de mil e uma de um milhão
+ * pagariam o mesmo por ordem na mesma moeda, o que é falso e sempre para o lado
+ * que favorece o resultado. Com o termo, a conta que crescer encontra o freio
+ * sozinha, na moeda rala antes da grossa.
+ */
+export const IMPACTO_MAXIMO = 0.05;
+
+/**
+ * De quantas em quantas horas a corretora cobra o financiamento.
+ *
+ * NÃO É CONTÍNUO, e era assim que estava modelado. A Binance liquida
+ * financiamento em três instantes por dia — 00:00, 08:00 e 16:00 UTC — e cobra
+ * de quem está com a posição de pé NAQUELE instante. Quem abre às 08h10 e fecha
+ * às 15h50 não paga nada; quem abre às 07h50 e fecha às 08h10 paga um período
+ * inteiro.
+ *
+ * MEDIDO NAS 104 POSIÇÕES da carteira, o modelo contínuo contra o real: no
+ * agregado eles empatam — 722,95 períodos contra 723 —, mas POSIÇÃO A POSIÇÃO
+ * a diferença vai de −0,43 a +0,51 no decil, com pior caso de 0,89 de período.
+ * E 42 das 104 viveram menos de oito horas, que é a faixa em que o contínuo
+ * cobra uma fração de algo que na vida real é zero ou um.
+ *
+ * Então isto não muda o patrimônio e muda cada linha — que é a definição de
+ * precisão, e o motivo de entrar: é a regra da corretora, não uma aproximação
+ * dela, e custa dez linhas.
+ *
+ * As marcas caem exatamente nos múltiplos de oito horas desde a época UNIX,
+ * que começa à meia-noite UTC — é por isso que contá-las é uma divisão.
+ */
+export const PERIODO_FUNDING = 8 * 3_600_000;
 
 /**
  * Salto de preço entre dois retratos que só pode ser erro de dado.
@@ -420,14 +542,32 @@ interface Estado {
    * quando o viés dela sair daquele lado — aí é call nova, não a mesma.
    */
   queimadas: Map<string, Lado>;
-  /** Multiplicador do orçamento de risco. 1 é a régua publicada. */
-  escala: number;
   /** O maior patrimônio já visto, e a maior queda a partir dele. */
   pico: number;
   quedaMaxima: number;
   maiorExposicao: number;
   maiorRiscoAberto: number;
   curva: { t: number; patrimonio: number }[];
+  diag: Diagnostico;
+}
+
+/**
+ * O que o motor teve de RECUSAR ou não conseguiu medir.
+ *
+ * Existe porque a regra deste projeto é que "não achei" e "não consegui" não
+ * podem terminar no mesmo lugar, e o jeito de isso não virar letra morta é o
+ * número aparecer na tela toda vez que o motor roda.
+ */
+export interface Diagnostico {
+  /** Linhas em que o perpétuo desmentiu o preço do retrato. */
+  desmentidas: number;
+  /** Dessas, quantas foram substituídas pelo preço do perpétuo. */
+  substituidas: number;
+  /** Aberturas com barra legível, e o impacto que elas cobraram. */
+  comImpacto: number;
+  semImpacto: number;
+  impactoMedio: number;
+  impactoMaximo: number;
 }
 
 /**
@@ -455,10 +595,11 @@ function marcar(estado: Estado, quando: number): void {
     }
   }
 
-  const risco = [...estado.abertas.values()].reduce(
-    (s, p) => s + (RISCO_POR_FORCA[p.forca] ?? 0) * estado.escala,
-    0,
-  );
+  // O risco de cada posição é o que ELA arrisca, e não o que a força dela
+  // pediria: quando o teto de margem ou o caixa apertam o tamanho, a posição
+  // arrisca menos do que o orçamento reservou. Somar o orçamento inflava este
+  // número e, pior, fazia o teto agregado recusar calls que cabiam.
+  const risco = [...estado.abertas.values()].reduce((s, p) => s + p.risco, 0);
   if (risco > estado.maiorRiscoAberto) estado.maiorRiscoAberto = risco;
 
   // Um ponto por hora no máximo: o motor roda sobre todos os retratos, e são de
@@ -487,7 +628,46 @@ function aFavor(p: { lado: Lado; precoEntrada: number }, preco: number): number 
  * Esquecer isso é o erro que faz backtest alavancado parecer melhor do que é.
  */
 function sobreMargem(p: Aberta, preco: number): number {
-  return aFavor(p, preco) * ALAVANCAGEM - 2 * CUSTO * ALAVANCAGEM - p.funding;
+  return aFavor(p, preco) * ALAVANCAGEM - custoDe(p) - p.funding;
+}
+
+/**
+ * O custo de ida e volta da posição, em fração da margem.
+ *
+ * Lê o campo, com a constante antiga como piso — e o piso não é zelo: a página
+ * lê `data/carteira.json` do GitHub raw, que pode ter sido gravado por uma
+ * execução anterior a este campo existir. Sem o `??`, `remarcar` devolveria
+ * `NaN` no navegador e o painel inteiro sumiria — e `NaN` fura guarda, então
+ * ele sumiria em silêncio.
+ */
+function custoDe(p: Aberta): number {
+  return Number.isFinite(p.custo) ? p.custo : 2 * CUSTO * ALAVANCAGEM;
+}
+
+/**
+ * O impacto de mercado de uma ordem, em fração do PREÇO e por ponta.
+ *
+ * `σ × √(Q/V)`: a amplitude da própria barra como volatilidade, a raiz da
+ * participação como tamanho. A nota de `IMPACTO_MAXIMO` tem a medição e o
+ * porquê de o modelo olhar o perpétuo e não a pool.
+ *
+ * Devolve `null` quando a barra não dá para ler — volume ausente, zerado ou
+ * amplitude não finita. `null` e não zero: "não consegui medir" e "não houve
+ * impacto" são coisas diferentes, e quem chama soma zero a mais sobre o custo
+ * fixo e CONTA quantas ficaram assim, em vez de fingir que mediu.
+ */
+export function impactoDe(nocional: number, v: Passo): number | null {
+  const volume = v.dolares;
+  if (volume == null || !Number.isFinite(volume) || volume <= 0) return null;
+  if (!(nocional > 0) || !Number.isFinite(nocional)) return null;
+  const amplitude = (v.maxima - v.minima) / v.fechamento;
+  if (!Number.isFinite(amplitude) || amplitude <= 0) return null;
+  const i = amplitude * Math.sqrt(nocional / volume);
+  if (!Number.isFinite(i)) return null;
+  // O teto é guarda de absurdo e não escolha de modelo: uma barra que negociou
+  // dez dólares faria a raiz explodir. O maior impacto medido nas posições
+  // reais é 0,105%, quinhentas vezes abaixo daqui.
+  return Math.min(i, IMPACTO_MAXIMO);
 }
 
 /**
@@ -512,7 +692,7 @@ function precoDeLiquidacao(lado: Lado, entrada: number): number {
  * também faz.
  */
 function precoNoRetorno(p: Aberta, retorno: number): number {
-  const favor = (retorno + 2 * CUSTO * ALAVANCAGEM + p.funding) / ALAVANCAGEM;
+  const favor = (retorno + custoDe(p) + p.funding) / ALAVANCAGEM;
   return p.lado === "long" ? p.precoEntrada * (1 + favor) : p.precoEntrada * (1 - favor);
 }
 
@@ -527,13 +707,34 @@ function precoNoRetorno(p: Aberta, retorno: number): number {
  * com o relógio, não com a cotação.
  */
 function cobrarFunding(p: Aberta, ate: number, taxa: number): void {
-  const horas = (ate - p.ultimoFunding) / 3_600_000;
-  if (!(horas > 0) || !Number.isFinite(taxa)) return;
+  if (!(ate > p.ultimoFunding) || !Number.isFinite(taxa)) return;
   p.ultimaTaxa = taxa;
+  const periodos = periodosDeFunding(p.ultimoFunding, ate);
   // Positiva, o comprado paga; negativa, o vendido paga. Vezes a alavancagem
   // porque a taxa incide sobre o NOCIONAL e `funding` é fração da margem.
-  p.funding += (horas / 8) * taxa * (p.lado === "long" ? 1 : -1) * ALAVANCAGEM;
+  if (periodos > 0) p.funding += periodos * taxa * (p.lado === "long" ? 1 : -1) * ALAVANCAGEM;
+  // O relógio avança MESMO QUANDO NÃO HOUVE COBRANÇA, e isso não é detalhe: é
+  // `ultimoFunding` que o caminho de velas usa para não percorrer a mesma vela
+  // duas vezes. Parar de avançá-lo nas janelas curtas — que são a maioria, com
+  // retratos de 22 em 22 minutos — reprocessaria vela já percorrida.
   p.ultimoFunding = ate;
+}
+
+/**
+ * Quantas cobranças de financiamento caem no intervalo `(de, ate]`.
+ *
+ * As marcas de 00:00, 08:00 e 16:00 UTC são exatamente os múltiplos de oito
+ * horas desde a época UNIX, porque ela começa à meia-noite UTC e o tempo UNIX
+ * não tem segundo bissexto. Então contar marcas é dividir e subtrair, sem
+ * calendário e sem fuso no meio.
+ *
+ * O intervalo é ABERTO no começo e FECHADO no fim porque `ultimoFunding` marca
+ * "já cobrado até aqui": a marca que cai exatamente no instante da abertura não
+ * é paga por quem acabou de entrar.
+ */
+export function periodosDeFunding(de: number, ate: number): number {
+  if (!Number.isFinite(de) || !Number.isFinite(ate) || !(ate > de)) return 0;
+  return Math.floor(ate / PERIODO_FUNDING) - Math.floor(de / PERIODO_FUNDING);
 }
 
 /**
@@ -558,16 +759,21 @@ function ancora(precoRetrato: number, fechamentoVela: number): number | null {
  * Percorre o caminho entre o retrato anterior e este, e fecha onde a ordem teria
  * de fato executado. Devolve `true` quando a posição saiu no meio do caminho.
  *
- * A ORDEM DOS TESTES DENTRO DE UMA VELA É A DO PIOR CASO — liquidação, stop,
- * alvo —, porque a vela diz onde o preço esteve e não em que ordem. Supor que
- * ele tocou o stop antes do alvo é a suposição conservadora, e é a mesma que o
- * teste de ponta já fazia.
+ * A ORDEM DOS TESTES DENTRO DE UMA VELA SAI DA ABERTURA, e não de uma lista
+ * fixa. Era fixa — liquidação, stop, alvo — sob o argumento de que a vela diz
+ * onde o preço esteve e não em que ordem, então supor o pior é conservador.
  *
- * O preço de saída é o NÍVEL DA ORDEM, não o extremo da vela: quem tem stop
- * parado em −25% sai em −25%, não na mínima do candle. A exceção é a vela que
- * ABRE já do outro lado do nível — aí houve salto, ninguém foi servido no nível,
- * e o preenchimento é na abertura. Para o stop isso é pior que o nível e para o
- * alvo é melhor, que é exatamente como o salto trata os dois na vida real.
+ * O argumento vale para stop CONTRA alvo, que ficam em lados opostos da
+ * entrada: aí a vela realmente não diz quem veio primeiro. E não vale para stop
+ * contra liquidação, que ficam do MESMO lado, um atrás do outro. Preço dentro de
+ * uma barra é contínuo: para chegar à liquidação vindo de cima, ele cruzou o
+ * stop. Testar a liquidação primeiro não era conservador, era impossível — e
+ * custou a margem inteira da SIREN onde o stop cobrava 76%.
+ *
+ * Então: se a vela ABRIU além de um nível, houve salto, ninguém foi servido no
+ * nível e o preenchimento é na abertura. Se ela abriu ENTRE os níveis, o preço
+ * caminhou até eles e a ordem parada foi servida NO NÍVEL — quem tem stop em
+ * −25% sai em −25%, não na mínima do candle.
  */
 function percorrer(
   estado: Estado,
@@ -617,28 +823,65 @@ function percorrer(
         : comprado
           ? favor >= nivel
           : favor <= nivel;
-    // Salto por cima do nível: ninguém foi servido nele, o preenchimento é na
-    // abertura da vela.
-    const preenche = (nivel: number, lado: "contra" | "favor") =>
+    const nivelLiq = precoNoRetorno(p, -1 + MARGEM_MANUTENCAO);
+    // A vela abriu JÁ do outro lado deste nível?
+    const saltou = (nivel: number, lado: "contra" | "favor") =>
       lado === "contra"
         ? comprado
-          ? Math.min(abertura, nivel)
-          : Math.max(abertura, nivel)
+          ? abertura < nivel
+          : abertura > nivel
         : comprado
-          ? Math.max(abertura, nivel)
-          : Math.min(abertura, nivel);
+          ? abertura > nivel
+          : abertura < nivel;
 
-    const nivelLiq = precoNoRetorno(p, -1 + MARGEM_MANUTENCAO);
-    if (tocou(nivelLiq, "contra")) {
-      fechar(estado, p, preenche(nivelLiq, "contra"), v.fechouEm, "liquidada");
+    // ------------------------------------------------------------- (a) salto
+    //
+    // A abertura já está do outro lado de um nível: ninguém foi servido nele e
+    // o preenchimento é na abertura. Entre os três, decide o que a abertura
+    // ultrapassou de mais longe — a abertura é UM instante e não pode disparar
+    // duas ordens.
+    if (saltou(nivelLiq, "contra")) {
+      fechar(estado, p, abertura, v.fechouEm, "liquidada");
       return true;
     }
-    if (tocou(nivelStop, "contra")) {
-      fechar(estado, p, preenche(nivelStop, "contra"), v.fechouEm, "stop");
+    if (saltou(nivelStop, "contra")) {
+      fechar(estado, p, abertura, v.fechouEm, "stop");
+      return true;
+    }
+    if (saltou(nivelAlvo, "favor")) {
+      fechar(estado, p, abertura, v.fechouEm, "alvo");
+      return true;
+    }
+
+    // ------------------------------------------------------- (b) sem salto
+    //
+    // A abertura está ENTRE os níveis, e o preço dentro de uma barra é
+    // contínuo: para chegar a qualquer lugar além de um nível, ele passou pelo
+    // nível. Quem estiver mais perto da entrada dispara primeiro, e isso é o
+    // conserto de um erro que custava a margem inteira.
+    //
+    // A SIREN, 09/09 às 22h: a vela abriu em 0,02805, BEM acima do stop em
+    // 0,021487, e desceu até 0,01745 — abaixo também da liquidação em 0,019243.
+    // O motor testava liquidação antes de stop e fechava a −100%. Mas o preço
+    // veio de cima: ele cruzou o stop no caminho, e ordem parada em 0,021487 foi
+    // servida lá, a −76%. Vinte e quatro pontos de margem inventados numa
+    // posição só, e era a pior linha do livro inteiro.
+    //
+    // A ordem sai da DISTÂNCIA e não está escrita à mão de propósito: hoje o
+    // stop de 25% fica sempre antes da liquidação de 33,2%, e é exatamente isso
+    // que o teto de 3x existe para garantir. No dia em que alguém mexer num dos
+    // dois sem mexer no outro, a liquidação passa a vir primeiro e este bloco
+    // acompanha, em vez de continuar afirmando a ordem antiga.
+    const primeiroContra =
+      Math.abs(nivelLiq - p.precoEntrada) < Math.abs(nivelStop - p.precoEntrada)
+        ? ([nivelLiq, "liquidada"] as const)
+        : ([nivelStop, "stop"] as const);
+    if (tocou(primeiroContra[0], "contra")) {
+      fechar(estado, p, primeiroContra[0], v.fechouEm, primeiroContra[1]);
       return true;
     }
     if (tocou(nivelAlvo, "favor")) {
-      fechar(estado, p, preenche(nivelAlvo, "favor"), v.fechouEm, "alvo");
+      fechar(estado, p, nivelAlvo, v.fechouEm, "alvo");
       return true;
     }
     if ((v.fechouEm - p.abertaEm) / 86_400_000 >= PRAZO_DIAS) {
@@ -681,6 +924,57 @@ function fechar(estado: Estado, p: Aberta, preco: number, quando: number, motivo
 }
 
 /**
+ * Por quanto tempo um fechamento de vela continua servindo de segunda opinião
+ * sobre o preço.
+ *
+ * As velas são de 15 min ou de 1h e os retratos saem de 22 em 22 minutos, então
+ * o fechamento mais recente tem no máximo pouco mais de uma hora. Quatro horas
+ * deixa passar um buraco de duas ou três velas sem desligar a conferência, e
+ * ainda impede que um perpétuo que PAROU de imprimir — deslistado, em halt —
+ * fique vetando retrato com um fechamento de ontem.
+ */
+const VALIDADE_ANCORA = 4 * 3_600_000;
+
+/**
+ * Lê o caminho de velas de cada moeda em ordem de tempo, sem varrer tudo de novo
+ * a cada retrato.
+ *
+ * Os lotes são processados em ordem crescente, então um cursor por moeda anda
+ * junto com eles. Sem isso a conferência de âncora seria uma varredura por moeda
+ * por retrato — 1.349 retratos × 33 moedas × 500 velas.
+ */
+function leitorDeCaminho(caminho?: Map<string, Passo[]>) {
+  const ordenado = new Map<string, Passo[]>();
+  if (caminho) {
+    for (const [s, v] of caminho) ordenado.set(s, [...v].sort((a, b) => a.fechouEm - b.fechouEm));
+  }
+  const cursor = new Map<string, number>();
+  return {
+    velas: (s: string): Passo[] => ordenado.get(s) ?? [],
+    /** A última vela FECHADA até `ate`, ou `null` se ainda não houve nenhuma. */
+    ultima(s: string, ate: number): Passo | null {
+      const v = ordenado.get(s);
+      if (!v || v.length === 0) return null;
+      let i = cursor.get(s) ?? 0;
+      while (i + 1 < v.length && v[i + 1].fechouEm <= ate) i++;
+      if (v[i].fechouEm > ate) return null;
+      cursor.set(s, i);
+      return v[i];
+    },
+    /** A vela que CONTÉM este instante — é nela que a ordem seria executada. */
+    contendo(s: string, quando: number): Passo | null {
+      const v = ordenado.get(s);
+      if (!v) return null;
+      for (let i = v.length - 1; i >= 0; i--) {
+        if (v[i].abriuEm <= quando && quando < v[i].fechouEm) return v[i];
+        if (v[i].fechouEm <= quando) return null;
+      }
+      return null;
+    },
+  };
+}
+
+/**
  * Roda as emissões cronologicamente e devolve o estado da carteira.
  *
  * As emissões chegam em LOTES — o retrato grava todas as moedas com o mesmo
@@ -704,13 +998,26 @@ export function rodar(
     abertas: new Map(),
     fechadas: [],
     queimadas: new Map(),
-    escala,
     pico: CAPITAL_INICIAL,
     quedaMaxima: 0,
     maiorExposicao: 0,
     maiorRiscoAberto: 0,
     curva: [],
+    diag: {
+      desmentidas: 0,
+      substituidas: 0,
+      comImpacto: 0,
+      semImpacto: 0,
+      impactoMedio: 0,
+      impactoMaximo: 0,
+    },
   };
+
+  const leitor = leitorDeCaminho(caminho);
+  // A última razão ACEITA entre o preço do retrato e o fechamento do perpétuo,
+  // por moeda. É ela que traduz um preço do perpétuo para a escala em que esta
+  // carteira abriu a posição, quando o retrato do instante não serve.
+  const ancoraBoa = new Map<string, number>();
 
   const uteis = emissoes
     .filter((e) => e.t * 1000 >= comecouEm && e.preco > 0 && Number.isFinite(e.preco))
@@ -736,6 +1043,10 @@ export function rodar(
     const preco = new Map<string, number>();
     const vies = new Map<string, string | null>();
     const fund = new Map<string, number>();
+    // Preços que vieram do PERPÉTUO porque o retrato não serviu. Eles marcam e
+    // fecham posição, e não abrem nenhuma — ver o bloco logo abaixo.
+    const derivado = new Set<string>();
+
     for (const e of lote) {
       const antes = ultimoBom.get(e.s);
       const absurdo =
@@ -745,8 +1056,53 @@ export function rodar(
       // no último preço bom e espera o retrato seguinte, que é o que aconteceria
       // se a leitura simplesmente tivesse falhado — e é o que ela de fato é.
       if (absurdo) continue;
-      ultimoBom.set(e.s, e.preco);
-      preco.set(e.s, e.preco);
+
+      // ------------------------------------------- O PERPÉTUO DESMENTE O RETRATO
+      //
+      // A âncora existia SÓ dentro do caminho de velas: lá, uma razão fora de
+      // 0,8–1,25 entre o preço do retrato e o do perpétuo fazia o caminho
+      // inteiro ser descartado, porque "não é base de mercado, é outra moeda".
+      //
+      // E aí o motor caía no teste de ponta E USAVA EXATAMENTE ESSE PREÇO para
+      // marcar, disparar stop e alvo, e abrir posição. O freio existia numa
+      // metade do caminho e não existia na outra, que é o formato de erro que o
+      // AGENTS.md lista como armadilha 7.
+      //
+      // O PREÇO DISSO: a HEI, 13/09 às 00h20. O retrato gravou US$ 0,1933 com o
+      // perpétuo em US$ 0,11606 — razão de 1,67, uma impressão ruim de pool. A
+      // âncora recusou o caminho, o teste de ponta leu +68,7% de preço e fechou
+      // no ALVO a +205,1% da margem. O alvo é +40% de preço, ou seja +120% da
+      // margem: ordem parada em +40% não executa em +68%, e o preço nem existiu.
+      // Foi o maior ganho do livro inteiro e ele é inventado.
+      //
+      // NÃO É CASO ISOLADO: medidas as 43.156 linhas com vela para comparar, 225
+      // estão fora da faixa (0,52%) — e 211 delas são da HEI, cuja pool descola
+      // do perpétuo em 15,6% dos retratos.
+      const ref = leitor.ultima(e.s, quando);
+      const fresca = ref !== null && quando - ref.fechouEm <= VALIDADE_ANCORA;
+      const k = fresca ? ancora(e.preco, ref!.fechamento) : null;
+
+      let usar = e.preco;
+      if (fresca && k === null) {
+        estado.diag.desmentidas++;
+        // A POSIÇÃO ABERTA NÃO PODE SIMPLESMENTE CONGELAR. Descartar a linha
+        // seria coerente com o `SALTO_ABSURDO`, mas aqui existe coisa melhor do
+        // que descartar: o preço do perpétuo, que é a praça em que esta carteira
+        // de fato opera. Ele entra convertido pela última razão ACEITA daquela
+        // moeda — na HEI essa razão é 1,0000 em retrato após retrato —, para
+        // ficar na mesma escala em que a posição foi aberta.
+        const escalaBoa = ancoraBoa.get(e.s);
+        if (escalaBoa === undefined) continue;
+        usar = ref!.fechamento * escalaBoa;
+        if (!(usar > 0) || !Number.isFinite(usar)) continue;
+        derivado.add(e.s);
+        estado.diag.substituidas++;
+      } else if (k !== null) {
+        ancoraBoa.set(e.s, k);
+      }
+
+      ultimoBom.set(e.s, usar);
+      preco.set(e.s, usar);
       vies.set(e.s, e.vies);
       if (e.fund != null && Number.isFinite(e.fund)) fund.set(e.s, e.fund);
     }
@@ -831,8 +1187,28 @@ export function rodar(
       // A ordem dos testes é a ordem do pior caso: dentro de um intervalo entre
       // retratos o preço passou por lugares que não vemos, e supor que ele
       // tocou o stop antes do alvo é a suposição conservadora.
-      if (varPreco <= -STOP) fechar(estado, p, atual, quando, "stop");
-      else if (varPreco >= ALVO) fechar(estado, p, atual, quando, "alvo");
+      //
+      // MAS O PREÇO DE SAÍDA É O NÍVEL DA ORDEM, e não o preço do retrato — o
+      // teste de ponta fechava em `atual` e isso é outra coisa. Uma ordem de
+      // realização parada em +40% não executa em +68% porque o retrato seguinte
+      // apareceu lá; ela executou em +40%, no caminho. Fechar em `atual` dava ao
+      // alvo o movimento inteiro e ao stop a queda inteira — otimista de um lado,
+      // pessimista do outro, e errado nos dois.
+      //
+      // É a MESMA regra que o caminho de velas já aplica vinte linhas acima. A
+      // diferença é que lá dá para distinguir caminhada de salto pela abertura da
+      // vela, e aqui não dá: entre duas pontas não há informação nenhuma sobre o
+      // meio. Fica a caminhada, que é o caso comum num perpétuo em 22 minutos.
+      //
+      // A LIQUIDAÇÃO CONTINUA SENDO TESTADA ANTES E FECHANDO EM `atual`, de
+      // propósito. Pela mesma continuidade, um preço a −34% teria cruzado o stop
+      // em −25% antes — mas o teste de ponta é o modo CEGO do motor, e aqui ele
+      // guarda a leitura pessimista em vez de se dar o benefício da dúvida. Onde
+      // há vela, e hoje há em 32 das 33 moedas, quem decide é o bloco de cima.
+      const nivelStop = p.precoEntrada * (p.lado === "long" ? 1 - STOP : 1 + STOP);
+      const nivelAlvo = p.precoEntrada * (p.lado === "long" ? 1 + ALVO : 1 - ALVO);
+      if (varPreco <= -STOP) fechar(estado, p, nivelStop, quando, "stop");
+      else if (varPreco >= ALVO) fechar(estado, p, nivelAlvo, quando, "alvo");
       else if (dias >= PRAZO_DIAS) fechar(estado, p, atual, quando, "prazo");
       else if (vies.get(p.symbol) !== p.lado) {
         // O painel mudou de ideia. Esta é a saída principal: a carteira segue as
@@ -913,6 +1289,12 @@ export function rodar(
       const entrada = preco.get(e.s);
       if (entrada === undefined) continue;
 
+      // PREÇO DERIVADO MARCA E FECHA, MAS NÃO ABRE. Ele é o fechamento do
+      // perpétuo convertido pela última âncora boa — bom o bastante para não
+      // deixar uma posição de pé congelada no escuro, e não o bastante para
+      // começar uma. Abrir é opcional; administrar o que já está aberto não é.
+      if (derivado.has(e.s)) continue;
+
       const forca = e.forca ?? 0;
       const base = RISCO_POR_FORCA[forca];
       // Sem força gravada não há como dimensionar, e chutar um tamanho seria
@@ -936,15 +1318,40 @@ export function rodar(
 
       // O risco já comprometido, em fração do patrimônio: cada posição aberta
       // vale o que ela perderia se batesse no stop.
-      const riscoAberto = [...estado.abertas.values()].reduce(
-        (soma, a) => soma + (RISCO_POR_FORCA[a.forca] ?? 0) * escala,
-        0,
-      );
-      if (riscoAberto + risco > RISCO_TOTAL_MAXIMO) continue;
+      const riscoAberto = [...estado.abertas.values()].reduce((soma, a) => soma + a.risco, 0);
 
       const valor = Math.min(alvo, cabe, estado.caixa);
       // Posição pequena demais é ruído de arredondamento contra custo fixo.
       if (valor < 1) continue;
+
+      // O TETO AGREGADO É CONFERIDO CONTRA O RISCO REAL, e a ordem importa: ele
+      // vem DEPOIS do tamanho porque o tamanho é quem o determina. Quando o teto
+      // de margem ou o caixa apertam a posição, ela arrisca menos do que a força
+      // dela pediu — e conferir o orçamento pedido em vez do risco entregue
+      // recusava call que cabia. Sem aperto os dois números são idênticos, que é
+      // o que mantém a régua publicada valendo o que diz valer.
+      const riscoReal = total > 0 ? (valor * STOP * ALAVANCAGEM) / total : 0;
+      if (riscoAberto + riscoReal > RISCO_TOTAL_MAXIMO) continue;
+
+      // O IMPACTO DESTA ORDEM, na barra em que ela seria executada. Ver a nota de
+      // `IMPACTO_MAXIMO`: medido, ele fica abaixo do custo fixo em quase toda
+      // posição desta conta de mil dólares — o que ele acrescenta é o custo
+      // passar a SABER do tamanho, para a conta que crescer achar o freio.
+      //
+      // As duas pontas pagam o impacto da entrada, que é a mesma escolha
+      // conservadora que o custo fixo já fazia: cobrar tudo na abertura é o que
+      // impede a marcação a mercado de mostrar um lucro que a saída vai comer.
+      const barra = leitor.contendo(e.s, quando);
+      const imp = barra ? impactoDe(valor * ALAVANCAGEM, barra) : null;
+      if (imp === null) {
+        estado.diag.semImpacto++;
+      } else {
+        const d = estado.diag;
+        d.impactoMedio = (d.impactoMedio * d.comImpacto + imp) / (d.comImpacto + 1);
+        d.comImpacto++;
+        if (imp > d.impactoMaximo) d.impactoMaximo = imp;
+      }
+      const custo = 2 * (CUSTO + (imp ?? 0)) * ALAVANCAGEM;
 
       estado.caixa -= valor;
       estado.abertas.set(e.s, {
@@ -957,8 +1364,10 @@ export function rodar(
         // vez só, e o nocional é três vezes a margem.
         valor,
         forca,
+        risco: riscoReal,
+        custo,
         precoAtual: entrada,
-        retorno: -2 * CUSTO * ALAVANCAGEM,
+        retorno: -custo,
         funding: 0,
         ultimoFunding: quando,
         ultimaTaxa: fund.get(e.s) ?? null,
@@ -1010,6 +1419,7 @@ function montar(estado: Estado, comecouEm: number, atualizadoEm: number): Cartei
     maiorExposicao: estado.maiorExposicao,
     maiorRiscoAberto: estado.maiorRiscoAberto,
     curva: estado.curva,
+    diagnostico: estado.diag,
   };
 }
 
