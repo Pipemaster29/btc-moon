@@ -692,6 +692,11 @@ Sem ele, cada retrato dispararia um deploy novo.
 
 Nenhuma regra nova vai para o Telegram sem passar pelo `replay` antes.
 
+Dois portões, que saem com erro quando algum caso falha: `npm run
+testar-carteira` (casos-limite da carteira, sem rede) e `npm run testar-vivo`
+(o preço ao vivo de ponta a ponta — WebSocket, queda, religação, aba oculta —
+contra a aplicação rodando: `npm run testar-vivo -- http://localhost:3000`).
+
 ## Aviso
 
 Nada aqui é recomendação de investimento. As moedas acompanhadas são

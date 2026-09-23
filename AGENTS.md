@@ -185,8 +185,10 @@ coisas que foram medidas e estão no código:
   cada falha seguida, de 5 s a 5 min. A tela diz por qual canal o preço chega.
 - **O proxy deste ambiente de desenvolvimento não deixa o Chromium abrir
   WebSocket** (403 no upgrade). O caminho de reserva foi visto no navegador; o do
-  WebSocket foi exercitado no Node com `assinarVivo`, que é a mesma assinatura
-  sem React: abrir, receber, derrubar, religar, aba oculta, aba de volta.
+  WebSocket é exercitado no Node por `npm run testar-vivo` (com `npm run dev`
+  de pé), pela `assinarVivo`, que é a mesma assinatura sem React: abrir,
+  receber, publicar no máximo uma vez por segundo, derrubar, religar, aba
+  oculta, aba de volta, dormir. Onze casos, e ele sai com erro se algum falha.
 
 Quem consome: as células de preço e 24h da tabela (`PrecoVivo`) e a carteira
 (`CarteiraPanel`, que remarca as posições com `remarcar`). O número do retrato é
