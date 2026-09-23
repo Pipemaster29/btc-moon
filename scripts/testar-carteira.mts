@@ -26,6 +26,8 @@ import {
   type Emissao,
   type Passo,
 } from "../lib/carteira";
+import { eventosNovos, chavesDepois, textoDoEvento, JANELA_REENVIO_MS } from "../lib/avisos";
+import { escapeMarkdown } from "../lib/telegram";
 
 const T0 = Date.parse("2026-01-01T00:00:00Z") / 1000;
 const h = (n: number) => T0 + n * 3600;
@@ -672,6 +674,70 @@ console.log("\n--- a marcação viva sinaliza a saída que o retrato vai fazer -
   confere("sem reação depois do prazo: sinaliza", parada.abertas[0]?.saida === "sem reação", `saida=${parada.abertas[0]?.saida}`);
   const voltou = remarcar(abaixo, new Map([["X", 1.05]]), h(2) * 1000);
   confere("e a bandeira apaga quando o preço volta", voltou.abertas[0]?.saida === undefined, `saida=${voltou.abertas[0]?.saida}`);
+}
+
+// ------------------------------------------------------ avisos no Telegram
+//
+// O que pode dar errado aqui é mandar DEMAIS (o passado recalculado virando
+// enxurrada, o mesmo aviso duas vezes) ou mandar de MENOS (o aviso recusado que
+// nunca é tentado de novo). Cada caso trava um dos dois.
+console.log(`\navisos de trade`);
+{
+  const HORA = 3_600_000;
+  const agora = Date.parse("2026-09-23T18:00:00Z");
+  const base = (over: Partial<Carteira>): Carteira =>
+    ({
+      comecouEm: agora - 20 * 24 * HORA, atualizadoEm: agora, caixa: 900, patrimonio: 1000, retorno: 0,
+      abertas: [], fechadas: [], acertos: 0, encerradas: 0, porMotivo: {}, porLado: {},
+      pico: 1000, quedaMaxima: 0, maiorExposicao: 0, maiorRiscoAberto: 0, curva: [], ...over,
+    }) as Carteira;
+  const aberta = (symbol: string, abertaEm: number) => ({
+    symbol, lado: "long" as const, abertaEm, precoEntrada: 0.1234, valor: 27.5, forca: 2, precoAtual: 0.13,
+    retorno: 0.05, funding: 0, precoLiquidacao: 0.0829, ultimoFunding: abertaEm, ultimaTaxa: null, nivelStop: 0.0925,
+  });
+  const fechada = (symbol: string, abertaEm: number, fechadaEm: number) => ({
+    symbol, lado: "short" as const, abertaEm, fechadaEm, precoEntrada: 1, precoSaida: 1.25, forca: 1,
+    motivo: "stop" as const, retorno: -0.76, funding: -0.01, resultado: -4.2, dias: (fechadaEm - abertaEm) / (24 * HORA),
+  });
+
+  confere("sem carteira anterior: nada é avisado", eventosNovos(null, base({ abertas: [aberta("X", agora)] })).length === 0, "0");
+
+  // Primeira vez (arquivo sem `avisos`): corte exato no retrato anterior.
+  const ant1 = base({ atualizadoEm: agora - HORA });
+  const atual1 = base({ abertas: [aberta("NOVA", agora - 30 * 60_000), aberta("VELHA", agora - 2 * HORA)] });
+  const e1 = eventosNovos(ant1, atual1);
+  confere("primeira vez: avisa só o que é depois do retrato anterior", e1.length === 1 && e1[0].tipo === "abriu" && e1[0].p.symbol === "NOVA", e1.map((e) => (e.tipo === "abriu" ? e.p.symbol : e.f.symbol)).join(","));
+
+  // Com memória: o recusado de 3 h atrás volta; o já avisado e o de 10 h, não.
+  const ant2 = base({ atualizadoEm: agora - HORA, avisos: { enviados: ["A|AVISADA|" + (agora - 2 * HORA)] } });
+  const atual2 = base({
+    abertas: [aberta("RECUSADA", agora - 3 * HORA), aberta("AVISADA", agora - 2 * HORA), aberta("ANTIGA", agora - 10 * HORA)],
+  });
+  const e2 = eventosNovos(ant2, atual2).map((e) => (e.tipo === "abriu" ? e.p.symbol : e.f.symbol));
+  confere("reenvia o recusado dentro da janela, nunca o já avisado", e2.join(",") === "RECUSADA", e2.join(",") || "nada");
+  confere(`janela de reenvio é de ${JANELA_REENVIO_MS / HORA} h`, !e2.includes("ANTIGA"), e2.includes("ANTIGA") ? "ANTIGA entrou" : "ANTIGA fora");
+
+  // Abriu e fechou entre dois retratos: um aviso só, marcado como inteiro.
+  const ant3 = base({ atualizadoEm: agora - HORA, avisos: { enviados: [] } });
+  const atual3 = base({ fechadas: [fechada("RAPIDA", agora - 50 * 60_000, agora - 10 * 60_000)] });
+  const e3 = eventosNovos(ant3, atual3);
+  confere("abriu e fechou no intervalo: um aviso, com as duas horas", e3.length === 1 && e3[0].tipo === "fechou" && e3[0].inteira, e3.map((e) => e.tipo).join(","));
+
+  // O passado recalculado (regra mudou) não vira enxurrada.
+  const atual4 = base({ fechadas: Array.from({ length: 40 }, (_, i) => fechada(`T${i}`, agora - (100 + i) * HORA, agora - (50 + i) * HORA)) });
+  confere("passado recalculado não vira aviso", eventosNovos(ant3, atual4).length === 0, `${eventosNovos(ant3, atual4).length}`);
+
+  // A memória acumula e não repete.
+  const chaves = chavesDepois(ant2, eventosNovos(ant2, atual2));
+  const ant5 = base({ atualizadoEm: agora, avisos: { enviados: chaves } });
+  confere("depois de avisado, o mesmo evento não sai de novo", eventosNovos(ant5, atual2).length === 0, `${chaves.length} chaves`);
+
+  // O texto: diz que é fictícia, e o escape não deixa caractere reservado solto.
+  const t = textoDoEvento(e1[0], 1139.4, "caindo do topo com motor intacto");
+  confere("o aviso diz que é carteira fictícia", t.includes("Carteira fictícia · não é recomendação"), t.split("\n")[0]);
+  const esc = escapeMarkdown(t);
+  const solto = esc.replace(/\\./g, "").match(/[_*[\]()~`>#+\-=|{}.!]/);
+  confere("MarkdownV2 sem caractere reservado solto", solto === null, solto ? `solto: ${solto[0]}` : "limpo");
 }
 
 console.log(falhas === 0 ? "\ntudo passou" : `\n${falhas} caso(s) FALHARAM`);

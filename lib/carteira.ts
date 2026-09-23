@@ -276,6 +276,13 @@ export interface Carteira {
    * moeda", ficava invisível para quem não roda o script.
    */
   comparacao?: Comparacao;
+  /**
+   * O que já foi avisado pelo Telegram (`lib/avisos.ts`): as chaves dos eventos
+   * de abrir e fechar, as mais recentes primeiro. Viaja no arquivo porque a
+   * carteira é recalculada inteira a cada retrato, e sem a memória o mesmo
+   * "abriu" sairia de novo toda vez.
+   */
+  avisos?: { enviados: string[] };
 }
 
 /** Uma linha da tabela de regimes. Retornos em fração do capital inicial. */

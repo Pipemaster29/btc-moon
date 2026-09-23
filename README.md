@@ -631,6 +631,22 @@ saída de baleia carrega o próprio placar dentro da mensagem: em 6 episódios
 medidos, 3 caíram mais de 8% em 24 horas e 5 em 48 — o modo de errar dele é
 chegar cedo, não errar a direção.
 
+**A carteira fictícia também avisa.** Cada posição que ela abre ou fecha vira uma
+mensagem — lado, força, entrada, stop, liquidação e a leitura do painel na
+abertura; motivo, resultado em dólar e dias no fechamento —, com "carteira
+fictícia · não é recomendação" na segunda linha, porque o placar ainda mede que
+os vieses não têm vantagem. A carteira é recalculada inteira a cada retrato, e
+quando uma regra muda o passado inteiro muda junto; por isso só vira aviso o que
+aconteceu desde o retrato anterior e ainda não foi avisado, com a memória no
+próprio `carteira.json`. Aviso recusado pelo Telegram é tentado de novo por até
+6 horas. A primeira mensagem, quando o recurso liga, diz que ligou — é também o
+teste de que o bot fala com a conversa certa.
+
+**Quando parece que o bot parou**, o log do Actions diz se ele falou: em 23/09,
+entre 12:45 e 16:43 UTC, uma única execução mandou 18 alertas e o Telegram
+aceitou todos. Se não chegou, a conversa configurada em `TELEGRAM_CHAT_ID` não é
+a que está sendo olhada — `npm run telegram-setup` descobre o identificador certo.
+
 ## O retrato pré-calculado
 
 Montar o panorama leva vinte segundos — dez arquivos do Data Vision por moeda,
