@@ -96,9 +96,22 @@ const mediana = (xs: number[]): number => {
 };
 const pct = (v: number) => (Number.isFinite(v) ? `${v >= 0 ? "+" : "−"}${(Math.abs(v) * 100).toFixed(2)}%` : "—");
 
+// LAÇO, E NÃO `Math.min(...pontos)`, e a troca é o que fazia o placar rodar.
+//
+// O espalhamento passa cada elemento como ARGUMENTO, e a pilha tem teto. Com as
+// 23 mil linhas de 03/09 cabia; com as 126 mil de 23/09 o script morria aqui com
+// "Maximum call stack size exceeded" — antes de imprimir uma linha. Como o
+// placar não roda no workflow, ninguém viu: a tela seguiu mostrando a medição de
+// 03/09, com a janela antiga ao lado parecendo carimbo de frescor.
+let deT = Infinity;
+let ateT = -Infinity;
+for (const p of pontos) {
+  if (p.t < deT) deT = p.t;
+  if (p.t > ateT) ateT = p.t;
+}
 const janela = {
-  de: new Date(Math.min(...pontos.map((p) => p.t)) * 1000).toISOString().slice(0, 16),
-  ate: new Date(Math.max(...pontos.map((p) => p.t)) * 1000).toISOString().slice(0, 16),
+  de: new Date(deT * 1000).toISOString().slice(0, 16),
+  ate: new Date(ateT * 1000).toISOString().slice(0, 16),
 };
 
 console.log(

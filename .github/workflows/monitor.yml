@@ -101,6 +101,10 @@ jobs:
       - name: Retrato de abertura
         continue-on-error: true
         run: |
+          # O relógio do laço começa AQUI, e não quando o laço começa: a medição
+          # de sinais abaixo pode levar doze minutos, e o teto do job é de 330.
+          # Contando do início, o tempo dela sai do laço, e não do fechamento.
+          echo "INICIO_JOB=$(date +%s)" >> "$GITHUB_ENV"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch --quiet origin main
@@ -110,6 +114,13 @@ jobs:
           # vem depois dele e no mesmo commit. Falhar aqui não derruba o
           # retrato: ele é o dado, a carteira é a leitura em cima do dado.
           npm run carteira || echo "carteira falhou, seguindo"
+          # OS SINAIS CLÁSSICOS, UMA VEZ POR DIA. `--diario` sai na hora se o
+          # `sinais.json` tem menos de 20 horas; senão coleta os 528 perpétuos
+          # em ritmo abaixo dos tetos da Binance (medido: ver o script) e grava.
+          # Na abertura e não no fechamento porque o fechamento repete em corrida
+          # perdida, e aqui ele roda uma vez. No 418 ele para sem gravar nada,
+          # para não alongar um banimento que pegaria o panorama seguinte.
+          npm run medir-sinais -- --diario || echo "medição de sinais falhou, seguindo"
           git add data/
           git diff --cached --quiet && exit 0
           git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
@@ -160,7 +171,9 @@ jobs:
           # de cobertura para um dia de 24 — sobra, e a sobra vira sobreposição,
           # que o grupo de concorrência enfileira em vez de colidir. O resultado
           # é vigilância contínua sem serviço externo, sem token e sem custo.
-          fim=$(( $(date +%s) + 300*60 ))
+          # Contado do início do job (gravado na abertura), para o que a
+          # abertura gastou sair daqui e não do fechamento.
+          fim=$(( ${INICIO_JOB:-$(date +%s)} + 300*60 ))
           n=0
           while [ "$(date +%s)" -lt "$fim" ]; do
             n=$((n+1))
@@ -234,6 +247,21 @@ jobs:
             # peneirar de três em três minutos gastaria orçamento da Binance
             # para reencontrar a mesma lista.
             npm run garimpar || echo "garimpo falhou, seguindo"
+            # O PLACAR TAMBÉM, e ele não rodava em lugar nenhum. A tela lê o
+            # `placar.json` do `main` — o painel que diz "nenhum viés separou" —
+            # e ele ficou parado na medição de 03/09 por vinte dias, com a janela
+            # antiga ao lado parecendo carimbo de frescor. Quando alguém tentou
+            # rodar à mão, ele morria com a pilha estourada sobre 126 mil
+            # linhas. Leva dois segundos e não toca em rede: lê o histórico que o
+            # panorama acabou de gravar.
+            npm run placar || echo "placar falhou, seguindo"
+            # O FLUXO DA CARTEIRA QUENTE DA BINANCE, que só existe para frente.
+            # Varre desde o último bloco lido (teto de 12 h; além disso grava
+            # LACUNA), então no fechamento — uma vez por execução — ele cobre as
+            # cinco horas do laço em ~3 minutos no nó de arquivo. No laço de 12
+            # minutos seriam 25 commits por dia de um arquivo que só serve quando
+            # somado por dia.
+            npm run fluxo-binance || echo "fluxo da Binance falhou, seguindo"
 
             # A AUDITORIA RODA ANTES DO COMMIT e o resultado vai para o log.
             #

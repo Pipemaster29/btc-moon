@@ -62,12 +62,15 @@ export const CHAINS: Record<Chain, ChainConfig> = {
     // Dos doze nós públicos testados, um único devolve log antigo e outro
     // devolve estado antigo. Fazem coisas diferentes e não se substituem.
     //
-    // E "log antigo" tem limite, medido em 2026-09-02: o blxrbdn responde
-    // "header not found" abaixo do bloco ~67.751.000, ou seja guarda desde
-    // 2025-11-10 — dez meses, não a cadeia inteira. Moeda nascida antes disso
-    // não tem gênese varrível nesta rede, e era assim que a BLUAI consumia
-    // vinte minutos de varredura para devolver lista vazia. `ScanResult` agora
-    // separa esse caso em `semHistorico`, e quem varre para na hora.
+    // E "log antigo" tem limite, e o limite ENCOLHEU. Medido em 2026-09-02: o
+    // blxrbdn respondia "header not found" abaixo do bloco ~67.751.000, ou seja
+    // guardava desde 2025-11-10. Medido de novo em 2026-09-23, por busca
+    // binária: o bloco mais antigo servido era o 122.760.367, de 19/09 07:51 —
+    // uma janela ROLANTE de ~100 horas, não mais dez meses. Moeda nascida antes
+    // disso não tem gênese varrível nesta rede, e era assim que a BLUAI consumia
+    // vinte minutos de varredura para devolver lista vazia. `ScanResult` separa
+    // esse caso em `semHistorico`, e quem varre para na hora — é isso, e não
+    // uma data escrita aqui, que acompanha o nó quando ele muda.
     //
     // Não há substituto público: o drpc e o blastapi respondem a profundidade
     // mas cortam por limite de tráfego na primeira faixa; publicnode, zan e
@@ -574,6 +577,8 @@ export interface Transfer {
 }
 
 interface RawLog {
+  /** O contrato que emitiu o evento — o token, num `Transfer`. */
+  address: string;
   blockNumber: string;
   transactionHash: string;
   topics: string[];
@@ -688,10 +693,10 @@ export interface ScanResult {
    * lista vazia.
    *
    * Medido na BNB Chain em 2026-09-02: `bsc.rpc.blxrbdn.com`, o único endpoint
-   * público que ainda serve `eth_getLogs` em lote, responde "header not found"
-   * abaixo do bloco ~67.751.000 — ele guarda desde 2025-11-10, e não a cadeia
-   * inteira, como `archiveLog` dava a entender. Moeda nascida antes disso não
-   * tem gênese varrível nesta rede, e agora isso aparece em vez de virar zero.
+   * público que ainda serve `eth_getLogs` em lote, respondia "header not found"
+   * abaixo do bloco ~67.751.000 — guardava desde 2025-11-10. Em 2026-09-23 a
+   * janela era de ~100 horas rolantes. Moeda nascida antes do horizonte não tem
+   * gênese varrível nesta rede, e isso aparece em vez de virar zero.
    */
   semHistorico: number;
 }
@@ -839,6 +844,81 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
     failed,
     semHistorico,
   };
+}
+
+/** Uma transferência de qualquer token que tocou a carteira observada. */
+export interface Movimento {
+  token: string;
+  block: number;
+  /** O outro lado: quem mandou (entrando) ou quem recebeu (saindo). */
+  contraparte: string;
+  value: bigint;
+}
+
+/**
+ * Faixa das varreduras de CARTEIRA, sem filtro de token.
+ *
+ * Orçamento de requisição, não medição de mercado — a armadilha nº 8. Medido na
+ * carteira quente da Binance em 23/09: 5 mil blocos devolveram 9.823
+ * transferências entrando, de 127 tokens, em 24,7 segundos — colado no teto de
+ * 30 segundos de `callRpc`. Dois mil ficam em ~10 s, com folga para o nó ter um
+ * dia pior.
+ */
+const SPAN_CARTEIRA = 2000;
+
+/**
+ * Tudo que entrou (ou saiu) de uma carteira entre dois blocos, de QUALQUER token.
+ *
+ * É a pergunta ao contrário de `scanTransfers`, que parte de um token e filtra
+ * carteiras: aqui a carteira é o filtro e o token é o que se descobre. Serve
+ * para carteira de corretora, onde a lista de tokens é o que se quer saber.
+ *
+ * Só funciona no nó de arquivo: o `publicnode` da BNB Chain recusa `eth_getLogs`
+ * sem endereço de contrato ("Please specify an address"), e o `blxrbdn` aceita.
+ *
+ * `falhas` conta as faixas que nenhuma tentativa leu, e ela tem de chegar até
+ * quem grava: faixa perdida numa carteira que recebe dez mil transferências por
+ * hora não é "ninguém depositou" — a armadilha nº 2.
+ */
+export async function movimentosDaCarteira(
+  chain: Chain,
+  carteira: string,
+  fromBlock: number,
+  toBlock: number,
+  sentido: "entrando" | "saindo",
+): Promise<{ movimentos: Movimento[]; falhas: number }> {
+  const pool = logPool(chain);
+  const alvo = padAddress(carteira);
+  const topics = sentido === "entrando" ? [TRANSFER_TOPIC, null, alvo] : [TRANSFER_TOPIC, alvo];
+  const movimentos: Movimento[] = [];
+  let falhas = 0;
+
+  for (let start = fromBlock; start <= toBlock; start += SPAN_CARTEIRA) {
+    const end = Math.min(start + SPAN_CARTEIRA - 1, toBlock);
+    let logs: RawLog[];
+    try {
+      logs = (await callRpc(
+        pool,
+        "eth_getLogs",
+        [{ fromBlock: `0x${start.toString(16)}`, toBlock: `0x${end.toString(16)}`, topics }],
+        pool.length * 3,
+      )) as RawLog[];
+    } catch {
+      falhas++;
+      continue;
+    }
+    for (const log of logs) {
+      const t = decodeTransfer(log);
+      if (!t) continue;
+      movimentos.push({
+        token: log.address.toLowerCase(),
+        block: t.block,
+        contraparte: sentido === "entrando" ? t.from : t.to,
+        value: t.value,
+      });
+    }
+  }
+  return { movimentos, falhas };
 }
 
 /**

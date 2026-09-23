@@ -48,6 +48,12 @@ no código, com número:
   mais forte já medido aqui, e **vendê-lo perde dinheiro em toda largura de stop
   testada**, porque o caminho estopa a posição antes. `npm run garimpar` entrega
   fila de investigação, com essa frase na tela.
+- **Análise técnica clássica não tem vantagem nestas moedas, e parte dela tem
+  vantagem AO CONTRÁRIO.** Sobre 319 mil moeda-dias dos 528 perpétuos: RSI < 30
+  −0,03 p.p., suporte +0,02; rompimento de máxima de 20 dias −0,84 com 195 de
+  498 moedas; comprar funding ≤ −0,1% −4,94. O único recorte que passou nas
+  metades — vender RSI > 80 em 30–100 mi — caiu no ataque: mediana −8% por
+  trade, +0,04 R, negativo mudando a faixa. `npm run medir-sinais` refaz tudo.
 
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
@@ -66,7 +72,7 @@ npm run carteira     # a carteira fictícia → data/carteira.json
 Não há chave, `.env` nem banco. O estado inteiro mora em `data/`.
 
 O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` +
-`garimpar` e
+`garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
 commita o resultado. **O cron pede 48 execuções por dia e o GitHub entrega cerca
 de sete** — é limitação da plataforma, contornada pela DURAÇÃO de cada execução
 e não pela frequência delas (ver logo abaixo).
@@ -75,7 +81,8 @@ e não pela frequência delas (ver logo abaixo).
 
 | o quê | com que frequência | onde roda |
 |---|---|---|
-| preço, 24h, financiamento e a MARCAÇÃO da carteira | 15 segundos | no navegador de quem está com a página aberta |
+| preço, 24h e a MARCAÇÃO da carteira | **~3 segundos** por WebSocket direto da Binance; 15 s pela consulta quando ele cai | no navegador de quem está com a página aberta |
+| financiamento | 60 s (15 s sem o WebSocket) | idem, pela `/api/vivo` |
 | preço e posicionamento por cima do retrato velho | a cada montagem da página | no servidor, quando o retrato passa de 100 min |
 | as DECISÕES: viés, abrir e fechar posição, garimpo | **22 min, contínuo** | GitHub Actions |
 
@@ -157,8 +164,31 @@ cinco minutos: um pump de 120% cabe inteiro nesse intervalo.
 `/api/vivo` devolve preço, variação de 24h e financiamento de todas as moedas
 vigiadas — **duas requisições à Binance para qualquer número de moedas e de
 abas**, porque os dois endereços servem a praça inteira de uma vez e o
-`next.revalidate` deduplica no servidor. `components/vivo.ts` mantém UM relógio
-por página, de quinze em quinze segundos, que dorme quando a aba sai de vista.
+`next.revalidate` deduplica no servidor. `components/vivo.ts` mantém UMA
+assinatura por página, que dorme quando a aba sai de vista.
+
+**E O PREÇO VEM DIRETO DA BINANCE, SEM PASSAR POR SERVIDOR NOSSO.** Depois da
+primeira consulta, o navegador abre um WebSocket público no perpétuo com o
+miniTicker das moedas vigiadas — o mesmo último negócio e a mesma abertura de 24h
+que a consulta devolve. Custo para o Vercel e para o GitHub: zero, porque a
+conexão é do navegador de quem olha com a Binance. Com ele de pé a consulta cai
+para uma por minuto, só pelo financiamento.
+
+Medido em 23/09 com as 71 moedas numa conexão: ~19 mensagens e 4 KB por segundo,
+cada moeda de ~3 em ~3 s; a tela publica no máximo uma vez por segundo. Três
+coisas que foram medidas e estão no código:
+
+- **O endereço é `/market/stream`, não o `/ws` da documentação antiga.** O `/ws`
+  ABRE e fica mudo — zero mensagens em quinze segundos. Por isso há um vigia:
+  sem primeira mensagem em 10 s, ou nada em 30 s, a conexão conta como falha.
+- **Na falha a consulta de 15 s assume na hora**, e a religação espera o dobro a
+  cada falha seguida, de 5 s a 5 min. A tela diz por qual canal o preço chega.
+- **O proxy deste ambiente de desenvolvimento não deixa o Chromium abrir
+  WebSocket** (403 no upgrade). O caminho de reserva foi visto no navegador; o do
+  WebSocket é exercitado no Node por `npm run testar-vivo` (com `npm run dev`
+  de pé), pela `assinarVivo`, que é a mesma assinatura sem React: abrir,
+  receber, publicar no máximo uma vez por segundo, derrubar, religar, aba
+  oculta, aba de volta, dormir. Onze casos, e ele sai com erro se algum falha.
 
 Quem consome: as células de preço e 24h da tabela (`PrecoVivo`) e a carteira
 (`CarteiraPanel`, que remarca as posições com `remarcar`). O número do retrato é
@@ -178,7 +208,7 @@ retrato seguinte fechá-la com a hora certa.
 
 | arquivo | responsabilidade |
 |---|---|
-| `lib/onchain.ts` | JSON-RPC: saldos, logs, supply, bloco de nascimento. Sabe qual nó serve o quê |
+| `lib/onchain.ts` | JSON-RPC: saldos, logs, supply, bloco de nascimento, e tudo que toca uma carteira (`movimentosDaCarteira`). Sabe qual nó serve o quê — e o de log da BSC guarda só ~100 h |
 | `lib/explorador.ts` | o Blockscout como fonte de log, **sem chave**, na Ethereum e na Base. Uma requisição por mil eventos onde o nó pedia centenas de faixas. A BSC não tem instância gratuita, e por que está escrito lá |
 | `lib/watchlist.ts` | as moedas, com contrato e carteiras mapeadas. **Cada entrada tem a justificativa da identificação** |
 | `lib/lifecycle.ts` | estágio do ciclo (`lerVida`) e o viés (`lerVies`) |
@@ -190,7 +220,9 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/carteira.ts` | a carteira fictícia. **Não importa nada de `node:` no topo** — `remarcar` roda no navegador |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
-| `components/vivo.ts` | o relógio único da página que consome essa rota |
+| `components/vivo.ts` | a assinatura única da página: WebSocket da Binance para preço, essa rota para financiamento e como reserva |
+| `lib/sinais.ts` | o formato de `data/sinais.json` e a leitura dele pela página |
+| `lib/fluxo.ts` | `resumirFluxo`: soma o bruto do fluxo da Binance por moeda, com a cobertura de cada dia junto |
 | `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |
 | `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção, disco primeiro no resto |
 
@@ -204,8 +236,12 @@ retrato seguinte fechá-la com a hora certa.
 | `data/vesting.json` | emissão por moeda | `npm run vesting` |
 | `data/estudos.json` | estudo por moeda | `npm run estudar` |
 | `data/placar.json` | o painel acertou? | `npm run placar` |
-| `data/carteira.json` | a carteira | `npm run carteira` |
+| `data/carteira.json` | a carteira, com a tabela de regimes e a curva do regime anterior em `comparacao` — a tela desenha as duas | `npm run carteira` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
+| `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
+| `data/fluxo-binance.json` | o último bloco lido e a identificação de cada token (perpétuo e preço conferidos) | idem |
+| `data/fluxo-binance-resumo.json` | os últimos 7 dias somados por moeda, com a cobertura de cada dia — é o que a página lê | idem (e `-- --resumo` só refaz este) |
+| `data/sinais.json` | os 25 sinais medidos sobre os 528 perpétuos, o modelo atacado e os testes do fluxo | `npm run medir-sinais`, **uma vez por dia** no workflow (`--diario`) |
 
 ---
 
@@ -219,10 +255,13 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | regra | valor | de onde vem |
 |---|---|---|
 | Alavancagem | **3x** | o teto em que o stop ainda dispara antes da liquidação: 25% de preço × 3 = 75% da margem. A 4x seriam 100%, e a corretora fecharia a posição exatamente onde o stop fecharia |
-| Stop | −25% de preço | ~3 desvios de UM DIA; `npm run estudar` mede volatilidade diária de 7% a 10% |
+| Stop | −25% de preço | fora do ruído de um dia: desvio diário mediano de 11,2% (`estudos.json`), ~2,2σ. Mais curto foi medido em 23/09 e não passou — o ganho era de uma moeda |
+| Sem reação | **3 dias** | a posição que não andou a favor em três dias sai. Platô: 1 a 5 dias melhoram as duas metades da janela |
 | Alvo | +40% de preço | o dobro da assimetria que sustenta a regra de compra (sobe +20% em 21,0% das semanas) |
 | Prazo | 14 dias | as regras direcionais foram medidas em janelas de 7 e 14 dias |
 | Risco por call | **3% / 2% / 1%** do patrimônio (força 3/2/1) | dobrado em 05/09: na régua anterior o pico de risco agregado era 13% de um teto de 25% e 85% do dinheiro ficava parado — a carteira não conseguia testar se a estratégia quebra a conta, que é para o que ela existe |
+| Vendido | **¼ do risco** | depois de cada call de venda o preço subiu contra a referência em 72h nos dois meses (+0,44 p.p. em agosto, +2,29 em setembro); a cauda destas moedas é para cima. Um quarto, e não zero, para continuar medindo |
+| Freio de queda | a partir de −10% do pico, até ¼ do orçamento em −25% | mecânico, não medido: nunca encosta na amostra. Dois dias seguidos de tudo estopar custariam −44% sem ele e −30% com ele |
 | Risco agregado | teto de 25% | cripto tem dias em que a lista inteira cai 25% junta |
 | Margem exposta | teto de 50% | |
 | Custo | 0,15% por lado, **sobre o nocional** | a 3x, isso é 0,45% da margem por lado |
@@ -230,8 +269,20 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | Liquidação | margem de manutenção 0,5% | a 3x, o preço andando 33,2% contra |
 
 **Saída pelo primeiro que acontecer:** o painel mudou de ideia (a principal — a
-carteira segue as calls, então sai quando a call sai), stop, alvo, prazo,
-liquidação.
+carteira segue as calls, então sai quando a call sai), stop, sem reação, alvo,
+prazo, liquidação.
+
+**As regras são um objeto, `Regras`, e o motor aceita qualquer uma.** `REGRAS` é
+o regime publicado e `REGRAS_ANTERIORES` o que valeu até 23/09. `npm run
+carteira` imprime os dois lado a lado e o publicado com cada peça desligada, nas
+duas metades da janela e sem a moeda que mais ganhou — é essa tabela que decide
+se uma regra entra. **Nenhuma regra de gestão nova sem passar nela**, e a coluna
+"sem a melhor moeda" reprova mais do que as metades: o stop curto passava nas
+duas metades e era uma moeda só.
+
+Medido em 23/09, as mesmas calls: o regime anterior em −11,3% (queda máxima
+−17,2%), o publicado em +14,8% (−5,8%). **Sem a HEI, −19,8% contra −4,3%** — a
+gestão perde muito menos, e lucro continua não demonstrado.
 
 **Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.**
 `npm run carteira` busca as velas de 1h da Binance das moedas que podem virar
@@ -260,15 +311,18 @@ gravados, todas depois de ver os dados.
 execução; a profundidade da pool (o custo é fixo, e numa pool de US$ 2 mil uma
 ordem de US$ 60 move mais que isso).
 
-**A call queimada não se repete.** Depois de um stop ou uma liquidação, a moeda
-só volta a valer quando o viés dela sair daquele lado. Sem isso a carteira
-recomprava a call que acabou de morrer no MESMO retrato — reproduzido com uma
-moeda caindo 28% por retrato e o painel fixo em "long", ela tomou **onze stops
-seguidos** e perdeu 17% do patrimônio na mesma leitura errada.
+**A call queimada não se repete.** Depois de QUALQUER saída, a moeda só volta a
+valer quando o viés dela sair daquele lado. Sem isso a carteira recomprava a
+call que acabou de morrer no MESMO retrato — reproduzido com uma moeda caindo
+28% por retrato e o painel fixo em "long", ela tomou **onze stops seguidos** e
+perdeu 17% do patrimônio na mesma leitura errada. Até 23/09 só stop e liquidação
+queimavam, e a saída por prazo reabria no mesmo lote; com a saída por tempo, a
+diferença é de +14,8% para +5,0%.
 
 **A unidade de cada número importa, e confundi-las já quebrou isto.** `STOP` e
-`ALVO` são variação de PREÇO; `retorno`, `funding` e `RISCO_POR_FORCA` são fração
-da MARGEM, ou seja já multiplicados pela alavancagem. Comparar um contra o outro
+`ALVO` são variação de PREÇO; `retorno` e `funding` são fração da MARGEM, ou seja
+já multiplicados pela alavancagem; `RISCO_POR_FORCA` e `risco` são fração do
+PATRIMÔNIO. Comparar um contra o outro
 fazia o stop de 25% disparar com 8,3% de preço — ruído de um dia normal.
 
 `npm run testar-carteira` roda os casos-limite e trava os limiares, sem tocar em
@@ -309,8 +363,11 @@ O modo de falha que este projeto mais teme. Casos reais:
 
 - `rpc.flashbots.net` devolvia **lista vazia** para logs além de ~8.192 blocos.
   Não é erro, é silêncio — e `prunedDepth` dizia 20.000.
-- O nó de log da BNB Chain **guarda desde 2025-11-10**, não a cadeia inteira.
-  Toda varredura mais funda devolvia nada, sem avisar.
+- O nó de log da BNB Chain **guardava desde 2025-11-10** (02/09), não a cadeia
+  inteira, e toda varredura mais funda devolvia nada, sem avisar. **Em 23/09 a
+  janela era de ~100 horas rolantes** — o limite encolheu sem aviso, e o
+  comentário no código continuou afirmando dez meses. `semHistorico` detecta o
+  limite na hora; data escrita em comentário não acompanha o nó.
 - `concentracaoDe` devolvia **ZERO** quando a janela de gênese estava vazia. A C
   tinha 23% do supply em contratos e o painel lia "concentração zero".
 - O lote da BSC de 06/09: 16 moedas varridas, **15 com as 41 faixas da janela
@@ -412,6 +469,14 @@ Na **C** a primeira transferência vem **98 dias** depois do contrato existir.
 Se a janela é sobre um fenômeno de mercado, ela é de TEMPO e se converte para
 blocos por rede. Se é sobre orçamento de requisição, ela é de blocos — e aí
 escreva ao lado que é orçamento, para ninguém ler o corte como medição.
+
+### 9. Espalhar um array grande como argumento estoura a pilha
+
+`Math.min(...pontos)` passa cada elemento como ARGUMENTO, e a pilha tem teto. Com
+as 23 mil linhas de 03/09 cabia; com as 126 mil de 23/09 o `npm run placar`
+morria com "Maximum call stack size exceeded" antes de imprimir uma linha — e
+como ele não rodava no workflow, a tela mostrou a medição de 03/09 por vinte
+dias. O histórico só cresce: sobre ele, é laço.
 
 ---
 

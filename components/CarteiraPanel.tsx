@@ -25,12 +25,15 @@
 import {
   ALAVANCAGEM,
   CAPITAL_INICIAL,
-  ALVO,
-  PRAZO_DIAS,
-  STOP,
+  EXPOSICAO_MAXIMA,
+  REGRAS_ANTERIORES,
+  RISCO_TOTAL_MAXIMO,
   remarcar,
   type Carteira,
+  type Comparacao,
+  type Regras,
 } from "@/lib/carteira";
+import CurvaCarteira from "./CurvaCarteira";
 import { useVivo } from "./vivo";
 
 function usd(v: number): string {
@@ -47,15 +50,151 @@ function tom(v: number): string {
   return "";
 }
 
-const MOTIVO_NOTA: Record<string, string> = {
-  "painel mudou": "o viés saiu — a carteira segue o painel, então sai com ele",
-  stop: `o preço andou ${(STOP * 100).toFixed(0)}% contra`,
-  alvo: `o preço andou ${(ALVO * 100).toFixed(0)}% a favor`,
-  prazo: `${PRAZO_DIAS} dias — além disso não é mais a mesma call`,
-  liquidada:
-    `a margem acabou antes do stop — só acontece quando o preço salta de uma vez ` +
-    `mais do que ${((1 / ALAVANCAGEM) * 100).toFixed(0)}%`,
-};
+/**
+ * O que cada saída quer dizer, com os números DO ARQUIVO.
+ *
+ * As regras vêm de `c.regras`, gravadas junto com a carteira, e não das
+ * constantes do código: a página lê o `carteira.json` do `main`, que pode ter
+ * sido calculado por outra versão. O texto "o preço andou 25% contra" ao lado de
+ * uma carteira calculada com outro stop descreveria uma regra que não gerou
+ * aqueles números. Arquivo sem o campo é do regime anterior, que é o que ele é.
+ */
+function notas(r: Regras): Record<string, string> {
+  const stop = (v: number) => `${(v * 100).toFixed(0)}%`;
+  return {
+    "painel mudou": "o viés saiu — a carteira segue o painel, então sai com ele",
+    stop:
+      r.stopComprado === r.stopVendido
+        ? `o preço andou ${stop(r.stopComprado)} contra`
+        : `o preço andou ${stop(r.stopComprado)} contra o comprado, ou ${stop(r.stopVendido)} contra o vendido`,
+    "stop móvel": r.rastro
+      ? `depois de andar ${stop(r.rastro.ativa)} a favor, o preço devolveu ${stop(r.rastro.distancia)} do melhor ponto`
+      : "o stop que acompanha o ganho",
+    "sem reação":
+      r.semReacaoDias !== null
+        ? `${r.semReacaoDias} dias sem andar a favor — a tese não se confirmou no prazo em que costuma se confirmar`
+        : "sem andar a favor no prazo",
+    alvo: r.alvo !== null ? `o preço andou ${stop(r.alvo)} a favor` : "alvo",
+    prazo: `${r.prazoDias} dias — além disso não é mais a mesma call`,
+    liquidada:
+      `a margem acabou antes do stop — só acontece quando o preço salta de uma vez ` +
+      `mais do que ${((1 / ALAVANCAGEM) * 100).toFixed(0)}%`,
+  };
+}
+
+/**
+ * A curva gravada termina no último retrato; a marcação ao vivo é de agora. O
+ * ponto de agora entra na ponta, para a linha terminar no mesmo número que a
+ * placa de patrimônio mostra logo acima — duas leituras do mesmo instante que
+ * discordam na mesma tela é o que este projeto trata como defeito.
+ */
+function comAgora(curva: Carteira["curva"], c: Carteira): Carteira["curva"] {
+  const ultimo = curva[curva.length - 1];
+  if (!ultimo || !(c.atualizadoEm > ultimo.t) || !Number.isFinite(c.patrimonio)) return curva;
+  return [...curva, { t: c.atualizadoEm, patrimonio: c.patrimonio }];
+}
+
+/**
+ * A tabela que decide se uma regra entra, na tela.
+ *
+ * A frase de cima é CALCULADA, não escrita: "sem a melhor moeda" é a coluna que
+ * mais reprova aqui — foi ela que derrubou o stop curto em 23/09, que ganhava nas
+ * duas metades e era uma moeda só — e o texto diz "lucro não demonstrado" só
+ * enquanto o publicado sem essa moeda estiver no negativo.
+ */
+function Regimes({ cmp }: { cmp: Comparacao }) {
+  const [pub, ant] = cmp.linhas;
+  if (!pub) return null;
+  const mesmaMoeda = ant && ant.semAMelhor.ticker === pub.semAMelhor.ticker;
+  return (
+    <>
+      <p className="text-xs text-black/55 dark:text-white/55 mt-2 max-w-3xl">
+        As duas linhas são o mesmo motor sobre as mesmas calls; muda só a gestão.{" "}
+        {mesmaMoeda && ant ? (
+          <>
+            Sem a <strong>{pub.semAMelhor.ticker}</strong>, que foi a moeda que mais rendeu nas duas,
+            as regras publicadas ficam em{" "}
+            <strong className={tom(pub.semAMelhor.retorno)}>{pct(pub.semAMelhor.retorno)}</strong> e as
+            anteriores em{" "}
+            <strong className={tom(ant.semAMelhor.retorno)}>{pct(ant.semAMelhor.retorno)}</strong>
+          </>
+        ) : (
+          <>
+            Sem a moeda que mais rendeu ({pub.semAMelhor.ticker}), as publicadas ficam em{" "}
+            <strong className={tom(pub.semAMelhor.retorno)}>{pct(pub.semAMelhor.retorno)}</strong>
+          </>
+        )}
+        {pub.semAMelhor.retorno <= 0
+          ? " — a gestão perde menos, e lucro continua não demonstrado."
+          : " — e continuam no positivo sem ela."}
+      </p>
+      <details className="mt-3 group">
+        <summary className="text-xs text-black/50 dark:text-white/50 cursor-pointer hover:text-black/70 dark:hover:text-white/70 w-fit">
+          Ver a tabela de regimes — as publicadas com cada peça desligada, nas duas metades
+        </summary>
+        <div className="overflow-x-auto mt-2">
+          <table className="w-full text-xs tabular-nums min-w-[40rem]">
+            <thead className="text-black/45 dark:text-white/45">
+              <tr className="text-left">
+                <th className="font-normal py-1.5">Regime</th>
+                <th className="font-normal py-1.5 text-right">Retorno</th>
+                <th
+                  className="font-normal py-1.5 text-right"
+                  title="O retorno tirando a moeda que mais deu dinheiro. Um resultado que depende de uma moeda só descreve aquela moeda."
+                >
+                  Sem a melhor moeda
+                </th>
+                <th className="font-normal py-1.5 text-right">Queda máx.</th>
+                <th
+                  className="font-normal py-1.5 text-right"
+                  title={`Cada metade da janela rodada do zero, sozinha. Corte em ${new Date(cmp.meio).toISOString().slice(0, 16).replace("T", " ")} UTC.`}
+                >
+                  1ª metade
+                </th>
+                <th className="font-normal py-1.5 text-right">2ª metade</th>
+                <th className="font-normal py-1.5 text-right">Encerradas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cmp.linhas.map((l, i) => (
+                <tr
+                  key={l.nome}
+                  className={`border-t border-black/5 dark:border-white/5 ${i > 1 ? "text-black/60 dark:text-white/60" : ""}`}
+                >
+                  <td className={`py-1.5 ${i === 0 ? "font-semibold" : i === 1 ? "font-medium" : "pl-3"}`}>
+                    {/* A cor da linha do gráfico ao lado do nome, e só nas duas
+                        que estão desenhadas: é o que liga a tabela à curva. */}
+                    {i < 2 && (
+                      <span
+                        className="inline-block w-3 h-0.5 rounded mr-2 align-middle"
+                        style={{ background: i === 0 ? "#5B8DEF" : "#898781" }}
+                      />
+                    )}
+                    {l.nome}
+                  </td>
+                  <td className={`py-1.5 text-right ${tom(l.retorno)}`}>{pct(l.retorno)}</td>
+                  <td className="py-1.5 text-right">
+                    <span className={tom(l.semAMelhor.retorno)}>{pct(l.semAMelhor.retorno)}</span>
+                    <span className="text-black/35 dark:text-white/35"> sem {l.semAMelhor.ticker}</span>
+                  </td>
+                  <td className={`py-1.5 text-right ${tom(l.quedaMaxima)}`}>{pct(l.quedaMaxima)}</td>
+                  <td className={`py-1.5 text-right ${tom(l.metades[0])}`}>{pct(l.metades[0])}</td>
+                  <td className={`py-1.5 text-right ${tom(l.metades[1])}`}>{pct(l.metades[1])}</td>
+                  <td className="py-1.5 text-right">{l.encerradas}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-[11px] text-black/40 dark:text-white/40 mt-2 max-w-3xl">
+            Uma regra entra quando melhora as duas metades E continua de pé sem a moeda que mais
+            ganhou. Enquanto o placar disser que nenhum viés separa da referência, esta tabela
+            compara maneiras de perder menos com calls sem vantagem medida — não maneiras de ganhar.
+          </p>
+        </div>
+      </details>
+    </>
+  );
+}
 
 export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
   const vivo = useVivo();
@@ -83,6 +222,9 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
   const dias = Math.max(0, (c.atualizadoEm - c.comecouEm) / 86_400_000);
   const exposto = c.patrimonio - c.caixa;
   const estourada = c.abertas.some((p) => p.estourada);
+  const saindo = c.abertas.filter((p) => p.saida);
+  const r = c.regras ?? REGRAS_ANTERIORES;
+  const MOTIVO_NOTA = notas(r);
 
   return (
     <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
@@ -97,10 +239,17 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
           {vivo.estado === "ao vivo" ? (
             <span className="text-[#0a7d43] dark:text-[#0ECB81]">
               {" "}
-              · marcada ao vivo, decisões do último retrato
+              · marcada ao vivo
+              {vivo.canal === "websocket" ? " (direto da Binance)" : " (a cada 15 s)"}, decisões do
+              último retrato
             </span>
           ) : vivo.estado === "sem resposta" ? (
-            <span className="text-[#F0B90B]"> · sem cotação ao vivo, marcada no retrato</span>
+            // O âmbar da Binance (#F0B90B) reprova contraste no fundo claro,
+            // 1,73:1; o escuro abaixo é o mesmo tom com a luminosidade que passa.
+            <span className="text-[#8a5a00] dark:text-[#F0B90B]">
+              {" "}
+              · ⚠ sem cotação ao vivo, marcada no retrato
+            </span>
           ) : null}
         </span>
       </div>
@@ -112,12 +261,53 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
           retrato seguinte é que registra a liquidação com a hora certa.
         </p>
       )}
+      {saindo.length > 0 && (
+        <p className="text-xs text-[#C42B3E] dark:text-[#F6465D] mt-2">
+          {saindo.map((p) => `${p.symbol} (${p.saida})`).join(", ")}: a marcação ao vivo já passou
+          de uma regra de saída. A carteira não decide ao vivo — o retrato seguinte fecha, pelo
+          caminho de velas e na hora em que a ordem teria executado.
+        </p>
+      )}
       <p className="text-sm text-black/60 dark:text-white/60 mt-1">
         {usd(CAPITAL_INICIAL)} de mentira entrando em toda call de compra e venda que o painel
         emite, para a pergunta ficar na tela em vez de ficar no terminal. Perpétuo a{" "}
-        <strong>{ALAVANCAGEM}x</strong> — que é o teto em que o stop de {(STOP * 100).toFixed(0)}%
-        ainda dispara antes da liquidação —, com financiamento e liquidação cobrados.
+        <strong>{ALAVANCAGEM}x</strong> — que é o teto em que o stop de{" "}
+        {(Math.max(r.stopComprado, r.stopVendido) * 100).toFixed(0)}% ainda dispara antes da
+        liquidação —, com financiamento e liquidação cobrados.
       </p>
+      {/* O REGIME, dito na tela. Sem isto quem olha vê as saídas "sem reação"
+          e as vendidas pequenas sem saber de onde vêm — e são as duas peças que
+          mais carregam o resultado, medido lado a lado no `npm run carteira`. */}
+      {c.regras && (
+        <p className="text-xs text-black/50 dark:text-white/50 mt-2">
+          Gestão:{" "}
+          {r.semReacaoDias !== null && (
+            <>
+              sai a posição que não andou a favor em <strong>{r.semReacaoDias} dias</strong>;{" "}
+            </>
+          )}
+          {r.fatorVendido !== 1 && (
+            <>
+              o vendido arrisca <strong>{(r.fatorVendido * 100).toFixed(0)}%</strong> da régua do
+              comprado, porque a cauda destas moedas é para cima;{" "}
+            </>
+          )}
+          {r.freio && (
+            <>
+              abaixo de {(r.freio.inicio * 100).toFixed(0)}% do pico, o orçamento de risco encolhe
+              até {(r.freio.piso * 100).toFixed(0)}% em −{(r.freio.fim * 100).toFixed(0)}%
+              {c.freio !== undefined && c.freio < 1 && (
+                <strong className="text-[#C42B3E] dark:text-[#F6465D]">
+                  {" "}
+                  — ligado agora, a {(c.freio * 100).toFixed(0)}%
+                </strong>
+              )}
+              ;{" "}
+            </>
+          )}
+          uma call que sai não reabre até o viés mudar de lado.
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-4 mt-4 text-sm">
         <div>
@@ -183,13 +373,18 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
             </p>
           </div>
           <div>
-            <p className="text-black/50 dark:text-white/50" title="Maior margem comprometida ao mesmo tempo, sobre um teto de 50%">
+            <p
+              className="text-black/50 dark:text-white/50"
+              title={`Maior margem comprometida ao mesmo tempo, sobre um teto de ${(EXPOSICAO_MAXIMA * 100).toFixed(0)}%`}
+            >
               Margem no pico
             </p>
             <p className="text-xl font-semibold tabular-nums">
               {((c.maiorExposicao ?? 0) * 100).toFixed(0)}%
             </p>
-            <p className="text-xs text-black/40 dark:text-white/40">de um teto de 50%</p>
+            <p className="text-xs text-black/40 dark:text-white/40">
+              de um teto de {(EXPOSICAO_MAXIMA * 100).toFixed(0)}%
+            </p>
           </div>
           <div>
             <p
@@ -205,10 +400,24 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
                 nunca chega perto do teto, quem segura o tamanho não é o teto —
                 é o risco por call. */}
             <p className="text-xs text-black/40 dark:text-white/40">
-              de um teto de 25%
+              de um teto de {(RISCO_TOTAL_MAXIMO * 100).toFixed(0)}%
               {(c.maiorRiscoAberto ?? 0) < 0.2 && " · o teto nunca prendeu"}
+              {c.riscoAberto !== undefined && ` · agora ${(c.riscoAberto * 100).toFixed(1)}%`}
             </p>
           </div>
+        </div>
+      )}
+
+      {guardada.curva.length > 1 && (
+        <div className="mt-5 border-t border-black/10 dark:border-white/10 pt-4">
+          <CurvaCarteira
+            curva={comAgora(guardada.curva, c)}
+            anterior={guardada.comparacao?.anterior ?? []}
+            rotuloAnterior="regras até 23/09"
+            capital={CAPITAL_INICIAL}
+            meio={guardada.comparacao?.meio}
+          />
+          {guardada.comparacao && <Regimes cmp={guardada.comparacao} />}
         </div>
       )}
 
@@ -217,7 +426,7 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
           <p className="text-[10px] tracking-widest text-black/40 dark:text-white/40 uppercase mb-2">
             Abertas
           </p>
-          <table className="w-full text-sm tabular-nums min-w-[40rem]">
+          <table className="w-full text-sm tabular-nums min-w-[44rem]">
             <thead className="text-xs text-black/40 dark:text-white/40 text-left">
               <tr>
                 <th className="font-normal py-1">Moeda</th>
@@ -227,6 +436,12 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
                 </th>
                 <th className="font-normal py-1 text-right">Entrada</th>
                 <th className="font-normal py-1 text-right">Agora</th>
+                <th
+                  className="font-normal py-1 text-right"
+                  title="Onde a ordem de stop está, no último retrato. A marcação ao vivo não a move — quem move é o retrato."
+                >
+                  Stop em
+                </th>
                 <th className="font-normal py-1 text-right" title="Preço em que a corretora fecha a posição à força">
                   Liquida em
                 </th>
@@ -258,6 +473,9 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
                   <td className="py-1.5 text-right">{p.forca}/3</td>
                   <td className="py-1.5 text-right">{p.precoEntrada.toPrecision(4)}</td>
                   <td className="py-1.5 text-right">{p.precoAtual.toPrecision(4)}</td>
+                  <td className="py-1.5 text-right text-black/60 dark:text-white/60">
+                    {p.nivelStop ? p.nivelStop.toPrecision(4) : "—"}
+                  </td>
                   <td className="py-1.5 text-right text-black/40 dark:text-white/40">
                     {p.precoLiquidacao ? p.precoLiquidacao.toPrecision(4) : "—"}
                   </td>
@@ -273,6 +491,11 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
                     {pct(p.retorno)}
                     {p.estourada && (
                       <span className="ml-1" title="margem zerada na marcação ao vivo">
+                        ⚠
+                      </span>
+                    )}
+                    {p.saida && (
+                      <span className="ml-1" title={`${p.saida} na marcação ao vivo — o retrato seguinte fecha`}>
                         ⚠
                       </span>
                     )}

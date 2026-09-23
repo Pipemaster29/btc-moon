@@ -503,7 +503,6 @@ async function inspect(
   // GitHub — que pede 10 minutos e entrega 31 em média, chegando a 42. Menos do
   // que isso deixaria uma transferência escapar entre dois ciclos atrasados;
   // muito mais só traria evento velho e mais dados para trafegar.
-  const config = CHAINS[token.chain];
   const WINDOW_HOURS = 3;
   const span = blocosPara(token.chain, WINDOW_HOURS);
   const from = Math.max(head - span, 0);

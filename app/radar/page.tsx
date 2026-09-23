@@ -5,8 +5,12 @@ import { getPlacar } from "@/lib/placar";
 import { getCarteira, remarcar } from "@/lib/carteira";
 import CarteiraPanel from "@/components/CarteiraPanel";
 import GarimpoPanel from "@/components/GarimpoPanel";
+import SinaisPanel from "@/components/SinaisPanel";
+import FluxoPanel from "@/components/FluxoPanel";
 import { getGarimpo } from "@/lib/garimpo";
-import { PrecoVivo, VariacaoViva } from "@/components/PrecoVivo";
+import { getSinais } from "@/lib/sinais";
+import { getFluxo } from "@/lib/fluxo";
+import { PrecoVivo, SinalVivo, VariacaoViva } from "@/components/PrecoVivo";
 import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
 
@@ -248,11 +252,13 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
 }
 
 export default async function Radar() {
-  const [snapshot, placar, guardada, garimpo] = await Promise.all([
+  const [snapshot, placar, guardada, garimpo, sinais, fluxo] = await Promise.all([
     getSnapshot(),
     getPlacar(),
     getCarteira(),
     getGarimpo(),
+    getSinais(),
+    getFluxo(),
   ]);
   const rows = snapshot.moedas;
 
@@ -313,17 +319,21 @@ export default async function Radar() {
                 viva por cima: uma coisa é o preço estar fresco, outra é o
                 retrato ter parado de ser tirado. Esconder a segunda porque a
                 primeira foi resolvida deixaria o workflow quebrado em silêncio. */}
+            {/* Os tons claros aqui eram os do modo escuro nos dois modos, e no
+                fundo claro o âmbar dá 1,73:1 — o aviso de workflow parado era
+                justamente o texto que menos se lia. */}
             {snapshot.parado ? (
-              <span className="text-[#F6465D]"> · parado há horas, confira o workflow</span>
+              <span className="text-[#C42B3E] dark:text-[#F6465D]"> · parado há horas, confira o workflow</span>
             ) : snapshot.atrasado ? (
-              <span className="text-[#F0B90B]"> · atrasado</span>
+              <span className="text-[#8a5a00] dark:text-[#F0B90B]"> · atrasado</span>
             ) : null}
             {snapshot.vivoEm !== null && snapshot.fonte !== "cálculo" && (
-              <span className="text-[#0ECB81]">
+              <span className="text-[#0a7d43] dark:text-[#0ECB81]">
                 {" "}
-                · preço, open interest e posicionamento refeitos agora
+                · preço, open interest e posicionamento refeitos na montagem da página
               </span>
             )}
+            <SinalVivo />
           </p>
           {snapshot.novas.length > 0 && (
             <p className="text-xs text-black/40 dark:text-white/40">
@@ -386,6 +396,11 @@ export default async function Radar() {
             )}
           </section>
         )}
+
+        {/* Logo depois do placar: a pergunta seguinte de quem lê "nenhum viés
+            separou" é "e se eu usasse RSI, suporte, funding?". A resposta
+            medida fica onde a pergunta aparece. */}
+        {sinais && <SinaisPanel s={sinais} />}
 
         <div className="grid gap-4 lg:grid-cols-2">
           {[
@@ -528,6 +543,10 @@ export default async function Radar() {
         {/* Depois da tabela de propósito: estas moedas não têm contrato
             conferido, nem leitura on-chain, nem histórico. Dar a elas o topo da
             página seria dar o mesmo peso visual de uma leitura completa. */}
+        {/* Depois da tabela e antes do garimpo: é dado on-chain sobre moedas que
+            a lista nem sempre tem, e ainda é descrição sem medição de vantagem. */}
+        {fluxo && <FluxoPanel f={fluxo} s={sinais} />}
+
         {garimpo && <GarimpoPanel g={garimpo} />}
 
         <p className="text-xs text-black/40 dark:text-white/40 max-w-3xl">
