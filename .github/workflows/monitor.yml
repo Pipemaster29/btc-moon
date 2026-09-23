@@ -242,6 +242,13 @@ jobs:
             # linhas. Leva dois segundos e não toca em rede: lê o histórico que o
             # panorama acabou de gravar.
             npm run placar || echo "placar falhou, seguindo"
+            # O FLUXO DA CARTEIRA QUENTE DA BINANCE, que só existe para frente.
+            # Varre desde o último bloco lido (teto de 12 h; além disso grava
+            # LACUNA), então no fechamento — uma vez por execução — ele cobre as
+            # cinco horas do laço em ~3 minutos no nó de arquivo. No laço de 12
+            # minutos seriam 25 commits por dia de um arquivo que só serve quando
+            # somado por dia.
+            npm run fluxo-binance || echo "fluxo da Binance falhou, seguindo"
 
             # A AUDITORIA RODA ANTES DO COMMIT e o resultado vai para o log.
             #

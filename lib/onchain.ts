@@ -574,6 +574,8 @@ export interface Transfer {
 }
 
 interface RawLog {
+  /** O contrato que emitiu o evento — o token, num `Transfer`. */
+  address: string;
   blockNumber: string;
   transactionHash: string;
   topics: string[];
@@ -839,6 +841,81 @@ export async function scanTransfers(options: ScanOptions): Promise<ScanResult> {
     failed,
     semHistorico,
   };
+}
+
+/** Uma transferência de qualquer token que tocou a carteira observada. */
+export interface Movimento {
+  token: string;
+  block: number;
+  /** O outro lado: quem mandou (entrando) ou quem recebeu (saindo). */
+  contraparte: string;
+  value: bigint;
+}
+
+/**
+ * Faixa das varreduras de CARTEIRA, sem filtro de token.
+ *
+ * Orçamento de requisição, não medição de mercado — a armadilha nº 8. Medido na
+ * carteira quente da Binance em 23/09: 5 mil blocos devolveram 9.823
+ * transferências entrando, de 127 tokens, em 24,7 segundos — colado no teto de
+ * 30 segundos de `callRpc`. Dois mil ficam em ~10 s, com folga para o nó ter um
+ * dia pior.
+ */
+const SPAN_CARTEIRA = 2000;
+
+/**
+ * Tudo que entrou (ou saiu) de uma carteira entre dois blocos, de QUALQUER token.
+ *
+ * É a pergunta ao contrário de `scanTransfers`, que parte de um token e filtra
+ * carteiras: aqui a carteira é o filtro e o token é o que se descobre. Serve
+ * para carteira de corretora, onde a lista de tokens é o que se quer saber.
+ *
+ * Só funciona no nó de arquivo: o `publicnode` da BNB Chain recusa `eth_getLogs`
+ * sem endereço de contrato ("Please specify an address"), e o `blxrbdn` aceita.
+ *
+ * `falhas` conta as faixas que nenhuma tentativa leu, e ela tem de chegar até
+ * quem grava: faixa perdida numa carteira que recebe dez mil transferências por
+ * hora não é "ninguém depositou" — a armadilha nº 2.
+ */
+export async function movimentosDaCarteira(
+  chain: Chain,
+  carteira: string,
+  fromBlock: number,
+  toBlock: number,
+  sentido: "entrando" | "saindo",
+): Promise<{ movimentos: Movimento[]; falhas: number }> {
+  const pool = logPool(chain);
+  const alvo = padAddress(carteira);
+  const topics = sentido === "entrando" ? [TRANSFER_TOPIC, null, alvo] : [TRANSFER_TOPIC, alvo];
+  const movimentos: Movimento[] = [];
+  let falhas = 0;
+
+  for (let start = fromBlock; start <= toBlock; start += SPAN_CARTEIRA) {
+    const end = Math.min(start + SPAN_CARTEIRA - 1, toBlock);
+    let logs: RawLog[];
+    try {
+      logs = (await callRpc(
+        pool,
+        "eth_getLogs",
+        [{ fromBlock: `0x${start.toString(16)}`, toBlock: `0x${end.toString(16)}`, topics }],
+        pool.length * 3,
+      )) as RawLog[];
+    } catch {
+      falhas++;
+      continue;
+    }
+    for (const log of logs) {
+      const t = decodeTransfer(log);
+      if (!t) continue;
+      movimentos.push({
+        token: log.address.toLowerCase(),
+        block: t.block,
+        contraparte: sentido === "entrando" ? t.from : t.to,
+        value: t.value,
+      });
+    }
+  }
+  return { movimentos, falhas };
 }
 
 /**

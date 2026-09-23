@@ -254,6 +254,42 @@ if (gar) {
   checa("ordenado pela mediana medida", ordenado);
 } else console.log("  (ausente)");
 
+// ---- fluxo da carteira quente da Binance
+//
+// A invariante que importa é a CONTIGUIDADE: cada janela começa no bloco
+// seguinte ao fim da anterior, ou declara a lacuna. Um buraco calado viraria
+// "não entrou nada" num dia em que simplesmente não se leu — a armadilha nº 2,
+// e numa carteira que recebe dez mil transferências por hora.
+{
+  const { readdir } = await import("node:fs/promises");
+  const arquivos = (await readdir("data")).filter((f) => /^fluxo-binance-\d{4}-\d{2}\.jsonl$/.test(f)).sort();
+  console.log("fluxo-binance:");
+  if (arquivos.length === 0) console.log("  (ausente)");
+  let anterior: number | null = null;
+  for (const f of arquivos) {
+    for (const l of (await readFile(`data/${f}`, "utf8")).split("\n")) {
+      if (!l.trim()) continue;
+      let o: Record<string, unknown>;
+      try { o = JSON.parse(l); } catch { checa(`${f}: linha legível`, false, l.slice(0, 40)); continue; }
+      if ("janela" in o) {
+        const j = o.janela as { de: number; ate: number };
+        const lac = o.lacuna as { de: number; ate: number } | null;
+        checa(`${f}: janela com fim depois do começo`, j.ate >= j.de, JSON.stringify(j));
+        if (anterior !== null) {
+          const comeco = lac ? lac.de : j.de;
+          checa(`${f}: janela contígua à anterior`, comeco === anterior + 1, `anterior terminou em ${anterior}, esta começa em ${comeco}`);
+        }
+        anterior = j.ate;
+      } else {
+        for (const campo of ["ent", "sai", "liq"]) {
+          checa(`${f}: ${o.s}.${campo} finito`, typeof o[campo] === "number" && Number.isFinite(o[campo] as number), `= ${o[campo]}`);
+        }
+        checa(`${f}: ${o.s} entrada e saída não negativas`, (o.ent as number) >= 0 && (o.sai as number) >= 0);
+      }
+    }
+  }
+}
+
 console.log(falhas === 0 ? "\nTUDO OK" : `\n${falhas} FALHAS`);
 
 // SAI COM CÓDIGO DE ERRO, e não saía.
