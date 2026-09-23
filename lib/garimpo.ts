@@ -338,7 +338,14 @@ export async function garimpar(): Promise<Garimpo> {
         v.length >= 8 && ultimo > 0 && v[v.length - 8].close > 0
           ? ultimo / v[v.length - 8].close - 1
           : null;
-      const pico = Math.max(...v.map((x) => x.high));
+      // O PREÇO DE AGORA ENTRA NO PICO, e não entrava. As velas diárias e o
+      // ticker são duas leituras em instantes diferentes, e o `ticker/24hr`
+      // pode chegar DEPOIS da máxima da vela mais recente — numa moeda batendo
+      // máxima, é o caso normal. Sem isto a SAND saiu em 23/09 com a queda do
+      // pico em +0,02%, "caída" para cima, e a auditoria reprovou o retrato.
+      // O preço de agora faz parte da série por definição.
+      let pico = preco;
+      for (const x of v) if (x.high > pico) pico = x.high;
       const quedaDoPico = pico > 0 ? preco / pico - 1 : null;
 
       // A faixa mais severa das duas manda: uma moeda que fez +30% hoje DEPOIS
