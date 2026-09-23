@@ -241,8 +241,10 @@ o unlock procura um SALTO de 5% em 21 dias, e emissão programada não salta, el
 pinga.
 
 **Limite conhecido:** na BNB Chain o único endpoint público que serve
-`eth_getLogs` em lote guarda desde 2025-11-10. Moeda nascida antes disso não tem
-emissão varrível ali, e a varredura grava esse limite em vez de devolver zero.
+`eth_getLogs` em lote guardava desde 2025-11-10 quando medido em 02/09 — e só
+~100 horas rolantes quando medido de novo em 23/09. Moeda nascida antes do
+horizonte não tem emissão varrível ali, e a varredura grava esse limite em vez
+de devolver zero.
 
 ## Mil dólares de mentira
 
@@ -483,26 +485,46 @@ do script imprime o ataque a cada rodada.
 OI e razões de posição só existem para 30 dias na Binance, e com isso nenhum
 sinal deles tem amostra para afirmar nada.
 
-### O fluxo da carteira quente da Binance
+### O fluxo da carteira quente da Binance — e as duas portas dele
 
-O que sobra de "smart money" é o on-chain: quem está MOVENDO a moeda para a
-corretora, e não quem está apostando. A carteira `0x73D8…46Db` é o contrato
-quente da Binance na BNB Chain, e ela guarda boa parte do que circula de várias
-moedas pequenas — 70% da LYN, 59% da TRADOOR, 53% da STAR, medido em 23/09.
+O que sobra de "smart money" é o on-chain: quem está MOVENDO moeda, e não quem
+está apostando. A carteira `0x73D8…46Db` é o contrato quente da Binance na BNB
+Chain, e ela guarda boa parte do que circula de várias moedas pequenas — 70% da
+LYN, 59% da TRADOOR, 53% da STAR, medido em 23/09.
 
-No mesmo dia a TAKE subiu +221%, com o open interest de US$ 4 mi para 18 mi em
-quatro horas e o funding virando para −0,42%. **Entraram US$ 8,75 mi dela nesta
-carteira em 24 horas, de 28 endereços — 12,6% do market cap.** Oferta correndo
-para a corretora no meio do pump tem cara de distribuição. Se ela antecipa a
-queda não dá para saber: o histórico desse fluxo não existe para trás, e 24
-horas dele custam vinte minutos no único nó gratuito que responde.
+**A primeira leitura dela saiu invertida, e o motivo vale registrar.** No dia em
+que a TAKE subiu +221%, entraram US$ 8,75 mi dela na carteira em 24 horas. Lido
+como fluxo de corretora, era holder depositando para vender — distribuição. Só
+que 97% das transferências que entram e 93% das que saem têm uma única
+contraparte, o contrato `0x6aba…1b90`, em 194 tokens. Seguindo a TAKE, o padrão
+é sempre o mesmo, na mesma transação: a pool da PancakeSwap manda para ele, e
+ele repassa para a quente — 3.699 vezes em meia hora. É o **executor de swap**:
+o cliente compra pelo app, a Binance compra na pool, a moeda cai na custódia.
+Aquela entrada era, em grande parte, **cliente comprando no meio do pump**.
 
-Então ele passa a existir para frente. `npm run fluxo-binance` roda no retrato
-de fechamento, varre desde o último bloco lido e grava, por moeda com perpétuo,
-quanto entrou, quanto saiu e de quantos endereços. Janela que falhou ou lacuna
-fica gravada como tal, e a auditoria reprova buraco não declarado. A seção 4 do
-`medir-sinais` mede "entrou ≥ 1% do market cap no dia" contra os 7 dias
-seguintes — e diz "amostra insuficiente" até ter 30 eventos em 10 moedas.
+Então o fluxo tem duas portas, e elas dizem coisas opostas:
+
+| porta | o que é | medido na TAKE, 1 hora de 23/09 |
+| --- | --- | --- |
+| executor de swap | varejo da Binance comprando/vendendo na DEX | +US$ 2,13 mi de compra líquida (3,0% do mcap) |
+| direta | depósito e saque — o fluxo clássico | +US$ 1,13 mi de depósito líquido (1,6%) |
+
+`npm run fluxo-binance` grava as duas separadas, por moeda com perpétuo, cortando
+as janelas na meia-noite UTC. Toda janela registra a contraparte dominante: se
+a Binance trocar de executor, o novo cairia calado na porta de depósito e o
+sinal mudaria de sentido sem nada quebrar — a auditoria reprova isso.
+
+**Só existe para frente, e agora pelo motivo certo.** O único nó gratuito que
+serve esse tipo de consulta na BNB Chain guarda uma janela rolante de ~100
+horas — medido em 23/09 por busca binária. O comentário do código dizia "desde
+2025-11-10", que era verdade em 02/09 e deixou de ser sem aviso. Foram
+semeadas as ~96 horas que o nó ainda tinha; daí em diante o gravador roda no
+retrato de fechamento, e buraco maior que quatro dias é dado perdido.
+
+A seção 4 do `medir-sinais` testa as duas portas com os lados escritos ANTES de
+haver dado: depósito líquido ≥ 1% do market cap → vender; compra líquida de
+varejo na DEX ≥ 1% → vender; os espelhos → comprar. Até ter 30 eventos em 10
+moedas, com 7 dias de preço à frente de cada, ela diz "amostra insuficiente".
 
 ## Identificar a moeda certa
 
@@ -631,7 +653,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
 | `npm run medir-sinais` | RSI, suporte, rompimento, OI, funding e smart money sobre os 528 perpétuos |
-| `npm run fluxo-binance` | grava o que entrou e saiu da carteira quente da Binance desde a última rodada |
+| `npm run fluxo-binance` | grava o fluxo da carteira quente da Binance desde a última rodada, separando varejo na DEX de depósito/saque |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |

@@ -184,7 +184,7 @@ retrato seguinte fechá-la com a hora certa.
 
 | arquivo | responsabilidade |
 |---|---|
-| `lib/onchain.ts` | JSON-RPC: saldos, logs, supply, bloco de nascimento. Sabe qual nó serve o quê |
+| `lib/onchain.ts` | JSON-RPC: saldos, logs, supply, bloco de nascimento, e tudo que toca uma carteira (`movimentosDaCarteira`). Sabe qual nó serve o quê — e o de log da BSC guarda só ~100 h |
 | `lib/explorador.ts` | o Blockscout como fonte de log, **sem chave**, na Ethereum e na Base. Uma requisição por mil eventos onde o nó pedia centenas de faixas. A BSC não tem instância gratuita, e por que está escrito lá |
 | `lib/watchlist.ts` | as moedas, com contrato e carteiras mapeadas. **Cada entrada tem a justificativa da identificação** |
 | `lib/lifecycle.ts` | estágio do ciclo (`lerVida`) e o viés (`lerVies`) |
@@ -212,7 +212,7 @@ retrato seguinte fechá-la com a hora certa.
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/carteira.json` | a carteira | `npm run carteira` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
-| `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por janela e por moeda com perpétuo. **Só existe para frente**: uma linha `janela` por rodada (com falhas e lacuna) e uma por moeda | `npm run fluxo-binance` |
+| `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
 | `data/fluxo-binance.json` | o último bloco lido e a identificação de cada token (perpétuo e preço conferidos) | idem |
 
 ---
@@ -335,8 +335,11 @@ O modo de falha que este projeto mais teme. Casos reais:
 
 - `rpc.flashbots.net` devolvia **lista vazia** para logs além de ~8.192 blocos.
   Não é erro, é silêncio — e `prunedDepth` dizia 20.000.
-- O nó de log da BNB Chain **guarda desde 2025-11-10**, não a cadeia inteira.
-  Toda varredura mais funda devolvia nada, sem avisar.
+- O nó de log da BNB Chain **guardava desde 2025-11-10** (02/09), não a cadeia
+  inteira, e toda varredura mais funda devolvia nada, sem avisar. **Em 23/09 a
+  janela era de ~100 horas rolantes** — o limite encolheu sem aviso, e o
+  comentário no código continuou afirmando dez meses. `semHistorico` detecta o
+  limite na hora; data escrita em comentário não acompanha o nó.
 - `concentracaoDe` devolvia **ZERO** quando a janela de gênese estava vazia. A C
   tinha 23% do supply em contratos e o painel lia "concentração zero".
 - O lote da BSC de 06/09: 16 moedas varridas, **15 com as 41 faixas da janela

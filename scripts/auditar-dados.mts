@@ -280,11 +280,21 @@ if (gar) {
           checa(`${f}: janela contígua à anterior`, comeco === anterior + 1, `anterior terminou em ${anterior}, esta começa em ${comeco}`);
         }
         anterior = j.ate;
-      } else {
-        for (const campo of ["ent", "sai", "liq"]) {
-          checa(`${f}: ${o.s}.${campo} finito`, typeof o[campo] === "number" && Number.isFinite(o[campo] as number), `= ${o[campo]}`);
+        // A SENTINELA DO EXECUTOR. A porta da DEX é reconhecida por endereço, e
+        // se a Binance trocar de executor o novo cairia calado na porta de
+        // depósito — compra de cliente virando "depósito para vender". Medido
+        // em 23/09, o executor responde por ~96% das transferências de cada
+        // janela; um desconhecido nesse papel é troca de encanamento.
+        const maior = o.maior as { addr: string; fracao: number; conhecido: boolean } | undefined;
+        if (maior) {
+          checa(`${f}: contraparte dominante é executor conhecido`, maior.conhecido || maior.fracao <= 0.5,
+            `${maior.addr} com ${(maior.fracao * 100).toFixed(0)}% das transferências`);
         }
-        checa(`${f}: ${o.s} entrada e saída não negativas`, (o.ent as number) >= 0 && (o.sai as number) >= 0);
+      } else {
+        for (const campo of ["cmp", "vnd", "dep", "saq"]) {
+          const v = o[campo];
+          checa(`${f}: ${o.s}.${campo} finito e não negativo`, typeof v === "number" && Number.isFinite(v) && v >= 0, `= ${v}`);
+        }
       }
     }
   }

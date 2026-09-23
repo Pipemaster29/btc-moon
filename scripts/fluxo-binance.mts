@@ -1,37 +1,52 @@
 /**
- * O que entra e o que sai da carteira quente da Binance, moeda por moeda.
+ * O que entra e o que sai da carteira quente da Binance, moeda por moeda — e
+ * POR QUAL PORTA.
  *
- * DEPÓSITO EM CORRETORA É A ÚNICA PISTA DE "SMART MONEY" QUE AINDA NÃO FOI
- * MEDIDA AQUI, e ela não pode ser medida para trás. Todo o resto foi: em 23/09,
- * sobre 319 mil moeda-dias dos 528 perpétuos, a razão de posição dos top
- * traders contra o varejo separou +0,39 p.p. com p = 0,21 — acaso —, e nenhum
- * sinal técnico virou trade com vantagem (ver `npm run medir-sinais`). O fluxo
- * on-chain é diferente: ele diz quem está MOVENDO a moeda para vender, e não
- * quem está apostando. Mas o histórico dele só existe varrendo a cadeia, e a
- * varredura de 24 horas desta carteira leva vinte minutos no único nó gratuito
- * que responde. Então o histórico se constrói para frente: cada execução grava
- * o intervalo desde a anterior.
+ * O fluxo on-chain é a última pista de "smart money" não medida aqui. O resto
+ * foi: em 23/09, sobre 319 mil moeda-dias dos 528 perpétuos, a razão de posição
+ * dos top traders contra o varejo separou +0,39 p.p. com p = 0,21 — acaso —, e
+ * nenhum sinal técnico virou trade com vantagem (`npm run medir-sinais`).
  *
- * O CASO QUE MOTIVOU: a TAKE subiu +221% em 23/09, com o open interest de
- * US$ 4 mi para 18 mi em quatro horas e o funding virando para −0,42% a cada 8h.
- * Nas mesmas 24 horas entraram US$ 8,75 mi dela nesta carteira, vindos de 28
- * endereços — 12,6% do market cap. Oferta correndo para a corretora no meio do
- * pump é a assinatura de distribuição. Se isso antecipa a queda é a pergunta, e
- * ela só se responde com semanas deste arquivo.
+ * AS DUAS PORTAS, e confundi-las inverteu uma leitura. A carteira `0x73D8…46Db`
+ * é o contrato quente da Binance na BNB Chain. Medido em 23/09 sobre três
+ * horas: 97% das transferências que entram e 93% das que saem têm UMA
+ * contraparte, o contrato `0x6aba…1b90`, em 194 tokens. Seguindo a TAKE, o
+ * padrão é sempre o mesmo, dentro da mesma transação: a pool da PancakeSwap (ou
+ * um roteador) manda para o `0x6aba`, e ele repassa para a quente — 3.699 vezes
+ * em meia hora. É o EXECUTOR DE SWAP: cliente compra pelo app, a Binance compra
+ * na pool, a moeda cai na custódia. O sentido inverso é cliente vendendo.
  *
- * POR QUE ESTA CARTEIRA: `0x73D8…46Db` é o contrato quente da Binance na BNB
- * Chain, o mesmo que `lib/watchlist.ts` já marca como corretora. Medido em
- * 23/09, ela recebe perto de dez mil transferências de 127 tokens a cada 37
- * minutos. E ela guarda boa parte do que circula de várias moedas pequenas —
- * 70% da LYN, 59% da TRADOOR, 53% da STAR —, que é a condição de manipulação
- * que o projeto persegue.
+ * Então há duas coisas diferentes aqui, e elas dizem coisas opostas:
  *
- * SÓ AS MOEDAS COM PERPÉTUO NA BINANCE são gravadas, por dois motivos. São as
- * que dá para operar, e são as que dá para MEDIR depois, porque a série diária
- * delas existe. E o resto é quase tudo lixo: das 368 moedas que tocaram a
+ *   COMPRA/VENDA NA DEX   passa pelo executor. É varejo da Binance comprando ou
+ *                         vendendo on-chain — a moeda ENTRA na custódia quando
+ *                         alguém COMPRA.
+ *   DEPÓSITO/SAQUE        chega ou sai direto. É o fluxo clássico de corretora:
+ *                         depositar costuma ser para vender.
+ *
+ * E a porta direta foi conferida, não suposta. Os US$ 8,0 mi de B2 que chegaram
+ * por ela em 19/09 vieram de 24 carteiras comuns, nenhuma da Binance. Na AKE,
+ * os dois maiores remetentes eram contratos — e as 145 transferências deles têm
+ * a mesma forma: uma transferência só, CONTRATO→QUENTE, assinada pelo mesmo
+ * operador (`0x1dfb…`). É a varredura de endereço de depósito. Depósito.
+ *
+ * O ERRO QUE ISTO CONSERTA: em 23/09 a TAKE subiu +221% e US$ 8,75 mi dela
+ * "entraram" nesta carteira em 24 horas. Lido sem separar as portas, parecia
+ * holder correndo para a corretora — distribuição. Era o contrário: quase tudo
+ * passou pelo executor, ou seja, cliente da Binance COMPRANDO no meio do pump.
+ *
+ * SÓ EXISTE PARA FRENTE, e o motivo foi medido: o único nó gratuito que serve
+ * log sem endereço de contrato na BNB Chain guarda uma janela rolante de ~100
+ * horas (bloco mais antigo servido em 23/09: 19/09 07:51). O comentário de
+ * `lib/onchain.ts` dizia "desde 2025-11-10" — era verdade em 02/09 e deixou de
+ * ser. Buraco maior que isso no gravador é dado perdido para sempre.
+ *
+ * SÓ AS MOEDAS COM PERPÉTUO NA BINANCE são gravadas: são as que dá para operar e
+ * para medir depois, e o resto é quase tudo lixo — das 368 moedas que tocaram a
  * carteira em 24 horas, 174 não tinham pool de US$ 20 mil.
  *
  * Rode com: npm run fluxo-binance
+ *           npm run fluxo-binance -- --semear 96   (só sem estado: grava o passado que o nó ainda tem)
  */
 
 import { appendFile, readFile, writeFile } from "node:fs/promises";
@@ -51,16 +66,27 @@ const CARTEIRA = "0x73D8bD54F7Cf5FAb43fE4Ef40A62D390644946Db";
 const ESTADO = "data/fluxo-binance.json";
 
 /**
+ * Os executores de swap da Binance: o que passa por eles é compra e venda de
+ * cliente na DEX, não depósito nem saque. Medido em 23/09 — ver o topo.
+ *
+ * Se a Binance trocar de executor, o novo cairia calado na porta de depósito e o
+ * sinal mudaria de significado sem nada quebrar. Por isso toda janela grava a
+ * contraparte dominante e se ela é conhecida, e `npm run auditar-dados` reprova
+ * a janela em que uma desconhecida passa de metade das transferências.
+ */
+const EXECUTORES = new Set(["0x6aba0315493b7e6989041c91181337b662fb1b90"]);
+
+/**
  * Janela da primeira execução, e o teto de qualquer uma.
  *
- * O teto é orçamento de requisição (armadilha nº 8): doze horas de BNB Chain
- * são 96 mil blocos, 48 faixas por direção, perto de oito minutos no nó de
- * arquivo. Um buraco maior do que isso — o workflow parado, o repositório sem
- * execução por um dia — vira LACUNA gravada, e não uma varredura de horas que
- * estouraria o passo do workflow.
+ * O teto é orçamento de requisição (armadilha nº 8): doze horas de BNB Chain são
+ * 96 mil blocos, 48 faixas por direção, perto de oito minutos no nó de arquivo —
+ * o que cabe no passo de fechamento do workflow. Buraco maior vira LACUNA gravada.
+ * O `--semear` vai até 96 horas porque o nó guarda ~100.
  */
 const JANELA_INICIAL_H = 1;
 const JANELA_MAX_H = 12;
+const SEMEAR_MAX_H = 96;
 
 /** Blocos de folga atrás da ponta, para não gravar bloco que ainda pode reorganizar. */
 const FOLGA = 15;
@@ -69,13 +95,13 @@ const FOLGA = 15;
 const POOL_MINIMA = 20_000;
 
 /**
- * Quando reconferir a identificação de uma moeda.
- *
- * O perpétuo de uma moeda pode ser listado depois de ela aparecer aqui, e um
- * "sem perpétuo" gravado para sempre a esconderia justamente quando ela passar
- * a interessar.
+ * Quando reconferir a identificação de uma moeda. O perpétuo pode ser listado
+ * depois de ela aparecer aqui, e um "sem perpétuo" gravado para sempre a
+ * esconderia justamente quando ela passasse a interessar.
  */
 const RECONFERIR_DIAS = 7;
+
+const DIA = 86_400_000;
 
 interface Identificacao {
   symbol: string;
@@ -138,13 +164,57 @@ async function dex(tokens: string[]): Promise<Map<string, { preco: number; pool:
   return out;
 }
 
-const antes = await lerEstado();
-const estado: Estado = antes ?? { ultimoBloco: 0, tokens: {} };
+/** Fechamento diário do perpétuo, para marcar janela de dia passado no preço daquele dia. */
+const velasDiarias = new Map<string, Map<number, number>>();
+async function fechamentoDoDia(perp: string, dia: number): Promise<number | null> {
+  if (!velasDiarias.has(perp)) {
+    const m = new Map<number, number>();
+    try {
+      const res = await fetch(`https://www.binance.com/fapi/v1/klines?symbol=${perp}&interval=1d&limit=10`, {
+        signal: AbortSignal.timeout(15_000),
+      });
+      const k = (await res.json()) as [number, string, string, string, string][];
+      if (Array.isArray(k)) for (const x of k) m.set(x[0], Number(x[4]));
+    } catch {
+      // sem vela, sem preço: a linha não é gravada, e a contagem diz quantas
+    }
+    velasDiarias.set(perp, m);
+  }
+  return velasDiarias.get(perp)!.get(dia) ?? null;
+}
 
+/**
+ * O último bloco de antes de `ts`, buscado só entre `lo` e `hi`. É o
+ * `blockAtTime` do `lib/onchain.ts` sem partir do bloco 1: cortar uma janela na
+ * meia-noite custa ~17 chamadas em vez de ~27.
+ */
+async function blocoAntesDe(ts: number, lo: number, hi: number): Promise<number> {
+  while (hi - lo > 1) {
+    const meio = Math.floor((lo + hi) / 2);
+    if ((await blockTime("bsc", meio)) < ts) lo = meio;
+    else hi = meio;
+  }
+  return lo;
+}
+
+// ------------------------------------------------------------------ rodada
+
+const iSemear = process.argv.indexOf("--semear");
+const semear = iSemear >= 0 ? Number(process.argv[iSemear + 1]) : null;
+const antes = await lerEstado();
+if (semear !== null && (antes || !(semear > 0) || semear > SEMEAR_MAX_H)) {
+  console.error(
+    antes
+      ? "o histórico já começou: semear agora gravaria janelas antes das que existem"
+      : `--semear aceita de 1 a ${SEMEAR_MAX_H} horas (o nó guarda ~100)`,
+  );
+  process.exit(1);
+}
+const estado: Estado = antes ?? { ultimoBloco: 0, tokens: {} };
 const ponta = (await blockNumber("bsc")) - FOLGA;
-let de = antes ? antes.ultimoBloco + 1 : ponta - blocosPara("bsc", JANELA_INICIAL_H);
+let de = antes ? antes.ultimoBloco + 1 : ponta - blocosPara("bsc", semear ?? JANELA_INICIAL_H);
 let lacuna: { de: number; ate: number } | null = null;
-const teto = blocosPara("bsc", JANELA_MAX_H);
+const teto = blocosPara("bsc", semear ?? JANELA_MAX_H);
 if (ponta - de > teto) {
   lacuna = { de, ate: ponta - teto };
   de = ponta - teto + 1;
@@ -154,137 +224,191 @@ if (de > ponta) {
   process.exit(0);
 }
 
-console.log(`varrendo ${ponta - de + 1} blocos (${((ponta - de + 1) * 0.45 / 3600).toFixed(1)} h)` + (lacuna ? ` · LACUNA de ${lacuna.ate - lacuna.de + 1} blocos gravada` : ""));
-const [entrando, saindo] = await Promise.all([
-  movimentosDaCarteira("bsc", CARTEIRA, de, ponta, "entrando"),
-  movimentosDaCarteira("bsc", CARTEIRA, de, ponta, "saindo"),
-]);
-
-interface Agregado { nE: number; nS: number; somaE: bigint; somaS: bigint; dep: Set<string>; saq: Set<string> }
-const porToken = new Map<string, Agregado>();
-function somar(ms: Movimento[], lado: "E" | "S") {
-  for (const m of ms) {
-    const g = porToken.get(m.token) ?? { nE: 0, nS: 0, somaE: BigInt(0), somaS: BigInt(0), dep: new Set<string>(), saq: new Set<string>() };
-    if (lado === "E") { g.nE++; g.somaE += m.value; g.dep.add(m.contraparte); }
-    else { g.nS++; g.somaS += m.value; g.saq.add(m.contraparte); }
-    porToken.set(m.token, g);
+// A JANELA É CORTADA NA MEIA-NOITE UTC. Cada linha é somada ao dia em que a
+// janela termina, e uma janela das 21h às 2h punha no dia seguinte três horas
+// que eram do anterior. A medição compara o fluxo de um dia com o preço a partir
+// do fechamento DAQUELE dia; fluxo no dia errado vira olhar o futuro ou atrasar
+// o sinal, conforme o lado.
+const cortes: [number, number][] = [];
+{
+  const tDe = await blockTime("bsc", de);
+  const tAte = await blockTime("bsc", ponta);
+  let inicio = de;
+  for (let meiaNoite = Math.floor((tDe * 1000) / DIA) * DIA + DIA; meiaNoite <= tAte * 1000; meiaNoite += DIA) {
+    const b = await blocoAntesDe(meiaNoite / 1000, inicio, ponta);
+    if (b >= inicio) cortes.push([inicio, b]);
+    inicio = b + 1;
   }
+  cortes.push([inicio, ponta]);
 }
-somar(entrando.movimentos, "E");
-somar(saindo.movimentos, "S");
 
-// IDENTIFICAÇÃO, só para quem é novo ou venceu. A regra é a do projeto
-// (armadilha nº 1): símbolo igual não basta, o preço da pool tem de bater com o
-// do perpétuo. Homônimo fica 30% ou 30.000% fora.
 const perps = await cotacoes();
 const agora = Date.now();
-const aConferir = [...porToken.keys()].filter((tk) => {
-  const id = estado.tokens[tk];
-  return !id || agora - id.conferidoEm > RECONFERIR_DIAS * 86_400_000;
-});
-const precosDex = await dex(aConferir);
-await Promise.all(
-  aConferir.map(async (tk) => {
-    const d = precosDex.get(tk);
-    if (!d || d.pool < POOL_MINIMA || !(d.preco > 0)) {
-      // Sem pool que valha, a identificação não gasta chamada de contrato.
-      estado.tokens[tk] = { symbol: "", decimals: 18, perp: null, mult: 1, conferidoEm: agora };
-      return;
-    }
-    let info: Awaited<ReturnType<typeof tokenInfo>>;
-    try {
-      info = await tokenInfo("bsc", tk);
-    } catch {
-      return; // não responde ERC-20 hoje; tenta de novo na próxima rodada
-    }
-    const base = info.symbol.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    let perp: string | null = null;
-    let mult = 1;
-    for (const [s, k] of [[`${base}USDT`, 1], [`1000${base}USDT`, 1000], [`1000000${base}USDT`, 1e6]] as const) {
-      const c = perps.get(s);
-      if (!c) continue;
-      const razao = (d.preco * k) / c.preco;
-      if (razao > 0.85 && razao < 1.15) { perp = s; mult = k; break; }
-    }
-    estado.tokens[tk] = { symbol: info.symbol, decimals: info.decimals, perp, mult, conferidoEm: agora };
-  }),
-);
+const hoje = Math.floor(agora / DIA) * DIA;
+const resumo = new Map<string, { cmp: number; vnd: number; dep: number; saq: number; mcap: number | null }>();
 
-// As moedas com perpétuo que se mexeram nesta janela: saldo e market cap de agora.
-const comPerp = [...porToken.keys()].filter((tk) => estado.tokens[tk]?.perp);
-const mcaps = await dex(comPerp);
-const saldos = new Map<string, bigint>();
-await Promise.all(
-  comPerp.map(async (tk) => {
-    try {
-      const b = (await balancesOf("bsc", tk, [CARTEIRA])).get(CARTEIRA.toLowerCase());
-      if (b !== undefined) saldos.set(tk, b);
-    } catch {
-      // Saldo nulo é "não li", e fica nulo na linha.
-    }
-  }),
-);
-
-// Em segundos, como o `t` do histórico do panorama — as duas séries se cruzam
-// na medição. O relógio da máquina só entra se o nó não disser a hora do bloco.
-const quando = await blockTime("bsc", ponta).catch(() => Math.round(agora / 1000));
-const r = (x: number) => Math.round(x);
-const linhas: string[] = [
-  JSON.stringify({
-    t: quando,
-    janela: { de, ate: ponta },
-    falhas: { entrando: entrando.falhas, saindo: saindo.falhas },
-    lacuna,
-    logs: { entrando: entrando.movimentos.length, saindo: saindo.movimentos.length },
-    tokens: porToken.size,
-    comPerp: comPerp.length,
-  }),
-];
-const resumo: { s: string; liq: number; pctMcap: number | null }[] = [];
-for (const tk of comPerp) {
-  const id = estado.tokens[tk];
-  const g = porToken.get(tk)!;
-  const c = perps.get(id.perp!);
-  if (!c) continue;
-  const preco = c.preco / id.mult;
-  const usd = (v: bigint) => toUnits(v, id.decimals) * preco;
-  const ent = usd(g.somaE), sai = usd(g.somaS);
-  const saldo = saldos.get(tk);
-  const mcap = mcaps.get(tk)?.mcap ?? null;
-  linhas.push(
-    JSON.stringify({
-      t: quando,
-      s: id.perp,
-      tk,
-      px: Number(preco.toPrecision(6)),
-      ent: r(ent),
-      sai: r(sai),
-      liq: r(ent - sai),
-      nE: g.nE,
-      nS: g.nS,
-      dep: g.dep.size,
-      saq: g.saq.size,
-      saldo: saldo === undefined ? null : r(usd(saldo)),
-      mcap: mcap === null ? null : r(mcap),
-    }),
-  );
-  resumo.push({ s: id.perp!, liq: ent - sai, pctMcap: mcap ? (ent - sai) / mcap : null });
+interface Agregado {
+  cmp: bigint;
+  vnd: bigint;
+  dep: bigint;
+  saq: bigint;
+  depositantes: Set<string>;
+  sacadores: Set<string>;
 }
 
-const mes = new Date(quando * 1000).toISOString().slice(0, 7);
-await appendFile(`data/fluxo-binance-${mes}.jsonl`, `${linhas.join("\n")}\n`);
-estado.ultimoBloco = ponta;
-await writeFile(ESTADO, `${JSON.stringify(estado)}\n`);
+for (const [i, [a, b]] of cortes.entries()) {
+  if (i === 0 && lacuna) console.log(`LACUNA de ${lacuna.ate - lacuna.de + 1} blocos gravada`);
+  console.log(`janela ${i + 1}/${cortes.length}: ${b - a + 1} blocos (${(((b - a + 1) * 0.45) / 3600).toFixed(1)} h)`);
+  const [entrando, saindo] = await Promise.all([
+    movimentosDaCarteira("bsc", CARTEIRA, a, b, "entrando"),
+    movimentosDaCarteira("bsc", CARTEIRA, a, b, "saindo"),
+  ]);
 
-console.log(
-  `${porToken.size} tokens tocaram a carteira · ${comPerp.length} com perpétuo gravados · ` +
-    `${entrando.movimentos.length} entradas, ${saindo.movimentos.length} saídas` +
-    (entrando.falhas + saindo.falhas > 0 ? ` · ${entrando.falhas + saindo.falhas} FAIXA(S) NÃO LIDA(S)` : ""),
-);
-resumo.sort((a, b) => Math.abs(b.liq) - Math.abs(a.liq));
-for (const x of resumo.filter((y) => Math.abs(y.liq) >= 1000).slice(0, 10)) {
-  console.log(
-    `  ${x.s.padEnd(14)} ${x.liq >= 0 ? "+" : "−"}US$ ${Math.abs(x.liq / 1e3).toFixed(0).padStart(6)} mil` +
-      (x.pctMcap !== null ? `  (${(x.pctMcap * 100).toFixed(2)}% do market cap ${x.liq >= 0 ? "entrou" : "saiu"})` : ""),
+  const porToken = new Map<string, Agregado>();
+  const porContraparte = new Map<string, number>();
+  const somar = (ms: Movimento[], lado: "E" | "S") => {
+    for (const m of ms) {
+      porContraparte.set(m.contraparte, (porContraparte.get(m.contraparte) ?? 0) + 1);
+      const g = porToken.get(m.token) ?? {
+        cmp: BigInt(0), vnd: BigInt(0), dep: BigInt(0), saq: BigInt(0),
+        depositantes: new Set<string>(), sacadores: new Set<string>(),
+      };
+      const naDex = EXECUTORES.has(m.contraparte);
+      if (lado === "E" && naDex) g.cmp += m.value;
+      else if (lado === "S" && naDex) g.vnd += m.value;
+      else if (lado === "E") { g.dep += m.value; g.depositantes.add(m.contraparte); }
+      else { g.saq += m.value; g.sacadores.add(m.contraparte); }
+      porToken.set(m.token, g);
+    }
+  };
+  somar(entrando.movimentos, "E");
+  somar(saindo.movimentos, "S");
+
+  // IDENTIFICAÇÃO, só para quem é novo ou venceu. A regra é a do projeto
+  // (armadilha nº 1): símbolo igual não basta, o preço da pool tem de bater com
+  // o do perpétuo. Homônimo fica 30% ou 30.000% fora.
+  const aConferir = [...porToken.keys()].filter((tk) => {
+    const id = estado.tokens[tk];
+    return !id || agora - id.conferidoEm > RECONFERIR_DIAS * DIA;
+  });
+  const precosDex = await dex(aConferir);
+  await Promise.all(
+    aConferir.map(async (tk) => {
+      const d = precosDex.get(tk);
+      if (!d || d.pool < POOL_MINIMA || !(d.preco > 0)) {
+        estado.tokens[tk] = { symbol: "", decimals: 18, perp: null, mult: 1, conferidoEm: agora };
+        return;
+      }
+      let info: Awaited<ReturnType<typeof tokenInfo>>;
+      try {
+        info = await tokenInfo("bsc", tk);
+      } catch {
+        return; // não respondeu ERC-20 hoje; tenta de novo na próxima rodada
+      }
+      const base = info.symbol.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      let perp: string | null = null;
+      let mult = 1;
+      for (const [s, k] of [[`${base}USDT`, 1], [`1000${base}USDT`, 1000], [`1000000${base}USDT`, 1e6]] as const) {
+        const c = perps.get(s);
+        if (!c) continue;
+        const razao = (d.preco * k) / c.preco;
+        if (razao > 0.85 && razao < 1.15) {
+          perp = s;
+          mult = k;
+          break;
+        }
+      }
+      estado.tokens[tk] = { symbol: info.symbol, decimals: info.decimals, perp, mult, conferidoEm: agora };
+    }),
   );
+
+  const t = await blockTime("bsc", b);
+  const dia = Math.floor((t * 1000) / DIA) * DIA;
+  const aoVivo = dia === hoje;
+  const comPerp = [...porToken.keys()].filter((tk) => estado.tokens[tk]?.perp);
+  const mcaps = await dex(comPerp);
+  const saldos = new Map<string, bigint>();
+  // Saldo só da janela de hoje: o de um dia passado exigiria estado antigo, que
+  // o nó gratuito não serve. Nulo é "não li", e fica nulo na linha.
+  if (aoVivo) {
+    await Promise.all(
+      comPerp.map(async (tk) => {
+        try {
+          const s = (await balancesOf("bsc", tk, [CARTEIRA])).get(CARTEIRA.toLowerCase());
+          if (s !== undefined) saldos.set(tk, s);
+        } catch {
+          // fica nulo
+        }
+      }),
+    );
+  }
+
+  const [maior, nMaior] = [...porContraparte].sort((x, y) => y[1] - x[1])[0] ?? ["", 0];
+  const total = entrando.movimentos.length + saindo.movimentos.length;
+  const linhas: string[] = [
+    JSON.stringify({
+      t,
+      janela: { de: a, ate: b },
+      falhas: { entrando: entrando.falhas, saindo: saindo.falhas },
+      lacuna: i === 0 ? lacuna : null,
+      logs: { entrando: entrando.movimentos.length, saindo: saindo.movimentos.length },
+      tokens: porToken.size,
+      comPerp: comPerp.length,
+      // A sentinela do executor: quem dominou a janela, e se é conhecido.
+      maior: { addr: maior, fracao: total ? Number((nMaior / total).toFixed(3)) : 0, conhecido: EXECUTORES.has(maior) },
+    }),
+  ];
+  let semPreco = 0;
+  for (const tk of comPerp) {
+    const id = estado.tokens[tk];
+    const g = porToken.get(tk)!;
+    const cot = perps.get(id.perp!);
+    const precoPerp = aoVivo ? cot?.preco ?? null : await fechamentoDoDia(id.perp!, dia);
+    if (!precoPerp) {
+      semPreco++;
+      continue;
+    }
+    const preco = precoPerp / id.mult;
+    const usd = (v: bigint) => Math.round(toUnits(v, id.decimals) * preco);
+    // Market cap de hoje escalado pelo preço daquele dia: o supply circulante não
+    // muda em quatro dias o bastante para pesar; o preço muda.
+    const m = mcaps.get(tk)?.mcap ?? null;
+    const mcap = m !== null && cot ? Math.round(m * (precoPerp / cot.preco)) : m;
+    const linha = {
+      t, s: id.perp, tk, px: Number(preco.toPrecision(6)),
+      cmp: usd(g.cmp), vnd: usd(g.vnd), dep: usd(g.dep), saq: usd(g.saq),
+      nDep: g.depositantes.size, nSaq: g.sacadores.size,
+      saldo: saldos.has(tk) ? usd(saldos.get(tk)!) : null, mcap,
+    };
+    linhas.push(JSON.stringify(linha));
+    const r = resumo.get(id.perp!) ?? { cmp: 0, vnd: 0, dep: 0, saq: 0, mcap };
+    r.cmp += linha.cmp;
+    r.vnd += linha.vnd;
+    r.dep += linha.dep;
+    r.saq += linha.saq;
+    r.mcap = mcap;
+    resumo.set(id.perp!, r);
+  }
+
+  const mes = new Date(t * 1000).toISOString().slice(0, 7);
+  await appendFile(`data/fluxo-binance-${mes}.jsonl`, `${linhas.join("\n")}\n`);
+  // O estado avança JANELA A JANELA: se a rodada morrer no meio de um --semear, a
+  // próxima continua de onde parou em vez de regravar o que já está no arquivo.
+  estado.ultimoBloco = b;
+  await writeFile(ESTADO, `${JSON.stringify(estado)}\n`);
+  console.log(
+    `  ${porToken.size} tokens · ${comPerp.length - semPreco} gravados · ` +
+      `contraparte dominante com ${((nMaior / (total || 1)) * 100).toFixed(0)}% das transferências` +
+      (EXECUTORES.has(maior) ? " (o executor)" : ` · ATENÇÃO: ${maior} NÃO é executor conhecido`) +
+      (entrando.falhas + saindo.falhas > 0 ? ` · ${entrando.falhas + saindo.falhas} FAIXA(S) NÃO LIDA(S)` : ""),
+  );
+}
+
+const fmt = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v / 1e3).toFixed(0)} mil`;
+const peso = (r: { cmp: number; vnd: number; dep: number; saq: number }) => Math.abs(r.cmp - r.vnd) + Math.abs(r.dep - r.saq);
+const mais = [...resumo].sort((x, y) => peso(y[1]) - peso(x[1]));
+console.log(`\n${"perpétuo".padEnd(14)} ${"compra líq. na DEX".padStart(20)} ${"depósito líquido".padStart(18)}   (US$ · % do market cap)`);
+for (const [s, r] of mais.slice(0, 12)) {
+  const pc = (v: number) => (r.mcap ? ` ${((v / r.mcap) * 100).toFixed(2)}%` : "");
+  console.log(`${s.padEnd(14)} ${`${fmt(r.cmp - r.vnd)}${pc(r.cmp - r.vnd)}`.padStart(20)} ${`${fmt(r.dep - r.saq)}${pc(r.dep - r.saq)}`.padStart(18)}`);
 }

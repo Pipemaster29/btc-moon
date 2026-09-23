@@ -40,8 +40,9 @@
  *     p = 0,21. Acaso. OI e razões de posição só existem para 30 dias.
  *
  * A seção 4 mede o fluxo on-chain da carteira quente da Binance, que o
- * `npm run fluxo-binance` grava a cada retrato — e diz "amostra insuficiente"
- * até que haja amostra.
+ * `npm run fluxo-binance` grava a cada retrato, em DUAS PORTAS que dizem coisas
+ * opostas: varejo comprando/vendendo na DEX pelo executor de swap, e depósito/
+ * saque direto. Diz "amostra insuficiente" até que haja amostra.
  *
  * Rode com: npm run medir-sinais               (usa o cache de até 20 horas)
  *           npm run medir-sinais -- --recoletar
@@ -465,8 +466,17 @@ console.log(`  moedas com soma positiva: ${[...porMoeda.values()].filter((v) => 
 // ------------------------------------------ 4. o fluxo on-chain da Binance
 
 console.log(`\n=== 4. fluxo on-chain da carteira quente da Binance ===`);
+// DUAS PORTAS, e elas dizem coisas opostas (ver `scripts/fluxo-binance.mts`):
+// a compra/venda de cliente na DEX passa pelo executor de swap; depósito e
+// saque chegam direto. Somadas, a TAKE de 23/09 parecia holder depositando
+// para vender, e era cliente comprando no meio do pump.
+//
+// OS LADOS FORAM ESCOLHIDOS ANTES DE HAVER DADO, e ficam escritos aqui para não
+// serem escolhidos depois: depósito líquido grande → vender (o fluxo clássico
+// de corretora); compra líquida grande de varejo na DEX → vender (o exagero
+// devolve, que é o que as seções 1 e 2 medem); os espelhos → comprar.
 interface JanelaFluxo { t: number; janela: { de: number; ate: number }; falhas: { entrando: number; saindo: number }; lacuna: unknown }
-interface LinhaFluxo { t: number; s: string; liq: number; mcap: number | null }
+interface LinhaFluxo { t: number; s: string; cmp: number; vnd: number; dep: number; saq: number; mcap: number | null }
 const arquivos = (await readdir("data").catch(() => [] as string[])).filter((f) => /^fluxo-binance-\d{4}-\d{2}\.jsonl$/.test(f));
 const janelas: JanelaFluxo[] = [];
 const fluxos: LinhaFluxo[] = [];
@@ -476,38 +486,55 @@ for (const f of arquivos) {
     try {
       const o = JSON.parse(l) as JanelaFluxo | LinhaFluxo;
       if ("janela" in o) janelas.push(o);
-      else fluxos.push(o);
+      else if ("cmp" in o) fluxos.push(o);
     } catch {
       // linha truncada
     }
   }
 }
-// Dia com janela que falhou ou com lacuna não entra: "não li" não é "não entrou".
-const diasRuins = new Set(janelas.filter((j) => j.falhas.entrando + j.falhas.saindo > 0 || j.lacuna).map((j) => Math.floor((j.t * 1000) / DIA) * DIA));
-const diasLidos = new Set(janelas.map((j) => Math.floor((j.t * 1000) / DIA) * DIA));
-const porDia = new Map<string, { s: string; t: number; liq: number; mcap: number | null }>();
+// COBERTURA POR DIA: só entra o dia lido quase inteiro e sem falha. Dia parcial
+// soma fluxo de menos e deixaria o limiar mais difícil de cruzar em uns dias do
+// que em outros; dia com faixa perdida é "não li", não "não entrou".
+const dia = (t: number) => Math.floor((t * 1000) / DIA) * DIA;
+const cobertura = new Map<number, number>();
+const ruins = new Set<number>();
+for (const j of janelas) {
+  const d = dia(j.t);
+  cobertura.set(d, (cobertura.get(d) ?? 0) + ((j.janela.ate - j.janela.de + 1) * 0.45) / 86_400);
+  if (j.falhas.entrando + j.falhas.saindo > 0 || j.lacuna) ruins.add(d);
+}
+const validos = new Set([...cobertura].filter(([d, c]) => c >= 0.9 && !ruins.has(d)).map(([d]) => d));
+const porDia = new Map<string, { s: string; t: number; dex: number; dep: number; mcap: number | null }>();
 for (const x of fluxos) {
-  const d = Math.floor((x.t * 1000) / DIA) * DIA;
-  if (diasRuins.has(d)) continue;
+  const d = dia(x.t);
+  if (!validos.has(d)) continue;
   const k = `${x.s}|${d}`;
-  const g = porDia.get(k) ?? { s: x.s, t: d, liq: 0, mcap: x.mcap };
-  g.liq += x.liq;
+  const g = porDia.get(k) ?? { s: x.s, t: d, dex: 0, dep: 0, mcap: x.mcap };
+  g.dex += x.cmp - x.vnd;
+  g.dep += x.dep - x.saq;
   porDia.set(k, g);
 }
 const pontoDe = new Map(todos.map((p) => [`${p.s}|${p.t}`, p]));
 const LIMIAR = 0.01;
-for (const [nome, lado, f] of [
-  [`entrou ≥ ${LIMIAR * 100}% do market cap no dia (vender)`, -1, (g: { liq: number; mcap: number | null }) => g.mcap !== null && g.liq / g.mcap >= LIMIAR],
-  [`saiu ≥ ${LIMIAR * 100}% do market cap no dia (comprar)`, 1, (g: { liq: number; mcap: number | null }) => g.mcap !== null && g.liq / g.mcap <= -LIMIAR],
-] as const) {
+type Dia = { dex: number; dep: number; mcap: number | null };
+const TESTES: [string, 1 | -1, (g: Dia) => boolean][] = [
+  [`depósito líquido ≥ ${LIMIAR * 100}% do mcap → vender`, -1, (g) => g.mcap !== null && g.dep / g.mcap >= LIMIAR],
+  [`saque líquido ≥ ${LIMIAR * 100}% do mcap → comprar`, 1, (g) => g.mcap !== null && g.dep / g.mcap <= -LIMIAR],
+  [`varejo compra na DEX ≥ ${LIMIAR * 100}% do mcap → vender`, -1, (g) => g.mcap !== null && g.dex / g.mcap >= LIMIAR],
+  [`varejo vende na DEX ≥ ${LIMIAR * 100}% do mcap → comprar`, 1, (g) => g.mcap !== null && g.dex / g.mcap <= -LIMIAR],
+];
+for (const [nome, lado, f] of TESTES) {
   const ev = [...porDia.values()].filter(f).map((g) => pontoDe.get(`${g.s}|${g.t}`)).filter((p): p is Ponto => p !== undefined && p.fwd7 != null);
   const moedas = new Set(ev.map((p) => p.s)).size;
   const exc = ev.map((p) => lado * (p.fwd7! - ref7.get(p.t)!));
   console.log(
-    `  ${nome.padEnd(46)} ${ev.length} evento(s) em ${moedas} moeda(s)` +
+    `  ${nome.padEnd(44)} ${String(ev.length).padStart(3)} evento(s) em ${String(moedas).padStart(2)} moeda(s)` +
       (ev.length >= 30 && moedas >= 10
         ? ` · 7d ${pct(mediana(exc))} · acerto ${((exc.filter((x) => x > 0).length / exc.length) * 100).toFixed(0)}%`
         : " · amostra insuficiente (precisa de 30 eventos em 10 moedas)"),
   );
 }
-console.log(`  ${diasLidos.size} dia(s) de fluxo gravado(s), ${diasRuins.size} com janela falha ou lacuna — fora da conta.`);
+console.log(
+  `  ${cobertura.size} dia(s) com fluxo gravado · ${validos.size} lido(s) inteiro(s) e sem falha · ` +
+    `o evento só conta 7 dias depois, quando o retorno à frente existe`,
+);

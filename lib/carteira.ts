@@ -579,6 +579,12 @@ export const REGRAS_ANTERIORES: Regras = {
  *   - MAIS TAMANHO (1,5x e 2x o orçamento). O teto agregado passa a recusar
  *     call e a variância cresce sem retorno para pagá-la: ver a tabela do
  *     `npm run carteira`, que mede isto sobre o regime publicado.
+ *   - VETAR COMPRA COM FUNDING NEGATIVO, que é o anti-sinal mais forte do
+ *     `npm run medir-sinais` (−4,94 p.p. em 7 dias com funding ≤ −0,1%). Na
+ *     carteira ele pega 1% das emissões de compra, e nenhum limiar melhorou as
+ *     duas metades: em −0,1% o total foi de +14,8% para +14,1%; em −0,05%
+ *     subiu para +17,2% piorando a primeira metade. Efeito medido no universo
+ *     não é efeito medido nesta carteira.
  *     Sem vantagem medida, tamanho multiplica a variância e não o retorno.
  */
 export const REGRAS: Regras = {

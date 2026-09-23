@@ -62,12 +62,15 @@ export const CHAINS: Record<Chain, ChainConfig> = {
     // Dos doze nós públicos testados, um único devolve log antigo e outro
     // devolve estado antigo. Fazem coisas diferentes e não se substituem.
     //
-    // E "log antigo" tem limite, medido em 2026-09-02: o blxrbdn responde
-    // "header not found" abaixo do bloco ~67.751.000, ou seja guarda desde
-    // 2025-11-10 — dez meses, não a cadeia inteira. Moeda nascida antes disso
-    // não tem gênese varrível nesta rede, e era assim que a BLUAI consumia
-    // vinte minutos de varredura para devolver lista vazia. `ScanResult` agora
-    // separa esse caso em `semHistorico`, e quem varre para na hora.
+    // E "log antigo" tem limite, e o limite ENCOLHEU. Medido em 2026-09-02: o
+    // blxrbdn respondia "header not found" abaixo do bloco ~67.751.000, ou seja
+    // guardava desde 2025-11-10. Medido de novo em 2026-09-23, por busca
+    // binária: o bloco mais antigo servido era o 122.760.367, de 19/09 07:51 —
+    // uma janela ROLANTE de ~100 horas, não mais dez meses. Moeda nascida antes
+    // disso não tem gênese varrível nesta rede, e era assim que a BLUAI consumia
+    // vinte minutos de varredura para devolver lista vazia. `ScanResult` separa
+    // esse caso em `semHistorico`, e quem varre para na hora — é isso, e não
+    // uma data escrita aqui, que acompanha o nó quando ele muda.
     //
     // Não há substituto público: o drpc e o blastapi respondem a profundidade
     // mas cortam por limite de tráfego na primeira faixa; publicnode, zan e
@@ -690,10 +693,10 @@ export interface ScanResult {
    * lista vazia.
    *
    * Medido na BNB Chain em 2026-09-02: `bsc.rpc.blxrbdn.com`, o único endpoint
-   * público que ainda serve `eth_getLogs` em lote, responde "header not found"
-   * abaixo do bloco ~67.751.000 — ele guarda desde 2025-11-10, e não a cadeia
-   * inteira, como `archiveLog` dava a entender. Moeda nascida antes disso não
-   * tem gênese varrível nesta rede, e agora isso aparece em vez de virar zero.
+   * público que ainda serve `eth_getLogs` em lote, respondia "header not found"
+   * abaixo do bloco ~67.751.000 — guardava desde 2025-11-10. Em 2026-09-23 a
+   * janela era de ~100 horas rolantes. Moeda nascida antes do horizonte não tem
+   * gênese varrível nesta rede, e isso aparece em vez de virar zero.
    */
   semHistorico: number;
 }

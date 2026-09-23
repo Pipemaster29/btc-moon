@@ -82,8 +82,9 @@ export interface Vesting {
    * Fica gravado, e não descartado, porque "não varri ainda" e "não dá para
    * varrer aqui" pedem coisas diferentes: a primeira é uma tarefa, a segunda é
    * um limite. Sem a distinção, o painel manda rodar para sempre um comando que
-   * nunca vai devolver nada — na BNB Chain isso valeria para toda moeda anterior
-   * a 2025-11-10, que é o horizonte do único endpoint público que serve log.
+   * nunca vai devolver nada — na BNB Chain isso vale para toda moeda anterior ao
+   * horizonte do único endpoint público que serve log: 2025-11-10 quando medido
+   * em 02/09, e só ~100 horas rolantes quando medido de novo em 23/09.
    */
   semHistorico?: boolean;
   cofres: Cofre[];
