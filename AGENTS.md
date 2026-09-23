@@ -409,7 +409,7 @@ a página exiba junto do preço precisa ser recalculada com o preço, ou carimba
 com a própria idade.
 
 Isto vale para TODO arquivo de `data/`, e a forma que o descuido toma é sempre a
-mesma: **em produção o disco é o do BUILD**, e o `ignoreCommand` do `vercel.json`
+mesma: **em produção o disco é o do BUILD**, e o `ignoreCommand` do `vercel.json` (ver a nº 10)
 pula o build quando só `data/` mudou. Um arquivo lido só do disco fica congelado
 para sempre. `getSnapshot`, `getCarteira` e `getPlacar` leem do GitHub raw
 primeiro por isso — o `getPlacar` só passou a ler em 04/09, e até então o painel
@@ -477,6 +477,29 @@ as 23 mil linhas de 03/09 cabia; com as 126 mil de 23/09 o `npm run placar`
 morria com "Maximum call stack size exceeded" antes de imprimir uma linha — e
 como ele não rodava no workflow, a tela mostrou a medição de 03/09 por vinte
 dias. O histórico só cresce: sobre ele, é laço.
+
+### 10. O robô gasta a cota de deploy da Vercel, e um deploy perdido não voltava
+
+O plano gratuito da Vercel cria no máximo **100 deployments por dia**, e a
+documentação dela diz que o build CANCELADO pelo `ignoreCommand` conta como
+deployment inteiro. Cada commit do robô é um: **74 em 24 horas**, medido em
+23/09 — três quartos da cota só com retratos de dados. Com mais 14 pushes de
+branch naquele dia, a cota estourou, e o merge do PR #2 — o único commit do dia
+com código de tela — recebeu "Deployment rate limited". O site ficou na versão
+anterior sem erro nenhum na página.
+
+E ele NÃO VOLTARIA SOZINHO. O `ignoreCommand` comparava `HEAD^` com `HEAD`: o
+retrato seguinte ao merge só mexia em `data/`, então pulava o build — e o código
+do merge nunca iria ao ar até alguém commitar código de novo. Hoje a comparação é
+contra `VERCEL_GIT_PREVIOUS_SHA`, o último deploy que FOI ao ar: qualquer commit
+depois de um deploy perdido publica o que ficou pendente. Variável vazia ou SHA
+fora do clone raso constroem — na dúvida, constrói. Os quatro casos foram
+simulados sobre o histórico real antes de entrar.
+
+E as branches `claude/*` não criam deploy de prévia (`git.deploymentEnabled`):
+eram elas que empurravam o dia para cima da cota. O conserto de fundo — o robô
+commitar dados numa branch que a Vercel não vigia — tira os 74 da conta, mas
+mexe em toda leitura de `data/`; fica anotado, não feito.
 
 ---
 
