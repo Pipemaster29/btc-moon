@@ -8,7 +8,7 @@ import { lerEstudo, type Estudo } from "@/lib/estudo";
 import { getPlacar, type Placar } from "@/lib/placar";
 import { textoVeredito, veredito, vestingDe, type Veredito, type Vesting } from "@/lib/vesting";
 import { getRadar, type AlertLevel, type RadarSnapshot } from "@/lib/radar";
-import { getPositioning, type PositioningSnapshotView } from "@/lib/positioning";
+import { getPositioning } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
 
 /**
