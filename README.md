@@ -444,6 +444,66 @@ tabela. Nenhuma moeda entra na análise completa sozinha: o próximo passo é
 sempre `npm run descobrir`, porque identificar o token errado é o erro mais caro
 daqui e já foi cometido duas vezes.
 
+## RSI, suporte, OI, smart money: medidos
+
+A pergunta veio de fora — "dá para achar trade com RSI, resistência, modelo
+estatístico, open interest, smart money?" — e nada disso tinha sido medido aqui.
+`npm run medir-sinais` mede sobre os 528 perpétuos, até mil dias de cada: 319 mil
+moeda-dias. Cada sinal é comparado com a mediana de TODAS as moedas no mesmo dia
+(senão "comprar RSI baixo" mediria o mercado subindo), conta um evento por
+episódio, aparece nas duas metades ou não conta, e é simulado como trade com
+stop, custo e funding.
+
+| sinal | 7 dias contra o mercado | moedas a favor | como trade |
+| --- | --- | --- | --- |
+| RSI < 30, comprar | −0,03 p.p. | 253/471 | ~0 |
+| a menos de 3% do suporte, comprar | +0,02 | 257/519 | −0,7% |
+| tendência (EMA20 > EMA50), comprar | −0,15 | 205/497 | −0,6% |
+| **rompeu a máxima de 20 dias, comprar** | **−0,84** | 195/498 | −0,5% |
+| **volume 3x na alta, comprar** | **−2,22** | 152/512 | −0,9% |
+| **funding ≤ −0,1%/8h, comprar o squeeze** | **−4,94** | 16/63 | — |
+| RSI > 80, vender | +3,23 | 136/226 | +0,7% |
+| pump ≥ 25% no dia, vender | +8,51 | 236/334 | −0,3% |
+| smart money compra e varejo vende | +0,39 (p = 0,21) | 68/122 | — |
+
+**Nenhum sinal de compra clássico funciona nestas moedas, e três funcionam AO
+CONTRÁRIO.** Rompimento, volume na alta e funding negativo são anti-sinais: quem
+compra o rompimento perde para o mercado, e quem aposta no squeeze dos vendidos
+perde quase 5 pontos em uma semana — quem está vendido costuma ter razão. O que
+tem efeito é vender o exagero, e é o mesmo resultado do garimpo: a direção
+acerta, o trade não paga.
+
+Um recorte parecia a exceção: vender RSI > 80 em moeda de 30 a 100 milhões, com
++2,5% por trade e stop de 2σ, positivo nas duas metades. **Atacado, caiu.** A
+mediana por trade é −8%, o resultado ajustado ao risco é +0,04 R, a faixa de 20 a
+150 milhões dá negativo, a de 100 a 200 também, o trimestre de agora é negativo,
+e 69 de 136 moedas terminam no positivo. Era sobreajuste de faixa, e a seção 3
+do script imprime o ataque a cada rodada.
+
+OI e razões de posição só existem para 30 dias na Binance, e com isso nenhum
+sinal deles tem amostra para afirmar nada.
+
+### O fluxo da carteira quente da Binance
+
+O que sobra de "smart money" é o on-chain: quem está MOVENDO a moeda para a
+corretora, e não quem está apostando. A carteira `0x73D8…46Db` é o contrato
+quente da Binance na BNB Chain, e ela guarda boa parte do que circula de várias
+moedas pequenas — 70% da LYN, 59% da TRADOOR, 53% da STAR, medido em 23/09.
+
+No mesmo dia a TAKE subiu +221%, com o open interest de US$ 4 mi para 18 mi em
+quatro horas e o funding virando para −0,42%. **Entraram US$ 8,75 mi dela nesta
+carteira em 24 horas, de 28 endereços — 12,6% do market cap.** Oferta correndo
+para a corretora no meio do pump tem cara de distribuição. Se ela antecipa a
+queda não dá para saber: o histórico desse fluxo não existe para trás, e 24
+horas dele custam vinte minutos no único nó gratuito que responde.
+
+Então ele passa a existir para frente. `npm run fluxo-binance` roda no retrato
+de fechamento, varre desde o último bloco lido e grava, por moeda com perpétuo,
+quanto entrou, quanto saiu e de quantos endereços. Janela que falhou ou lacuna
+fica gravada como tal, e a auditoria reprova buraco não declarado. A seção 4 do
+`medir-sinais` mede "entrou ≥ 1% do market cap no dia" contra os 7 dias
+seguintes — e diz "amostra insuficiente" até ter 30 eventos em 10 moedas.
+
 ## Identificar a moeda certa
 
 O erro mais caro deste projeto foi analisar o token errado — duas vezes. Buscar
@@ -570,6 +630,8 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
 | `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
+| `npm run medir-sinais` | RSI, suporte, rompimento, OI, funding e smart money sobre os 528 perpétuos |
+| `npm run fluxo-binance` | grava o que entrou e saiu da carteira quente da Binance desde a última rodada |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |

@@ -48,6 +48,12 @@ no código, com número:
   mais forte já medido aqui, e **vendê-lo perde dinheiro em toda largura de stop
   testada**, porque o caminho estopa a posição antes. `npm run garimpar` entrega
   fila de investigação, com essa frase na tela.
+- **Análise técnica clássica não tem vantagem nestas moedas, e parte dela tem
+  vantagem AO CONTRÁRIO.** Sobre 319 mil moeda-dias dos 528 perpétuos: RSI < 30
+  −0,03 p.p., suporte +0,02; rompimento de máxima de 20 dias −0,84 com 195 de
+  498 moedas; comprar funding ≤ −0,1% −4,94. O único recorte que passou nas
+  metades — vender RSI > 80 em 30–100 mi — caiu no ataque: mediana −8% por
+  trade, +0,04 R, negativo mudando a faixa. `npm run medir-sinais` refaz tudo.
 
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
@@ -66,7 +72,7 @@ npm run carteira     # a carteira fictícia → data/carteira.json
 Não há chave, `.env` nem banco. O estado inteiro mora em `data/`.
 
 O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` +
-`garimpar` + `placar` e
+`garimpar` + `placar` + `fluxo-binance` e
 commita o resultado. **O cron pede 48 execuções por dia e o GitHub entrega cerca
 de sete** — é limitação da plataforma, contornada pela DURAÇÃO de cada execução
 e não pela frequência delas (ver logo abaixo).
@@ -206,6 +212,8 @@ retrato seguinte fechá-la com a hora certa.
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/carteira.json` | a carteira | `npm run carteira` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
+| `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por janela e por moeda com perpétuo. **Só existe para frente**: uma linha `janela` por rodada (com falhas e lacuna) e uma por moeda | `npm run fluxo-binance` |
+| `data/fluxo-binance.json` | o último bloco lido e a identificação de cada token (perpétuo e preço conferidos) | idem |
 
 ---
 
