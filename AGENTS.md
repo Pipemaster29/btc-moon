@@ -67,13 +67,17 @@ npm install
 npm run dev          # a aplicação
 npm run panorama     # o retrato de todas as moedas → data/panorama.json
 npm run carteira     # a carteira fictícia → data/carteira.json
+npm run dados        # traz para data/ os dados vivos do robô (branch `dados`)
 ```
 
-Não há chave, `.env` nem banco. O estado inteiro mora em `data/`.
+Não há chave, `.env` nem banco. O estado inteiro mora em `data/` — e **os arquivos
+que o robô grava moram na branch `dados`, não no `main`** (armadilha nº 10). No
+disco local eles só aparecem depois de `npm run dados`.
 
 O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` +
 `garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
-commita o resultado. **O cron pede 48 execuções por dia e o GitHub entrega cerca
+commita o resultado **na branch `dados`** (`scripts/dados.sh`), que a Vercel não
+vigia. **O cron pede 48 execuções por dia e o GitHub entrega cerca
 de sete** — é limitação da plataforma, contornada pela DURAÇÃO de cada execução
 e não pela frequência delas (ver logo abaixo).
 
@@ -224,9 +228,15 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/sinais.ts` | o formato de `data/sinais.json` e a leitura dele pela página |
 | `lib/fluxo.ts` | `resumirFluxo`: soma o bruto do fluxo da Binance por moeda, com a cobertura de cada dia junto |
 | `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |
-| `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção, disco primeiro no resto |
+| `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção (branch `dados`, depois `main`), disco primeiro no resto |
+| `scripts/dados.sh` | baixa e grava os dados do robô na branch `dados`; faz a transição do `main` sozinho |
 
 ### Os dados
+
+Os que o **robô** grava (panorama, histórico, carteira, garimpo, placar, sinais e
+fluxo) moram na branch órfã `dados`; a lista está no `PADRAO` de
+`scripts/dados.sh` e repetida no `.gitignore`. Os gerados **à mão** (detentores,
+vesting, estudos) ficam no `main`: a página os lê do disco do build.
 
 | arquivo | o que é | quem grava |
 |---|---|---|
@@ -409,7 +419,7 @@ a página exiba junto do preço precisa ser recalculada com o preço, ou carimba
 com a própria idade.
 
 Isto vale para TODO arquivo de `data/`, e a forma que o descuido toma é sempre a
-mesma: **em produção o disco é o do BUILD**, e o `ignoreCommand` do `vercel.json`
+mesma: **em produção o disco é o do BUILD**, e o `ignoreCommand` do `vercel.json` (ver a nº 10)
 pula o build quando só `data/` mudou. Um arquivo lido só do disco fica congelado
 para sempre. `getSnapshot`, `getCarteira` e `getPlacar` leem do GitHub raw
 primeiro por isso — o `getPlacar` só passou a ler em 04/09, e até então o painel
@@ -477,6 +487,49 @@ as 23 mil linhas de 03/09 cabia; com as 126 mil de 23/09 o `npm run placar`
 morria com "Maximum call stack size exceeded" antes de imprimir uma linha — e
 como ele não rodava no workflow, a tela mostrou a medição de 03/09 por vinte
 dias. O histórico só cresce: sobre ele, é laço.
+
+### 10. O robô gasta a cota de deploy da Vercel, e um deploy perdido não voltava
+
+O plano gratuito da Vercel cria no máximo **100 deployments por dia**, e a
+documentação dela diz que o build CANCELADO pelo `ignoreCommand` conta como
+deployment inteiro. Cada commit do robô é um: **74 em 24 horas**, medido em
+23/09 — três quartos da cota só com retratos de dados. Com mais 14 pushes de
+branch naquele dia, a cota estourou, e o merge do PR #2 — o único commit do dia
+com código de tela — recebeu "Deployment rate limited". O site ficou na versão
+anterior sem erro nenhum na página.
+
+E ele NÃO VOLTARIA SOZINHO. O `ignoreCommand` comparava `HEAD^` com `HEAD`: o
+retrato seguinte ao merge só mexia em `data/`, então pulava o build — e o código
+do merge nunca iria ao ar até alguém commitar código de novo. Hoje a comparação é
+contra `VERCEL_GIT_PREVIOUS_SHA`, o último deploy que FOI ao ar: qualquer commit
+depois de um deploy perdido publica o que ficou pendente. Variável vazia ou SHA
+fora do clone raso constroem — na dúvida, constrói. Os quatro casos foram
+simulados sobre o histórico real antes de entrar.
+
+E as branches `claude/*` não criam deploy de prévia (`git.deploymentEnabled`):
+eram elas que empurravam o dia para cima da cota.
+
+**O conserto de fundo: os dados do robô foram para a branch órfã `dados`**, que a
+Vercel não vigia (`deploymentEnabled` no `vercel.json` do `main` E no dela), e a
+página lê de lá pelo raw. O `main` passa a receber só código, e os 74 deploys por
+dia caem para os merges. `scripts/dados.sh` faz tudo, e cada peça foi simulada
+contra um remoto falso com clone raso, como o do Actions, antes de entrar:
+
+- **a transição é sozinha:** a primeira execução importa do `main` o commit mais
+  novo que ainda tem `data/panorama.json`, e reimporta se o `main` andou enquanto
+  a ponta de `dados` ainda for uma importação — nunca por cima de retrato
+  próprio. Depois, o próprio robô tira os arquivos do `main`, uma vez: não podia
+  ser o PR, porque apagar arquivo que o robô modifica a cada 20 minutos dá
+  conflito com cada retrato e trava o merge;
+- **o checkout do Actions é de uma branch só:** `git fetch origin dados` sem
+  refspec explícito não cria `origin/dados`, e o segundo retrato da simulação
+  morreu nisso;
+- **o freio nas duas pontas:** sem `baixar`, o workflow não roda o robô; e
+  `gravar` recusa jsonl com MENOS linhas do que a branch tem — simulado com uma
+  linha contra 99.109, recusado, branch intacta.
+
+Uma branch com código junto teria de receber merge do `main`, e o token do Actions
+não pode empurrar commit que mexa em `.github/workflows/`. Por isso órfã.
 
 ---
 

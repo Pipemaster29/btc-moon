@@ -109,6 +109,15 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch --quiet origin main
           git checkout --quiet -B main origin/main
+          # OS DADOS MORAM NA BRANCH `dados`, não no `main` (ver scripts/dados.sh):
+          # cada commit do robô no `main` gastava um deploy da cota diária da
+          # Vercel — 74 em 24 h, medido em 23/09. Traz os vivos para ./data
+          # ANTES de tudo, e se não conseguir, não roda: panorama sobre histórico
+          # vazio, gravado por cima, apagaria a memória do projeto.
+          bash scripts/dados.sh baixar || exit 0
+          # Uma vez só, na transição: tira do `main` os arquivos que agora moram
+          # na `dados`. Sem efeito depois disso.
+          bash scripts/dados.sh desocupar-main || echo "desocupar o main falhou, a próxima execução tenta"
           npm run panorama || exit 0
           # A carteira consome as linhas que o panorama acabou de gravar, então
           # vem depois dele e no mesmo commit. Falhar aqui não derruba o
@@ -121,10 +130,8 @@ jobs:
           # perdida, e aqui ele roda uma vez. No 418 ele para sem gravar nada,
           # para não alongar um banimento que pegaria o panorama seguinte.
           npm run medir-sinais -- --diario || echo "medição de sinais falhou, seguindo"
-          git add data/
-          git diff --cached --quiet && exit 0
-          git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
-          git push --quiet origin HEAD:main || echo "abertura perdeu a corrida, o fechamento tenta de novo"
+          bash scripts/dados.sh gravar "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)" \
+            || echo "abertura não gravou, o laço tenta de novo"
 
       # O RETRATO TAMBÉM ENTRA NO LAÇO, e antes só saía nas duas pontas.
       #
@@ -193,15 +200,10 @@ jobs:
                 # parar.
                 git fetch --quiet origin main
                 git checkout --quiet -B main origin/main
+                bash scripts/dados.sh baixar
                 npm run panorama
                 npm run carteira || echo "carteira falhou, seguindo"
-                git add data/
-                if git diff --cached --quiet; then
-                  echo "nada mudou"
-                else
-                  git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
-                  git push --quiet origin HEAD:main || echo "corrida perdida, o próximo tenta"
-                fi
+                bash scripts/dados.sh gravar "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
               ) || echo "retrato intermediário falhou, seguindo"
             fi
 
@@ -236,6 +238,7 @@ jobs:
           for tentativa in 1 2 3; do
             git fetch --quiet origin main
             git checkout --quiet -B main origin/main
+            bash scripts/dados.sh baixar || { echo "sem os dados vivos, não roda"; exit 0; }
 
             npm run panorama || { echo "panorama falhou, seguindo"; exit 0; }
             npm run carteira || echo "carteira falhou, seguindo"
@@ -278,14 +281,8 @@ jobs:
             # vermelho na aba Actions sem impedir a gravação.
             npm run auditar-dados || echo "AUDITORIA REPROVOU — ver acima"
 
-            git add data/
-            if git diff --cached --quiet; then
-              echo "nada mudou"
-              exit 0
-            fi
-
-            git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
-            if git push --quiet origin HEAD:main; then
+            # Grava na branch `dados`. "Nada mudou" também sai com zero.
+            if bash scripts/dados.sh gravar "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"; then
               echo "retrato gravado na tentativa $tentativa"
               exit 0
             fi
