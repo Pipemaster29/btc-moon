@@ -43,3 +43,19 @@ next-env.d.ts
 
 # cache local de dados de mercado
 .cache/
+
+# OS DADOS DO ROBÔ MORAM NA BRANCH `dados`, não aqui — ver scripts/dados.sh.
+# Cada commit deles no `main` gastava um deploy da cota diária da Vercel (74 em
+# 24 h, medido em 23/09). A lista é a mesma do PADRAO do script; os arquivos
+# gerados À MÃO (detentores, vesting, estudos) continuam no `main`.
+# `npm run dados` traz os vivos para cá.
+.dados/
+data/panorama.json
+data/historico-*.jsonl
+data/carteira.json
+data/garimpo.json
+data/placar.json
+data/sinais.json
+data/fluxo-binance.json
+data/fluxo-binance-resumo.json
+data/fluxo-binance-*.jsonl

@@ -662,7 +662,12 @@ não tem resposta — os detectores funcionam? — porque a Gate só devolve cem
 de passado, e é com essas cem horas que o placar da saída de baleia foi medido.
 
 O `vercel.json` traz um `ignoreCommand` que pula o build quando só `data/` mudou.
-Sem ele, cada retrato dispararia um deploy novo.
+Sem ele, cada retrato dispararia um deploy novo. **E não bastava:** a Vercel conta
+o build pulado como deploy, o plano gratuito cria 100 por dia, e o robô fazia 74
+commits em 24 horas. Em 23/09 a cota estourou e o merge com a tela nova ficou de
+fora. Desde então **os dados do robô moram na branch `dados`**, que a Vercel não
+vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
+`npm run dados` traz os vivos para o disco local.
 
 ## Scripts
 
@@ -676,6 +681,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
 | `npm run medir-sinais` | RSI, suporte, rompimento, OI, funding e smart money sobre os 528 perpétuos, gravado em `data/sinais.json` (`-- --diario` sai se tiver menos de 20 h) |
+| `npm run dados` | traz para `data/` os arquivos vivos do robô, que moram na branch `dados` |
 | `npm run fluxo-binance` | grava o fluxo da carteira quente da Binance desde a última rodada, separando varejo na DEX de depósito/saque, e refaz o resumo que a tela lê (`-- --resumo` só o resumo) |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |

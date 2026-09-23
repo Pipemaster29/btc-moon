@@ -12,6 +12,10 @@
  * no último deploy — podendo ter dias. O GitHub raw é a única camada que fica
  * fresca sem um deploy novo, e por isso ela vem primeiro.
  *
+ * E O DISCO DO BUILD NEM TEM MAIS OS ARQUIVOS DO ROBÔ: eles saíram do `main`
+ * para a branch `dados`. Em produção, então, a camada do disco só responde pelo
+ * que é gerado à mão; para o resto, o raw é a única camada.
+ *
  * EM DESENVOLVIMENTO A REGRA SE INVERTE, e a versão anterior não invertia. O
  * disco é o arquivo que você ACABOU DE GERAR; o raw é a produção. Com a ordem de
  * produção valendo aqui, rodar `npm run carteira` e abrir a página mostrava a
@@ -21,7 +25,7 @@
  * O efeito prático é o pior possível para quem está desenvolvendo: você muda o
  * código, roda o script, abre a página e NADA MUDA. Não há erro, não há aviso —
  * a página está lendo outra máquina. Foi exatamente essa a queixa que fez este
- * arquivo existir.
+ * arquivo existir. Para ter no disco os dados vivos do robô: `npm run dados`.
  */
 
 /**
@@ -43,7 +47,19 @@ export function rawPrimeiro(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
-const BASE_RAW = "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main";
+/**
+ * Duas branches, nesta ordem. Os dados do robô moram na `dados` desde 23/09 —
+ * cada commit deles no `main` gastava um deploy da cota diária da Vercel (74 em
+ * 24 h, e o merge do PR #2 perdeu o seu por "rate limited"; ver
+ * `scripts/dados.sh`). O `main` fica atrás como reserva para a transição: até o
+ * workflow novo rodar pela primeira vez e criar a `dados`, é no `main` que o
+ * arquivo mais novo está. Depois dela, o `main` não tem mais esses arquivos e
+ * responde 404 na hora — a reserva custa uma requisição que falha rápido.
+ */
+const BASES_RAW = [
+  "https://raw.githubusercontent.com/Pipemaster29/btc-moon/dados",
+  "https://raw.githubusercontent.com/Pipemaster29/btc-moon/main",
+];
 
 /**
  * Quatro segundos, não oito.
@@ -73,17 +89,20 @@ export async function lerGuardado<T>(
   revalidate: number,
 ): Promise<Guardado<T> | null> {
   const daRede = async (): Promise<Guardado<T> | null> => {
-    try {
-      const res = await fetch(`${BASE_RAW}/data/${arquivo}`, {
-        signal: AbortSignal.timeout(ESPERA_MS),
-        next: { revalidate },
-      });
-      if (!res.ok) return null;
-      const d = valido(await res.json());
-      return d ? { dado: d, fonte: "github" } : null;
-    } catch {
-      return null;
+    for (const base of BASES_RAW) {
+      try {
+        const res = await fetch(`${base}/data/${arquivo}`, {
+          signal: AbortSignal.timeout(ESPERA_MS),
+          next: { revalidate },
+        });
+        if (!res.ok) continue;
+        const d = valido(await res.json());
+        if (d) return { dado: d, fonte: "github" };
+      } catch {
+        // tenta a próxima branch
+      }
     }
+    return null;
   };
 
   const doDisco = async (): Promise<Guardado<T> | null> => {
