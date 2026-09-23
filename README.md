@@ -45,6 +45,29 @@ em menos de um segundo. Clicar numa abre **`/radar/[moeda]`** com o retrato
 completo: estrutura do supply, carteira por carteira, transferências grandes,
 posicionamento, mapa de liquidação e o estágio do ciclo.
 
+Na ordem em que aparecem, e a ordem é o argumento: a **carteira fictícia** com a
+curva do patrimônio contra a das regras anteriores sobre as mesmas calls; o
+**placar** dizendo que nenhum viés separou; os **sinais clássicos medidos**, uma
+barra divergente por sinal, para a pergunta "e se eu usasse RSI?" ter a resposta
+na mesma tela; as candidatas e a tabela; o **fluxo da carteira quente da
+Binance**, por porta; e o garimpo.
+
+### Ao vivo, sem servidor
+
+Preço, 24h e a marcação da carteira andam de ~3 em ~3 segundos, e isso não custa
+nada ao Vercel nem ao GitHub: depois da primeira consulta, o navegador de quem
+olha abre um WebSocket público direto com a Binance. Medido com as 71 moedas
+numa conexão só: 4 KB por segundo. Quando ele cai — rede que bloqueia, região
+que a Binance recusa, ou a rota que abre e fica muda, que existe —, a consulta
+de 15 s assume na hora e a tela diz qual dos dois está valendo.
+
+O que continua no ritmo do workflow, e por quê: **as decisões**. Abrir e fechar
+posição exige o histórico inteiro e o caminho de velas; emitir viés exige o
+estágio de vida, que custa seis meses de dados por moeda. Isso roda de ~22 em ~22
+minutos no GitHub Actions, de graça. Decidir de segundo em segundo pediria um
+servidor ligado o tempo todo — e os sinais daqui foram medidos em horizontes de
+7 dias: nenhum deles mudaria de resposta em um minuto.
+
 ## A liquidez projetada
 
 Balanço do Fed menos a conta do Tesouro menos o reverse repo é o dinheiro que de
@@ -652,8 +675,8 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
 | `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
-| `npm run medir-sinais` | RSI, suporte, rompimento, OI, funding e smart money sobre os 528 perpétuos |
-| `npm run fluxo-binance` | grava o fluxo da carteira quente da Binance desde a última rodada, separando varejo na DEX de depósito/saque |
+| `npm run medir-sinais` | RSI, suporte, rompimento, OI, funding e smart money sobre os 528 perpétuos, gravado em `data/sinais.json` (`-- --diario` sai se tiver menos de 20 h) |
+| `npm run fluxo-binance` | grava o fluxo da carteira quente da Binance desde a última rodada, separando varejo na DEX de depósito/saque, e refaz o resumo que a tela lê (`-- --resumo` só o resumo) |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |

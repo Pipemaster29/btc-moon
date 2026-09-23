@@ -266,6 +266,38 @@ export interface Carteira {
   freio?: number;
   /** Risco comprometido agora, em fração do patrimônio. */
   riscoAberto?: number;
+  /**
+   * A tabela de regimes do `npm run carteira`, gravada para a tela.
+   *
+   * Ela morava só no terminal, e é ela que decide se uma regra entra: o
+   * publicado ao lado do anterior e do publicado com cada peça desligada, nas
+   * duas metades e sem a moeda que mais ganhou. Sem ela na página, "+14,8%" não
+   * tinha contra o que ser lido — e o número que mais pesa, "sem a melhor
+   * moeda", ficava invisível para quem não roda o script.
+   */
+  comparacao?: Comparacao;
+}
+
+/** Uma linha da tabela de regimes. Retornos em fração do capital inicial. */
+export interface LinhaRegime {
+  nome: string;
+  retorno: number;
+  /** O retorno tirando a moeda que mais deu dinheiro, e qual era ela. */
+  semAMelhor: { ticker: string; retorno: number };
+  quedaMaxima: number;
+  encerradas: number;
+  /** Cada metade da janela rodada do zero, sozinha. */
+  metades: [number, number];
+  maiorExposicao: number;
+  maiorRiscoAberto: number;
+}
+
+export interface Comparacao {
+  /** O corte entre as metades, em milissegundos. */
+  meio: number;
+  linhas: LinhaRegime[];
+  /** A curva do regime anterior sobre as mesmas calls, para desenhar ao lado. */
+  anterior: { t: number; patrimonio: number }[];
 }
 
 // ------------------------------------------------------------------ as regras

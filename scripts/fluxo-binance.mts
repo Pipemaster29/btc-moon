@@ -55,15 +55,18 @@ import {
   blockNumber,
   blockTime,
   blocosPara,
+  CHAINS,
   movimentosDaCarteira,
   tokenInfo,
   toUnits,
   type Movimento,
 } from "../lib/onchain";
 import { cotacoes } from "../lib/binance";
+import { resumirFluxo } from "../lib/fluxo";
 
 const CARTEIRA = "0x73D8bD54F7Cf5FAb43fE4Ef40A62D390644946Db";
 const ESTADO = "data/fluxo-binance.json";
+const RESUMO = "data/fluxo-binance-resumo.json";
 
 /**
  * Os executores de swap da Binance: o que passa por eles é compra e venda de
@@ -195,6 +198,30 @@ async function blocoAntesDe(ts: number, lo: number, hi: number): Promise<number>
     else hi = meio;
   }
   return lo;
+}
+
+// ------------------------------------------------------------------ resumo
+
+/**
+ * O resumo que a página lê, refeito do bruto a cada rodada. Lê o mês corrente e
+ * o anterior porque a janela de sete dias atravessa a virada de mês.
+ */
+async function gravarResumo() {
+  const agora = Date.now();
+  const meses = [new Date(agora - 8 * DIA), new Date(agora)].map((d) => d.toISOString().slice(0, 7));
+  const textos: string[] = [];
+  for (const mes of new Set(meses)) {
+    textos.push(await readFile(`data/fluxo-binance-${mes}.jsonl`, "utf8").catch(() => ""));
+  }
+  const r = resumirFluxo(textos, agora, CHAINS.bsc.secondsPerBlock);
+  await writeFile(RESUMO, `${JSON.stringify(r, null, 1)}\n`);
+  const lidos = r.dias.filter((d) => d.cobertura >= 0.9 && d.falhas === 0).length;
+  console.log(`${RESUMO}: ${r.moedas.length} moedas · ${lidos} de ${r.dias.length} dias lidos inteiros e sem falha`);
+}
+
+if (process.argv.includes("--resumo")) {
+  await gravarResumo();
+  process.exit(0);
 }
 
 // ------------------------------------------------------------------ rodada
@@ -412,3 +439,6 @@ for (const [s, r] of mais.slice(0, 12)) {
   const pc = (v: number) => (r.mcap ? ` ${((v / r.mcap) * 100).toFixed(2)}%` : "");
   console.log(`${s.padEnd(14)} ${`${fmt(r.cmp - r.vnd)}${pc(r.cmp - r.vnd)}`.padStart(20)} ${`${fmt(r.dep - r.saq)}${pc(r.dep - r.saq)}`.padStart(18)}`);
 }
+
+console.log("");
+await gravarResumo();

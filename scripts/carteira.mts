@@ -16,6 +16,7 @@ import {
   REGRAS_ANTERIORES,
   type Carteira,
   type Emissao,
+  type LinhaRegime,
   type Passo,
   type Regras,
 } from "../lib/carteira";
@@ -223,12 +224,25 @@ console.log(
     `${"n".padStart(4)} ${"1ª metade".padStart(10)} ${"2ª metade".padStart(10)} ` +
     `${"margem pico".padStart(12)} ${"risco pico".padStart(11)}`,
 );
+const linhas: LinhaRegime[] = [];
+let anterior: Carteira | null = null;
 for (const [nome, regras] of regimes) {
   // O publicado já foi rodado lá em cima; rodar de novo daria o mesmo número.
   const t = regras === REGRAS ? c : rodar(emissoes, COMECO, caminho, regras);
   const m1 = rodar(antesDoMeio, COMECO, caminho, regras);
   const m2 = rodar(emissoes, MEIO, caminho, regras);
   const sm = semAMelhor(t);
+  if (regras === REGRAS_ANTERIORES) anterior = t;
+  linhas.push({
+    nome: nome.trim(),
+    retorno: t.retorno,
+    semAMelhor: sm,
+    quedaMaxima: t.quedaMaxima,
+    encerradas: t.encerradas,
+    metades: [m1.retorno, m2.retorno],
+    maiorExposicao: t.maiorExposicao,
+    maiorRiscoAberto: t.maiorRiscoAberto,
+  });
   console.log(
     `${nome.padEnd(26)} ${pct(t.retorno).padStart(8)} ${`${pct(sm.retorno)} sem ${sm.ticker}`.padStart(18)} ` +
       `${pct(t.quedaMaxima).padStart(10)} ${String(t.encerradas).padStart(4)} ` +
@@ -257,6 +271,14 @@ if (c.encerradas > 0) {
   console.log(`\nnenhuma posição encerrada ainda`);
 }
 
+// A tabela vai junto para a tela. A curva do anterior entra inteira, e é a única
+// além da publicada: as outras linhas são ablações, e desenhar dez curvas
+// sobrepostas não deixaria ler nenhuma.
+const gravada: Carteira = {
+  ...c,
+  comparacao: { meio: MEIO, linhas, anterior: anterior?.curva ?? [] },
+};
+
 await mkdir(dir, { recursive: true });
-await writeFile("data/carteira.json", `${JSON.stringify(c, null, 2)}\n`);
+await writeFile("data/carteira.json", `${JSON.stringify(gravada, null, 2)}\n`);
 console.log(`\ndata/carteira.json gravado`);

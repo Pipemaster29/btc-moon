@@ -300,6 +300,44 @@ if (gar) {
   }
 }
 
+// ---- o resumo do fluxo e a medição de sinais, que a tela lê
+//
+// Os dois são derivados — do bruto acima e das velas da Binance —, e o defeito
+// que se procura é o de sempre: um NaN ou um infinito passando para a página
+// como número. Uma cobertura acima de 1 diria "lido inteiro" sobre um dia que
+// não foi.
+{
+  const r = await ler<{ dias: { d: string; cobertura: number }[]; moedas: Record<string, unknown>[] }>(
+    "data/fluxo-binance-resumo.json",
+  );
+  console.log("fluxo-binance-resumo:");
+  if (r) {
+    for (const d of r.dias) {
+      checa(`${d.d}: cobertura entre 0 e 1`, Number.isFinite(d.cobertura) && d.cobertura >= 0 && d.cobertura <= 1, `= ${d.cobertura}`);
+    }
+    for (const m of r.moedas) {
+      for (const campo of ["dex", "dep", "bruto"]) {
+        checa(`${m.s}.${campo} finito`, typeof m[campo] === "number" && Number.isFinite(m[campo] as number), `= ${m[campo]}`);
+      }
+      checa(`${m.s}.bruto cobre os líquidos`, (m.bruto as number) + 1 >= Math.abs(m.dex as number) + Math.abs(m.dep as number) - 1,
+        `bruto ${m.bruto}, dex ${m.dex}, dep ${m.dep}`);
+    }
+  } else console.log("  (ausente)");
+
+  const s = await ler<{ sinais: { nome: string; n: number; mediana7: number; p: number; aFavor: number; moedas: number }[] }>(
+    "data/sinais.json",
+  );
+  console.log("sinais:");
+  if (s) {
+    for (const x of s.sinais) {
+      checa(`${x.nome}: mediana finita`, Number.isFinite(x.mediana7), `= ${x.mediana7}`);
+      checa(`${x.nome}: ao menos 20 eventos`, x.n >= 20, `= ${x.n}`);
+      checa(`${x.nome}: p entre 0 e 1`, x.p >= 0 && x.p <= 1, `= ${x.p}`);
+      checa(`${x.nome}: moedas a favor ≤ moedas`, x.aFavor <= x.moedas, `${x.aFavor}/${x.moedas}`);
+    }
+  } else console.log("  (ausente)");
+}
+
 console.log(falhas === 0 ? "\nTUDO OK" : `\n${falhas} FALHAS`);
 
 // SAI COM CÓDIGO DE ERRO, e não saía.

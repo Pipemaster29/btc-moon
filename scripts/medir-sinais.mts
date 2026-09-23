@@ -49,10 +49,29 @@
  */
 
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import type { SinalMedido, Sinais, TesteFluxo, VarianteModelo } from "../lib/sinais";
 
 const BASE = "https://www.binance.com";
 const CACHE = ".cache/sinais/universo.json";
 const DIA = 86_400_000;
+const SAIDA = "data/sinais.json";
+
+/**
+ * `--diario` é o modo do workflow: se a gravação tem menos de 20 horas, sai sem
+ * tocar em rede. O workflow roda de cinco em cinco horas e a medição olha mil
+ * dias de vela diária — refazê-la a cada execução gastaria doze minutos de
+ * orçamento da Binance para mudar um dia em mil.
+ */
+if (process.argv.includes("--diario")) {
+  const antes = await readFile(SAIDA, "utf8")
+    .then((t) => JSON.parse(t) as { geradoEm?: number })
+    .catch(() => null);
+  const idade = antes?.geradoEm ? Date.now() - antes.geradoEm : Infinity;
+  if (idade < 20 * 3_600_000) {
+    console.log(`${SAIDA} tem ${(idade / 3_600_000).toFixed(1)} h — a medição é diária, nada a fazer`);
+    process.exit(0);
+  }
+}
 
 // ------------------------------------------------------------------ coleta
 
@@ -63,28 +82,76 @@ interface Razao { timestamp: number; longShortRatio: string }
 interface Taker { timestamp: number; buySellRatio: string }
 interface Bruto { onboard: number; k: Kline[]; f: Funding[]; oi: OiHist[]; top: Razao[]; glob: Razao[]; tak: Taker[] }
 
+/**
+ * O RITMO, POR CAMINHO, e ele existe porque este script passou a rodar no
+ * workflow — no mesmo runner que depois faz o panorama e a carteira.
+ *
+ * São 3.200 requisições, e a Binance conta cada família de caminho num teto
+ * próprio por IP: `/fapi/v1/fundingRate` divide 500 a cada cinco minutos com o
+ * `fundingInfo`; os de `/futures/data` têm 1.000 a cada cinco minutos; as velas
+ * de mil dias pesam 5 cada num orçamento de 2.400 por minuto. Oito por vez sem
+ * ritmo passam dos dois primeiros tetos na conta — 2.112 pedidos de
+ * `/futures/data` em poucos minutos contra 1.000 por cinco —, e o que esgotava as
+ * tentativas voltava VAZIO sem contagem nenhuma: "não consegui" com cara de "não
+ * há". Com o ritmo abaixo cada família fica em ~90% do teto. Medido em 23/09,
+ * coleta inteira: 11 min 50 s, ZERO recusas 429, nenhuma resposta vazia — e os
+ * mesmos 319.336 moeda-dias da medição original.
+ */
+const RITMO: [string, number][] = [
+  ["/futures/data/", 3],
+  ["/fapi/v1/fundingRate", 1.5],
+  ["/fapi/v1/klines", 4],
+];
+const proximaVez = new Map<string, number>();
+async function aguardarVez(caminho: string) {
+  const r = RITMO.find(([prefixo]) => caminho.startsWith(prefixo));
+  if (!r) return;
+  const agora = Date.now();
+  const vez = Math.max(agora, proximaVez.get(r[0]) ?? 0);
+  proximaVez.set(r[0], vez + 1000 / r[1]);
+  if (vez > agora) await new Promise((s) => setTimeout(s, vez - agora));
+}
+
+/** Contagens que a gravação carrega: quantas voltaram vazias depois das tentativas, por família. */
+const vazias: Record<string, number> = {};
+let recusas429 = 0;
+/**
+ * 418 é a Binance BANINDO o IP, não pedindo calma. Continuar batendo alonga o
+ * banimento — e no workflow o mesmo IP faz o panorama e as velas da carteira
+ * logo depois. No primeiro 418 a coleta inteira para e o script sai sem gravar.
+ */
+let banido = false;
+
 let emVoo = 0;
 const fila: (() => void)[] = [];
 async function pegar<T>(caminho: string): Promise<T[]> {
-  // Oito por vez, e não os 24 do `lib/binance.ts`: aqui são 3.200 requisições
-  // numa rajada, e os caminhos de `/futures/data` têm teto próprio por IP.
+  const familia = RITMO.find(([p]) => caminho.startsWith(p))?.[0] ?? "outros";
+  // Oito por vez, e não os 24 do `lib/binance.ts`: aqui são 3.200 requisições.
   while (emVoo >= 8) await new Promise<void>((r) => fila.push(r));
   emVoo++;
   try {
-    for (let t = 0; t < 5; t++) {
+    for (let t = 0; t < 5 && !banido; t++) {
+      await aguardarVez(caminho);
+      if (banido) break;
       try {
         const res = await fetch(BASE + caminho, { signal: AbortSignal.timeout(30_000) });
-        if (res.status === 429 || res.status === 418) {
+        if (res.status === 418) {
+          banido = true;
+          break;
+        }
+        if (res.status === 429) {
+          recusas429++;
           await new Promise((s) => setTimeout(s, 10_000 * (t + 1)));
           continue;
         }
-        if (!res.ok) return [];
+        if (!res.ok) break;
         const d = await res.json();
         return Array.isArray(d) ? (d as T[]) : [];
       } catch {
         await new Promise((s) => setTimeout(s, 1500 * (t + 1)));
       }
     }
+    vazias[familia] = (vazias[familia] ?? 0) + 1;
     return [];
   } finally {
     emVoo--;
@@ -92,12 +159,19 @@ async function pegar<T>(caminho: string): Promise<T[]> {
   }
 }
 
+/** As contagens da coleta, guardadas ao lado do cache para a gravação dizer de onde veio o dado. */
+const COLETA = ".cache/sinais/coleta.json";
+let contagemDaColeta: Record<string, number> | null = null;
+
 async function coletar(): Promise<Record<string, Bruto>> {
   const recoletar = process.argv.includes("--recoletar");
   try {
     const idade = Date.now() - (await stat(CACHE)).mtimeMs;
     if (!recoletar && idade < 20 * 3_600_000) {
       console.log(`usando o cache de ${(idade / 3_600_000).toFixed(1)} h (--recoletar para refazer)`);
+      contagemDaColeta = await readFile(COLETA, "utf8")
+        .then((t) => JSON.parse(t) as Record<string, number>)
+        .catch(() => null);
       return JSON.parse(await readFile(CACHE, "utf8")) as Record<string, Bruto>;
     }
   } catch {
@@ -122,12 +196,24 @@ async function coletar(): Promise<Record<string, Bruto>> {
       out[s] = { onboard: p.onboardDate, k, f, oi, top, glob, tak };
     }),
   );
+  if (banido) {
+    // Sem gravar cache nem resultado: uma coleta interrompida no meio viraria
+    // uma medição sobre metade das moedas, com a mesma cara de uma inteira.
+    console.error("a Binance devolveu 418 (IP banido): coleta interrompida, nada gravado");
+    process.exit(1);
+  }
   const semVelas = Object.values(out).filter((b) => b.k.length === 0).length;
   // "Não consegui" não pode virar "não houve": moeda sem vela sai da medição e
   // a contagem aparece.
   if (semVelas > 0) console.log(`  ${semVelas} perpétuo(s) sem vela — fora da medição`);
+  console.log(
+    `  ${recusas429} recusa(s) 429 · vazias depois das tentativas: ` +
+      (Object.keys(vazias).length ? JSON.stringify(vazias) : "nenhuma"),
+  );
+  contagemDaColeta = { ...vazias };
   await mkdir(".cache/sinais", { recursive: true });
   await writeFile(CACHE, JSON.stringify(out));
+  await writeFile(COLETA, JSON.stringify(contagemDaColeta));
   return out;
 }
 
@@ -378,10 +464,15 @@ console.log(`\n=== 1. cada sinal contra o mercado do mesmo dia ===`);
 console.log(
   `${"sinal".padEnd(34)} ${"lado".padEnd(5)} ${"n".padStart(5)} | ${"7d".padStart(7)} ${"3d".padStart(7)} | ${"1ª met".padStart(7)} ${"2ª met".padStart(7)} | ${"moedas a favor".padStart(14)} ${"p".padStart(5)} | ${"trade 2σ".padStart(8)}`,
 );
+/** `NaN` vira `null` na gravação: JSON escreveria `null` de qualquer jeito, e o tipo tem de dizer. */
+const ouNulo = (x: number) => (Number.isFinite(x) ? x : null);
+const sinaisMedidos: SinalMedido[] = [];
+const poucos: { nome: string; n: number }[] = [];
 for (const sg of SINAIS) {
   const ev = eventos(sg.f);
   if (ev.length < 20) {
     console.log(`${sg.nome.padEnd(34)} ${ev.length} evento(s) — amostra pequena demais`);
+    poucos.push({ nome: sg.nome, n: ev.length });
     continue;
   }
   const exc = (p: Ponto) => sg.lado * (p.fwd7! - ref7.get(p.t)!);
@@ -392,10 +483,24 @@ for (const sg of SINAIS) {
   const cm = [...porMoeda.values()].filter((x) => x.length >= 2).map(mediana);
   const aFavor = cm.filter((x) => x > 0).length;
   const tr = ev.map((p) => operar(p, sg.lado, stopSigma(p, 2), 7)).filter((x) => x !== null).map((x) => x.r);
+  const m1 = mediana(ev.filter((p) => p.t < CORTE).map(exc));
+  const m2 = mediana(ev.filter((p) => p.t >= CORTE).map(exc));
+  sinaisMedidos.push({
+    nome: sg.nome,
+    lado: sg.lado === 1 ? "long" : "short",
+    n: ev.length,
+    mediana7: mediana(e7),
+    mediana3: mediana(e3),
+    metades: [ouNulo(m1), ouNulo(m2)],
+    aFavor,
+    moedas: cm.length,
+    p: pBinomial(aFavor, cm.length),
+    trade2s: ouNulo(media(tr)),
+  });
   console.log(
     `${sg.nome.padEnd(34)} ${(sg.lado === 1 ? "long" : "short").padEnd(5)} ${String(ev.length).padStart(5)} | ` +
       `${pct(mediana(e7)).padStart(7)} ${pct(mediana(e3)).padStart(7)} | ` +
-      `${pct(mediana(ev.filter((p) => p.t < CORTE).map(exc))).padStart(7)} ${pct(mediana(ev.filter((p) => p.t >= CORTE).map(exc))).padStart(7)} | ` +
+      `${pct(m1).padStart(7)} ${pct(m2).padStart(7)} | ` +
       `${`${aFavor}/${cm.length}`.padStart(14)} ${pBinomial(aFavor, cm.length).toFixed(3).padStart(5)} | ${pct(media(tr)).padStart(8)}`,
   );
 }
@@ -440,18 +545,28 @@ function modelo(rsiMin: number, lo: number, hi: number, k: number, h: number) {
   const tr = ev.map((p) => ({ p, o: operar(p, -1, stopSigma(p, k), h) })).filter((x) => x.o !== null) as { p: Ponto; o: { r: number; risco: number; parou: boolean } }[];
   return tr;
 }
-function linha(nome: string, tr: ReturnType<typeof modelo>) {
+function linha(nome: string, tr: ReturnType<typeof modelo>): VarianteModelo {
   const r = tr.map((x) => x.o.r);
+  const v: VarianteModelo = {
+    nome,
+    n: r.length,
+    media: media(r),
+    mediana: mediana(r),
+    acerto: r.filter((x) => x > 0).length / (r.length || 1),
+    emR: media(tr.map((x) => x.o.r / x.o.risco)),
+  };
   console.log(
-    `  ${nome.padEnd(22)} n=${String(r.length).padStart(4)}  média ${pct(media(r)).padStart(7)}  mediana ${pct(mediana(r)).padStart(7)}  ` +
-      `acerto ${((r.filter((x) => x > 0).length / (r.length || 1)) * 100).toFixed(0).padStart(3)}%  em R ${media(tr.map((x) => x.o.r / x.o.risco)).toFixed(2).padStart(5)}`,
+    `  ${nome.padEnd(22)} n=${String(v.n).padStart(4)}  média ${pct(v.media).padStart(7)}  mediana ${pct(v.mediana).padStart(7)}  ` +
+      `acerto ${(v.acerto * 100).toFixed(0).padStart(3)}%  em R ${v.emR.toFixed(2).padStart(5)}`,
   );
+  return v;
 }
 const base = modelo(80, 30e6, 100e6, 2, 7);
-linha("o modelo", base);
-for (const r of [70, 75, 85]) linha(`RSI > ${r}`, modelo(r, 30e6, 100e6, 2, 7));
-for (const [lo, hi] of [[20e6, 150e6], [100e6, 200e6], [15e6, 30e6]]) linha(`faixa ${lo / 1e6}-${hi / 1e6} mi`, modelo(80, lo, hi, 2, 7));
-for (const k of [1.5, 3]) linha(`stop ${k}σ`, modelo(80, 30e6, 100e6, k, 7));
+const varBase = linha("o modelo", base);
+const variantes: VarianteModelo[] = [];
+for (const r of [70, 75, 85]) variantes.push(linha(`RSI > ${r}`, modelo(r, 30e6, 100e6, 2, 7)));
+for (const [lo, hi] of [[20e6, 150e6], [100e6, 200e6], [15e6, 30e6]]) variantes.push(linha(`faixa ${lo / 1e6}-${hi / 1e6} mi`, modelo(80, lo, hi, 2, 7)));
+for (const k of [1.5, 3]) variantes.push(linha(`stop ${k}σ`, modelo(80, 30e6, 100e6, k, 7)));
 const porTri = new Map<string, number[]>();
 for (const x of base) {
   const d = new Date(x.p.t);
@@ -461,7 +576,8 @@ for (const x of base) {
 console.log(`  por trimestre: ${[...porTri].sort().map(([q, xs]) => `${q} ${pct(media(xs))} (${xs.length})`).join(" · ")}`);
 const porMoeda = new Map<string, number>();
 for (const x of base) porMoeda.set(x.p.s, (porMoeda.get(x.p.s) ?? 0) + x.o.r);
-console.log(`  moedas com soma positiva: ${[...porMoeda.values()].filter((v) => v > 0).length} de ${porMoeda.size}`);
+const moedasPositivas = [...porMoeda.values()].filter((v) => v > 0).length;
+console.log(`  moedas com soma positiva: ${moedasPositivas} de ${porMoeda.size}`);
 
 // ------------------------------------------ 4. o fluxo on-chain da Binance
 
@@ -523,18 +639,55 @@ const TESTES: [string, 1 | -1, (g: Dia) => boolean][] = [
   [`varejo compra na DEX ≥ ${LIMIAR * 100}% do mcap → vender`, -1, (g) => g.mcap !== null && g.dex / g.mcap >= LIMIAR],
   [`varejo vende na DEX ≥ ${LIMIAR * 100}% do mcap → comprar`, 1, (g) => g.mcap !== null && g.dex / g.mcap <= -LIMIAR],
 ];
+const MINIMO = { eventos: 30, moedas: 10 };
+const testesFluxo: TesteFluxo[] = [];
 for (const [nome, lado, f] of TESTES) {
   const ev = [...porDia.values()].filter(f).map((g) => pontoDe.get(`${g.s}|${g.t}`)).filter((p): p is Ponto => p !== undefined && p.fwd7 != null);
   const moedas = new Set(ev.map((p) => p.s)).size;
   const exc = ev.map((p) => lado * (p.fwd7! - ref7.get(p.t)!));
+  const basta = ev.length >= MINIMO.eventos && moedas >= MINIMO.moedas;
+  testesFluxo.push({
+    nome,
+    lado: lado === 1 ? "long" : "short",
+    eventos: ev.length,
+    moedas,
+    mediana7: basta ? mediana(exc) : null,
+    acerto: basta ? exc.filter((x) => x > 0).length / exc.length : null,
+  });
   console.log(
     `  ${nome.padEnd(44)} ${String(ev.length).padStart(3)} evento(s) em ${String(moedas).padStart(2)} moeda(s)` +
-      (ev.length >= 30 && moedas >= 10
+      (basta
         ? ` · 7d ${pct(mediana(exc))} · acerto ${((exc.filter((x) => x > 0).length / exc.length) * 100).toFixed(0)}%`
-        : " · amostra insuficiente (precisa de 30 eventos em 10 moedas)"),
+        : ` · amostra insuficiente (precisa de ${MINIMO.eventos} eventos em ${MINIMO.moedas} moedas)`),
   );
 }
 console.log(
   `  ${cobertura.size} dia(s) com fluxo gravado · ${validos.size} lido(s) inteiro(s) e sem falha · ` +
     `o evento só conta 7 dias depois, quando o retorno à frente existe`,
 );
+
+// ------------------------------------------------------------------ gravar
+
+// A janela é a dos eventos que TÊM retorno à frente — os últimos sete dias de
+// vela entram no cálculo dos sinais, não como evento.
+const dataDe = (t: number) => new Date(t).toISOString().slice(0, 10);
+const gravado: Sinais = {
+  geradoEm: Date.now(),
+  janela: { de: dataDe(tempos[0]), ate: dataDe(tempos[tempos.length - 1]) },
+  corte: dataDe(CORTE),
+  moedaDias: todos.length,
+  perpetuos: velasDe.size,
+  vazias: contagemDaColeta,
+  sinais: sinaisMedidos,
+  poucos,
+  modelo: {
+    base: varBase,
+    variantes,
+    trimestres: [...porTri].sort().map(([q, xs]) => ({ q, media: media(xs), n: xs.length })),
+    moedasPositivas,
+    moedas: porMoeda.size,
+  },
+  fluxo: { dias: cobertura.size, diasValidos: validos.size, minimo: MINIMO, testes: testesFluxo },
+};
+await writeFile(SAIDA, `${JSON.stringify(gravado, null, 1)}\n`);
+console.log(`\n${SAIDA} gravado`);

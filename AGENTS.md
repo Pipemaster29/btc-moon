@@ -72,7 +72,7 @@ npm run carteira     # a carteira fictícia → data/carteira.json
 Não há chave, `.env` nem banco. O estado inteiro mora em `data/`.
 
 O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` +
-`garimpar` + `placar` + `fluxo-binance` e
+`garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
 commita o resultado. **O cron pede 48 execuções por dia e o GitHub entrega cerca
 de sete** — é limitação da plataforma, contornada pela DURAÇÃO de cada execução
 e não pela frequência delas (ver logo abaixo).
@@ -81,7 +81,8 @@ e não pela frequência delas (ver logo abaixo).
 
 | o quê | com que frequência | onde roda |
 |---|---|---|
-| preço, 24h, financiamento e a MARCAÇÃO da carteira | 15 segundos | no navegador de quem está com a página aberta |
+| preço, 24h e a MARCAÇÃO da carteira | **~3 segundos** por WebSocket direto da Binance; 15 s pela consulta quando ele cai | no navegador de quem está com a página aberta |
+| financiamento | 60 s (15 s sem o WebSocket) | idem, pela `/api/vivo` |
 | preço e posicionamento por cima do retrato velho | a cada montagem da página | no servidor, quando o retrato passa de 100 min |
 | as DECISÕES: viés, abrir e fechar posição, garimpo | **22 min, contínuo** | GitHub Actions |
 
@@ -163,8 +164,29 @@ cinco minutos: um pump de 120% cabe inteiro nesse intervalo.
 `/api/vivo` devolve preço, variação de 24h e financiamento de todas as moedas
 vigiadas — **duas requisições à Binance para qualquer número de moedas e de
 abas**, porque os dois endereços servem a praça inteira de uma vez e o
-`next.revalidate` deduplica no servidor. `components/vivo.ts` mantém UM relógio
-por página, de quinze em quinze segundos, que dorme quando a aba sai de vista.
+`next.revalidate` deduplica no servidor. `components/vivo.ts` mantém UMA
+assinatura por página, que dorme quando a aba sai de vista.
+
+**E O PREÇO VEM DIRETO DA BINANCE, SEM PASSAR POR SERVIDOR NOSSO.** Depois da
+primeira consulta, o navegador abre um WebSocket público no perpétuo com o
+miniTicker das moedas vigiadas — o mesmo último negócio e a mesma abertura de 24h
+que a consulta devolve. Custo para o Vercel e para o GitHub: zero, porque a
+conexão é do navegador de quem olha com a Binance. Com ele de pé a consulta cai
+para uma por minuto, só pelo financiamento.
+
+Medido em 23/09 com as 71 moedas numa conexão: ~19 mensagens e 4 KB por segundo,
+cada moeda de ~3 em ~3 s; a tela publica no máximo uma vez por segundo. Três
+coisas que foram medidas e estão no código:
+
+- **O endereço é `/market/stream`, não o `/ws` da documentação antiga.** O `/ws`
+  ABRE e fica mudo — zero mensagens em quinze segundos. Por isso há um vigia:
+  sem primeira mensagem em 10 s, ou nada em 30 s, a conexão conta como falha.
+- **Na falha a consulta de 15 s assume na hora**, e a religação espera o dobro a
+  cada falha seguida, de 5 s a 5 min. A tela diz por qual canal o preço chega.
+- **O proxy deste ambiente de desenvolvimento não deixa o Chromium abrir
+  WebSocket** (403 no upgrade). O caminho de reserva foi visto no navegador; o do
+  WebSocket foi exercitado no Node com `assinarVivo`, que é a mesma assinatura
+  sem React: abrir, receber, derrubar, religar, aba oculta, aba de volta.
 
 Quem consome: as células de preço e 24h da tabela (`PrecoVivo`) e a carteira
 (`CarteiraPanel`, que remarca as posições com `remarcar`). O número do retrato é
@@ -196,7 +218,9 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/carteira.ts` | a carteira fictícia. **Não importa nada de `node:` no topo** — `remarcar` roda no navegador |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
-| `components/vivo.ts` | o relógio único da página que consome essa rota |
+| `components/vivo.ts` | a assinatura única da página: WebSocket da Binance para preço, essa rota para financiamento e como reserva |
+| `lib/sinais.ts` | o formato de `data/sinais.json` e a leitura dele pela página |
+| `lib/fluxo.ts` | `resumirFluxo`: soma o bruto do fluxo da Binance por moeda, com a cobertura de cada dia junto |
 | `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |
 | `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção, disco primeiro no resto |
 
@@ -210,10 +234,12 @@ retrato seguinte fechá-la com a hora certa.
 | `data/vesting.json` | emissão por moeda | `npm run vesting` |
 | `data/estudos.json` | estudo por moeda | `npm run estudar` |
 | `data/placar.json` | o painel acertou? | `npm run placar` |
-| `data/carteira.json` | a carteira | `npm run carteira` |
+| `data/carteira.json` | a carteira, com a tabela de regimes e a curva do regime anterior em `comparacao` — a tela desenha as duas | `npm run carteira` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
 | `data/fluxo-binance.json` | o último bloco lido e a identificação de cada token (perpétuo e preço conferidos) | idem |
+| `data/fluxo-binance-resumo.json` | os últimos 7 dias somados por moeda, com a cobertura de cada dia — é o que a página lê | idem (e `-- --resumo` só refaz este) |
+| `data/sinais.json` | os 25 sinais medidos sobre os 528 perpétuos, o modelo atacado e os testes do fluxo | `npm run medir-sinais`, **uma vez por dia** no workflow (`--diario`) |
 
 ---
 
