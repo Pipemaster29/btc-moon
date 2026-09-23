@@ -234,6 +234,14 @@ jobs:
             # peneirar de três em três minutos gastaria orçamento da Binance
             # para reencontrar a mesma lista.
             npm run garimpar || echo "garimpo falhou, seguindo"
+            # O PLACAR TAMBÉM, e ele não rodava em lugar nenhum. A tela lê o
+            # `placar.json` do `main` — o painel que diz "nenhum viés separou" —
+            # e ele ficou parado na medição de 03/09 por vinte dias, com a janela
+            # antiga ao lado parecendo carimbo de frescor. Quando alguém tentou
+            # rodar à mão, ele morria com a pilha estourada sobre 126 mil
+            # linhas. Leva dois segundos e não toca em rede: lê o histórico que o
+            # panorama acabou de gravar.
+            npm run placar || echo "placar falhou, seguindo"
 
             # A AUDITORIA RODA ANTES DO COMMIT e o resultado vai para o log.
             #
