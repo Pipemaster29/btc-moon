@@ -9,6 +9,7 @@
  * Rode com: npm run auditar-dados
  */
 import { readFile } from "node:fs/promises";
+import { MOTIVOS, RISCO_TOTAL_MAXIMO } from "../lib/carteira";
 
 let falhas = 0;
 function checa(nome: string, ok: boolean, detalhe = "") {
@@ -45,6 +46,8 @@ const c = await ler<{
   acertos: number; encerradas: number;
   pico?: number; quedaMaxima?: number; maiorExposicao?: number;
   maiorRiscoAberto?: number; curva?: { t: number; patrimonio: number }[];
+  riscoAberto?: number; freio?: number;
+  regras?: { freio: { piso: number } | null };
 }>("data/carteira.json");
 console.log("carteira:");
 if (c) {
@@ -66,8 +69,22 @@ if (c) {
   for (const f of c.fechadas) {
     checa("fechada: retorno >= -100%", f.retorno >= -1.0000001, `= ${f.retorno}`);
     checa("fechada: dias >= 0", f.dias >= 0);
-    checa("fechada: motivo válido",
-      ["painel mudou", "stop", "alvo", "prazo", "liquidada"].includes(f.motivo), `= ${f.motivo}`);
+    // A lista sai do código e não de um literal daqui: com "stop móvel" e "sem
+    // reação" entrando, a lista copiada reprovaria o arquivo certo — ou, pior,
+    // alguém a alargaria à mão até passar.
+    checa("fechada: motivo válido", (MOTIVOS as readonly string[]).includes(f.motivo), `= ${f.motivo}`);
+  }
+
+  // O RISCO DE AGORA, que o arquivo passou a gravar. O teto agregado é o freio
+  // que segura o pior dia; se o número gravado passar dele, o freio não
+  // segurou, e isso não pode ficar só na tela.
+  if (c.riscoAberto !== undefined) {
+    checa("risco aberto entre 0 e o teto", c.riscoAberto >= 0 && c.riscoAberto <= RISCO_TOTAL_MAXIMO + 1e-9,
+      `= ${c.riscoAberto}`);
+  }
+  if (c.freio !== undefined) {
+    const piso = c.regras?.freio?.piso ?? 1;
+    checa("freio entre o piso e 1", c.freio >= piso - 1e-9 && c.freio <= 1 + 1e-9, `= ${c.freio}`);
   }
 
   // O LADO DO RISCO. Opcional porque o arquivo do `main` pode ter sido gravado

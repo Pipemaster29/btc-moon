@@ -66,7 +66,7 @@ npm run carteira     # a carteira fictícia → data/carteira.json
 Não há chave, `.env` nem banco. O estado inteiro mora em `data/`.
 
 O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` +
-`garimpar` e
+`garimpar` + `placar` e
 commita o resultado. **O cron pede 48 execuções por dia e o GitHub entrega cerca
 de sete** — é limitação da plataforma, contornada pela DURAÇÃO de cada execução
 e não pela frequência delas (ver logo abaixo).
@@ -219,10 +219,13 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | regra | valor | de onde vem |
 |---|---|---|
 | Alavancagem | **3x** | o teto em que o stop ainda dispara antes da liquidação: 25% de preço × 3 = 75% da margem. A 4x seriam 100%, e a corretora fecharia a posição exatamente onde o stop fecharia |
-| Stop | −25% de preço | ~3 desvios de UM DIA; `npm run estudar` mede volatilidade diária de 7% a 10% |
+| Stop | −25% de preço | fora do ruído de um dia: desvio diário mediano de 11,2% (`estudos.json`), ~2,2σ. Mais curto foi medido em 23/09 e não passou — o ganho era de uma moeda |
+| Sem reação | **3 dias** | a posição que não andou a favor em três dias sai. Platô: 1 a 5 dias melhoram as duas metades da janela |
 | Alvo | +40% de preço | o dobro da assimetria que sustenta a regra de compra (sobe +20% em 21,0% das semanas) |
 | Prazo | 14 dias | as regras direcionais foram medidas em janelas de 7 e 14 dias |
 | Risco por call | **3% / 2% / 1%** do patrimônio (força 3/2/1) | dobrado em 05/09: na régua anterior o pico de risco agregado era 13% de um teto de 25% e 85% do dinheiro ficava parado — a carteira não conseguia testar se a estratégia quebra a conta, que é para o que ela existe |
+| Vendido | **¼ do risco** | depois de cada call de venda o preço subiu contra a referência em 72h nos dois meses (+0,44 p.p. em agosto, +2,29 em setembro); a cauda destas moedas é para cima. Um quarto, e não zero, para continuar medindo |
+| Freio de queda | a partir de −10% do pico, até ¼ do orçamento em −25% | mecânico, não medido: nunca encosta na amostra. Dois dias seguidos de tudo estopar custariam −44% sem ele e −30% com ele |
 | Risco agregado | teto de 25% | cripto tem dias em que a lista inteira cai 25% junta |
 | Margem exposta | teto de 50% | |
 | Custo | 0,15% por lado, **sobre o nocional** | a 3x, isso é 0,45% da margem por lado |
@@ -230,8 +233,20 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | Liquidação | margem de manutenção 0,5% | a 3x, o preço andando 33,2% contra |
 
 **Saída pelo primeiro que acontecer:** o painel mudou de ideia (a principal — a
-carteira segue as calls, então sai quando a call sai), stop, alvo, prazo,
-liquidação.
+carteira segue as calls, então sai quando a call sai), stop, sem reação, alvo,
+prazo, liquidação.
+
+**As regras são um objeto, `Regras`, e o motor aceita qualquer uma.** `REGRAS` é
+o regime publicado e `REGRAS_ANTERIORES` o que valeu até 23/09. `npm run
+carteira` imprime os dois lado a lado e o publicado com cada peça desligada, nas
+duas metades da janela e sem a moeda que mais ganhou — é essa tabela que decide
+se uma regra entra. **Nenhuma regra de gestão nova sem passar nela**, e a coluna
+"sem a melhor moeda" reprova mais do que as metades: o stop curto passava nas
+duas metades e era uma moeda só.
+
+Medido em 23/09, as mesmas calls: o regime anterior em −11,3% (queda máxima
+−17,2%), o publicado em +14,8% (−5,8%). **Sem a HEI, −19,8% contra −4,3%** — a
+gestão perde muito menos, e lucro continua não demonstrado.
 
 **Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.**
 `npm run carteira` busca as velas de 1h da Binance das moedas que podem virar
@@ -260,15 +275,18 @@ gravados, todas depois de ver os dados.
 execução; a profundidade da pool (o custo é fixo, e numa pool de US$ 2 mil uma
 ordem de US$ 60 move mais que isso).
 
-**A call queimada não se repete.** Depois de um stop ou uma liquidação, a moeda
-só volta a valer quando o viés dela sair daquele lado. Sem isso a carteira
-recomprava a call que acabou de morrer no MESMO retrato — reproduzido com uma
-moeda caindo 28% por retrato e o painel fixo em "long", ela tomou **onze stops
-seguidos** e perdeu 17% do patrimônio na mesma leitura errada.
+**A call queimada não se repete.** Depois de QUALQUER saída, a moeda só volta a
+valer quando o viés dela sair daquele lado. Sem isso a carteira recomprava a
+call que acabou de morrer no MESMO retrato — reproduzido com uma moeda caindo
+28% por retrato e o painel fixo em "long", ela tomou **onze stops seguidos** e
+perdeu 17% do patrimônio na mesma leitura errada. Até 23/09 só stop e liquidação
+queimavam, e a saída por prazo reabria no mesmo lote; com a saída por tempo, a
+diferença é de +14,8% para +5,0%.
 
 **A unidade de cada número importa, e confundi-las já quebrou isto.** `STOP` e
-`ALVO` são variação de PREÇO; `retorno`, `funding` e `RISCO_POR_FORCA` são fração
-da MARGEM, ou seja já multiplicados pela alavancagem. Comparar um contra o outro
+`ALVO` são variação de PREÇO; `retorno` e `funding` são fração da MARGEM, ou seja
+já multiplicados pela alavancagem; `RISCO_POR_FORCA` e `risco` são fração do
+PATRIMÔNIO. Comparar um contra o outro
 fazia o stop de 25% disparar com 8,3% de preço — ruído de um dia normal.
 
 `npm run testar-carteira` roda os casos-limite e trava os limiares, sem tocar em
@@ -412,6 +430,14 @@ Na **C** a primeira transferência vem **98 dias** depois do contrato existir.
 Se a janela é sobre um fenômeno de mercado, ela é de TEMPO e se converte para
 blocos por rede. Se é sobre orçamento de requisição, ela é de blocos — e aí
 escreva ao lado que é orçamento, para ninguém ler o corte como medição.
+
+### 9. Espalhar um array grande como argumento estoura a pilha
+
+`Math.min(...pontos)` passa cada elemento como ARGUMENTO, e a pilha tem teto. Com
+as 23 mil linhas de 03/09 cabia; com as 126 mil de 23/09 o `npm run placar`
+morria com "Maximum call stack size exceeded" antes de imprimir uma linha — e
+como ele não rodava no workflow, a tela mostrou a medição de 03/09 por vinte
+dias. O histórico só cresce: sobre ele, é laço.
 
 ---
 

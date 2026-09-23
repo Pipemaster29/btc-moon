@@ -36,9 +36,10 @@
  * nocional, que é três vezes a margem.
  *
  * A UNIDADE DE CADA NÚMERO IMPORTA, e confundi-las já quebrou isto uma vez:
- * `STOP` e `ALVO` são variação de PREÇO; `retorno`, `funding` e `RISCO_POR_FORCA`
- * são fração da MARGEM, ou seja já multiplicados pela alavancagem. Comparar um
- * contra o outro fazia o stop de 25% disparar com 8,3% de preço.
+ * `STOP` e `ALVO` são variação de PREÇO; `retorno` e `funding` são fração da
+ * MARGEM, ou seja já multiplicados pela alavancagem; `RISCO_POR_FORCA` e o
+ * `risco` de cada posição são fração do PATRIMÔNIO. Comparar preço contra
+ * margem fazia o stop de 25% disparar com 8,3% de preço.
  *
  * ESTE ARQUIVO NÃO IMPORTA NADA DE `node:`, e isso é requisito, não estilo: a
  * marcação a mercado (`remarcar`) roda TAMBÉM no navegador, para as posições
@@ -49,7 +50,25 @@
  */
 
 export type Lado = "long" | "short";
-export type Motivo = "painel mudou" | "stop" | "alvo" | "prazo" | "liquidada";
+export type Motivo =
+  | "painel mudou"
+  | "stop"
+  | "stop móvel"
+  | "sem reação"
+  | "alvo"
+  | "prazo"
+  | "liquidada";
+
+/** Todos os motivos, para quem precisa validar um arquivo gravado. */
+export const MOTIVOS: readonly Motivo[] = [
+  "painel mudou",
+  "stop",
+  "stop móvel",
+  "sem reação",
+  "alvo",
+  "prazo",
+  "liquidada",
+];
 
 export interface Aberta {
   symbol: string;
@@ -72,6 +91,32 @@ export interface Aberta {
   ultimoFunding: number;
   /** Última taxa vista, para o caso de o retrato seguinte não trazer nenhuma. */
   ultimaTaxa: number | null;
+  /**
+   * Fração do patrimônio que esta posição arriscava até o stop na ENTRADA, já
+   * com a escala, o fator do lado e o freio de queda aplicados. É a unidade do
+   * teto agregado — e ela mora na posição porque deixou de ser função só da
+   * força: duas calls de força 2 podem arriscar valores diferentes.
+   */
+  risco?: number;
+  /** O melhor preço desde a entrada — máxima para comprado, mínima para vendido. */
+  melhor?: number;
+  /**
+   * A distância do stop inicial DESTA posição, em variação de preço. Mora nela
+   * porque depende do lado, e porque o regime pode mudar com a posição aberta:
+   * ela sai pela regra com que entrou.
+   */
+  stop?: number;
+  /** Onde a ordem de stop está AGORA: a inicial, ou a do rastro quando já subiu. */
+  nivelStop?: number;
+  /**
+   * A marcação VIVA já passou de uma regra de saída, e o retrato seguinte fecha.
+   *
+   * Mesma lógica de `estourada`: o navegador marca, não decide. Sem a bandeira,
+   * uma posição abaixo do stop aparecia na tela como aberta e normal por até um
+   * intervalo inteiro entre retratos — e o AGENTS.md promete que ela aparece
+   * "passada do stop, sinalizada".
+   */
+  saida?: Motivo;
   /**
    * A margem acabou na MARCAÇÃO viva, mas nenhum retrato fechou a posição ainda.
    *
@@ -207,6 +252,20 @@ export interface Carteira {
   maiorRiscoAberto: number;
   /** O patrimônio ao longo do tempo, um ponto por hora no máximo. */
   curva: { t: number; patrimonio: number }[];
+  /**
+   * As regras com que ESTA carteira foi calculada.
+   *
+   * Gravadas no arquivo e não importadas pela tela, porque o arquivo pode ter
+   * sido gerado por outra versão do código: a página lê o `carteira.json` do
+   * `main` pelo GitHub raw, e o texto "stop de 25%" ao lado de uma carteira
+   * calculada com outro stop seria a tela descrevendo uma regra que não gerou
+   * aqueles números. Opcional porque os arquivos anteriores não têm.
+   */
+  regras?: Regras;
+  /** O multiplicador do freio de queda agora: 1 é o orçamento inteiro. */
+  freio?: number;
+  /** Risco comprometido agora, em fração do patrimônio. */
+  riscoAberto?: number;
 }
 
 // ------------------------------------------------------------------ as regras
@@ -300,10 +359,15 @@ export const RISCO_TOTAL_MAXIMO = 0.25;
  * que sai o teto de alavancagem. Comparar contra o retorno alavancado faria o
  * stop disparar com 8,3% de preço.
  *
- * Vinte e cinco por cento é perto de três desvios de UM DIA nestas moedas: o
- * `npm run estudar` mede volatilidade diária de 7% a 10% na maioria delas. Mais
- * apertado que isso e o stop viraria ruído de um dia normal; mais largo e ele
- * deixaria de proteger.
+ * Vinte e cinco por cento fica fora do ruído de UM DIA nestas moedas — mas não
+ * a "três desvios" que este comentário dizia até 23/09. O texto afirmava
+ * volatilidade diária de 7% a 10% "na maioria delas", e o `estudos.json` mede
+ * outra coisa: desvio diário mediano de 11,2%, com 48 de 70 moedas acima de 10%.
+ * São ~2,2 desvios na moeda típica, 3,8 na mais calma (RIF, 6,6%) e 1,3 na mais
+ * nervosa (H, 19,1%).
+ *
+ * E mais curto foi medido em 23/09 — fixo e por volatilidade da moeda — e não
+ * passou: o ganho era de uma moeda só. Ver `REGRAS`.
  */
 export const STOP = 0.25;
 
@@ -388,6 +452,203 @@ export const MARGEM_MANUTENCAO = 0.005;
  */
 export const FUNDING_PRESUMIDO = 0.00015;
 
+// ------------------------------------------------------------------ o regime
+
+/**
+ * AS REGRAS DE GESTÃO NUM LUGAR SÓ, para poderem ser MEDIDAS lado a lado.
+ *
+ * Eram constantes soltas lidas direto pelo motor, e isso tinha um custo
+ * concreto: para comparar dois jeitos de gerir a mesma lista de calls era
+ * preciso editar o arquivo, rodar, anotar, desfazer. A tabela de escala do
+ * `npm run carteira` só existia porque `escala` era o único parâmetro que o
+ * motor aceitava. Agora o regime inteiro é um parâmetro, e o script imprime o
+ * publicado ao lado do anterior sobre as MESMAS emissões e o MESMO caminho de
+ * velas — a diferença entre os dois fica medida a cada retrato, e não presumida
+ * uma vez.
+ *
+ * O que NÃO está aqui de propósito: alavancagem, custo, margem de manutenção.
+ * Esses são o mercado, não a gestão — mudar um deles é mudar a pergunta.
+ */
+export interface Regras {
+  /** Stop do comprado, em variação de PREÇO contra a entrada. */
+  stopComprado: number;
+  /** Stop do vendido, em variação de PREÇO contra a entrada. */
+  stopVendido: number;
+  /** Alvo fixo, em variação de PREÇO a favor. Nulo: só o rastro realiza. */
+  alvo: number | null;
+  /** Prazo máximo da call, em dias. */
+  prazoDias: number;
+  /**
+   * Depois de quantos dias a posição precisa estar a favor para continuar de pé.
+   * Nulo: desligado.
+   */
+  semReacaoDias: number | null;
+  /**
+   * O stop que acompanha o ganho: liga depois de o preço andar `ativa` a favor
+   * e fica `distancia` atrás do melhor preço desde a entrada. Nulo: desligado.
+   */
+  rastro: { ativa: number; distancia: number } | null;
+  /** Fração do patrimônio arriscada até o stop, por força da leitura. */
+  riscoPorForca: Record<number, number>;
+  /** Multiplicador do risco nas VENDIDAS. 1 é simétrico. */
+  fatorVendido: number;
+  /**
+   * O freio de queda: com a conta até `inicio` abaixo do pico, orçamento
+   * inteiro; daí até `fim`, ele encolhe em linha reta até o `piso`. Nulo:
+   * desligado.
+   */
+  freio: { inicio: number; fim: number; piso: number } | null;
+  /** Se QUALQUER saída queima a call, ou só stop e liquidação. */
+  queimaEmToda: boolean;
+  /** Multiplicador do orçamento de risco inteiro — a tabela de escala. */
+  escala: number;
+}
+
+/**
+ * O regime que valeu de 02/09 a 23/09, preservado para ser medido ao lado.
+ *
+ * Em 23/09 ele estava em −11,3% com queda máxima de −17,2%, e o diagnóstico
+ * das 93 posições encerradas diz onde o dinheiro saiu:
+ *
+ *   - AS SETE POSIÇÕES QUE ESTOPARAM NUNCA ESTIVERAM NO LUCRO. A maior excursão
+ *     a favor de qualquer uma delas foi +7,3%, quase sempre na primeira hora; o
+ *     resto foi sangria lenta até −25%. Stop móvel não teria salvado nenhuma.
+ *   - O TEMPO SEPAROU AS DUAS METADES: as posições encerradas com menos de três
+ *     dias somaram +US$ 66; as de três dias ou mais, −US$ 151.
+ *   - O VENDIDO PAGOU O SQUEEZE: vendidas fechadas porque o painel virou para
+ *     "evitar" — a moeda disparou — foram 13, e somaram −US$ 112, praticamente
+ *     toda a perda do lado vendido (−US$ 101 no total).
+ */
+export const REGRAS_ANTERIORES: Regras = {
+  stopComprado: STOP,
+  stopVendido: STOP,
+  alvo: ALVO,
+  prazoDias: PRAZO_DIAS,
+  semReacaoDias: null,
+  rastro: null,
+  riscoPorForca: RISCO_POR_FORCA,
+  fatorVendido: 1,
+  freio: null,
+  queimaEmToda: false,
+  escala: 1,
+};
+
+/**
+ * O REGIME PUBLICADO, desde 23/09: cortar cedo o que não anda, pagar pouco pelo
+ * lado que a medição condena, e usar o orçamento que sobra para tentar mais.
+ *
+ * O PRINCÍPIO é assimetria, e nenhuma das três mudanças mexe no que o painel
+ * diz — só em quanto cada erro custa. O placar continua dizendo que nenhum viés
+ * separa da referência; isto não muda isso e não finge mudar.
+ *
+ * MEDIDO sobre as mesmas emissões e o mesmo caminho de velas de 02/09 a 23/09,
+ * e — a parte que importa — separadamente em cada METADE da janela e partindo
+ * de oito datas de início diferentes, porque um regime escolhido olhando o
+ * resultado de uma janela só descreve aquela janela:
+ *
+ *                       inteira   1ª metade   2ª metade   queda máx   pior início
+ *   anterior             −11,3%     −10,4%      +2,5%      −17,2%      −11,3%
+ *   publicado            +14,8%      +5,9%      +6,3%       −5,8%       +1,7%
+ *
+ * Melhora nas duas metades e em todas as datas de início; tirando as duas
+ * moedas que mais ganharam com a troca (HEI e UB), a diferença ainda é de
+ * +US$ 102 — 19 moedas melhoram, 9 pioram. `npm run carteira` imprime esta
+ * comparação a cada retrato, com cada peça desligada uma de cada vez, para que
+ * ela continue sendo medida em vez de ficar sendo lembrada.
+ *
+ * O QUE ISSO NÃO DEMONSTRA É LUCRO, e a conta que mostra isso é a mesma. A HEI
+ * bateu o alvo três vezes e respondeu por US$ 191 do resultado; sem ela, o
+ * publicado fica em −4,3% — e o anterior, sem ela, em −19,8%. A gestão nova
+ * perde muito menos com as mesmas calls, e isso é robusto. Que as calls deem
+ * dinheiro continua não medido, que é o que o placar diz desde agosto.
+ *
+ * E O QUE FOI TESTADO E NÃO PASSOU, que é metade da escolha:
+ *
+ *   - STOP MAIS CURTO, fixo ou por volatilidade da moeda. Com a saída por tempo
+ *     no lugar, stop de 20% ou de 2σ de um dia dá +17,6% e +21,6% com a mesma
+ *     queda máxima — e é quase tudo UMA moeda: o tamanho sai do risco, stop
+ *     curto é posição maior, e a posição maior foi na HEI. Tirando as duas
+ *     moedas que mais ganharam com a troca, o stop de 20% perde US$ 27 e o de
+ *     2σ perde US$ 33; mais moedas pioram do que melhoram nos dois. Sem a
+ *     saída por tempo, stop curto piora direto. Vendido com stop curto foi o
+ *     pior de todos: posição vendida MAIOR, no lado que perde.
+ *   - STOP MÓVEL (de 8/12% a 20/15%). As vencedoras andam pouco — excursão
+ *     mediana de +3,9% — e saem pelo painel antes; o rastro mais frouxo
+ *     empatou e os outros só as encurtaram.
+ *   - ALVO MAIOR OU NENHUM ALVO. Nenhuma melhora: quase nada chega a +40%.
+ *   - MAIS TAMANHO (1,5x e 2x o orçamento). O teto agregado passa a recusar
+ *     call e a variância cresce sem retorno para pagá-la: ver a tabela do
+ *     `npm run carteira`, que mede isto sobre o regime publicado.
+ *     Sem vantagem medida, tamanho multiplica a variância e não o retorno.
+ */
+export const REGRAS: Regras = {
+  ...REGRAS_ANTERIORES,
+  /**
+   * SEM REAÇÃO EM TRÊS DIAS, SAI.
+   *
+   * As duas regras direcionais do painel são apostas de REVERSÃO — vender quem
+   * quicou, comprar quem derreteu —, e reversão nestas moedas é rápida ou não
+   * vem: `npm run estudar` mede a memória delas em um a oito dias. Medido nas
+   * posições da carteira: das 14 que chegaram ao terceiro dia no vermelho, só 6
+   * terminaram no lucro, e as 14 somaram −US$ 54.
+   *
+   * O CORTE NÃO É UM PICO, É UM PLATÔ. Sozinha, a regra melhorou as duas
+   * metades com 1, 2, 3 e 5 dias; com 7 a segunda metade já piora. Três fica no
+   * meio.
+   *
+   * Não é stop: ela pode sair a 1% da entrada. É o tempo dizendo que a tese não
+   * se confirmou no prazo em que ela costuma se confirmar.
+   */
+  semReacaoDias: 3,
+  /**
+   * O VENDIDO ARRISCA UM QUARTO.
+   *
+   * Duas medições independentes apontam para o mesmo lado. Na carteira, o
+   * vendido perdeu US$ 101 em 33 posições — e só as 13 que o squeeze fechou
+   * somaram −US$ 112. E FORA dela,
+   * sobre o histórico inteiro — agosto inclusive, antes de a carteira existir —,
+   * o preço SUBIU em relação à referência nas 72h seguintes a cada call de venda:
+   *
+   *              depois da call de venda, em 72h
+   *   agosto     +0,44 p.p. contra o vendido   · 3.564 emissões
+   *   setembro   +2,29 p.p. contra o vendido   · 6.268 emissões
+   *              e 11,8% das vezes a moeda subiu 20%+, contra 0,4% que caiu 20%+
+   *
+   * O mecanismo é o do projeto inteiro: moeda pequena e fácil de empurrar tem a
+   * cauda PARA CIMA, e quem está vendido é quem paga essa cauda.
+   *
+   * POR QUE NÃO ZERO, se zero mediu melhor (+18,1%): a carteira existe para
+   * medir as calls, e o retorno sobre a margem — que é o que a tabela "por lado"
+   * mostra — não depende do tamanho. Um quarto é a menor fração que mantém a
+   * venda de força 1 acima do piso de US$ 1 de posição mesmo com a conta pela
+   * metade: 1% × ¼ = 0,25% de risco, margem de 0,33% do patrimônio.
+   */
+  fatorVendido: 0.25,
+  /**
+   * TODA SAÍDA QUEIMA A CALL — ver `fechar`. Sem isto a saída por tempo não
+   * funciona: a posição sairia "sem reação" e reabriria no mesmo lote, zerando o
+   * relógio. Medido: o regime novo SEM esta linha fica em −5,2%, contra +14,8%.
+   */
+  queimaEmToda: true,
+  /**
+   * O FREIO DE QUEDA, e este não vem de medição: vem de mecânica, dito em voz
+   * alta como a regra de concentração do `lib/lifecycle.ts`.
+   *
+   * Na amostra ele é NEUTRO: o regime novo não passa de −5,8% e o freio só
+   * começa em −10%. Existe para o cenário que a amostra não tem, e que o teto
+   * agregado descreve: todas as posições estopando no mesmo dia custam 25% da
+   * conta. Sem freio, um segundo dia igual custa outros 25% do que sobrou — a
+   * conta vai a −44%. Com ele, a conta a −25% arrisca um quarto do orçamento, e
+   * o segundo dia custa ~6%: −30% no total. É o que separa uma carteira que
+   * sofre de uma que acaba e para de medir.
+   *
+   * Contínuo, porque degrau faria o tamanho depender de que lado de um centavo
+   * o retrato caiu. Custou 0,3 p.p. no pior dos oito inícios, onde chegou a
+   * encostar.
+   */
+  freio: { inicio: 0.1, fim: 0.25, piso: 0.25 },
+};
+
 // ------------------------------------------------------------------- o motor
 
 /** Uma linha do histórico, que é o que o motor consome. */
@@ -420,8 +681,8 @@ interface Estado {
    * quando o viés dela sair daquele lado — aí é call nova, não a mesma.
    */
   queimadas: Map<string, Lado>;
-  /** Multiplicador do orçamento de risco. 1 é a régua publicada. */
-  escala: number;
+  /** O regime de gestão desta rodada. */
+  regras: Regras;
   /** O maior patrimônio já visto, e a maior queda a partir dele. */
   pico: number;
   quedaMaxima: number;
@@ -455,10 +716,7 @@ function marcar(estado: Estado, quando: number): void {
     }
   }
 
-  const risco = [...estado.abertas.values()].reduce(
-    (s, p) => s + (RISCO_POR_FORCA[p.forca] ?? 0) * estado.escala,
-    0,
-  );
+  const risco = riscoAberto(estado);
   if (risco > estado.maiorRiscoAberto) estado.maiorRiscoAberto = risco;
 
   // Um ponto por hora no máximo: o motor roda sobre todos os retratos, e são de
@@ -476,6 +734,89 @@ function marcar(estado: Estado, quando: number): void {
 function aFavor(p: { lado: Lado; precoEntrada: number }, preco: number): number {
   const variacao = preco / p.precoEntrada - 1;
   return p.lado === "long" ? variacao : -variacao;
+}
+
+function stopDe(r: Regras, lado: Lado): number {
+  return lado === "long" ? r.stopComprado : r.stopVendido;
+}
+
+/** O stop inicial desta posição: o gravado nela, ou o fixo do lado. */
+function stopDa(p: Aberta, r: Regras): number {
+  return p.stop ?? stopDe(r, p.lado);
+}
+
+/**
+ * Onde a ordem de stop está, dado o melhor preço visto ATÉ AQUI.
+ *
+ * O rastro só aperta, nunca afrouxa: o nível é o mais protetor entre o stop
+ * inicial e o que acompanha o melhor preço. Quem chama passa o `melhor` das
+ * velas ANTERIORES, e não o da vela em teste — ver `percorrer`.
+ */
+function nivelDoStop(p: Aberta, r: Regras): number {
+  const comprado = p.lado === "long";
+  const s = stopDa(p, r);
+  const inicial = p.precoEntrada * (comprado ? 1 - s : 1 + s);
+  const melhor = p.melhor ?? p.precoEntrada;
+  if (!r.rastro || aFavor(p, melhor) < r.rastro.ativa) return inicial;
+  const rastro = melhor * (comprado ? 1 - r.rastro.distancia : 1 + r.rastro.distancia);
+  return comprado ? Math.max(inicial, rastro) : Math.min(inicial, rastro);
+}
+
+/**
+ * O risco que a posição ainda COMPROMETE, em fração do patrimônio da entrada.
+ *
+ * É o risco da entrada na proporção do que sobra entre a entrada e o stop.
+ * Enquanto o stop é o inicial, é o risco inteiro. Quando o rastro o empurra para
+ * o lado da entrada, encolhe; passado dela, é zero — a posição já não pode
+ * devolver capital, só lucro, e não há motivo para ela ocupar o orçamento que
+ * existe para limitar PERDA.
+ *
+ * Posição sem `risco` gravado (arquivo anterior a este campo) vale o risco da
+ * força, que é o que ela valia quando foi aberta.
+ */
+function riscoDe(p: Aberta, r: Regras): number {
+  const base = p.risco ?? (r.riscoPorForca[p.forca] ?? 0) * r.escala;
+  const nivel = p.nivelStop ?? nivelDoStop(p, r);
+  const contra = -aFavor(p, nivel);
+  const s = stopDa(p, r);
+  return base * Math.min(1, Math.max(0, contra / s));
+}
+
+/**
+ * Quanto do orçamento de risco sobra depois da queda do pico, de 1 ao piso.
+ *
+ * Linear e contínuo de propósito: um degrau ("metade depois de −10%") faria a
+ * carteira mudar de comportamento por um centavo de patrimônio, e o tamanho da
+ * posição passaria a depender de que lado do degrau o retrato caiu.
+ */
+function freioDeQueda(r: Regras, patrimonio: number, pico: number): number {
+  if (!r.freio || !(pico > 0) || !Number.isFinite(patrimonio)) return 1;
+  const { inicio, fim, piso } = r.freio;
+  const queda = Math.max(0, 1 - patrimonio / pico);
+  if (queda <= inicio) return 1;
+  if (queda >= fim) return piso;
+  return 1 - ((queda - inicio) / (fim - inicio)) * (1 - piso);
+}
+
+function riscoAberto(estado: Estado): number {
+  let soma = 0;
+  for (const p of estado.abertas.values()) soma += riscoDe(p, estado.regras);
+  return soma;
+}
+
+/** Tocou o nível do stop? `preco` é a mínima (comprado) ou a máxima (vendido). */
+function passouDoStop(p: Aberta, preco: number): boolean {
+  if (p.nivelStop === undefined) return false;
+  return p.lado === "long" ? preco <= p.nivelStop : preco >= p.nivelStop;
+}
+
+/** Stop do rastro, ou o inicial? A diferença é o motivo da saída. */
+function motivoDoStop(p: Aberta, r: Regras): Motivo {
+  const s = stopDa(p, r);
+  const inicial = p.precoEntrada * (p.lado === "long" ? 1 - s : 1 + s);
+  return p.nivelStop !== undefined && Math.abs(p.nivelStop - inicial) > inicial * 1e-9
+    ? "stop móvel"
+    : "stop";
 }
 
 /**
@@ -589,9 +930,9 @@ function percorrer(
   const k = ancora(precoRetrato, janela[janela.length - 1].fechamento);
   if (k === null) return false;
 
+  const r = estado.regras;
   const comprado = p.lado === "long";
-  const nivelStop = p.precoEntrada * (comprado ? 1 - STOP : 1 + STOP);
-  const nivelAlvo = p.precoEntrada * (comprado ? 1 + ALVO : 1 - ALVO);
+  const nivelAlvo = r.alvo === null ? null : p.precoEntrada * (comprado ? 1 + r.alvo : 1 - r.alvo);
 
   for (const v of janela) {
     const abertura = v.abertura * k;
@@ -633,21 +974,40 @@ function percorrer(
       fechar(estado, p, preenche(nivelLiq, "contra"), v.fechouEm, "liquidada");
       return true;
     }
+    // O nível do stop é o que estava PARADO quando a vela abriu — o rastro desta
+    // vela ainda não subiu. Ver o fim do laço.
+    const nivelStop = p.nivelStop ?? nivelDoStop(p, r);
     if (tocou(nivelStop, "contra")) {
-      fechar(estado, p, preenche(nivelStop, "contra"), v.fechouEm, "stop");
+      fechar(estado, p, preenche(nivelStop, "contra"), v.fechouEm, motivoDoStop(p, r));
       return true;
     }
-    if (tocou(nivelAlvo, "favor")) {
+    if (nivelAlvo !== null && tocou(nivelAlvo, "favor")) {
       fechar(estado, p, preenche(nivelAlvo, "favor"), v.fechouEm, "alvo");
       return true;
     }
-    if ((v.fechouEm - p.abertaEm) / 86_400_000 >= PRAZO_DIAS) {
+    const dias = (v.fechouEm - p.abertaEm) / 86_400_000;
+    if (dias >= r.prazoDias) {
       fechar(estado, p, v.fechamento * k, v.fechouEm, "prazo");
+      return true;
+    }
+    if (r.semReacaoDias !== null && dias >= r.semReacaoDias && aFavor(p, v.fechamento * k) <= 0) {
+      fechar(estado, p, v.fechamento * k, v.fechouEm, "sem reação");
       return true;
     }
 
     p.precoAtual = v.fechamento * k;
     p.retorno = sobreMargem(p, p.precoAtual);
+
+    // O RASTRO SOBE DEPOIS DOS TESTES, e só vale da vela seguinte em diante.
+    //
+    // A vela diz onde o preço esteve e não em que ordem. Se a máxima que empurra
+    // o rastro para cima veio DEPOIS da mínima, subir o nível antes de testar
+    // estoparia a posição por um recuo que aconteceu quando a ordem ainda estava
+    // mais embaixo — saída inventada, e sempre na direção de realizar cedo. Mover
+    // a ordem uma vez por hora, no fechamento, é também o que alguém faria na
+    // mão, e não olha o futuro.
+    p.melhor = comprado ? Math.max(p.melhor ?? p.precoEntrada, maxima) : Math.min(p.melhor ?? p.precoEntrada, minima);
+    p.nivelStop = nivelDoStop(p, r);
   }
 
   return false;
@@ -661,9 +1021,25 @@ function fechar(estado: Estado, p: Aberta, preco: number, quando: number, motivo
   const devolvido = p.valor * (1 + retorno);
   estado.caixa += devolvido;
   estado.abertas.delete(p.symbol);
-  // Só stop e liquidação queimam a call. Sair pelo alvo, pelo prazo ou porque o
-  // painel mudou de ideia não diz que a leitura estava errada.
-  if (motivo === "stop" || motivo === "liquidada") estado.queimadas.set(p.symbol, p.lado);
+  // QUAIS SAÍDAS QUEIMAM A CALL.
+  //
+  // No regime anterior, só stop e liquidação: "sair pelo alvo, pelo prazo ou
+  // porque o painel mudou de ideia não diz que a leitura estava errada". Isso é
+  // verdade e não era a pergunta. A pergunta é se a MESMA leitura pode abrir a
+  // mesma posição de novo no mesmo retrato — e com o prazo ela abria.
+  //
+  // Medido na carteira de 23/09: a PRL saiu por prazo aos 14,0 dias e reabriu
+  // no mesmo lote, com o mesmo viés, pagando entrada e saída (0,9% da margem) para
+  // continuar exatamente onde estava. O prazo diz "passado isso, segurar deixa de
+  // ser seguir a leitura" — e a reabertura segurava. Com o "sem reação" e o stop
+  // móvel é igual: a posição que sai por tempo e reabre na hora zera o relógio
+  // sem nada ter mudado.
+  //
+  // `queimaEmToda` fecha isso: uma call é UMA aposta, e a moeda volta a valer
+  // quando o viés sair daquele lado — aí é leitura nova. "Painel mudou" queima
+  // também, sem efeito: o viés já está do outro lado e descongela no mesmo lote.
+  const queima = estado.regras.queimaEmToda || motivo === "stop" || motivo === "liquidada";
+  if (queima) estado.queimadas.set(p.symbol, p.lado);
   estado.fechadas.push({
     symbol: p.symbol,
     lado: p.lado,
@@ -692,19 +1068,23 @@ function fechar(estado: Estado, p: Aberta, preco: number, quando: number, motivo
  * liquidação passam a ser testados DENTRO do intervalo entre dois retratos, em
  * vez de só nas pontas. Sem ele o motor se comporta como antes — que é o que
  * mantém `npm run testar-carteira` medindo os limiares sem rede.
+ *
+ * `regras` é o regime de gestão; o padrão é o publicado. Passar outro é como o
+ * script mede um regime contra o outro sobre as mesmas emissões.
  */
 export function rodar(
   emissoes: Emissao[],
   comecouEm: number,
   caminho?: Map<string, Passo[]>,
-  escala = 1,
+  regras: Regras = REGRAS,
 ): Carteira {
+  const r = regras;
   const estado: Estado = {
     caixa: CAPITAL_INICIAL,
     abertas: new Map(),
     fechadas: [],
     queimadas: new Map(),
-    escala,
+    regras,
     pico: CAPITAL_INICIAL,
     quedaMaxima: 0,
     maiorExposicao: 0,
@@ -792,7 +1172,7 @@ export function rodar(
       // cotação. A saída é pelo último preço conhecido, que é a única coisa
       // honesta a fazer quando não há preço de hoje.
       if (atual === undefined) {
-        if (dias >= PRAZO_DIAS) fechar(estado, p, p.precoAtual, quando, "prazo");
+        if (dias >= r.prazoDias) fechar(estado, p, p.precoAtual, quando, "prazo");
         continue;
       }
 
@@ -827,13 +1207,19 @@ export function rodar(
       // existe porque o stop de 25% de preço consome 75% da margem, e o stop
       // errado consumia 25%.
       const varPreco = aFavor(p, atual);
+      if (p.nivelStop === undefined) p.nivelStop = nivelDoStop(p, r);
 
       // A ordem dos testes é a ordem do pior caso: dentro de um intervalo entre
       // retratos o preço passou por lugares que não vemos, e supor que ele
       // tocou o stop antes do alvo é a suposição conservadora.
-      if (varPreco <= -STOP) fechar(estado, p, atual, quando, "stop");
-      else if (varPreco >= ALVO) fechar(estado, p, atual, quando, "alvo");
-      else if (dias >= PRAZO_DIAS) fechar(estado, p, atual, quando, "prazo");
+      if (passouDoStop(p, atual)) fechar(estado, p, atual, quando, motivoDoStop(p, r));
+      else if (r.alvo !== null && varPreco >= r.alvo) fechar(estado, p, atual, quando, "alvo");
+      else if (dias >= r.prazoDias) fechar(estado, p, atual, quando, "prazo");
+      // SEM REAÇÃO: passados N dias, a posição precisa estar pagando para ficar.
+      // Não é stop — ela pode estar a 1% da entrada. É o tempo dizendo que a
+      // tese não se confirmou no horizonte em que ela costuma se confirmar.
+      else if (r.semReacaoDias !== null && dias >= r.semReacaoDias && varPreco <= 0)
+        fechar(estado, p, atual, quando, "sem reação");
       else if (vies.get(p.symbol) !== p.lado) {
         // O painel mudou de ideia. Esta é a saída principal: a carteira segue as
         // calls, então ela sai quando a call sai. Sem isso a carteira mediria as
@@ -846,6 +1232,13 @@ export function rodar(
         // raro: 26 das 1.845 emissões de setembro.
         const lido = vies.get(p.symbol);
         if (lido != null) fechar(estado, p, atual, quando, "painel mudou");
+      }
+
+      // Sobreviveu: o retrato também move o rastro, pelo mesmo motivo que a vela
+      // move — e depois dos testes, pelo mesmo motivo também.
+      if (estado.abertas.has(p.symbol)) {
+        p.melhor = p.lado === "long" ? Math.max(p.melhor ?? p.precoEntrada, atual) : Math.min(p.melhor ?? p.precoEntrada, atual);
+        p.nivelStop = nivelDoStop(p, r);
       }
     }
 
@@ -914,40 +1307,45 @@ export function rodar(
       if (entrada === undefined) continue;
 
       const forca = e.forca ?? 0;
-      const base = RISCO_POR_FORCA[forca];
+      const base = r.riscoPorForca[forca];
       // Sem força gravada não há como dimensionar, e chutar um tamanho seria
       // inventar a parte mais importante da conta. As linhas antigas do
       // histórico não têm o campo; elas simplesmente não viram posição.
       if (!base) continue;
-      // `escala` multiplica o orçamento de risco e nada mais: stop, alvo, prazo
-      // e alavancagem ficam onde estão. É só o TAMANHO que muda, que é a
-      // pergunta que ela existe para responder.
-      const risco = base * escala;
 
       const total = patrimonio();
+      // `escala` multiplica o orçamento de risco e nada mais: stop, alvo, prazo
+      // e alavancagem ficam onde estão. É só o TAMANHO que muda, que é a
+      // pergunta que ela existe para responder. O fator do lado e o freio de
+      // queda são do mesmo tipo — mexem no tamanho, nunca na regra de saída.
+      const risco =
+        base * r.escala * (e.vies === "short" ? r.fatorVendido : 1) * freioDeQueda(r, total, estado.pico);
+      if (!(risco > 0)) continue;
+
+      const stop = stopDe(r, e.vies);
       // A MARGEM QUE ARRISCA `risco` DO PATRIMÔNIO, e a alavancagem entra aqui.
       //
       // O stop de 25% é de PREÇO. A 3x ele consome 75% da margem, então para
       // arriscar 1,5% do patrimônio a margem tem de ser 2% — não 6%. Dividir só
       // pelo stop, como antes, triplicaria o risco de cada call sem que nada na
       // tela dissesse isso: é assim que backtest alavancado quebra sem avisar.
-      const alvo = (total * risco) / (STOP * ALAVANCAGEM);
+      //
+      // É também por esta linha que um stop mais curto compra posição MAIOR: o
+      // que se fixa é quanto a conta perde se o stop bater, e o tamanho sai
+      // dessa conta. Metade da distância, o dobro de margem, a mesma perda.
+      const alvo = (total * risco) / (stop * ALAVANCAGEM);
       const cabe = Math.max(0, total * EXPOSICAO_MAXIMA - expostoAgora());
 
       // O risco já comprometido, em fração do patrimônio: cada posição aberta
-      // vale o que ela perderia se batesse no stop.
-      const riscoAberto = [...estado.abertas.values()].reduce(
-        (soma, a) => soma + (RISCO_POR_FORCA[a.forca] ?? 0) * escala,
-        0,
-      );
-      if (riscoAberto + risco > RISCO_TOTAL_MAXIMO) continue;
+      // vale o que ela perderia se batesse no stop onde ele está agora.
+      if (riscoAberto(estado) + risco > RISCO_TOTAL_MAXIMO + 1e-12) continue;
 
       const valor = Math.min(alvo, cabe, estado.caixa);
       // Posição pequena demais é ruído de arredondamento contra custo fixo.
       if (valor < 1) continue;
 
       estado.caixa -= valor;
-      estado.abertas.set(e.s, {
+      const nova: Aberta = {
         symbol: e.s,
         lado: e.vies,
         abertaEm: quando,
@@ -963,7 +1361,15 @@ export function rodar(
         ultimoFunding: quando,
         ultimaTaxa: fund.get(e.s) ?? null,
         precoLiquidacao: precoDeLiquidacao(e.vies, entrada),
-      });
+        // O risco EFETIVO: quando a margem sai menor que o alvo — teto de
+        // exposição ou caixa —, a posição arrisca menos do que a régua pedia, e
+        // é isso que ela ocupa do orçamento.
+        risco: (valor * stop * ALAVANCAGEM) / total,
+        melhor: entrada,
+        stop,
+      };
+      nova.nivelStop = nivelDoStop(nova, r);
+      estado.abertas.set(e.s, nova);
     }
 
     // 3. registrar o estado da conta, DEPOIS das saídas e DEPOIS das aberturas.
@@ -1010,6 +1416,9 @@ function montar(estado: Estado, comecouEm: number, atualizadoEm: number): Cartei
     maiorExposicao: estado.maiorExposicao,
     maiorRiscoAberto: estado.maiorRiscoAberto,
     curva: estado.curva,
+    regras: estado.regras,
+    freio: freioDeQueda(estado.regras, patrimonio, estado.pico),
+    riscoAberto: riscoAberto(estado),
   };
 }
 
@@ -1095,6 +1504,21 @@ export function remarcar(
     // liga ficaria acesa depois de o preço voltar.
     viva.estourada = viva.retorno <= -1 + MARGEM_MANUTENCAO;
     if (viva.estourada) viva.retorno = -1;
+
+    // A mesma atribuição nos dois sentidos, pelo mesmo motivo da bandeira acima.
+    // As regras vêm do ARQUIVO e não do código: são as que o retrato seguinte
+    // vai aplicar, e numa carteira gravada antes delas não há o que sinalizar.
+    const r = c.regras;
+    viva.saida = undefined;
+    if (!viva.estourada && r) {
+      if (passouDoStop(viva, preco)) viva.saida = motivoDoStop(viva, r);
+      else if (
+        r.semReacaoDias !== null &&
+        (agora - p.abertaEm) / 86_400_000 >= r.semReacaoDias &&
+        aFavor(viva, preco) <= 0
+      )
+        viva.saida = "sem reação";
+    }
     return viva;
   });
 

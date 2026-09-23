@@ -9,7 +9,16 @@
  */
 
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
-import { rodar, CAPITAL_INICIAL, RISCO_POR_FORCA, type Emissao, type Passo } from "../lib/carteira";
+import {
+  rodar,
+  CAPITAL_INICIAL,
+  REGRAS,
+  REGRAS_ANTERIORES,
+  type Carteira,
+  type Emissao,
+  type Passo,
+  type Regras,
+} from "../lib/carteira";
 import { velas } from "../lib/binance";
 import { ATIVAS } from "../lib/watchlist";
 
@@ -146,51 +155,95 @@ console.log(
     `pico de margem exposta ${(c.maiorExposicao * 100).toFixed(1)}% (teto 50%)  ·  ` +
     `pico de risco agregado ${(c.maiorRiscoAberto * 100).toFixed(1)}% (teto 25%)`,
 );
+if (c.freio !== undefined && c.freio < 1) {
+  console.log(`freio de queda LIGADO: novas calls arriscam ${(c.freio * 100).toFixed(0)}% da régua`);
+}
 
 /**
- * O TAMANHO DA APOSTA, VIRADO EM NÚMERO.
+ * O REGIME, VIRADO EM NÚMERO — e medido de novo a cada retrato.
  *
- * A régua publicada arrisca 3% / 2% / 1% do patrimônio por call — dobrada em
- * 05/09 justamente por causa desta tabela. Na anterior, uma call de força 2 que
- * acertasse o ALVO INTEIRO movia +1,6% da conta e o pico de risco agregado
- * ficava em 13% de um teto de 25%: nenhum limite chegava a prender, e a carteira
- * não conseguia testar se a estratégia quebra a conta.
+ * Esta tabela era só de ESCALA: o mesmo motor com o orçamento de risco
+ * multiplicado. Foi ela que dobrou a régua em 05/09, e continua valendo pelo
+ * mesmo motivo: mostra onde o teto encosta e a partir de onde mais tamanho só
+ * faz RECUSAR call. Mas escala era o único parâmetro que o motor aceitava, e a
+ * pergunta "e se a gestão fosse outra?" não tinha como ser feita sem editar o
+ * código.
  *
- * A tabela continua aqui porque a pergunta não acabou: ela é o que mostra onde
- * o teto encosta e a partir de onde mais tamanho só faz RECUSAR call.
+ * Agora cada linha é um regime inteiro sobre as MESMAS emissões e o MESMO
+ * caminho de velas: o publicado, o anterior, e o publicado com UMA peça
+ * desligada por vez — que é como se descobre quanto cada peça carrega. E cada
+ * um roda três vezes: a janela inteira e as duas METADES dela, separadas,
+ * começando do zero. Um regime que só ganha numa metade descreve aquela metade.
  *
- * Esta tabela roda o motor inteiro — as mesmas emissões, o mesmo caminho de
- * velas, os mesmos custos — multiplicando SÓ o orçamento de risco. Stop, alvo,
- * prazo e alavancagem ficam onde estão. As duas colunas que importam andam
- * juntas: retorno e queda máxima. Uma carteira que rende 3% com 2% de queda e
- * outra que rende 3% com 30% não são a mesma carteira.
- *
- * A LEITURA HONESTA DELA depende do placar: enquanto nenhum viés separar da
- * referência, multiplicar o tamanho multiplica uma perda esperada, não um lucro.
- * A tabela existe para mostrar a troca, não para escolher a linha mais alta.
+ * A LEITURA HONESTA continua dependendo do placar: enquanto nenhum viés separar
+ * da referência, o que esta tabela compara é como PERDER MENOS com calls sem
+ * vantagem medida, não como ganhar com elas.
  */
-const ESCALAS = [1, 1.5, 2, 3, 5];
-console.log(`\ntamanho da aposta — o mesmo motor, só o orçamento de risco multiplicado`);
-console.log(`escala   risco/call   patrimônio   retorno   queda máx   margem pico   risco pico`);
-for (const e of ESCALAS) {
-  const r = rodar(emissoes, COMECO, caminho, e);
-  // Os rótulos saem de `RISCO_POR_FORCA`, e não de números escritos aqui: eles
-  // estavam fixos em 1,5/1,0/0,5% e continuaram imprimindo isso depois que a
-  // régua dobrou — a tabela passou a mentir sobre a própria linha de base.
-  const r3 = (RISCO_POR_FORCA[3] * 100 * e).toFixed(1);
-  const r2 = (RISCO_POR_FORCA[2] * 100 * e).toFixed(1);
-  const r1 = (RISCO_POR_FORCA[1] * 100 * e).toFixed(1);
+const FIM = c.atualizadoEm;
+const MEIO = COMECO + (FIM - COMECO) / 2;
+const antesDoMeio = emissoes.filter((e) => e.t * 1000 < MEIO);
+const regimes: [string, Regras][] = [
+  ["publicado", REGRAS],
+  ["anterior (até 23/09)", REGRAS_ANTERIORES],
+  ["  sem a saída sem reação", { ...REGRAS, semReacaoDias: null }],
+  ["  vendido com risco cheio", { ...REGRAS, fatorVendido: 1 }],
+  ["  sem queimar toda saída", { ...REGRAS, queimaEmToda: false }],
+  ["  sem freio de queda", { ...REGRAS, freio: null }],
+  ["  stop de 20%", { ...REGRAS, stopComprado: 0.2, stopVendido: 0.2 }],
+  ["  com stop móvel 20/15", { ...REGRAS, rastro: { ativa: 0.2, distancia: 0.15 } }],
+  ["  escala 1,5x", { ...REGRAS, escala: 1.5 }],
+  ["  escala 2x", { ...REGRAS, escala: 2 }],
+];
+console.log(
+  `\nregimes sobre as mesmas calls — inteira, e cada metade começando do zero ` +
+    `(corte em ${new Date(MEIO).toISOString().slice(0, 16).replace("T", " ")} UTC)`,
+);
+/**
+ * "SEM A MELHOR MOEDA": o retorno tirando a moeda que mais deu dinheiro.
+ *
+ * Existe porque foi ela que reprovou o stop curto em 23/09. Stop de 20% e stop
+ * de 2σ davam +17,6% e +21,6% contra +14,8% do publicado, com a mesma queda
+ * máxima e as duas metades melhores — e o ganho era quase inteiro da HEI, onde
+ * o stop curto virou posição maior bem na moeda que bateu o alvo três vezes.
+ * As metades não pegam isso quando a mesma moeda ganha nas duas; esta coluna
+ * pega. Mediana boa puxada por uma moeda é o modo mais comum de um resultado
+ * mentir aqui.
+ */
+function semAMelhor(x: Carteira): { ticker: string; retorno: number } {
+  const porMoeda = new Map<string, number>();
+  for (const f of x.fechadas) porMoeda.set(f.symbol, (porMoeda.get(f.symbol) ?? 0) + f.resultado);
+  for (const p of x.abertas) porMoeda.set(p.symbol, (porMoeda.get(p.symbol) ?? 0) + p.valor * p.retorno);
+  let melhor = { ticker: "—", resultado: 0 };
+  for (const [ticker, resultado] of porMoeda) if (resultado > melhor.resultado) melhor = { ticker, resultado };
+  return { ticker: melhor.ticker, retorno: (x.patrimonio - melhor.resultado) / CAPITAL_INICIAL - 1 };
+}
+
+console.log(
+  `${"regime".padEnd(26)} ${"retorno".padStart(8)} ${"sem a melhor".padStart(18)} ${"queda máx".padStart(10)} ` +
+    `${"n".padStart(4)} ${"1ª metade".padStart(10)} ${"2ª metade".padStart(10)} ` +
+    `${"margem pico".padStart(12)} ${"risco pico".padStart(11)}`,
+);
+for (const [nome, regras] of regimes) {
+  // O publicado já foi rodado lá em cima; rodar de novo daria o mesmo número.
+  const t = regras === REGRAS ? c : rodar(emissoes, COMECO, caminho, regras);
+  const m1 = rodar(antesDoMeio, COMECO, caminho, regras);
+  const m2 = rodar(emissoes, MEIO, caminho, regras);
+  const sm = semAMelhor(t);
   console.log(
-    `  ${`${e}x`.padEnd(6)} ` +
-      `${`${r3}/${r2}/${r1}%`.padStart(12)} ` +
-      `${usd(r.patrimonio).padStart(12)} ` +
-      `${pct(r.retorno).padStart(9)} ` +
-      `${pct(r.quedaMaxima).padStart(11)} ` +
-      `${`${(r.maiorExposicao * 100).toFixed(0)}%`.padStart(13)} ` +
-      `${`${(r.maiorRiscoAberto * 100).toFixed(0)}%`.padStart(12)}` +
-      (e === 1 ? "   ← a régua de hoje" : ""),
+    `${nome.padEnd(26)} ${pct(t.retorno).padStart(8)} ${`${pct(sm.retorno)} sem ${sm.ticker}`.padStart(18)} ` +
+      `${pct(t.quedaMaxima).padStart(10)} ${String(t.encerradas).padStart(4)} ` +
+      `${pct(m1.retorno).padStart(10)} ${pct(m2.retorno).padStart(10)} ` +
+      `${`${(t.maiorExposicao * 100).toFixed(0)}%`.padStart(12)} ${`${(t.maiorRiscoAberto * 100).toFixed(0)}%`.padStart(11)}`,
   );
 }
+// Os rótulos saem das regras, e não de números escritos aqui: eles estavam
+// fixos em 1,5/1,0/0,5% e continuaram imprimindo isso depois que a régua dobrou
+// — a tabela passou a mentir sobre a própria linha de base.
+const rf = REGRAS.riscoPorForca;
+console.log(
+  `risco por call no publicado: ${rf[3] * 100}/${rf[2] * 100}/${rf[1] * 100}% por força 3/2/1, ` +
+    `vendido × ${REGRAS.fatorVendido}`,
+);
 
 if (c.encerradas > 0) {
   console.log(`\nencerradas: ${c.encerradas} · ${c.acertos} no positivo (${((c.acertos / c.encerradas) * 100).toFixed(0)}%)`);

@@ -17,6 +17,8 @@ import {
   CAPITAL_INICIAL,
   RISCO_POR_FORCA,
   RISCO_TOTAL_MAXIMO,
+  REGRAS,
+  REGRAS_ANTERIORES,
   STOP,
   remarcar,
   rodar,
@@ -34,13 +36,20 @@ function confere(nome: string, ok: boolean, obtido: string): void {
   console.log(`  ${nome.padEnd(52)} ${obtido.padEnd(22)} ${ok ? "ok" : "← FALHOU"}`);
 }
 
+// O PORTÃO VALE PARA TODA SEÇÃO, e não valia. Estes casos, os limiares e o
+// moedor imprimiam "← ESPERADO" ou "SOMA NÃO BATE" e deixavam o código de saída
+// em zero: o arquivo prometia ser portão e só metade dele era. Um limiar de stop
+// quebrado passava num `npm run testar-carteira && ...` sem ninguém ler a linha.
 function caso(nome: string, es: Emissao[]) {
   const c = rodar(es, T0 * 1000);
   const exposto = c.abertas.reduce((s, p) => s + p.valor * (1 + p.retorno), 0);
   const bate = Math.abs(c.caixa + exposto - c.patrimonio) < 1e-6;
+  const sano = Number.isFinite(c.patrimonio) && c.patrimonio > 0 && c.patrimonio < 1.5 * CAPITAL_INICIAL;
+  if (!bate || !sano) falhas++;
   console.log(
     `${nome.padEnd(34)} patrim ${c.patrimonio.toFixed(2).padStart(8)} · abertas ${c.abertas.length} · ` +
-      `fechadas ${c.encerradas} ${c.fechadas.map((f) => f.motivo).join(",")} ${bate ? "" : "· SOMA NÃO BATE"}`,
+      `fechadas ${c.encerradas} ${c.fechadas.map((f) => f.motivo).join(",")} ${bate ? "" : "· SOMA NÃO BATE"}` +
+      `${sano ? "" : " · PATRIMÔNIO FORA DO PLAUSÍVEL"}`,
   );
 }
 
@@ -91,6 +100,7 @@ caso("viés vira null no retrato seguinte", [
     preco *= 0.72;
   }
   const c = rodar(es, T0 * 1000);
+  if (c.encerradas !== 1) falhas++;
   console.log(
     `\nqueda contínua com "long" fixo:  ${c.encerradas} stop(s), patrimônio ${c.patrimonio.toFixed(2)} ` +
       `${c.encerradas === 1 ? "ok" : "← DEVERIA SER 1"}`,
@@ -121,11 +131,13 @@ const casos: [string, number, string][] = [
 ];
 for (const [nome, v, esperado] of casos) {
   const got = ate(v);
+  if (got !== esperado) falhas++;
   console.log(`  ${nome.padEnd(44)} ${got.padEnd(11)} ${got === esperado ? "ok" : `← ESPERADO ${esperado}`}`);
 }
 // o mesmo do lado vendido, onde os sinais invertem
 for (const [nome, v, esperado] of casos) {
   const got = ate(v, "short");
+  if (got !== esperado) falhas++;
   console.log(`  vendido: ${nome.padEnd(35)} ${got.padEnd(11)} ${got === esperado ? "ok" : `← ESPERADO ${esperado}`}`);
 }
 
@@ -399,7 +411,7 @@ console.log("\n--- o tamanho da aposta como parâmetro ---");
     { t: h(1), s: "X", preco: 1.5, vies: "long", forca: 2, fund: 0 },
   ];
   const um = rodar(es, T0 * 1000);
-  const dois = rodar(es, T0 * 1000, undefined, 2);
+  const dois = rodar(es, T0 * 1000, undefined, { ...REGRAS, escala: 2 });
   // Dobrar o orçamento tem de dobrar o RESULTADO em dólar, e não mexer no
   // retorno sobre a margem — que é o que diz que só o tamanho mudou.
   const g1 = um.fechadas[0], g2 = dois.fechadas[0];
@@ -481,6 +493,185 @@ console.log("\n--- a marcação ao vivo, que roda no navegador ---");
     bate(comFunding) && bate(estourada),
     `retorno total ${(comFunding.retorno * 100).toFixed(2)}% sobre ${CAPITAL_INICIAL}`,
   );
+}
+
+// ---------------------------------------------------------------------------
+// O REGIME DE 23/09. Cada regra nova trava aqui o que a medição sustenta — e a
+// armadilha nº 7 do AGENTS.md: um freio que existe numa metade do caminho não
+// existe. A saída por tempo só funciona se a call queimar; sem isso, ela sai e
+// reabre no mesmo lote.
+// ---------------------------------------------------------------------------
+
+console.log("\n--- sem reação: a posição que não anda sai, e não reabre ---");
+{
+  const dia = (d: number) => h(24 * d);
+  // Parada um pouco abaixo da entrada por cinco dias, com o painel insistindo.
+  const parada: Emissao[] = [0, 1, 2, 3, 4, 5].map((d) => ({
+    t: dia(d), s: "X", preco: d === 0 ? 1 : 0.99, vies: "long", forca: 2, fund: 0,
+  }));
+  const r = rodar(parada, T0 * 1000);
+  const saida = r.fechadas[0];
+  confere(
+    `sai "sem reação" no dia ${REGRAS.semReacaoDias}`,
+    r.encerradas === 1 && saida?.motivo === "sem reação" && Math.abs((saida?.dias ?? 0) - (REGRAS.semReacaoDias ?? 0)) < 1e-9,
+    `${saida?.motivo} aos ${saida?.dias.toFixed(1)} dias`,
+  );
+  // A armadilha: sem queimar a call, o mesmo lote reabriria e o relógio zeraria
+  // — medido, o regime sem esta trava vai de +14,8% para +5,0%.
+  confere("e não reabre com o mesmo viés", r.abertas.length === 0, `${r.abertas.length} aberta(s)`);
+
+  // A favor, mesmo que pouco, ela fica: não é stop, é tempo.
+  const andando = parada.map((e, i) => ({ ...e, preco: i === 0 ? 1 : 1.01 }));
+  const fica = rodar(andando, T0 * 1000);
+  confere("a favor, mesmo pouco, ela fica", fica.encerradas === 0 && fica.abertas.length === 1, `${fica.encerradas} saída(s)`);
+
+  // Leitura nova do outro lado descongela, como no stop.
+  const volta: Emissao[] = [
+    ...parada.slice(0, 4),
+    { t: dia(3) + 3600, s: "X", preco: 0.99, vies: "observar", forca: 0, fund: 0 },
+    { t: dia(3) + 7200, s: "X", preco: 0.99, vies: "long", forca: 2, fund: 0 },
+  ];
+  const reabre = rodar(volta, T0 * 1000);
+  confere("viés que sai e volta é call nova", reabre.abertas.length === 1, `${reabre.abertas.length} aberta(s)`);
+}
+
+console.log("\n--- o prazo queima a call (antes reabria no mesmo lote) ---");
+{
+  // Duas semanas a favor e o painel ainda comprado. No regime anterior a
+  // posição saía por prazo e reabria no mesmo lote, pagando 0,9% da margem para
+  // continuar onde estava — foi o que aconteceu com a PRL em 22/09.
+  const es: Emissao[] = Array.from({ length: 16 }, (_, d) => ({
+    t: h(24 * d), s: "X", preco: d === 0 ? 1 : 1.05, vies: "long", forca: 2, fund: 0,
+  }));
+  const r = rodar(es, T0 * 1000);
+  confere(
+    "sai por prazo e não reabre",
+    r.fechadas[0]?.motivo === "prazo" && r.abertas.length === 0,
+    `${r.fechadas.map((f) => f.motivo).join(",")} · ${r.abertas.length} aberta(s)`,
+  );
+  const antes = rodar(es, T0 * 1000, undefined, REGRAS_ANTERIORES);
+  confere(
+    "no regime anterior, reabria",
+    antes.fechadas[0]?.motivo === "prazo" && antes.abertas.length === 1,
+    `${antes.abertas.length} aberta(s)`,
+  );
+}
+
+console.log("\n--- o vendido arrisca a fração dele ---");
+{
+  const r = rodar(
+    [
+      { t: h(0), s: "C", preco: 1, vies: "long", forca: 2, fund: 0 },
+      { t: h(0), s: "V", preco: 1, vies: "short", forca: 2, fund: 0 },
+    ],
+    T0 * 1000,
+  );
+  const c = r.abertas.find((p) => p.symbol === "C");
+  const v = r.abertas.find((p) => p.symbol === "V");
+  // Um milésimo de folga, e não um bilionésimo: a vendida abre DEPOIS da
+  // comprada no mesmo lote, quando o patrimônio já pagou a entrada dela (0,24
+  // dólar). A régua é sobre o patrimônio do instante — o risco abaixo é exato.
+  confere(
+    `margem do vendido = ${REGRAS.fatorVendido} × a do comprado`,
+    c != null && v != null && Math.abs(v.valor / c.valor - REGRAS.fatorVendido) < 1e-3,
+    `${c?.valor.toFixed(2)} vs ${v?.valor.toFixed(2)}`,
+  );
+  confere(
+    "e o risco gravado na posição é o mesmo",
+    c?.risco != null && v?.risco != null && Math.abs(v.risco / c.risco - REGRAS.fatorVendido) < 1e-9,
+    `${((c?.risco ?? 0) * 100).toFixed(2)}% vs ${((v?.risco ?? 0) * 100).toFixed(2)}%`,
+  );
+}
+
+console.log("\n--- o freio de queda ---");
+{
+  // Uma queda grande de propósito: escala 6 faz a força 3 arriscar 18%, e o
+  // stop dela leva a conta a ~−19% — dentro da faixa do freio.
+  const regras = { ...REGRAS, escala: 6 };
+  const es: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    { t: h(1), s: "X", preco: 0.74, vies: "long", forca: 3, fund: 0 },
+    { t: h(1), s: "Y", preco: 1, vies: "long", forca: 1, fund: 0 },
+  ];
+  const r = rodar(es, T0 * 1000, undefined, regras);
+  const y = r.abertas.find((p) => p.symbol === "Y");
+  const f = REGRAS.freio;
+  // O patrimônio no instante em que Y abriu é o caixa de agora mais a margem
+  // que saiu para ela; o pico é o capital inicial.
+  const queda = y ? 1 - (r.caixa + y.valor) / CAPITAL_INICIAL : NaN;
+  const esperado =
+    f === null ? 1 : queda <= f.inicio ? 1 : queda >= f.fim ? f.piso : 1 - ((queda - f.inicio) / (f.fim - f.inicio)) * (1 - f.piso);
+  const pedido = (REGRAS.riscoPorForca[1] ?? 0) * regras.escala;
+  confere(
+    "depois da queda, a call nova arrisca menos",
+    y?.risco != null && Math.abs(y.risco - pedido * esperado) < 1e-9 && esperado < 1,
+    `queda ${(queda * 100).toFixed(1)}% → ${(((y?.risco ?? 0) / pedido) * 100).toFixed(0)}% da régua`,
+  );
+  confere(
+    "e a carteira grava o freio de agora",
+    r.freio !== undefined && r.freio < 1,
+    `freio ${((r.freio ?? 1) * 100).toFixed(0)}%`,
+  );
+}
+
+console.log("\n--- o stop móvel, que não está no regime mas o motor sabe fazer ---");
+{
+  // Medido e REPROVADO em 23/09, e continua no motor para a tabela do
+  // `npm run carteira` continuar medindo. Então ele precisa estar certo.
+  const regras = { ...REGRAS, rastro: { ativa: 0.1, distancia: 0.05 }, semReacaoDias: null };
+  const emissoes: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 2, fund: 0 },
+    { t: h(3), s: "X", preco: 1.15, vies: "long", forca: 2, fund: 0 },
+  ];
+  // Vela 1: sobe a 1,20 e recua a 1,12 — abaixo de 1,20 × 0,95 = 1,14. Se o
+  // rastro subisse antes do teste, a posição sairia aqui por um recuo que pode
+  // ter vindo ANTES da máxima. Vela 2: toca 1,13 com o rastro já em 1,14.
+  const velas: Passo[] = [
+    { abriuEm: h(0) * 1000, fechouEm: h(1) * 1000, abertura: 1, maxima: 1.2, minima: 1.12, fechamento: 1.16 },
+    { abriuEm: h(1) * 1000, fechouEm: h(2) * 1000, abertura: 1.16, maxima: 1.17, minima: 1.13, fechamento: 1.15 },
+    { abriuEm: h(2) * 1000, fechouEm: h(3) * 1000, abertura: 1.15, maxima: 1.16, minima: 1.14, fechamento: 1.15 },
+  ];
+  const r = rodar(emissoes, T0 * 1000, new Map([["X", velas]]), regras);
+  const f = r.fechadas[0];
+  confere(
+    "o rastro não sobe no meio da vela que o empurrou",
+    f != null && f.fechadaEm === h(2) * 1000,
+    f ? `saiu às h${(f.fechadaEm / 1000 - T0) / 3600}` : "não saiu",
+  );
+  confere(
+    "e sai no nível, como stop móvel",
+    f?.motivo === "stop móvel" && Math.abs((f?.precoSaida ?? 0) - 1.14) < 1e-9,
+    `${f?.motivo} a ${f?.precoSaida.toFixed(4)}`,
+  );
+
+  // Rastro acima da entrada: a posição não pode mais devolver capital, e não
+  // ocupa o orçamento que existe para limitar perda.
+  const trava = rodar(
+    [{ t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 }, { t: h(1), s: "X", preco: 1.3, vies: "long", forca: 3, fund: 0 }],
+    T0 * 1000,
+    undefined,
+    { ...regras, rastro: { ativa: 0.1, distancia: 0.1 } },
+  );
+  confere(
+    "stop acima da entrada zera o risco comprometido",
+    trava.abertas.length === 1 && trava.riscoAberto === 0,
+    `stop em ${trava.abertas[0]?.nivelStop?.toFixed(3)} · risco ${((trava.riscoAberto ?? -1) * 100).toFixed(1)}%`,
+  );
+}
+
+console.log("\n--- a marcação viva sinaliza a saída que o retrato vai fazer ---");
+{
+  const base = rodar([{ t: h(0), s: "X", preco: 1, vies: "long", forca: 2, fund: 0 }], T0 * 1000);
+  const abaixo = remarcar(base, new Map([["X", 0.7]]), h(1) * 1000);
+  confere(
+    "abaixo do stop: sinaliza, não fecha",
+    abaixo.abertas[0]?.saida === "stop" && abaixo.encerradas === 0,
+    `saida=${abaixo.abertas[0]?.saida}`,
+  );
+  const parada = remarcar(base, new Map([["X", 0.99]]), h(24 * 4) * 1000);
+  confere("sem reação depois do prazo: sinaliza", parada.abertas[0]?.saida === "sem reação", `saida=${parada.abertas[0]?.saida}`);
+  const voltou = remarcar(abaixo, new Map([["X", 1.05]]), h(2) * 1000);
+  confere("e a bandeira apaga quando o preço volta", voltou.abertas[0]?.saida === undefined, `saida=${voltou.abertas[0]?.saida}`);
 }
 
 console.log(falhas === 0 ? "\ntudo passou" : `\n${falhas} caso(s) FALHARAM`);

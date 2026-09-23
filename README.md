@@ -96,6 +96,26 @@ O que separou mais do que o viés foi o ESTÁGIO: "caindo do topo" mede −1,82 
 abaixo da referência em 1.619 observações, e "nota 60+" mede −5,27 p.p. — só que
 em 45 observações e 2 de 5 moedas, que é pouco para afirmar.
 
+**Remedido em 23/09, com cinco vezes mais dado** — 120.407 emissões de 73
+moedas, de 20/08 a 23/09 —, e o veredito não mudou:
+
+| viés | separa da referência | moedas que concordam |
+| --- | --- | --- |
+| short | −0,14 p.p. | 55% |
+| long | +0,01 p.p. | 47% |
+| evitar | −0,12 p.p. | 43% |
+| observar | −0,04 p.p. | 52% |
+
+O short passou a apontar ligeiramente para o lado ERRADO, e em 72 horas isso
+fica nítido nos dois meses: depois de cada call de venda o preço subiu +0,44
+p.p. contra a referência em agosto e +2,29 p.p. em setembro. É isso que a
+carteira passou a cobrar do lado vendido — ver abaixo.
+
+O placar ficou vinte dias sem rodar, e ninguém viu: ele não estava no workflow,
+e rodado à mão morria com a pilha estourada — `Math.min(...pontos)` com 126 mil
+argumentos. A tela mostrava a medição de 03/09 com a janela antiga ao lado. Hoje
+ele roda no retrato de fechamento, e o `Math.min` virou laço.
+
 ## Concentração: a moeda tem dono ou tem público?
 
 O `lib/motor.ts` trazia a ressalva escrita desde sempre: "fora de corretora" não
@@ -247,17 +267,72 @@ fração fixa do patrimônio até o stop, e o tamanho sai dessa conta: força 3
 arrisca 3%, força 2 arrisca 2%, força 1 arrisca 1%. Parece pouco até
 lembrar que o painel emite treze calls de uma vez num dia normal, e que cripto
 tem dia em que a lista inteira cai 25% junta. Teto de 50% de margem exposta e de
-25% de risco agregado.
+25% de risco agregado. **O vendido arrisca um quarto disso**, e abaixo de 10% do
+pico o orçamento inteiro encolhe até um quarto em −25% — as duas coisas vêm da
+gestão de 23/09, logo abaixo.
 
-**Quando sai — cinco gatilhos, o primeiro que acontecer:**
+**Quando sai — seis gatilhos, o primeiro que acontecer:**
 
 | gatilho | por quê |
 |---|---|
 | **o painel mudou de ideia** | a saída principal. A carteira segue as calls, então sai quando a call sai — sem isso ela mediria as minhas regras de saída, não o painel |
-| **stop em −25% de preço** | perto de três desvios de UM DIA: o `npm run estudar` mede volatilidade diária de 7% a 10% nestas moedas |
+| **stop em −25% de preço** | fora do ruído de um dia: o `npm run estudar` mede desvio diário mediano de 11,2% nestas moedas, então 25% são ~2,2 desvios. Mais curto foi testado e não passou — ver abaixo |
+| **sem reação em 3 dias** | a posição que não andou a favor em três dias sai. Não é stop: é o tempo dizendo que a tese de reversão não se confirmou no prazo em que costuma se confirmar |
 | **alvo em +40% de preço** | o dobro da assimetria que sustenta a regra de compra: pequena e derretida sobe mais de 20% em 21,0% das semanas |
 | **prazo de 14 dias** | as duas regras direcionais foram medidas em janelas de 7 e 14 dias; depois disso segurar deixa de ser seguir a leitura |
 | **liquidação** | a corretora não espera a regra de saída. A 3x ela fica em −32,9% de preço, depois do stop — mas um salto pode pular o stop e cair direto aqui |
+
+E **toda saída queima a call**: a moeda só volta a valer quando o viés dela sair
+daquele lado. Antes só stop e liquidação queimavam, e a posição que saía por
+prazo reabria no mesmo lote, com o mesmo viés — a PRL fez isso em 22/09, pagando
+entrada e saída para continuar onde estava.
+
+### A gestão de 23/09: perder menos com as mesmas calls
+
+Em 23/09 a carteira estava em **−11,3%, com queda máxima de −17,2%**, em 93
+posições encerradas. O diagnóstico de onde o dinheiro saiu:
+
+- **As sete que estoparam nunca estiveram no lucro.** A maior excursão a favor
+  de qualquer uma foi +7,3%, quase sempre na primeira hora; depois, sangria lenta
+  até −25%.
+- **O tempo separou as metades.** Encerradas com menos de três dias: +US$ 66.
+  Com três dias ou mais: −US$ 151.
+- **O vendido pagou o squeeze.** As 13 vendidas fechadas porque a moeda disparou
+  somaram −US$ 112 — mais que a perda inteira do lado vendido.
+
+A regra nova ataca as três e **não mexe em nada do que o painel diz**. Medida
+sobre as mesmas emissões e o mesmo caminho de velas, e — a parte que importa —
+em cada METADE da janela separadamente, começando do zero:
+
+| | inteira | 1ª metade | 2ª metade | queda máx | sem a HEI |
+|---|---|---|---|---|---|
+| anterior | −11,3% | −10,4% | +2,5% | −17,2% | −19,8% |
+| **publicada** | **+14,8%** | **+5,9%** | **+6,3%** | **−5,8%** | **−4,3%** |
+
+A última coluna é a honesta: a HEI bateu o alvo três vezes e respondeu por
+US$ 191 do resultado. **Sem ela, a carteira nova ainda perde** — só que perde
+−4,3% onde a anterior perderia −19,8%. A melhora da gestão é robusta; lucro
+continua não demonstrado, que é o que o placar diz desde agosto.
+
+**O que foi testado e não passou**, e é metade da escolha:
+
+- **Stop mais curto**, fixo (10% a 20%) ou medido na volatilidade de cada moeda
+  (2σ de um dia). Com a saída por tempo no lugar, 20% dava +17,6% e 2σ dava
+  +21,6%, com a mesma queda máxima — e era quase tudo a HEI: stop curto é
+  posição maior, e a posição maior caiu na moeda que bateu o alvo três vezes.
+  Tirando as duas moedas que mais ganharam, os dois PERDEM para o stop de 25%.
+- **Stop móvel**, de 8/12% a 20/15%: as vencedoras andam pouco (+3,9% de
+  excursão mediana) e saem pelo painel antes; o rastro só as encurtava.
+- **Mais tamanho**, 1,5x e 2x o orçamento: a queda máxima dobra e o teto passa a
+  recusar call. Sem vantagem medida, tamanho multiplica a variância.
+- **Freio de queda contínuo desde o pico**: custou retorno e piorou o pior início.
+  O que ficou só começa em −10% — nunca encosta nesta amostra, e existe para o
+  cenário que ela não tem: dois dias seguidos de tudo estopar junto custariam
+  −44% sem ele e −30% com ele.
+
+`npm run carteira` imprime esta comparação **a cada retrato** — o publicado, o
+anterior, e cada peça desligada uma de cada vez, com as duas metades e a coluna
+"sem a melhor moeda" —, para ela continuar sendo medida em vez de lembrada.
 
 **Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.** Era
 o maior otimismo desta conta, e não era custo nem execução: era o mapa de saída
