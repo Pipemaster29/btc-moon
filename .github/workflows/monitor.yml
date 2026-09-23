@@ -60,6 +60,14 @@ jobs:
     # coisas conferidas na documentação. É esse par que torna a execução longa a
     # saída para o agendador não confiável.
     timeout-minutes: 330
+    # O TELEGRAM PARA O JOB INTEIRO, e não só para o laço do monitor: a carteira
+    # roda na abertura, no laço e no fechamento, e cada uma dessas rodadas pode
+    # abrir ou fechar posição — o aviso de trade (`lib/avisos.ts`) sai de onde a
+    # decisão foi tomada. Com o segredo só no laço, as posições decididas na
+    # abertura e no fechamento sairiam caladas.
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
     steps:
       - uses: actions/checkout@v4
@@ -157,9 +165,6 @@ jobs:
       # bloqueio por abuso pararia o monitor de vez, muito pior do que decidir de
       # doze em doze minutos.
       - name: Vigiar por 5 horas, com retrato a cada 12 minutos
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

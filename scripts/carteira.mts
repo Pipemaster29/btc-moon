@@ -22,6 +22,8 @@ import {
 } from "../lib/carteira";
 import { velas } from "../lib/binance";
 import { ATIVAS } from "../lib/watchlist";
+import { chavesDepois, eventosNovos, MAX_POR_RETRATO, textoDoEvento, type Evento } from "../lib/avisos";
+import { escapeMarkdown, sendTelegram, telegramFromEnv } from "../lib/telegram";
 
 /**
  * Quando a carteira começou a valer.
@@ -271,12 +273,72 @@ if (c.encerradas > 0) {
   console.log(`\nnenhuma posição encerrada ainda`);
 }
 
+/**
+ * OS AVISOS DE TRADE NO TELEGRAM: cada posição aberta ou fechada desde o
+ * retrato anterior vira uma mensagem (`lib/avisos.ts`). A carteira anterior é
+ * o arquivo que o `baixar` trouxe da branch `dados` — ainda não sobrescrito,
+ * porque a gravação é a última coisa deste script.
+ *
+ * Sem Telegram configurado (rodando local), nada é enviado e nada é marcado
+ * como enviado: a memória só registra o que de fato chegou, para o retrato
+ * seguinte tentar de novo o que o Telegram recusou.
+ */
+const antes = await readFile("data/carteira.json", "utf8")
+  .then((t) => JSON.parse(t) as Carteira)
+  .catch(() => null);
+const eventos = eventosNovos(antes, c);
+const telegram = telegramFromEnv();
+let avisos = antes?.avisos;
+if (!telegram) {
+  if (eventos.length > 0) console.log(`\n${eventos.length} aviso(s) de trade — Telegram não configurado, nada enviado`);
+} else {
+  // A primeira vez avisa que ligou: é também o teste de que as mensagens chegam
+  // na conversa certa, que é a dúvida que fez este recurso existir.
+  if (!avisos && antes) {
+    const ok = await sendTelegram(
+      telegram,
+      escapeMarkdown(
+        "✅ Avisos da carteira fictícia ligados. A partir de agora, cada posição que ela abrir ou fechar " +
+          "chega aqui, com preço, stop e motivo. Continua sendo carteira de mentira: o placar ainda mede " +
+          "que os vieses do painel não têm vantagem.",
+      ),
+    );
+    if (ok) avisos = { enviados: [] };
+  }
+  if (avisos) {
+    let painel: { moedas?: { ticker: string; leitura?: { titulo?: string } | null }[] } | null = null;
+    try {
+      painel = JSON.parse(await readFile("data/panorama.json", "utf8"));
+    } catch {
+      // sem leitura, o aviso sai sem a frase do painel
+    }
+    const leitura = new Map((painel?.moedas ?? []).map((m) => [m.ticker, m.leitura?.titulo ?? null]));
+    const enviados: Evento[] = [];
+    for (const e of eventos.slice(0, MAX_POR_RETRATO)) {
+      const simbolo = e.tipo === "abriu" ? e.p.symbol : e.f.symbol;
+      const texto = textoDoEvento(e, c.patrimonio, e.tipo === "abriu" ? leitura.get(simbolo) : null);
+      if (await sendTelegram(telegram, escapeMarkdown(texto))) enviados.push(e);
+    }
+    if (eventos.length > MAX_POR_RETRATO) {
+      const resto = eventos.slice(MAX_POR_RETRATO);
+      const ok = await sendTelegram(
+        telegram,
+        escapeMarkdown(`…e mais ${resto.length} evento(s) da carteira neste retrato. Veja a página do radar.`),
+      );
+      if (ok) enviados.push(...resto);
+    }
+    if (eventos.length > 0) console.log(`\n${enviados.length} de ${eventos.length} aviso(s) de trade enviados ao Telegram`);
+    avisos = { enviados: chavesDepois(antes, enviados) };
+  }
+}
+
 // A tabela vai junto para a tela. A curva do anterior entra inteira, e é a única
 // além da publicada: as outras linhas são ablações, e desenhar dez curvas
 // sobrepostas não deixaria ler nenhuma.
 const gravada: Carteira = {
   ...c,
   comparacao: { meio: MEIO, linhas, anterior: anterior?.curva ?? [] },
+  ...(avisos ? { avisos } : {}),
 };
 
 await mkdir(dir, { recursive: true });
