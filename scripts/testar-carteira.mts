@@ -28,6 +28,10 @@ import {
 } from "../lib/carteira";
 import { eventosNovos, chavesDepois, textoDoEvento, JANELA_REENVIO_MS } from "../lib/avisos";
 import { escapeMarkdown } from "../lib/telegram";
+import { avisadasDepois, emVistaDe, novasEmVista, textoEmVista, textoLigado } from "../lib/emvista";
+import type { EstadoFluxo } from "../lib/fluxo";
+import { WATCHLIST } from "../lib/watchlist";
+import { depthOn, type Pair } from "../lib/dexscreener";
 
 const T0 = Date.parse("2026-01-01T00:00:00Z") / 1000;
 const h = (n: number) => T0 + n * 3600;
@@ -738,6 +742,86 @@ console.log(`\navisos de trade`);
   const esc = escapeMarkdown(t);
   const solto = esc.replace(/\\./g, "").match(/[_*[\]()~`>#+\-=|{}.!]/);
   confere("MarkdownV2 sem caractere reservado solto", solto === null, solto ? `solto: ${solto[0]}` : "limpo");
+}
+
+// ------------------------------------------------------ moedas em vista
+//
+// Os dois modos de falha são os mesmos dos avisos, e mais um: a moeda que
+// ENTRA sem dever. Aposentada voltando pela porta dos fundos, perpétuo não
+// conferido, moeda que a Binance parou de movimentar há meses.
+console.log(`\nmoedas em vista`);
+{
+  const DIA = 86_400_000;
+  const agora = Date.parse("2026-09-23T18:00:00Z");
+  const id = (perp: string | null, vistoEm?: number, conferidoEm = agora - DIA) => ({
+    symbol: perp?.replace(/USDT$/, "") ?? "LIXO", decimals: 18, perp, mult: 1, conferidoEm, vistoEm,
+  });
+  // Uma aposentada montada à mão: a lista real de hoje não tem nenhuma, e o
+  // caso não pode depender de alguém aposentar uma moeda para rodar.
+  const naLista = WATCHLIST[0].symbol;
+  const aposentada = "APOSENTADAUSDT";
+  const lista = [
+    ...WATCHLIST,
+    { ...WATCHLIST[0], symbol: aposentada, aposentada: { desde: "2026-09-01", porque: "teste" } },
+  ];
+  const estado: EstadoFluxo = {
+    ultimoBloco: 1,
+    tokens: {
+      "0xnova": id("NOVAUSDT", agora - DIA),
+      "0xlista": id(naLista, agora),
+      "0xaposentada": id(aposentada, agora),
+      "0xsemperp": id(null, agora),
+      "0xvelha": id("VELHAUSDT", agora - 31 * DIA),
+      "0xsemdata": id("SEMDATAUSDT", Number.NaN, Number.NaN),
+      "0xantiga": id("SEMVISTOUSDT", undefined, agora - 5 * DIA),
+      "0xponte1": id("PONTEUSDT", agora - 3 * DIA),
+      "0xponte2": id("PONTEUSDT", agora - DIA),
+    },
+  };
+  const ev = emVistaDe(estado, agora, lista);
+  const s = ev.map((t) => t.symbol).join(",");
+  confere("fora: a lista, a aposentada, sem perpétuo", !ev.some((t) => t.symbol === naLista || t.symbol === aposentada), s);
+  confere("fora: 31 dias sem passar, e data que não é número", !s.includes("VELHA") && !s.includes("SEMDATA"), s);
+  confere("sem `vistoEm`, vale o `conferidoEm`", s.includes("SEMVISTO"), s);
+  const ponte = ev.filter((t) => t.symbol === "PONTEUSDT");
+  confere("dois contratos, um perpétuo: fica o visto por último", ponte.length === 1 && ponte[0].contract === "0xponte2", ponte.map((t) => t.contract).join(","));
+  confere("toda em vista carrega a origem", ev.every((t) => t.origem === "carteira-binance"), `${ev.length} moedas`);
+
+  const n1 = novasEmVista(estado, ev);
+  confere("sem memória: primeira vez, nenhuma nova", n1.primeira && n1.novas.length === 0, JSON.stringify(n1.novas.length));
+  const comMemoria = { ...estado, emVista: { avisadas: ["NOVAUSDT", "SAIUUSDT"] } };
+  const n2 = novasEmVista(comMemoria, ev);
+  confere("com memória: só as não anunciadas", !n2.primeira && !n2.novas.some((t) => t.symbol === "NOVAUSDT") && n2.novas.length === ev.length - 1, n2.novas.map((t) => t.symbol).join(","));
+  const mem = avisadasDepois(["NOVAUSDT", "SAIUUSDT"], ev, ["PONTEUSDT"]);
+  confere("a memória solta quem saiu de vista", mem.join(",") === "NOVAUSDT,PONTEUSDT", mem.join(","));
+
+  const t = textoEmVista(ev[0], { preco: 0.01234, variacao24h: 0.42, fluxo: { cmp: 125_000, vnd: 40_000, dep: 1_500, saq: 0 } });
+  confere("o aviso diz que não é recomendação", t.includes("não é recomendação"), t.split("\n")[0]);
+  const semPreco = textoEmVista(ev[0], { preco: Number.NaN, fluxo: { cmp: Number.NaN, vnd: 0, dep: 0, saq: 0 } });
+  confere("NaN não vira número no aviso", !semPreco.includes("NaN"), `${semPreco.split("\n").length} linhas`);
+  for (const [nome, texto] of [["aviso", t], ["ligado", textoLigado(ev)]] as const) {
+    const solto = escapeMarkdown(texto).replace(/\\./g, "").match(/[_*[\]()~`>#+\-=|{}.!]/);
+    confere(`MarkdownV2 limpo (${nome})`, solto === null, solto ? `solto: ${solto[0]}` : "limpo");
+  }
+}
+
+// ------------------------------------------------ a pool de outra moeda
+//
+// O endereço de um token devolve também as pools em que ele é o PAGAMENTO, e
+// nelas o preço é o da outra moeda. A AIOT entrou em vista lendo o preço da AIT
+// — 2,7 vezes fora, abaixo do freio de 100 vezes — e a carteira abriu posição
+// nele. Este caso é a forma exata daquilo.
+console.log(`\npool de outra moeda`);
+{
+  const par = (propria: boolean | undefined, priceUsd: number, liquidityUsd: number): Pair => ({
+    chain: "bsc", dex: "pancakeswap", address: "0x", baseSymbol: propria ? "AIOT" : "AIT", quoteSymbol: "WBNB",
+    priceUsd, liquidityUsd, volume24h: 1, buys24h: 1, sells24h: 1, change24h: 0, fdv: 0, marketCap: 0, propria,
+  });
+  const d = depthOn([par(false, 0.01846, 13_809_865), par(true, 0.05025, 1_463_241)], "bsc");
+  confere("o preço é o da pool em que a moeda é a base", d?.priceUsd === 0.05025, `${d?.priceUsd}`);
+  confere("a liquidez não soma a pool alheia", d?.liquidityUsd === 1_463_241, `${d?.liquidityUsd}`);
+  confere("só pool alheia: sem profundidade, não preço errado", depthOn([par(false, 0.01846, 1e6)], "bsc") === null, "null");
+  confere("busca por nome (sem a marca) segue igual", depthOn([par(undefined, 2, 10)], "bsc")?.priceUsd === 2, "2");
 }
 
 console.log(falhas === 0 ? "\ntudo passou" : `\n${falhas} caso(s) FALHARAM`);

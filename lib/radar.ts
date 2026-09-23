@@ -126,8 +126,9 @@ const ROLE_META: Record<WalletRole, { label: string; note: string }> = {
  * Monta o retrato. Lança se a moeda não tiver contrato configurado — o chamador
  * decide o que mostrar nesse caso.
  */
-export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
-  const token = findToken(symbol);
+export async function getRadar(symbol: string, dado?: WatchedToken): Promise<RadarSnapshot | null> {
+  // `dado` é a moeda em vista, que não mora em `watchlist.ts` (`lib/emvista.ts`).
+  const token = dado ?? findToken(symbol);
   if (!token?.contract) return null;
 
   const config = CHAINS[token.chain];

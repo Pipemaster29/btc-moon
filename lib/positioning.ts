@@ -16,7 +16,7 @@ import { perpSeries } from "./perp";
 import { parseKlines, parsePositioning, type PositioningSnapshot } from "./derivatives";
 import { clusters, liquidationMap, reconstructPositions, type LiquidationLevel } from "./liquidation";
 import { depthOn, pairsOfToken } from "./dexscreener";
-import { findToken } from "./watchlist";
+import { findToken, type WatchedToken } from "./watchlist";
 
 export interface DailyRow {
   date: string;
@@ -211,6 +211,8 @@ const DAYS = 14;
  */
 export async function getPositioning(
   symbol: string,
+  /** A moeda em vista, que `findToken` não acha (`lib/emvista.ts`). */
+  dado?: WatchedToken,
 ): Promise<PositioningSnapshotView | null> {
   const days = recentDays(DAYS);
 
@@ -278,7 +280,7 @@ export async function getPositioning(
   const belowTotal = below.reduce((s, l) => s + l.notional, 0);
 
   // ------------------------------------------------------ base perp/spot
-  const token = findToken(symbol);
+  const token = dado ?? findToken(symbol);
   let basis: Basis | null = null;
 
   if (token?.contract) {

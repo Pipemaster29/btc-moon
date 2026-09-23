@@ -196,8 +196,28 @@ function Regimes({ cmp }: { cmp: Comparacao }) {
   );
 }
 
+/**
+ * As calls de cada origem, lado a lado: a lista escrita à mão e as em vista, que
+ * entraram sozinhas pela carteira da Binance (`lib/emvista.ts`). É a pergunta
+ * que elas trazem — se se comportam diferente — e fica na tela com a contagem
+ * junto, porque cinco trades não respondem nada.
+ */
+function porOrigem(c: Carteira, emVista: Set<string>) {
+  return (["lista", "em vista"] as const).map((o) => {
+    const f = c.fechadas.filter((x) => emVista.has(x.symbol) === (o === "em vista"));
+    return {
+      o,
+      n: f.length,
+      acertos: f.filter((x) => x.resultado > 0).length,
+      resultado: f.reduce((t, x) => t + x.resultado, 0),
+      abertas: c.abertas.filter((x) => emVista.has(x.symbol) === (o === "em vista")).length,
+    };
+  });
+}
+
 export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
   const vivo = useVivo();
+  const emVista = new Set(guardada.emVista ?? []);
 
   // A MARCAÇÃO É DERIVADA DA CARTEIRA QUE VEIO DO SERVIDOR, a cada render, e
   // nunca guardada em estado. Não há acumulador para sair de sincronia, e cada
@@ -458,7 +478,17 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
             <tbody>
               {c.abertas.map((p) => (
                 <tr key={p.symbol} className="border-t border-black/5 dark:border-white/5">
-                  <td className="py-1.5 font-medium">{p.symbol}</td>
+                  <td className="py-1.5 font-medium">
+                  {p.symbol}
+                  {emVista.has(p.symbol) && (
+                    <span
+                      className="ml-1.5 text-[10px] font-normal text-black/40 dark:text-white/40"
+                      title="Moeda em vista: entrou no painel sozinha, pela carteira quente da Binance"
+                    >
+                      em vista
+                    </span>
+                  )}
+                  </td>
                   <td className="py-1.5">
                     <span
                       className={
@@ -533,7 +563,17 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
                     key={`${f.symbol}-${f.fechadaEm}`}
                     className="border-t border-black/5 dark:border-white/5"
                   >
-                    <td className="py-1.5 font-medium">{f.symbol}</td>
+                    <td className="py-1.5 font-medium">
+                    {f.symbol}
+                    {emVista.has(f.symbol) && (
+                    <span
+                      className="ml-1.5 text-[10px] font-normal text-black/40 dark:text-white/40"
+                      title="Moeda em vista: entrou no painel sozinha, pela carteira quente da Binance"
+                    >
+                      em vista
+                    </span>
+                  )}
+                    </td>
                     <td className="py-1.5">{f.lado === "long" ? "comprado" : "vendido"}</td>
                     <td className="py-1.5 text-black/50 dark:text-white/50" title={MOTIVO_NOTA[f.motivo]}>
                       {f.motivo}
@@ -587,6 +627,30 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
                 </div>
               ))}
             </div>
+            {emVista.size > 0 && (
+              <div>
+                <p
+                  className="text-[10px] tracking-widest text-black/40 dark:text-white/40 uppercase mb-2"
+                  title="As em vista entraram sozinhas, pela carteira quente da Binance. Separadas para dar para ver se as calls delas se comportam diferente das da lista."
+                >
+                  Por origem
+                </p>
+                {porOrigem(c, emVista).map((g) => (
+                  <div key={g.o} className="flex justify-between gap-3 py-0.5">
+                    <span className="text-black/60 dark:text-white/60">
+                      {g.o}{" "}
+                      <span className="text-black/35 dark:text-white/35">
+                        ({g.acertos}/{g.n}
+                        {g.abertas > 0 && ` · ${g.abertas} aberta${g.abertas > 1 ? "s" : ""}`})
+                      </span>
+                    </span>
+                    <span className={`tabular-nums ${tom(g.resultado)}`}>
+                      {g.n === 0 ? "—" : `${g.resultado >= 0 ? "+" : "−"}${usd(Math.abs(g.resultado))}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

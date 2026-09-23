@@ -17,6 +17,31 @@
 
 import { lerGuardado } from "./guardado";
 
+/** Como o gravador identificou um token que passou pela quente. */
+export interface IdentificacaoFluxo {
+  symbol: string;
+  decimals: number;
+  /** Símbolo do perpétuo (`TAKEUSDT`), ou nulo quando não há ou o preço não bate. */
+  perp: string | null;
+  /** Unidades do token por contrato: 1000 em `1000XUSDT`. */
+  mult: number;
+  conferidoEm: number;
+  /**
+   * A última vez que o token passou pela carteira, em milissegundos. Opcional
+   * porque os tokens identificados antes de 23/09 não têm: para eles vale o
+   * `conferidoEm`, que é no máximo sete dias mais velho.
+   */
+  vistoEm?: number;
+}
+
+/** O `data/fluxo-binance.json`: de onde o gravador continua, e quem é quem. */
+export interface EstadoFluxo {
+  ultimoBloco: number;
+  tokens: Record<string, IdentificacaoFluxo>;
+  /** Os perpétuos já anunciados no Telegram como em vista (`lib/emvista.ts`). */
+  emVista?: { avisadas: string[] };
+}
+
 export interface FluxoMoeda {
   /** O perpétuo, `TAKEUSDT`. */
   s: string;

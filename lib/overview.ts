@@ -31,6 +31,8 @@ export interface OverviewRow {
   contract: string;
   hasWallets: boolean;
   note?: string;
+  /** Presente só nas em vista, que entraram sozinhas (`lib/emvista.ts`). */
+  origem?: "carteira-binance";
 
   price: number;
   change24h: number;
@@ -209,6 +211,9 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
     contract: token.contract,
     hasWallets: token.wallets.length > 0,
     note: token.note,
+    // Só quando existe: `undefined` some do JSON, e as 73 da lista não
+    // precisam carregar um campo vazio em cada retrato.
+    ...(token.origem ? { origem: token.origem } : {}),
     price,
     change24h,
     liquidityUsd,
@@ -241,10 +246,14 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
  */
 export const caidas: string[] = [];
 
-export async function getOverview(): Promise<OverviewRow[]> {
+/**
+ * `tokens` é a lista curada por padrão; o retrato passa ela somada às moedas em
+ * vista (`lib/emvista.ts`), que não moram em `watchlist.ts` porque mudam sozinhas.
+ */
+export async function getOverview(tokens: WatchedToken[] = ATIVAS): Promise<OverviewRow[]> {
   caidas.length = 0;
   const linhas = await Promise.all(
-    ATIVAS.map(async (t) => {
+    tokens.map(async (t) => {
       const r = await readOne(t).catch(() => null);
       if (!r) caidas.push(t.symbol.replace(/USDT$/, ""));
       return r;
@@ -269,9 +278,9 @@ export interface PanoramaRow extends OverviewRow {
   motor: Motor | null;
 }
 
-export async function getPanorama(): Promise<PanoramaRow[]> {
-  const linhas = await getOverview();
-  const porSymbol = new Map(ATIVAS.map((t) => [t.symbol, t]));
+export async function getPanorama(tokens: WatchedToken[] = ATIVAS): Promise<PanoramaRow[]> {
+  const linhas = await getOverview(tokens);
+  const porSymbol = new Map(tokens.map((t) => [t.symbol, t]));
 
   return Promise.all(
     linhas.map(async (row) => {

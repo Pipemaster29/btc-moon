@@ -127,6 +127,11 @@ histórico: de ~1.200 para ~4.960 linhas por dia, o que projeta ~38 MB para o m�
 contra os 12 MB do desenho. Se ficar pesado, o número a mexer é o `% 4` do
 retrato.
 
+**Com as em vista o teto ficou à vista.** 113 moedas × 68 retratos × ~270 bytes
+são ~2 MB por dia, ~64 MB num mês de 31 dias — e o GitHub recusa arquivo acima
+de 100 MB. O mês cabe até ~175 moedas; se as em vista crescerem até lá, parta o
+`historico-AAAA-MM.jsonl` por quinzena antes de o push começar a falhar.
+
 As execuções agora aparecem como `cancelled` na aba Actions com frequência, e
 isso é o mecanismo funcionando, não falha: é a execução PENDENTE sendo
 substituída por uma mais nova enquanto a atual roda suas cinco horas.
@@ -228,6 +233,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/sinais.ts` | o formato de `data/sinais.json` e a leitura dele pela página |
 | `lib/fluxo.ts` | `resumirFluxo`: soma o bruto do fluxo da Binance por moeda, com a cobertura de cada dia junto |
 | `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |
+| `lib/emvista.ts` | as moedas **em vista**: todo perpétuo que passou pela carteira quente da Binance e não está na lista entra no painel sozinho. **Carrega a medição que justifica isso** e o aviso do Telegram. Não moram em `watchlist.ts`, e o monitor on-chain segue só com a lista |
 | `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção (branch `dados`, depois `main`), disco primeiro no resto |
 | `lib/avisos.ts` | o que a carteira abriu ou fechou desde o retrato anterior, em texto para o Telegram. A memória do que já foi avisado viaja no `carteira.json` |
 | `scripts/dados.sh` | baixa e grava os dados do robô na branch `dados`; faz a transição do `main` sozinho |
@@ -250,7 +256,7 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/carteira.json` | a carteira, com a tabela de regimes e a curva do regime anterior em `comparacao` — a tela desenha as duas | `npm run carteira` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
-| `data/fluxo-binance.json` | o último bloco lido e a identificação de cada token (perpétuo e preço conferidos) | idem |
+| `data/fluxo-binance.json` | o último bloco lido, a identificação de cada token (perpétuo e preço conferidos, última passagem) e a memória das em vista já anunciadas. **É daqui que sai o conjunto em vista** | idem |
 | `data/fluxo-binance-resumo.json` | os últimos 7 dias somados por moeda, com a cobertura de cada dia — é o que a página lê | idem (e `-- --resumo` só refaz este) |
 | `data/sinais.json` | os 25 sinais medidos sobre os 528 perpétuos, o modelo atacado e os testes do fluxo | `npm run medir-sinais`, **uma vez por dia** no workflow (`--diario`) |
 
@@ -400,6 +406,13 @@ O modo de falha que este projeto mais teme. Casos reais:
 O JCT já foi gravado no histórico a **2,9e-27**, quinze ordens de grandeza abaixo
 do preço dele, porque uma pool devolveu isso ao DexScreener. Há dois freios
 independentes hoje (`lib/overview.ts` e `lib/carteira.ts`); mantenha os dois.
+
+E há o preço que é de OUTRA moeda, que nenhum dos dois pega. `tokens/<endereço>`
+no DexScreener devolve também as pools em que o token é o PAGAMENTO, com o
+`priceUsd` da base. A AIOT leu o da AIT: 2,7 vezes fora, abaixo do freio de 100,
+e a carteira abriu posição nele (23/09). `pairsOfToken` marca `propria` e
+`depthOn` só usa essas; o `lib/motor.ts` continua contando o saldo nas outras,
+que é saldo de verdade. Quem ler preço de pool fora do `depthOn`: filtre.
 
 ### 4. Unidades misturadas
 

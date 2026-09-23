@@ -72,6 +72,12 @@ for (const f of arquivos.sort()) {
  * comportamento anterior, não um erro novo.
  */
 const porTicker = new Map(ATIVAS.map((t) => [t.symbol.replace(/USDT$/, ""), t.symbol]));
+// As em vista também viram posição (`lib/emvista.ts`), e sem caminho de velas o
+// stop delas seria testado só nas pontas — a paciência que ninguém tem, a favor
+// delas. Tiradas do histórico, que guarda a origem na linha: são todas
+// perpétuo USDT, e o símbolo é o ticker com o sufixo.
+const deEmVista = new Set(emissoes.filter((e) => e.origem).map((e) => e.s));
+for (const s of deEmVista) if (!porTicker.has(s)) porTicker.set(s, `${s}USDT`);
 
 const candidatas = new Set(
   emissoes
@@ -158,6 +164,21 @@ console.log(
     `pico de margem exposta ${(c.maiorExposicao * 100).toFixed(1)}% (teto 50%)  ·  ` +
     `pico de risco agregado ${(c.maiorRiscoAberto * 100).toFixed(1)}% (teto 25%)`,
 );
+{
+  // A PERGUNTA QUE AS EM VISTA TRAZEM: as calls nas moedas que entraram sozinhas
+  // se comportam diferente das da lista? Impresso a cada retrato para a resposta
+  // se acumular à vista — e com o aviso de que amostra pequena não responde.
+  const origem = (s: string) => (deEmVista.has(s) ? "em vista" : "lista");
+  for (const o of ["lista", "em vista"]) {
+    const f = c.fechadas.filter((x) => origem(x.symbol) === o);
+    const a = c.abertas.filter((x) => origem(x.symbol) === o);
+    const soma = f.reduce((t, x) => t + x.resultado, 0);
+    console.log(
+      `${o.padEnd(9)} ${String(f.length).padStart(4)} fechada(s), ${f.filter((x) => x.resultado > 0).length} no positivo, ` +
+        `${usd(soma)} · ${a.length} aberta(s)`,
+    );
+  }
+}
 if (c.freio !== undefined && c.freio < 1) {
   console.log(`freio de queda LIGADO: novas calls arriscam ${(c.freio * 100).toFixed(0)}% da régua`);
 }
@@ -338,6 +359,7 @@ if (!telegram) {
 const gravada: Carteira = {
   ...c,
   comparacao: { meio: MEIO, linhas, anterior: anterior?.curva ?? [] },
+  ...(deEmVista.size ? { emVista: [...deEmVista].sort() } : {}),
   ...(avisos ? { avisos } : {}),
 };
 
