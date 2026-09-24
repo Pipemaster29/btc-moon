@@ -456,11 +456,21 @@ export function readLiveFromStats(stats: LiveStat[]): LiveRead | null {
   };
 }
 
-/** Variação do open interest da praça grande nas últimas N horas. */
+/**
+ * Variação do open interest da praça grande nas últimas N horas.
+ *
+ * NaN quando a série não chega lá atrás. O `?? stats[0]` media desde o
+ * primeiro ponto e chamava de "72 h" — numa moeda listada ontem, a variação
+ * desde a listagem, que parte de quase zero e passa fácil dos 20% que marcam
+ * o open interest "inflando" em `lerVies`. Medido em 24/09: nenhuma das 112
+ * com série estava nesse caso; as em vista entram justamente recém-listadas.
+ */
 function variacaoOi(stats: LiveStat[], horas: number): number {
   if (stats.length < 2) return NaN;
   const fim = stats[stats.length - 1];
   const alvo = fim.time - horas * 3600;
+  // Duas horas de folga: um ponto faltando na ponta velha não é série curta.
+  if (stats[0].time > alvo + 2 * 3600) return NaN;
   const ini = stats.find((s) => s.time >= alvo) ?? stats[0];
   const a = ini.oiBinance ?? ini.openInterest;
   const b = fim.oiBinance ?? fim.openInterest;
