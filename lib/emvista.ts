@@ -122,8 +122,7 @@ export function emVistaDe(
  */
 export const INICIO_ADIANTE = Date.UTC(2026, 8, 24);
 
-export interface GrupoAdiante {
-  moedas: number;
+export interface Contagem {
   moedaDias: number;
   /** Dias de alta ≥25% (fechamento sobre fechamento). */
   altas: number;
@@ -133,10 +132,20 @@ export interface GrupoAdiante {
 
 export interface Adiante {
   desde: number;
-  /** Toda moeda que esteve em vista desde o início, contada a partir do dia seguinte à primeira passagem. */
-  emVista: GrupoAdiante;
-  /** A praça sem a lista e sem nada que tenha passado pela carteira. */
-  resto: GrupoAdiante;
+  /**
+   * Uma entrada por dia UTC fechado (`AAAA-MM-DD`): toda moeda que esteve em
+   * vista, contada a partir do dia seguinte à primeira passagem, e a praça sem
+   * a lista e sem nada que tenha passado pela carteira.
+   *
+   * POR DIA E ACUMULADO, e não recontado a cada rodada: o garimpo baixa trinta
+   * velas por moeda, e recontar tudo transformaria "desde 24/09" numa janela
+   * móvel de trinta dias a partir de 23/10, com o rótulo dizendo outra coisa.
+   * Cada rodada refaz os dias que ainda cabem nas velas; os mais velhos ficam
+   * como estavam.
+   */
+  dias: Record<string, { emVista: Contagem; resto: Contagem }>;
+  /** Quantas moedas tiveram algum dia contado na janela desta rodada. */
+  moedas: { emVista: number; resto: number };
 }
 
 /**
@@ -151,12 +160,18 @@ export interface Adiante {
  *     passar é a menos movimentada, e tirá-la da conta inflaria o grupo.
  *   - o dia de hoje, ainda aberto, não conta: a vela parcial compara meio dia
  *     com um dia inteiro.
+ *
+ * E um de junção com `anterior`: para cada dia e grupo, fica a leitura com
+ * MAIS moeda-dias. Para um dia passado, o grupo só cresce (quem entra depois
+ * não conta para trás, quem sai continua), então menos moeda-dias numa
+ * rodada é vela que não veio — e leitura que falhou não apaga a que funcionou.
  */
 export function medirAdiante(
   series: Map<string, { time: number; close: number }[]>,
   estado: EstadoFluxo | null,
   agora: number,
   lista: WatchedToken[] = WATCHLIST,
+  anterior: Adiante | null = null,
 ): Adiante {
   const naLista = new Set(lista.map((t) => t.symbol));
   const naCarteira = new Set<string>();
@@ -174,12 +189,12 @@ export function medirAdiante(
     if (atual === undefined || dia < atual) inicioDe.set(id.perp, dia);
   }
 
-  const vazio = (): GrupoAdiante => ({ moedas: 0, moedaDias: 0, altas: 0, quedas: 0 });
-  const emVista = vazio();
-  const resto = vazio();
+  const vazio = (): Contagem => ({ moedaDias: 0, altas: 0, quedas: 0 });
+  const novos: Adiante["dias"] = {};
+  const moedas = { emVista: 0, resto: 0 };
   for (const [s, v] of series) {
-    const g = inicioDe.has(s) ? emVista : !naLista.has(s) && !naCarteira.has(s) ? resto : null;
-    if (!g) continue;
+    const grupo = inicioDe.has(s) ? "emVista" : !naLista.has(s) && !naCarteira.has(s) ? "resto" : null;
+    if (!grupo) continue;
     const inicio = inicioDe.get(s) ?? INICIO_ADIANTE;
     let contou = false;
     for (let i = 1; i < v.length; i++) {
@@ -187,14 +202,42 @@ export function medirAdiante(
       if (abre < inicio || abre + DIA > agora) continue;
       const r = v[i].close / v[i - 1].close - 1;
       if (!Number.isFinite(r)) continue;
-      g.moedaDias++;
+      const d = new Date(abre).toISOString().slice(0, 10);
+      novos[d] ??= { emVista: vazio(), resto: vazio() };
+      const c = novos[d][grupo];
+      c.moedaDias++;
+      if (r >= 0.25) c.altas++;
+      if (r <= -0.25) c.quedas++;
       contou = true;
-      if (r >= 0.25) g.altas++;
-      if (r <= -0.25) g.quedas++;
     }
-    if (contou) g.moedas++;
+    if (contou) moedas[grupo]++;
   }
-  return { desde: INICIO_ADIANTE, emVista, resto };
+
+  // Um arquivo de outro começo é outra medição: não se junta.
+  const dias: Adiante["dias"] = anterior?.desde === INICIO_ADIANTE ? { ...anterior.dias } : {};
+  for (const [d, n] of Object.entries(novos)) {
+    const a = dias[d];
+    dias[d] = a
+      ? {
+          emVista: n.emVista.moedaDias >= a.emVista.moedaDias ? n.emVista : a.emVista,
+          resto: n.resto.moedaDias >= a.resto.moedaDias ? n.resto : a.resto,
+        }
+      : n;
+  }
+  return { desde: INICIO_ADIANTE, dias, moedas };
+}
+
+/** Os dias somados, por grupo. */
+export function somarAdiante(a: Adiante): { emVista: Contagem; resto: Contagem; dias: number } {
+  const soma = { emVista: { moedaDias: 0, altas: 0, quedas: 0 }, resto: { moedaDias: 0, altas: 0, quedas: 0 } };
+  for (const d of Object.values(a.dias ?? {})) {
+    for (const g of ["emVista", "resto"] as const) {
+      soma[g].moedaDias += d[g].moedaDias;
+      soma[g].altas += d[g].altas;
+      soma[g].quedas += d[g].quedas;
+    }
+  }
+  return { ...soma, dias: Object.keys(a.dias ?? {}).length };
 }
 
 function valido(d: unknown): EstadoFluxo | null {

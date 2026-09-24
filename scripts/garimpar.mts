@@ -25,7 +25,7 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { garimpar, REFERENCIA_7D } from "../lib/garimpo";
-import { medirAdiante } from "../lib/emvista";
+import { medirAdiante, somarAdiante, type Adiante } from "../lib/emvista";
 import type { EstadoFluxo } from "../lib/fluxo";
 import type { Vela } from "../lib/binance";
 
@@ -40,10 +40,17 @@ const levou = (Date.now() - t0) / 1000;
 // A TESE DAS EM VISTA, conferida com as velas que a peneira acabou de baixar.
 // Sem o estado do fluxo (rodando local sem `npm run dados`), não há grupo: fica
 // sem o campo, e a tela não mostra número nenhum em vez de mostrar zero.
-const estadoFluxo = await readFile("data/fluxo-binance.json", "utf8")
-  .then((t) => JSON.parse(t) as EstadoFluxo)
-  .catch(() => null);
-if (estadoFluxo) g.emVistaAdiante = medirAdiante(series, estadoFluxo, Date.now());
+//
+// O `garimpo.json` anterior entra porque a conta é acumulada por dia: as velas
+// daqui cobrem trinta dias, e os mais velhos só existem no arquivo.
+const lerJson = <T,>(f: string) => readFile(f, "utf8").then((t) => JSON.parse(t) as T).catch(() => null);
+const [estadoFluxo, garimpoAntes] = await Promise.all([
+  lerJson<EstadoFluxo>("data/fluxo-binance.json"),
+  lerJson<{ emVistaAdiante?: Adiante }>("data/garimpo.json"),
+]);
+if (estadoFluxo) {
+  g.emVistaAdiante = medirAdiante(series, estadoFluxo, Date.now(), undefined, garimpoAntes?.emVistaAdiante ?? null);
+}
 
 const pct = (v: number | null) =>
   v == null ? "—" : `${v >= 0 ? "+" : "−"}${(Math.abs(v) * 100).toFixed(1)}%`;
@@ -111,11 +118,11 @@ console.log(
 );
 
 if (g.emVistaAdiante) {
-  const a = g.emVistaAdiante;
+  const a = somarAdiante(g.emVistaAdiante);
   const taxa = (x: { altas: number; moedaDias: number }) =>
     x.moedaDias ? `${((x.altas / x.moedaDias) * 1000).toFixed(1)} por mil` : "—";
   console.log(
-    `\nem vista, adiante desde ${new Date(a.desde).toISOString().slice(0, 10)}: ` +
+    `\nem vista, adiante desde ${new Date(g.emVistaAdiante.desde).toISOString().slice(0, 10)} (${a.dias} dia(s) fechados): ` +
       `${a.emVista.altas} dia(s) de alta ≥25% em ${a.emVista.moedaDias} moeda-dias (${taxa(a.emVista)}) · ` +
       `resto ${a.resto.altas} em ${a.resto.moedaDias} (${taxa(a.resto)}) · medido antes: 16,7 contra 4,4`,
   );

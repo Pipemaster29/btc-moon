@@ -8,7 +8,7 @@ import GarimpoPanel from "@/components/GarimpoPanel";
 import SinaisPanel from "@/components/SinaisPanel";
 import FluxoPanel from "@/components/FluxoPanel";
 import { getGarimpo } from "@/lib/garimpo";
-import type { Adiante } from "@/lib/emvista";
+import { somarAdiante, type Adiante } from "@/lib/emvista";
 import { getSinais } from "@/lib/sinais";
 import { getFluxo } from "@/lib/fluxo";
 import { PrecoVivo, SinalVivo, VariacaoViva } from "@/components/PrecoVivo";
@@ -108,10 +108,11 @@ function Score({ value }: { value: number }) {
  * antes vai junto porque é contra ele que este se lê; e com pouca amostra a
  * frase diz que é pouca, com a conta de quando deixa de ser.
  */
-function textoAdiante(a: Adiante): string {
-  const desde = new Date(a.desde).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+function textoAdiante(adiante: Adiante): string {
+  const desde = new Date(adiante.desde).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+  const a = somarAdiante(adiante);
   if (a.emVista.moedaDias === 0) return `A conferência para frente conta a partir de ${desde}, dia fechado a dia fechado.`;
-  const taxa = (g: Adiante["emVista"]) => (g.moedaDias ? ((g.altas / g.moedaDias) * 1000).toFixed(1).replace(".", ",") : "—");
+  const taxa = (g: typeof a.emVista) => (g.moedaDias ? ((g.altas / g.moedaDias) * 1000).toFixed(1).replace(".", ",") : "—");
   // Mil moeda-dias: a 16,7 contra 4,4 por mil, são ~17 dias de alta contra ~4
   // esperados — a partir daí a diferença medida antes, se existir, aparece.
   const pouca = a.emVista.moedaDias < 1000;

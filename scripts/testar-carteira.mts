@@ -28,7 +28,7 @@ import {
 } from "../lib/carteira";
 import { eventosNovos, chavesDepois, textoDoEvento, JANELA_REENVIO_MS } from "../lib/avisos";
 import { escapeMarkdown } from "../lib/telegram";
-import { avisadasDepois, emVistaDe, INICIO_ADIANTE, medirAdiante, novasEmVista, presasPorPosicao, textoEmVista, textoLigado } from "../lib/emvista";
+import { avisadasDepois, emVistaDe, INICIO_ADIANTE, medirAdiante, novasEmVista, presasPorPosicao, somarAdiante, textoEmVista, textoLigado } from "../lib/emvista";
 import type { EstadoFluxo } from "../lib/fluxo";
 import { WATCHLIST } from "../lib/watchlist";
 import { depthOn, type Pair } from "../lib/dexscreener";
@@ -843,14 +843,28 @@ console.log(`\nem vista, adiante`);
     ["RESTOUSDT", serie(10, [2, 6, 7])], // d0 conta, d0+4 conta, d0+5 aberto
     [WATCHLIST[0].symbol, serie(10, [3, 4, 5])],
   ]);
-  const a = medirAdiante(series, estado, agora);
+  const bruto = medirAdiante(series, estado, agora);
+  const a = somarAdiante(bruto);
   confere("antes do início não conta; depois conta", a.emVista.altas === 2, `${a.emVista.altas} altas`);
   // ANTES: d0..d0+4 = 5 dias; CHEGOU: d0+3..d0+4 = 2; SAIU: 5.
   confere("dia da chegada e dia aberto ficam fora", a.emVista.moedaDias === 12, `${a.emVista.moedaDias} moeda-dias`);
-  confere("quem saiu de vista continua no grupo", a.emVista.moedas === 3, `${a.emVista.moedas} moedas`);
-  confere("o resto: sem lista, sem carteira", a.resto.moedas === 1 && a.resto.altas === 2 && a.resto.moedaDias === 5, `${a.resto.altas}/${a.resto.moedaDias}`);
+  confere("quem saiu de vista continua no grupo", bruto.moedas.emVista === 3, `${bruto.moedas.emVista} moedas`);
+  confere("o resto: sem lista, sem carteira", bruto.moedas.resto === 1 && a.resto.altas === 2 && a.resto.moedaDias === 5, `${a.resto.altas}/${a.resto.moedaDias}`);
   const semEstado = medirAdiante(series, null, agora);
-  confere("sem estado do fluxo, ninguém é em vista", semEstado.emVista.moedas === 0, `${semEstado.resto.moedas} no resto`);
+  confere("sem estado do fluxo, ninguém é em vista", semEstado.moedas.emVista === 0, `${semEstado.moedas.resto} no resto`);
+
+  // ACUMULADO: 40 dias depois, as velas (30) já não cobrem o começo, e a conta
+  // tem de continuar sendo "desde o início" e não virar janela móvel.
+  const depois = d0 + 40 * DIA + 3_600_000;
+  const recentes = new Map([["RESTOUSDT", serie(42, []).slice(-30)]]);
+  const b = medirAdiante(recentes, estado, depois, WATCHLIST, bruto);
+  const somaB = somarAdiante(b);
+  confere("os dias fora das velas ficam do arquivo anterior", somaB.resto.altas === 2 && b.dias[new Date(d0).toISOString().slice(0, 10)] !== undefined, `${somaB.dias} dias, ${somaB.resto.altas} altas no resto`);
+  // Uma rodada em que as velas de uma moeda não vieram lê MENOS: não apaga.
+  const falha = medirAdiante(new Map([["SAIUUSDT", serie(10, [])]]), estado, agora, WATCHLIST, bruto);
+  confere("leitura que falhou não apaga a que funcionou", somarAdiante(falha).emVista.moedaDias === 12, `${somarAdiante(falha).emVista.moedaDias} moeda-dias`);
+  const outroComeco = medirAdiante(series, estado, agora, WATCHLIST, { ...bruto, desde: d0 - DIA });
+  confere("arquivo de outro começo não se junta", somarAdiante(outroComeco).emVista.moedaDias === 12, "refeito do zero");
 }
 
 // --------------------------------- posição aberta segura a moeda no retrato

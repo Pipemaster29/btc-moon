@@ -349,7 +349,11 @@ for (const [i, [a, b]] of cortes.entries()) {
     const id = estado.tokens[tk];
     if (!id) continue;
     id.vistoEm = Math.max(id.vistoEm ?? 0, t * 1000);
-    id.primeiroVisto ??= t * 1000;
+    // O `conferidoEm` é teto para a primeira passagem de quem foi identificado
+    // antes deste campo existir: sem ele, as 41 de 23/09 ganhariam como
+    // "primeira vez" a primeira rodada do código novo e perderiam dias da
+    // conferência para frente.
+    id.primeiroVisto ??= Math.min(id.conferidoEm, t * 1000);
   }
   const dia = Math.floor((t * 1000) / DIA) * DIA;
   const aoVivo = dia === hoje;
