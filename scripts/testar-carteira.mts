@@ -881,6 +881,14 @@ console.log(`\navisos de trade`);
   const atual4 = base({ fechadas: Array.from({ length: 40 }, (_, i) => fechada(`T${i}`, agora - (100 + i) * HORA, agora - (50 + i) * HORA)) });
   confere("passado recalculado não vira aviso", eventosNovos(ant3, atual4).length === 0, `${eventosNovos(ant3, atual4).length}`);
 
+  // Uma posição só fecha uma vez: a regra nova que desloca a hora da saída não
+  // pode reavisar o fechamento (HEI, CYS e ARX, na troca de 24/09).
+  const abriuEm = agora - 5 * HORA;
+  const ant6 = base({ atualizadoEm: agora - HORA, avisos: { enviados: [`F|MESMA|${abriuEm}|${agora - 3 * HORA}`] } });
+  const atual6 = base({ fechadas: [fechada("MESMA", abriuEm, agora - 2 * HORA), fechada("OUTRA", agora - 4 * HORA, agora - 2 * HORA)] });
+  const e6 = eventosNovos(ant6, atual6).map((e) => (e.tipo === "abriu" ? e.p.symbol : e.f.symbol));
+  confere("fechamento já avisado não volta com outra hora", e6.join(",") === "OUTRA", e6.join(",") || "nada");
+
   // A memória acumula e não repete.
   const chaves = chavesDepois(ant2, eventosNovos(ant2, atual2));
   const ant5 = base({ atualizadoEm: agora, avisos: { enviados: chaves } });
@@ -1093,6 +1101,32 @@ console.log(`\npool de outra moeda`);
     ["1INCHUSDT", "0GUSDT", "2ZUSDT"].every((s) => unidadesDoContrato(s) === 1),
     ["1INCHUSDT", "0GUSDT", "2ZUSDT"].map(unidadesDoContrato).join("/"),
   );
+}
+
+// ---------------------------------------------------------------------------
+// A CONFIRMAÇÃO DA SAÍDA "PAINEL MUDOU": a leitura contrária precisa durar uma
+// hora. A VELVET de 24/09 fechou às 15:22 e reabriu às 15:59, porque o market
+// cap piscou acima e abaixo dos US$ 30 milhões da régua.
+{
+  console.log("\na confirmação da saída");
+  const linha = (horas: number, vies: string | null) => ({ t: h(horas), s: "X", preco: 1, vies, forca: 2 });
+  const vaiEVolta = rodar([linha(0, "long"), linha(0.3, "observar"), linha(0.6, "observar"), linha(0.9, "long")], T0 * 1000);
+  confere(
+    "vaivém de 37 min não fecha a posição",
+    vaiEVolta.fechadas.length === 0 && vaiEVolta.abertas.length === 1,
+    `${vaiEVolta.fechadas.length} fechada(s)`,
+  );
+  const virou = rodar([linha(0, "long"), linha(0.3, "observar"), linha(0.9, "observar"), linha(1.3, "observar")], T0 * 1000);
+  confere(
+    "leitura contrária por uma hora fecha, pelo painel",
+    virou.fechadas.length === 1 && virou.fechadas[0].motivo === "painel mudou" && virou.fechadas[0].fechadaEm === h(1.3) * 1000,
+    `${virou.fechadas[0]?.motivo ?? "nada"} às ${virou.fechadas[0] ? ((virou.fechadas[0].fechadaEm / 1000 - T0) / 3600).toFixed(1) : "—"} h`,
+  );
+  // Ausência de leitura não é leitura contrária, nem zera a contagem.
+  const mudo = rodar([linha(0, "long"), linha(0.3, "observar"), linha(0.9, null), linha(1.3, "observar")], T0 * 1000);
+  confere("retrato mudo no meio não conta a favor", mudo.fechadas.length === 1, `${mudo.fechadas.length} fechada(s)`);
+  const antes = rodar([linha(0, "long"), linha(0.3, "observar")], T0 * 1000, undefined, { ...REGRAS, confirmacaoSaidaH: null });
+  confere("sem a regra, sai no primeiro retrato contrário", antes.fechadas.length === 1, `${antes.fechadas.length} fechada(s)`);
 }
 
 // ---------------------------------------------------------------------------

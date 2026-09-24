@@ -265,6 +265,9 @@ const regimes: [string, Regras][] = [
   ["  sem freio de queda", { ...REGRAS, freio: null }],
   ["  stop de 20%", { ...REGRAS, stopComprado: 0.2, stopVendido: 0.2 }],
   ["  com stop móvel 20/15", { ...REGRAS, rastro: { ativa: 0.2, distancia: 0.15 } }],
+  ["  sem confirmar a saída", { ...REGRAS, confirmacaoSaidaH: null }],
+  ["  confirmar saída 2 h", { ...REGRAS, confirmacaoSaidaH: 2 }],
+  ["  confirmar saída 6 h", { ...REGRAS, confirmacaoSaidaH: 6 }],
   ["  escala 1,5x", { ...REGRAS, escala: 1.5 }],
   ["  escala 2x", { ...REGRAS, escala: 2 }],
 ];

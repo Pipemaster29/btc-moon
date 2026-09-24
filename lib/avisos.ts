@@ -67,6 +67,14 @@ export function eventosNovos(anterior: Carteira | null, atual: Carteira): Evento
   // ligar o recurso não deve despejar as últimas horas de uma vez.
   const desde = anterior.atualizadoEm - (anterior.avisos ? JANELA_REENVIO_MS : 0);
   const avisadas = new Set(anterior.avisos?.enviados ?? []);
+  // UMA POSIÇÃO SÓ FECHA UMA VEZ, e o aviso de fechamento é dela, não da hora.
+  // A chave traz a hora do fechamento, e uma regra nova que desloca essa hora
+  // fazia a mesma saída parecer outra: medido na troca de 24/09 (a saída
+  // "painel mudou" passou a esperar uma hora), HEI, CYS e ARX sairiam de novo
+  // no Telegram, uma hora depois da primeira mensagem.
+  const fechamentoAvisado = new Set(
+    [...avisadas].filter((k) => k.startsWith("F|")).map((k) => k.split("|").slice(0, 3).join("|")),
+  );
 
   const eventos: { t: number; e: Evento }[] = [];
   for (const p of atual.abertas) {
@@ -75,7 +83,7 @@ export function eventosNovos(anterior: Carteira | null, atual: Carteira): Evento
   }
   for (const f of atual.fechadas) {
     const chave = chaveFechou(f);
-    if (f.fechadaEm <= desde || avisadas.has(chave)) continue;
+    if (f.fechadaEm <= desde || avisadas.has(chave) || fechamentoAvisado.has(`F|${f.symbol}|${f.abertaEm}`)) continue;
     // Uma posição que abriu e fechou dentro do mesmo intervalo entre retratos
     // nunca apareceu em `abertas` e não teve "abriu" avisado: vai num aviso só,
     // com as duas horas, em vez de um "abriu" montado com número inventado.

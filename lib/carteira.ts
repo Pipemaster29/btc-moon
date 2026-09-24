@@ -90,6 +90,11 @@ export interface Aberta {
   funding: number;
   /** Preço de liquidação nominal, sem contar o financiamento já pago. */
   precoLiquidacao: number;
+  /**
+   * Desde quando a leitura está CONTRA a posição, para a confirmação de saída
+   * (`Regras.confirmacaoSaidaH`). Some quando a leitura volta ao lado dela.
+   */
+  contraDesde?: number;
   /** Quando o financiamento foi cobrado pela última vez. */
   ultimoFunding: number;
   /** Última taxa vista, para o caso de o retrato seguinte não trazer nenhuma. */
@@ -570,6 +575,11 @@ export interface Regras {
   queimaEmToda: boolean;
   /** Multiplicador do orçamento de risco inteiro — a tabela de escala. */
   escala: number;
+  /**
+   * Por quantas HORAS a leitura contrária precisa durar antes de a saída
+   * "painel mudou" acontecer. Nulo: sai no primeiro retrato contrário.
+   */
+  confirmacaoSaidaH: number | null;
 }
 
 /**
@@ -599,6 +609,7 @@ export const REGRAS_ANTERIORES: Regras = {
   freio: null,
   queimaEmToda: false,
   escala: 1,
+  confirmacaoSaidaH: null,
 };
 
 /**
@@ -714,6 +725,42 @@ export const REGRAS: Regras = {
    * (23/09, com os alvos falsos da HEI; refeito em 24/09: −3,3% contra −2,1%).
    */
   queimaEmToda: true,
+  /**
+   * A SAÍDA "PAINEL MUDOU" ESPERA A LEITURA CONTRÁRIA DURAR UMA HORA.
+   *
+   * Regra de corte fixo pisca: em 24/09 a VELVET estava comprada pela régua de
+   * "pequena e exausta", que exige market cap abaixo de US$ 30 milhões. Às 15:04
+   * ela valia 29,3; às 15:22, 30,2 — o painel virou para "observar" e a carteira
+   * fechou; às 15:59, 29,8 — o painel voltou e a carteira reabriu. Trinta e sete
+   * minutos, um vaivém de 3% no preço, e a entrada e a saída pagas de novo.
+   *
+   * Não era raro. Das 146 saídas por "painel mudou" até então, 120 foram
+   * seguidas de reabertura do MESMO lado em até 24 h.
+   *
+   * Medido na tabela de regimes sobre as mesmas calls (24/09, 179 encerradas),
+   * inteira · sem a melhor moeda · 1ª metade · 2ª metade:
+   *
+   *   sem confirmar   −0,5%   −2,8%   −6,1%   +10,9%
+   *   30 min          +0,2%   −2,2%   −5,6%   +12,1%
+   *   1 h             +0,6%   −1,8%   −5,6%   +12,3%   ← 136 encerradas
+   *   2 h             +0,4%   −1,6%   −5,3%   +16,3%
+   *   3 h             −0,9%   −3,0%   −5,5%   +14,9%
+   *   4 h             −1,4%   −3,7%   −5,9%   +14,7%
+   *   6 h             +1,9%   −1,4%   −3,7%   +15,0%
+   *   8 h             +2,4%   −0,5%   −3,0%   +14,5%
+   *
+   * De 30 min a 2 h tudo melhora nas quatro colunas, e é um platô; 3 e 4 h
+   * pioram a janela inteira; de 5 a 10 h melhora de novo, mais. A escolha é o
+   * meio do primeiro platô, e não o maior número, porque o ganho de 1 h tem
+   * mecanismo: são 43 idas e voltas a menos, a 0,9% da margem cada, ~US$ 10 —
+   * o mesmo ponto percentual que a tabela mostra. O de 8 h pode ser isso mais
+   * sorte de caminho, e o vale de 3–4 h no meio diz que a curva ainda é ruído
+   * além da primeira hora. `npm run carteira` segue imprimindo 2 h e 6 h.
+   *
+   * O custo é deixar de seguir o painel por até uma hora quando ele muda de
+   * ideia de verdade — e esse custo está dentro dos números acima.
+   */
+  confirmacaoSaidaH: 1,
   /**
    * O FREIO DE QUEDA, e este não vem de medição: vem de mecânica, dito em voz
    * alta como a regra de concentração do `lib/lifecycle.ts`.
@@ -1445,8 +1492,12 @@ export function rodar(
         // As duas dizem a mesma coisa — não houve leitura —, e viés nulo não é
         // raro: 26 das 1.845 emissões de setembro.
         const lido = vies.get(p.symbol);
-        if (lido != null) fechar(estado, p, atual, quando, "painel mudou");
-      }
+        if (lido != null) {
+          p.contraDesde ??= quando;
+          const espera = (r.confirmacaoSaidaH ?? 0) * 3_600_000;
+          if (quando - p.contraDesde >= espera) fechar(estado, p, atual, quando, "painel mudou");
+        }
+      } else p.contraDesde = undefined;
 
       // Sobreviveu: o retrato também move o rastro, pelo mesmo motivo que a vela
       // move — e depois dos testes, pelo mesmo motivo também.
