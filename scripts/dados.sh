@@ -32,7 +32,7 @@ set -euo pipefail
 DIR=.dados
 # Os arquivos do robô. A mesma lista está no .gitignore do `main` — mudar aqui
 # sem mudar lá faria o arquivo novo voltar a ser commitado no `main`.
-PADRAO='^(panorama\.json|historico-[0-9]{4}-[0-9]{2}\.jsonl|carteira\.json|garimpo\.json|placar\.json|sinais\.json|fluxo-binance(-resumo)?\.json|fluxo-binance-[0-9]{4}-[0-9]{2}\.jsonl)$'
+PADRAO='^(panorama\.json|historico-[0-9]{4}-[0-9]{2}\.jsonl|carteira\.json|garimpo\.json|placar\.json|sinais\.json|fluxo-binance(-resumo)?\.json|fluxo-binance-[0-9]{4}-[0-9]{2}\.jsonl|estudos-em-vista\.json)$'
 
 arquivos_em() {
   # Os arquivos do robô presentes numa pasta, um por linha, só o nome.

@@ -240,8 +240,8 @@ retrato seguinte fechá-la com a hora certa.
 
 ### Os dados
 
-Os que o **robô** grava (panorama, histórico, carteira, garimpo, placar, sinais e
-fluxo) moram na branch órfã `dados`; a lista está no `PADRAO` de
+Os que o **robô** grava (panorama, histórico, carteira, garimpo, placar, sinais,
+fluxo e o estudo das em vista novas) moram na branch órfã `dados`; a lista está no `PADRAO` de
 `scripts/dados.sh` e repetida no `.gitignore`. Os gerados **à mão** (detentores,
 vesting, estudos) ficam no `main`: a página os lê do disco do build.
 
@@ -251,7 +251,8 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/historico-AAAA-MM.jsonl` | uma linha por moeda por retrato. **É a memória do projeto** | idem |
 | `data/detentores.json` | concentração por moeda. **17 medidas de 37 com contrato**, todas de Ethereum e Base. As 20 da BSC não têm fonte de log: 15 de 16 varridas em 06/09 perderam as 41 faixas da janela | `npm run genese` |
 | `data/vesting.json` | emissão por moeda | `npm run vesting` |
-| `data/estudos.json` | estudo por moeda, **as em vista incluídas**: sem ele a trava de "a moeda continua o movimento" não roda nelas (8 de 70 da lista, 6 de 39 em vista). Moeda que entrar em vista depois fica sem até a próxima rodada | `npm run estudar` (`-- --em-vista` só para elas) |
+| `data/estudos.json` | estudo por moeda, **as em vista incluídas**: sem ele a trava de "a moeda continua o movimento" não roda nelas (8 de 70 da lista, 6 de 39 em vista) | `npm run estudar` (`-- --em-vista` só para elas) |
+| `data/estudos-em-vista.json` | **do robô, na branch `dados`**: o estudo das em vista que chegaram depois, feito pelo próprio retrato (até dez por rodada; a sem amostra é tentada de novo depois de um dia). `lerEstudo` junta os dois, e o de mão manda | `npm run panorama` |
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/quarentena.json` | as linhas do histórico que não são o preço do perpétuo daquela hora, julgadas contra as velas de 1h: **471 em 24/09, de HEI, CAP, SYN e JCT**. O placar não toca em rede e as pula por esta lista. Linha nova fora do perpétuo não nasce mais desde o árbitro de `lib/overview.ts` | `npm run quarentena`, à mão (fica no `main`) |
 | `data/carteira.json` | a carteira, com a tabela de regimes e a curva do regime anterior em `comparacao` — a tela desenha as duas | `npm run carteira` |

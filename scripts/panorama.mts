@@ -20,6 +20,7 @@ import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { caidas, getPanorama } from "../lib/overview";
 import { fundings } from "../lib/binance";
 import { getEmVista, presasPorPosicao } from "../lib/emvista";
+import { ESTUDOS_DO_ROBO, estudar, type Estudo, type EstudosDoRobo } from "../lib/estudo";
 import { ATIVAS } from "../lib/watchlist";
 
 const DIR = "data";
@@ -91,6 +92,37 @@ const t0 = Date.now();
 // de fluxo que o `dados.sh baixar` acabou de trazer. Sem ele, só a lista — e o
 // retrato diz quantas entraram, para a ausência não ficar calada.
 const emVista = await getEmVista().catch(() => []);
+// OS ESTUDOS QUE FALTAM ÀS EM VISTA, feitos aqui e não à mão.
+//
+// O estudo tira a direção da leitura quando a moeda CONTINUA o movimento em vez
+// de devolvê-lo (`contradizAFase`), e caiu em 6 das 39 em vista estudadas em
+// 24/09. A moeda que entra em vista depois ficava sem ele até alguém rodar
+// `npm run estudar` — e sem ele, recebia a call que a regra tiraria. Uma
+// requisição de velas por moeda, só para as que faltam, no máximo dez por
+// retrato; a sem amostra é tentada de novo depois de um dia.
+{
+  const lerJsonLocal = <T,>(f: string) => readFile(f, "utf8").then((t) => JSON.parse(t) as T).catch(() => null);
+  const deMao = (await lerJsonLocal<{ moedas?: Record<string, Estudo> }>(`${DIR}/estudos.json`))?.moedas ?? {};
+  const robo: EstudosDoRobo = (await lerJsonLocal<EstudosDoRobo>(`${DIR}/${ESTUDOS_DO_ROBO}`)) ?? { moedas: {}, semAmostra: {} };
+  robo.moedas ??= {};
+  robo.semAmostra ??= {};
+  const faltam = emVista
+    .filter((t) => !deMao[t.symbol] && !robo.moedas[t.symbol])
+    .filter((t) => !(Date.now() - (robo.semAmostra[t.symbol] ?? 0) < 86_400_000))
+    .slice(0, 10);
+  if (faltam.length > 0) {
+    for (const t of faltam) {
+      const e = await estudar(t.symbol).catch(() => null);
+      if (e) {
+        robo.moedas[t.symbol] = e;
+        delete robo.semAmostra[t.symbol];
+      } else robo.semAmostra[t.symbol] = Date.now();
+    }
+    await writeFile(`${DIR}/${ESTUDOS_DO_ROBO}`, `${JSON.stringify(robo)}\n`);
+    console.log(`estudos das em vista: ${faltam.filter((t) => robo.moedas[t.symbol]).length} de ${faltam.length} feitos agora`);
+  }
+}
+
 // E as que saíram de vista com posição aberta, até a posição fechar
 // (`presasPorPosicao`). Os dois arquivos são os que o `baixar` trouxe; sem
 // eles, nada é segurado — e o prazo de 14 dias da carteira continua valendo.

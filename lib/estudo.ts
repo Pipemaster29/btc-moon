@@ -38,6 +38,7 @@
 
 import { velas, type Vela } from "./binance";
 import { velasGate } from "./gate";
+import { lerGuardado } from "./guardado";
 
 /** Defasagens testadas na memória, em dias. */
 const LAGS = [1, 2, 3, 5, 7, 10, 14, 21];
@@ -247,7 +248,21 @@ export async function estudar(symbol: string): Promise<Estudo | null> {
 let cache: Record<string, Estudo> | null = null;
 
 /**
- * O estudo já medido, de `data/estudos.json`.
+ * Os estudos que o ROBÔ fez, das moedas em vista que chegaram sem estudo à mão
+ * (`scripts/panorama.mts`). Mora na branch `dados` com o resto do que ele grava.
+ */
+export interface EstudosDoRobo {
+  moedas: Record<string, Estudo>;
+  /** Quando cada moeda sem amostra foi tentada, para não pedir as velas a cada retrato. */
+  semAmostra: Record<string, number>;
+}
+
+export const ESTUDOS_DO_ROBO = "estudos-em-vista.json";
+
+/**
+ * O estudo já medido, de `data/estudos.json` e, para as em vista que o robô
+ * estudou sozinho, de `data/estudos-em-vista.json`. O de mão manda quando os
+ * dois têm a moeda.
  *
  * A página lê daqui em vez de calcular: são 1.500 velas por moeda e o resultado
  * é histórico, não muda de minuto em minuto. `npm run estudar` regrava.
@@ -261,7 +276,14 @@ export async function lerEstudo(symbol: string): Promise<Estudo | null> {
     const arquivo = JSON.parse(await readFile("data/estudos.json", "utf8")) as {
       moedas: Record<string, Estudo>;
     };
-    cache = arquivo.moedas ?? {};
+    // O do robô é do robô: em produção vem do raw da branch `dados`
+    // (`lib/guardado.ts`), e faltar não derruba o de mão.
+    const robo = await lerGuardado<EstudosDoRobo>(
+      ESTUDOS_DO_ROBO,
+      (d) => (d && typeof (d as EstudosDoRobo).moedas === "object" ? (d as EstudosDoRobo) : null),
+      3600,
+    ).catch(() => null);
+    cache = { ...(robo?.dado.moedas ?? {}), ...(arquivo.moedas ?? {}) };
     return cache[symbol] ?? null;
   } catch {
     // Falha NÃO vira cache vazio: um erro momentâneo de leitura calaria o estudo
