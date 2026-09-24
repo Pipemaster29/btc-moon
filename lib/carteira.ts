@@ -608,7 +608,9 @@ export const REGRAS_ANTERIORES: Regras = {
  * CORRIGIDO EM 24/09: esta tabela contava três alvos falsos da HEI, US$ 191
  * de preço de pool alheia que o perpétuo nunca tocou (`foraDoPerpetuo`).
  * Refeita com o juiz: anterior −15,6%, publicado −3,9% (queda −11,6%, metades
- * −6,8% e +6,4%). A ORDEM entre os regimes se manteve — cada peça desligada
+ * −6,8% e +6,4%); ao meio-dia, com mais dados e a liquidação dentro da vela
+ * consertada (`percorrer`), anterior −14,1% e publicado −2,1% (queda −11,0%,
+ * metades −6,2% e +8,1%). A ORDEM entre os regimes se manteve — cada peça desligada
  * continua pior —, o sinal do publicado virou. Os números abaixo são os de
  * 23/09 e ficam como registro de como a conclusão foi tomada.
  *
@@ -696,7 +698,7 @@ export const REGRAS: Regras = {
    * TODA SAÍDA QUEIMA A CALL — ver `fechar`. Sem isto a saída por tempo não
    * funciona: a posição sairia "sem reação" e reabriria no mesmo lote, zerando o
    * relógio. Medido: o regime novo SEM esta linha fica em −5,2%, contra +14,8%
-   * (23/09, com os alvos falsos da HEI; refeito em 24/09: −5,0% contra −3,9%).
+   * (23/09, com os alvos falsos da HEI; refeito em 24/09: −3,3% contra −2,1%).
    */
   queimaEmToda: true,
   /**
@@ -1018,10 +1020,11 @@ export function foraDoPerpetuo(preco: number, velas: Passo[] | undefined, quando
  * Percorre o caminho entre o retrato anterior e este, e fecha onde a ordem teria
  * de fato executado. Devolve `true` quando a posição saiu no meio do caminho.
  *
- * A ORDEM DOS TESTES DENTRO DE UMA VELA É A DO PIOR CASO — liquidação, stop,
- * alvo —, porque a vela diz onde o preço esteve e não em que ordem. Supor que
- * ele tocou o stop antes do alvo é a suposição conservadora, e é a mesma que o
- * teste de ponta já fazia.
+ * ENTRE STOP E ALVO, A ORDEM DOS TESTES DENTRO DE UMA VELA É A DO PIOR CASO,
+ * porque a vela diz onde o preço esteve e não em que ordem. Supor que ele tocou
+ * o stop antes do alvo é a suposição conservadora, e é a mesma que o teste de
+ * ponta já fazia. Entre liquidação e stop, que estão do mesmo lado, não há
+ * dúvida de ordem — ver o laço.
  *
  * O preço de saída é o NÍVEL DA ORDEM, não o extremo da vela: quem tem stop
  * parado em −25% sai em −25%, não na mínima do candle. A exceção é a vela que
@@ -1099,14 +1102,27 @@ function percorrer(
           ? Math.max(abertura, nivel)
           : Math.min(abertura, nivel);
 
-    const nivelLiq = precoNoRetorno(p, -1 + MARGEM_MANUTENCAO);
-    if (tocou(nivelLiq, "contra")) {
-      fechar(estado, p, preenche(nivelLiq, "contra"), v.fechouEm, "liquidada");
-      return true;
-    }
     // O nível do stop é o que estava PARADO quando a vela abriu — o rastro desta
     // vela ainda não subiu. Ver o fim do laço.
     const nivelStop = p.nivelStop ?? nivelDoStop(p, r);
+    const nivelLiq = precoNoRetorno(p, -1 + MARGEM_MANUTENCAO);
+    // LIQUIDAÇÃO E STOP ESTÃO DO MESMO LADO, e aí a ordem não é pior caso: é
+    // geometria. Saindo da abertura, o preço cruza primeiro o nível mais perto
+    // dela — a 3x, o stop, em −25%, antes da liquidação, em −33%. A corretora só
+    // chega antes quando a vela ABRE já além da liquidação (salto), ou quando o
+    // financiamento acumulado trouxe a liquidação para aquém do stop.
+    //
+    // Testar a liquidação primeiro, como o motor fazia até 24/09, trocava por
+    // liquidação todo stop cuja vela seguia caindo depois dele: −100% da margem
+    // no lugar de −75%. Foi a HEI de 09/09, comprada a 0,1497, com a vela das
+    // 22h indo de 0,133 a 0,094 no perpétuo — US$ 26,86 perdidos onde o stop
+    // perderia US$ 20,38.
+    const liqAntes = comprado ? nivelLiq >= nivelStop : nivelLiq <= nivelStop;
+    const abriuAlemDaLiq = comprado ? abertura <= nivelLiq : abertura >= nivelLiq;
+    if (tocou(nivelLiq, "contra") && (liqAntes || abriuAlemDaLiq)) {
+      fechar(estado, p, preenche(nivelLiq, "contra"), v.fechouEm, "liquidada");
+      return true;
+    }
     if (tocou(nivelStop, "contra")) {
       fechar(estado, p, preenche(nivelStop, "contra"), v.fechouEm, motivoDoStop(p, r));
       return true;

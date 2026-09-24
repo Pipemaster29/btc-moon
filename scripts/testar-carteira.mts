@@ -294,6 +294,17 @@ console.log("\n--- o caminho entre os retratos, com velas ---");
     `${comLiquidacao.fechadas[0]?.motivo} a ${((comLiquidacao.fechadas[0]?.retorno ?? 0) * 100).toFixed(0)}%`,
   );
 
+  // Mergulho CONTÍNUO até além da liquidação: a vela abre na entrada e desce
+  // a 0,55. O preço cruzou o stop (0,75) antes da liquidação (~0,67), e a ordem
+  // parada lá executa primeiro — liquidar aqui era o motor até 24/09.
+  const mergulhoFundo: Passo[] = mergulho.map((v, i) => (i === 2 ? { ...v, abertura: 1, minima: 0.55 } : v));
+  const semSaltar = rodar(emissoes, T0 * 1000, new Map([["X", mergulhoFundo]]));
+  confere(
+    "mergulho contínuo além da liquidação: o stop, que está antes, executa",
+    semSaltar.fechadas[0]?.motivo === "stop" && Math.abs((semSaltar.fechadas[0]?.precoSaida ?? 0) - (1 - STOP)) < 1e-9,
+    `${semSaltar.fechadas[0]?.motivo} a ${(semSaltar.fechadas[0]?.precoSaida ?? 0).toFixed(4)}`,
+  );
+
   // A ÂNCORA: as velas vêm do perpétuo e o preço do retrato prefere a pool. Um
   // desalinhamento pequeno é base de mercado e tem de ser CORRIGIDO, não
   // recusado — senão a moeda com pool viva perderia o caminho justamente por

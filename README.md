@@ -331,10 +331,10 @@ em cada METADE da janela separadamente, começando do zero:
 
 | | inteira | 1ª metade | 2ª metade | queda máx | sem a melhor moeda |
 |---|---|---|---|---|---|
-| anterior | −15,6% | −16,0% | +1,4% | −19,2% | −20,7% (sem HEI) |
-| **publicada** | **−3,9%** | **−6,8%** | **+6,4%** | **−11,6%** | **−5,7%** (sem BEAT) |
+| anterior | −14,1% | −15,1% | +3,8% | −18,7% | −19,3% (sem HEI) |
+| **publicada** | **−2,1%** | **−6,2%** | **+8,1%** | **−11,0%** | **−3,9%** (sem BEAT) |
 
-**Esta tabela foi refeita em 24/09, e a de 23/09 estava errada.** Ela dava à
+**Esta tabela foi refeita em 24/09 ao meio-dia, e a de 23/09 estava errada.** Ela dava à
 publicada +14,8%, e a HEI respondia por US$ 191 disso com três saídas no alvo
 (+46%, +64% e +66% de preço). Os três alvos eram preço de outra coisa: a pool
 rasa da HEI devolvia de vez em quando 1,6 a 2 vezes o preço do perpétuo, o
@@ -345,8 +345,16 @@ mesmo preço. Hoje cada preço de retrato é conferido contra a vela de 1h do
 perpétuo daquela hora (`foraDoPerpetuo`, em `lib/carteira.ts`): saem 211
 linhas, todas da HEI, nenhuma de outra moeda.
 
+E um stop virava liquidação. Dentro da vela de 1h o motor testava a liquidação
+antes do stop, e a vela que seguia caindo depois do stop custava a margem
+inteira no lugar de 75% dela. Mas o preço que desce cruza primeiro o nível mais
+perto — o stop, em −25%, antes da liquidação, em −33% —, e a corretora só chega
+antes quando a vela ABRE além dela. Aconteceu uma vez, na HEI de 09/09 (US$ 26,86
+perdidos onde o stop perderia US$ 20,38); sobre os mesmos dados, −2,8% viraram
+−2,1%.
+
 O que sobrevive é a conclusão sobre a gestão: com as mesmas calls, a publicada
-perde −3,9% onde a anterior perde −15,6%, e desligar qualquer peça piora (a
+perde −2,1% onde a anterior perde −14,1%, e desligar qualquer peça piora (a
 tabela do `npm run carteira`). **Lucro continua não demonstrado** — e agora nem
 o número da tela sugere o contrário.
 
@@ -357,8 +365,8 @@ o número da tela sugere o contrário.
   +21,6%, com a mesma queda máxima — e era quase tudo a HEI: stop curto é
   posição maior, e a posição maior caiu na moeda que bateu o alvo três vezes.
   Tirando as duas moedas que mais ganharam, os dois PERDEM para o stop de 25%.
-  Refeito em 24/09, sem os alvos falsos da HEI: stop de 20% em −5,9% contra
-  −3,9% do de 25%. A decisão se mantém.
+  Refeito em 24/09, sem os alvos falsos da HEI: stop de 20% em −3,1% contra
+  −2,1% do de 25%. A decisão se mantém.
 - **Stop móvel**, de 8/12% a 20/15%: as vencedoras andam pouco (+3,9% de
   excursão mediana) e saem pelo painel antes; o rastro só as encurtava.
 - **Mais tamanho**, 1,5x e 2x o orçamento: a queda máxima dobra e o teto passa a

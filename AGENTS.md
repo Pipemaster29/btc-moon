@@ -299,11 +299,17 @@ se uma regra entra. **Nenhuma regra de gestão nova sem passar nela**, e a colun
 "sem a melhor moeda" reprova mais do que as metades: o stop curto passava nas
 duas metades e era uma moeda só.
 
-Medido em 24/09, as mesmas calls: o regime anterior em −15,6% (queda máxima
-−19,2%), o publicado em **−3,9%** (−11,6%) — a gestão perde muito menos, e
-lucro continua não demonstrado. **O número de 23/09, +14,8%, estava errado**:
-três "alvos" da HEI eram preço de pool alheia que o perpétuo nunca tocou (ver
-a armadilha nº 7). Cada peça desligada continua pior que o publicado.
+Medido em 24/09 ao meio-dia, as mesmas calls: o regime anterior em −14,1%
+(queda máxima −18,7%), o publicado em **−2,1%** (−11,0%) — a gestão perde muito
+menos, e lucro continua não demonstrado. **O número de 23/09, +14,8%, estava
+errado**: três "alvos" da HEI eram preço de pool alheia que o perpétuo nunca
+tocou (ver a armadilha nº 7). Cada peça desligada continua pior que o publicado.
+
+E o motor liquidava o que era stop: dentro da vela ele testava a liquidação
+antes do stop, e toda vela que seguia caindo depois do stop virava −100% da
+margem no lugar de −75%. Uma posição em 174, a HEI de 09/09; sobre os mesmos
+dados, −2,8% viraram −2,1%. Hoje a liquidação só vem primeiro quando a vela abre
+além dela ou quando o financiamento a trouxe para aquém do stop.
 
 **Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.**
 `npm run carteira` busca as velas de 1h da Binance das moedas que podem virar
@@ -338,7 +344,7 @@ call que acabou de morrer no MESMO retrato — reproduzido com uma moeda caindo
 28% por retrato e o painel fixo em "long", ela tomou **onze stops seguidos** e
 perdeu 17% do patrimônio na mesma leitura errada. Até 23/09 só stop e liquidação
 queimavam, e a saída por prazo reabria no mesmo lote; com a saída por tempo, a
-diferença é de −3,9% para −5,0% (refeito em 24/09; com os alvos falsos da HEI,
+diferença é de −2,1% para −3,3% (refeito em 24/09; com os alvos falsos da HEI,
 era de +14,8% para +5,0%).
 
 **A unidade de cada número importa, e confundi-las já quebrou isto.** `STOP` e
