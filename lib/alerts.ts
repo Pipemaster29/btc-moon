@@ -557,7 +557,9 @@ export function detect(input: DetectInput): Alert[] {
     const value = t.amount * priceUsd;
     const fromTracked = t.fromLabel !== "" && !t.fromLabel.includes("…");
     if (!fromTracked || !t.toIsFresh) continue;
-    if (value <= 0 || value > TEST_MAX_USD) continue;
+    // `!(value > 0)`: com preço NaN, `value <= 0` é falso e o alerta crítico
+    // saía com valor NaN (armadilha nº 5).
+    if (!(value > 0) || value > TEST_MAX_USD) continue;
 
     alerts.push({
       kind: "test-transfer",

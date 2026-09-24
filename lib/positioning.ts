@@ -241,7 +241,8 @@ export async function getPositioning(
 
   snapshots.sort((a, b) => a.time - b.time);
   const latest = snapshots[snapshots.length - 1];
-  if (!latest || latest.openInterest <= 0) return null;
+  // `!(… > 0)`: com NaN, `<= 0` é falso e o preço abaixo sairia 0/0 (armadilha nº 5).
+  if (!latest || !(latest.openInterest > 0)) return null;
 
   // -------------------------------------------------------------- tabela
   const rows: DailyRow[] = [];
@@ -483,7 +484,7 @@ export function detectWhaleExit(janela: LiveStat[]): WhaleExit | null {
     }
   }
 
-  if (pico.openInterest <= 0 || atual.openInterest <= 0) return null;
+  if (!(pico.openInterest > 0) || !(atual.openInterest > 0)) return null;
   if (pico.whaleNet / pico.openInterest < 0.08) return null;
 
   const share = (pico.whaleNet - atual.whaleNet) / atual.openInterest;
