@@ -7,21 +7,37 @@
  * minuto, e não tem por que ser refeito a cada visita.
  *
  * Rode com: npm run estudar
- *           npm run estudar BTW AKE     (só as pedidas)
+ *           npm run estudar BTW AKE          (só as pedidas)
+ *           npm run estudar -- --em-vista    (só as em vista, sem tocar nas da lista)
+ *
+ * AS EM VISTA ENTRAM (`lib/emvista.ts`), e precisam: o estudo tira a direção
+ * da leitura quando a moeda CONTINUA o movimento em vez de devolvê-lo
+ * (`contradizAFase` em `lib/lifecycle.ts`), e isso vale para 8 das 70 da lista
+ * no estudo de 03/09. Sem estudo, a em vista recebia a call que a lista não
+ * receberia. Elas vêm do estado do fluxo que o `npm run dados` traz; a que
+ * entrar depois fica sem estudo até a próxima rodada deste script.
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { estudar, type Estudo } from "../lib/estudo";
 import { ATIVAS, findToken, type WatchedToken } from "../lib/watchlist";
+import { getEmVista } from "../lib/emvista";
 
 const CAMINHO = "data/estudos.json";
 
-const pedidos = process.argv.slice(2).map((s) => s.toUpperCase());
-const alvos: WatchedToken[] = pedidos.length
-  ? pedidos
-      .map((p) => findToken(p) ?? findToken(`${p}USDT`))
-      .filter((t): t is WatchedToken => Boolean(t))
-  : ATIVAS;
+const soEmVista = process.argv.includes("--em-vista");
+const pedidos = process.argv.slice(2).filter((a) => !a.startsWith("--")).map((s) => s.toUpperCase());
+const emVista = await getEmVista().catch(() => []);
+const achar = (s: string) => findToken(s) ?? emVista.find((t) => t.symbol === s);
+const alvos: WatchedToken[] = soEmVista
+  ? emVista
+  : pedidos.length
+    ? pedidos.map((p) => achar(p) ?? achar(`${p}USDT`)).filter((t): t is WatchedToken => Boolean(t))
+    : [...ATIVAS, ...emVista];
+if (soEmVista && emVista.length === 0) {
+  console.error("nenhuma moeda em vista: rode `npm run dados` antes, para trazer o estado do fluxo");
+  process.exit(1);
+}
 
 const arquivo: { moedas: Record<string, Estudo> } = await readFile(CAMINHO, "utf8")
   .then((t) => JSON.parse(t))
