@@ -408,8 +408,19 @@ O modo de falha que este projeto mais teme. Casos reais:
 ### 3. Preço de lixo
 
 O JCT já foi gravado no histórico a **2,9e-27**, quinze ordens de grandeza abaixo
-do preço dele, porque uma pool devolveu isso ao DexScreener. Há dois freios
-independentes hoje (`lib/overview.ts` e `lib/carteira.ts`); mantenha os dois.
+do preço dele, porque uma pool devolveu isso ao DexScreener. Os freios hoje, e
+todos precisam ficar:
+
+- **na leitura**, `precoArbitrado` (`lib/dexscreener.ts`): a pool só vale dentro
+  de 0,8–1,25 do ÚLTIMO NEGÓCIO do perpétuo. Retrato, página de detalhe e
+  alertas on-chain usam a mesma função — até 24/09 cada um tinha a sua, e a do
+  alerta das carteiras mapeadas nem recorria ao perpétuo;
+- **no que foi gravado**, o `pp` de cada linha do histórico e a auditoria que
+  reprova linha fora da faixa;
+- **na carteira**, o `SALTO_ABSURDO` de dez vezes e `foraDoPerpetuo`, que julga
+  cada linha contra a vela de 1h daquela hora;
+- **no placar**, o mesmo salto e `data/quarentena.json` — as linhas antigas,
+  de antes do árbitro, julgadas uma vez contra as velas.
 
 E há o preço que é de OUTRA moeda, que nenhum dos dois pega. `tokens/<endereço>`
 no DexScreener devolve também as pools em que o token é o PAGAMENTO, com o
