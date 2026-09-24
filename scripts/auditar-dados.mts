@@ -290,6 +290,17 @@ if (gar) {
     (a, i) => i === 0 || gar.achados[i - 1].faixa.mediana7d <= a.faixa.mediana7d,
   );
   checa("ordenado pela mediana medida", ordenado);
+  // A conferência das em vista para frente, que a página soma e divide: um NaN
+  // aqui vira "NaN por mil" na tela, e um dia com mais altas que moeda-dias é
+  // conta errada, não mercado.
+  const adiante = (gar as { emVistaAdiante?: { dias?: Record<string, Record<string, { moedaDias: number; altas: number; quedas: number }>> } })
+    .emVistaAdiante;
+  for (const [d, g] of Object.entries(adiante?.dias ?? {})) {
+    for (const [nome, c] of Object.entries(g)) {
+      const ok = [c.moedaDias, c.altas, c.quedas].every((x) => Number.isInteger(x) && x >= 0) && c.altas + c.quedas <= c.moedaDias;
+      checa(`em vista adiante ${d} ${nome}: contagem coerente`, ok, JSON.stringify(c));
+    }
+  }
 } else console.log("  (ausente)");
 
 // ---- fluxo da carteira quente da Binance
