@@ -20,6 +20,7 @@ import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { caidas, getPanorama } from "../lib/overview";
 import { fundings } from "../lib/binance";
 import { getEmVista, presasPorPosicao } from "../lib/emvista";
+import type { EstadoFluxo } from "../lib/fluxo";
 import { ESTUDOS_DO_ROBO, estudar, type Estudo, type EstudosDoRobo } from "../lib/estudo";
 import { ATIVAS } from "../lib/watchlist";
 
@@ -127,14 +128,16 @@ const emVista = await getEmVista().catch(() => []);
 // (`presasPorPosicao`). Os dois arquivos são os que o `baixar` trouxe; sem
 // eles, nada é segurado — e o prazo de 14 dias da carteira continua valendo.
 const lerJson = <T,>(f: string) => readFile(f, "utf8").then((t) => JSON.parse(t) as T).catch(() => null);
-const [carteiraAntes, panoramaAntes] = await Promise.all([
+const [carteiraAntes, panoramaAntes, estadoFluxo] = await Promise.all([
   lerJson<{ abertas?: { symbol: string }[] }>("data/carteira.json"),
   lerJson<{ moedas?: Parameters<typeof presasPorPosicao>[2] }>(ATUAL),
+  lerJson<EstadoFluxo>("data/fluxo-binance.json"),
 ]);
 const presas = presasPorPosicao(
   (carteiraAntes?.abertas ?? []).map((p) => p.symbol),
   new Set([...ATIVAS, ...emVista].map((t) => t.symbol)),
   panoramaAntes?.moedas ?? [],
+  estadoFluxo,
 );
 if (presas.length > 0) console.log(`fora de vista, seguradas por posição aberta: ${presas.map((t) => t.symbol).join(", ")}`);
 const linhas = await getPanorama([...ATIVAS, ...emVista, ...presas]);

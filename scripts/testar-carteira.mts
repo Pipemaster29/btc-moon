@@ -999,6 +999,14 @@ console.log(`\nsaiu de vista com posição aberta`);
   const s = presas.map((t) => t.symbol).join(",");
   confere("segura a em vista que saiu com posição aberta", s === "SAIUUSDT", s || "nenhuma");
   confere("volta com contrato, rede e origem da linha anterior", presas[0]?.contract === "0xsaiu" && presas[0]?.origem === "carteira-binance", presas[0]?.contract ?? "—");
+  // Uma leitura falha tirou a moeda do retrato anterior: sem o estado do fluxo,
+  // ela não estaria mais em lugar nenhum para ser segurada.
+  const estadoSegura: EstadoFluxo = {
+    ultimoBloco: 1,
+    tokens: { "0xsumiu": { symbol: "SUMIU", decimals: 18, perp: null, perpVisto: "SUMIUUSDT", mult: 1, conferidoEm: 1 } },
+  };
+  const doEstado = presasPorPosicao(["SUMIU"], new Set(), [], estadoSegura);
+  confere("segura pelo estado do fluxo mesmo fora do retrato anterior", doEstado[0]?.contract === "0xsumiu", doEstado.map((t) => t.symbol).join(",") || "nenhuma");
 }
 
 // ------------------------------------------------ a pool de outra moeda

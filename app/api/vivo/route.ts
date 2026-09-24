@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cotacoes, fundings } from "@/lib/binance";
 import { ATIVAS } from "@/lib/watchlist";
 import { getEmVista } from "@/lib/emvista";
+import { getCarteira } from "@/lib/carteira";
 
 /**
  * O preço de agora de todas as moedas vigiadas, para a página não precisar
@@ -51,10 +52,15 @@ export const dynamic = "force-dynamic";
  * saem na escala de horas.
  */
 async function vigiadas() {
-  const emVista = await getEmVista().catch(() => []);
-  return [...ATIVAS, ...emVista]
-    .filter((t) => /USDT$/.test(t.symbol))
-    .map((t) => ({ ticker: t.symbol.replace(/USDT$/, ""), symbol: t.symbol }));
+  const [emVista, carteira] = await Promise.all([getEmVista().catch(() => []), getCarteira().catch(() => null)]);
+  const simbolos = new Set(
+    [...ATIVAS, ...emVista].filter((t) => /USDT$/.test(t.symbol)).map((t) => t.symbol),
+  );
+  // Toda posição aberta, esteja a moeda onde estiver: a que saiu de vista e
+  // ficou no retrato só por causa da posição não estava em nenhuma das duas
+  // listas, e era justo a posição com dinheiro que ficava sem preço ao vivo.
+  for (const p of carteira?.abertas ?? []) simbolos.add(`${p.symbol}USDT`);
+  return [...simbolos].map((symbol) => ({ ticker: symbol.replace(/USDT$/, ""), symbol }));
 }
 
 export interface MoedaViva {

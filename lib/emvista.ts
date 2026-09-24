@@ -289,11 +289,34 @@ export function presasPorPosicao(
   abertas: string[],
   cobertas: Set<string>,
   anteriores: { symbol: string; ticker: string; chain: string; contract: string; note?: string; origem?: string }[],
+  /**
+   * O estado do gravador de fluxo, que é a fonte primeira: ele guarda o
+   * contrato de toda moeda que passou pela carteira, saia ela do retrato ou
+   * não. Só o retrato anterior não bastava (achado na revisão do PR #6): uma
+   * leitura falha tirava a moeda do retrato, e no seguinte ela não estava mais
+   * em lugar nenhum para ser segurada.
+   */
+  estado: EstadoFluxo | null = null,
+  lista: WatchedToken[] = WATCHLIST,
 ): WatchedToken[] {
-  const tickers = new Set(abertas);
-  return anteriores
-    .filter((r) => r.origem && tickers.has(r.ticker) && !cobertas.has(r.symbol))
-    .map(daLinha);
+  const naLista = new Set(lista.map((t) => t.symbol));
+  const querem = new Set(abertas.map((t) => `${t}USDT`).filter((s) => !cobertas.has(s) && !naLista.has(s)));
+  const achadas = new Map<string, { t: WatchedToken; visto: number }>();
+  for (const [contrato, id] of Object.entries(estado?.tokens ?? {})) {
+    const perp = id?.perp ?? id?.perpVisto;
+    if (!perp || !querem.has(perp)) continue;
+    const visto = id.vistoEm ?? id.conferidoEm ?? 0;
+    const atual = achadas.get(perp);
+    if (atual && atual.visto >= visto) continue;
+    achadas.set(perp, {
+      visto,
+      t: { symbol: perp, chain: "bsc", contract: contrato, firstBlock: 0, wallets: [], note: NOTA, origem: ORIGEM },
+    });
+  }
+  for (const r of anteriores) {
+    if (r.origem && querem.has(r.symbol) && !achadas.has(r.symbol)) achadas.set(r.symbol, { visto: 0, t: daLinha(r) });
+  }
+  return [...achadas.values()].map((x) => x.t).sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
 // ------------------------------------------------------------------ o aviso
