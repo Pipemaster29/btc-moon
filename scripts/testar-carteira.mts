@@ -28,7 +28,7 @@ import {
 } from "../lib/carteira";
 import { eventosNovos, chavesDepois, textoDoEvento, JANELA_REENVIO_MS } from "../lib/avisos";
 import { escapeMarkdown } from "../lib/telegram";
-import { avisadasDepois, emVistaDe, INICIO_ADIANTE, medirAdiante, novasEmVista, textoEmVista, textoLigado } from "../lib/emvista";
+import { avisadasDepois, emVistaDe, INICIO_ADIANTE, medirAdiante, novasEmVista, presasPorPosicao, textoEmVista, textoLigado } from "../lib/emvista";
 import type { EstadoFluxo } from "../lib/fluxo";
 import { WATCHLIST } from "../lib/watchlist";
 import { depthOn, type Pair } from "../lib/dexscreener";
@@ -851,6 +851,19 @@ console.log(`\nem vista, adiante`);
   confere("o resto: sem lista, sem carteira", a.resto.moedas === 1 && a.resto.altas === 2 && a.resto.moedaDias === 5, `${a.resto.altas}/${a.resto.moedaDias}`);
   const semEstado = medirAdiante(series, null, agora);
   confere("sem estado do fluxo, ninguém é em vista", semEstado.emVista.moedas === 0, `${semEstado.resto.moedas} no resto`);
+}
+
+// --------------------------------- posição aberta segura a moeda no retrato
+console.log(`\nsaiu de vista com posição aberta`);
+{
+  const linha = (ticker: string, origem?: string) => ({
+    symbol: `${ticker}USDT`, ticker, chain: "bsc", contract: `0x${ticker.toLowerCase()}`, ...(origem ? { origem } : {}),
+  });
+  const anteriores = [linha("SAIU", "carteira-binance"), linha("AINDA", "carteira-binance"), linha("DALISTA"), linha("SEMPOSICAO", "carteira-binance")];
+  const presas = presasPorPosicao(["SAIU", "AINDA", "DALISTA"], new Set(["AINDAUSDT"]), anteriores);
+  const s = presas.map((t) => t.symbol).join(",");
+  confere("segura a em vista que saiu com posição aberta", s === "SAIUUSDT", s || "nenhuma");
+  confere("volta com contrato, rede e origem da linha anterior", presas[0]?.contract === "0xsaiu" && presas[0]?.origem === "carteira-binance", presas[0]?.contract ?? "—");
 }
 
 // ------------------------------------------------ a pool de outra moeda

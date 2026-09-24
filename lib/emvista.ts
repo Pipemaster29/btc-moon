@@ -226,6 +226,29 @@ export function daLinha(r: { symbol: string; chain: string; contract: string; no
   };
 }
 
+/**
+ * As em vista que SAÍRAM de vista com posição aberta na carteira, de volta ao
+ * retrato até a posição fechar.
+ *
+ * Sem isto, a moeda que passasse 30 dias sem tocar a carteira da Binance
+ * sumia do retrato no meio de uma posição, e o motor da carteira só tem o
+ * prazo de 14 dias para fechar moeda ausente — no último preço visto, sem
+ * stop, sem alvo e sem caminho de velas nesse meio-tempo (`rodar`, em
+ * `lib/carteira.ts`). A regra de saída é da carteira; quem decide quando a
+ * moeda deixa de ser lida não pode atropelá-la. Contrato e rede vêm da linha
+ * do retrato anterior, que é onde eles estavam da última vez.
+ */
+export function presasPorPosicao(
+  abertas: string[],
+  cobertas: Set<string>,
+  anteriores: { symbol: string; ticker: string; chain: string; contract: string; note?: string; origem?: string }[],
+): WatchedToken[] {
+  const tickers = new Set(abertas);
+  return anteriores
+    .filter((r) => r.origem && tickers.has(r.ticker) && !cobertas.has(r.symbol))
+    .map(daLinha);
+}
+
 // ------------------------------------------------------------------ o aviso
 
 /** Teto de avisos de entrada por execução, pelo mesmo motivo do da carteira. */

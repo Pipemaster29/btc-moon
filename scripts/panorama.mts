@@ -19,7 +19,7 @@
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { caidas, getPanorama } from "../lib/overview";
 import { fundings } from "../lib/binance";
-import { getEmVista } from "../lib/emvista";
+import { getEmVista, presasPorPosicao } from "../lib/emvista";
 import { ATIVAS } from "../lib/watchlist";
 
 const DIR = "data";
@@ -83,7 +83,21 @@ const t0 = Date.now();
 // de fluxo que o `dados.sh baixar` acabou de trazer. Sem ele, só a lista — e o
 // retrato diz quantas entraram, para a ausência não ficar calada.
 const emVista = await getEmVista().catch(() => []);
-const linhas = await getPanorama([...ATIVAS, ...emVista]);
+// E as que saíram de vista com posição aberta, até a posição fechar
+// (`presasPorPosicao`). Os dois arquivos são os que o `baixar` trouxe; sem
+// eles, nada é segurado — e o prazo de 14 dias da carteira continua valendo.
+const lerJson = <T,>(f: string) => readFile(f, "utf8").then((t) => JSON.parse(t) as T).catch(() => null);
+const [carteiraAntes, panoramaAntes] = await Promise.all([
+  lerJson<{ abertas?: { symbol: string }[] }>("data/carteira.json"),
+  lerJson<{ moedas?: Parameters<typeof presasPorPosicao>[2] }>(ATUAL),
+]);
+const presas = presasPorPosicao(
+  (carteiraAntes?.abertas ?? []).map((p) => p.symbol),
+  new Set([...ATIVAS, ...emVista].map((t) => t.symbol)),
+  panoramaAntes?.moedas ?? [],
+);
+if (presas.length > 0) console.log(`fora de vista, seguradas por posição aberta: ${presas.map((t) => t.symbol).join(", ")}`);
+const linhas = await getPanorama([...ATIVAS, ...emVista, ...presas]);
 // Uma requisição para os 895 perpétuos, e não uma por moeda.
 const taxas = await fundings();
 const levou = (Date.now() - t0) / 1000;
