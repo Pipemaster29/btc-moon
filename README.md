@@ -329,15 +329,34 @@ A regra nova ataca as três e **não mexe em nada do que o painel diz**. Medida
 sobre as mesmas emissões e o mesmo caminho de velas, e — a parte que importa —
 em cada METADE da janela separadamente, começando do zero:
 
-| | inteira | 1ª metade | 2ª metade | queda máx | sem a HEI |
+| | inteira | 1ª metade | 2ª metade | queda máx | sem a melhor moeda |
 |---|---|---|---|---|---|
-| anterior | −11,3% | −10,4% | +2,5% | −17,2% | −19,8% |
-| **publicada** | **+14,8%** | **+5,9%** | **+6,3%** | **−5,8%** | **−4,3%** |
+| anterior | −14,1% | −15,1% | +3,8% | −18,7% | −19,3% (sem HEI) |
+| **publicada** | **−2,1%** | **−6,2%** | **+8,1%** | **−11,0%** | **−3,9%** (sem BEAT) |
 
-A última coluna é a honesta: a HEI bateu o alvo três vezes e respondeu por
-US$ 191 do resultado. **Sem ela, a carteira nova ainda perde** — só que perde
-−4,3% onde a anterior perderia −19,8%. A melhora da gestão é robusta; lucro
-continua não demonstrado, que é o que o placar diz desde agosto.
+**Esta tabela foi refeita em 24/09 ao meio-dia, e a de 23/09 estava errada.** Ela dava à
+publicada +14,8%, e a HEI respondia por US$ 191 disso com três saídas no alvo
+(+46%, +64% e +66% de preço). Os três alvos eram preço de outra coisa: a pool
+rasa da HEI devolvia de vez em quando 1,6 a 2 vezes o preço do perpétuo, o
+retrato alternava entre os dois, e o perpétuo nunca passou de US$ 0,155 em
+nenhuma das três janelas. O motor já recusava o CAMINHO de velas nesses
+retratos, por ser "outra moeda" — e em seguida fechava a posição no alvo com o
+mesmo preço. Hoje cada preço de retrato é conferido contra a vela de 1h do
+perpétuo daquela hora (`foraDoPerpetuo`, em `lib/carteira.ts`): saem 211
+linhas, todas da HEI, nenhuma de outra moeda.
+
+E um stop virava liquidação. Dentro da vela de 1h o motor testava a liquidação
+antes do stop, e a vela que seguia caindo depois do stop custava a margem
+inteira no lugar de 75% dela. Mas o preço que desce cruza primeiro o nível mais
+perto — o stop, em −25%, antes da liquidação, em −33% —, e a corretora só chega
+antes quando a vela ABRE além dela. Aconteceu uma vez, na HEI de 09/09 (US$ 26,86
+perdidos onde o stop perderia US$ 20,38); sobre os mesmos dados, −2,8% viraram
+−2,1%.
+
+O que sobrevive é a conclusão sobre a gestão: com as mesmas calls, a publicada
+perde −2,1% onde a anterior perde −14,1%, e desligar qualquer peça piora (a
+tabela do `npm run carteira`). **Lucro continua não demonstrado** — e agora nem
+o número da tela sugere o contrário.
 
 **O que foi testado e não passou**, e é metade da escolha:
 
@@ -346,6 +365,8 @@ continua não demonstrado, que é o que o placar diz desde agosto.
   +21,6%, com a mesma queda máxima — e era quase tudo a HEI: stop curto é
   posição maior, e a posição maior caiu na moeda que bateu o alvo três vezes.
   Tirando as duas moedas que mais ganharam, os dois PERDEM para o stop de 25%.
+  Refeito em 24/09, sem os alvos falsos da HEI: stop de 20% em −3,1% contra
+  −2,1% do de 25%. A decisão se mantém.
 - **Stop móvel**, de 8/12% a 20/15%: as vencedoras andam pouco (+3,9% de
   excursão mediana) e saem pelo painel antes; o rastro só as encurtava.
 - **Mais tamanho**, 1,5x e 2x o orçamento: a queda máxima dobra e o teto passa a
@@ -584,6 +605,16 @@ dinheiro. A carteira fictícia opera as calls delas como as da lista, com a
 origem gravada em cada linha do histórico, e a tela separa o resultado das duas.
 É ela que vai dizer se as em vista se comportam diferente.
 
+**E a tese é conferida para frente.** A medição acima olha o passado de moedas
+escolhidas pelo fluxo de cinco dias; o que ela prevê é que elas continuem
+bombando mais DAQUI EM DIANTE. O `npm run garimpar` já baixa as velas diárias da
+praça inteira, e com elas conta, desde 24/09, os dias de alta ≥25% de toda moeda
+que esteve em vista — a partir do dia seguinte à primeira passagem, porque o
+dia da chegada costuma ser o pump que a trouxe — contra o resto da praça. A
+página mostra os dois números com a amostra ao lado; a comparação começa a
+valer perto de mil moeda-dias em vista (~25 dias com 41 moedas: a 16,7 contra
+4,4 por mil, ~17 dias de alta contra ~4).
+
 **E elas trouxeram à tona um defeito que estava em todas.** O endereço de um
 token no DexScreener devolve também as pools em que ele é a moeda de PAGAMENTO,
 e nelas o preço é o da outra moeda. A AIOT entrou lendo o preço da AIT — 0,01846
@@ -734,6 +765,7 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 | comando | o que faz |
 | --- | --- |
 | `npm run placar` | lê o histórico de emissões e mede se o painel acertou |
+| `npm run quarentena` | julga as linhas do histórico contra as velas de 1h do perpétuo e grava em `data/quarentena.json` as que não são o preço daquela hora, para o placar pular (à mão; o retrato já não grava linha assim) |
 | `npm run carteira` | mil dólares de mentira seguindo as calls, e o que sobrou |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
@@ -744,6 +776,7 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 | `npm run dados` | traz para `data/` os arquivos vivos do robô, que moram na branch `dados` |
 | `npm run fluxo-binance` | grava o fluxo da carteira quente da Binance desde a última rodada, separando varejo na DEX de depósito/saque, e refaz o resumo que a tela lê (`-- --resumo` só o resumo) |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
+| `npm run estudar` | o estudo de cada moeda — memória, volatilidade, assimetria — em `data/estudos.json` (`-- --em-vista` só as em vista; as que chegam depois o próprio retrato estuda) |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |
 | `npm run monitor` | um ciclo de vigilância, com envio ao Telegram |

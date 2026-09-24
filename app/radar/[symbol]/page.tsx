@@ -10,7 +10,19 @@ import { textoVeredito, veredito, vestingDe, type Veredito, type Vesting } from 
 import { getRadar, type AlertLevel, type RadarSnapshot } from "@/lib/radar";
 import { getPositioning } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
-import { getEmVista } from "@/lib/emvista";
+import { daLinha, getEmVista } from "@/lib/emvista";
+import { lerGuardado } from "@/lib/guardado";
+import type { PanoramaRow } from "@/lib/overview";
+
+async function doRetrato(casa: (t: { symbol: string }) => boolean) {
+  const g = await lerGuardado<{ moedas: PanoramaRow[] }>(
+    "panorama.json",
+    (d) => (Array.isArray((d as { moedas?: unknown })?.moedas) ? (d as { moedas: PanoramaRow[] }) : null),
+    120,
+  ).catch(() => null);
+  const linha = g?.dado.moedas.find((m) => m.origem && casa(m));
+  return linha ? daLinha(linha) : undefined;
+}
 
 /**
  * O painel é leitura ao vivo da cadeia, então revalida de cinco em cinco
@@ -645,7 +657,13 @@ export default async function Page({
   const casa = (t: { symbol: string }) => t.symbol === alvo || t.symbol === `${alvo}USDT`;
   // A lista primeiro; as em vista só quando ela não tem — a tabela linka as
   // duas, e sem isto o link de uma moeda que entrou sozinha dava 404.
-  const token = WATCHLIST.find(casa) ?? (await getEmVista().catch(() => [])).find(casa);
+  // E, por último, a linha do retrato: a moeda que saiu de vista com posição
+  // aberta continua na tabela (`presasPorPosicao`) sem estar em nenhuma das
+  // duas listas, e o link dela dava 404 (achado na revisão do PR #6).
+  const token =
+    WATCHLIST.find(casa) ??
+    (await getEmVista().catch(() => [])).find(casa) ??
+    (await doRetrato(casa));
   if (!token) notFound();
 
   const [snapshot, perp] = await Promise.all([

@@ -20,8 +20,9 @@ import {
   type Passo,
   type Regras,
 } from "../lib/carteira";
-import { velas } from "../lib/binance";
+import { intervalosDeFunding, velas, velasDesde } from "../lib/binance";
 import { ATIVAS } from "../lib/watchlist";
+import { ARQUIVO_HISTORICO } from "../lib/historico";
 import { chavesDepois, eventosNovos, MAX_POR_RETRATO, textoDoEvento, type Evento } from "../lib/avisos";
 import { escapeMarkdown, sendTelegram, telegramFromEnv } from "../lib/telegram";
 
@@ -38,7 +39,7 @@ import { escapeMarkdown, sendTelegram, telegramFromEnv } from "../lib/telegram";
 const COMECO = Date.parse("2026-09-02T20:00:00Z");
 
 const dir = "data";
-const arquivos = (await readdir(dir)).filter((f) => /^historico-\d{4}-\d{2}\.jsonl$/.test(f));
+const arquivos = (await readdir(dir)).filter((f) => ARQUIVO_HISTORICO.test(f));
 
 const emissoes: Emissao[] = [];
 for (const f of arquivos.sort()) {
@@ -67,9 +68,9 @@ for (const f of arquivos.sort()) {
  * nada. O conjunto abaixo é o limite superior do que a carteira pode ter
  * carregado, então ele cobre tudo sem buscar o que não serve.
  *
- * 1500 velas de uma hora são 62 dias. Quando a carteira passar disso, o pedaço
- * mais antigo simplesmente volta a ser testado só nas pontas — que é o
- * comportamento anterior, não um erro novo.
+ * As velas vêm desde o começo da carteira, em páginas de 1.500 (62 dias): além
+ * do caminho, elas julgam se o preço de cada retrato é o do perpétuo — ver o
+ * laço de busca abaixo.
  */
 const porTicker = new Map(ATIVAS.map((t) => [t.symbol.replace(/USDT$/, ""), t.symbol]));
 // As em vista também viram posição (`lib/emvista.ts`), e sem caminho de velas o
@@ -91,13 +92,49 @@ const candidatas = new Set(
     .map((e) => e.s),
 );
 
+/**
+ * DE QUANTAS EM QUANTAS HORAS CADA MOEDA COBRA O FINANCIAMENTO.
+ *
+ * O motor cobrava toda taxa como se fosse de oito horas, e 39 das 40 moedas que
+ * a carteira já negociou cobram a cada quatro (`intervalosDeFunding`). Sem
+ * resposta da Binance, vale o último período lido, que viaja no próprio
+ * `carteira.json` — cair no padrão de 8 h faria o custo de carregar dobrar e
+ * desdobrar de um retrato para o outro, e com ele o tamanho das posições.
+ */
+const jaGravada = await readFile("data/carteira.json", "utf8")
+  .then((t) => JSON.parse(t) as Carteira)
+  .catch(() => null);
+const intervalos = await intervalosDeFunding();
+const horasFunding: Record<string, number> = {};
+for (const s of candidatas) {
+  const h = intervalos ? (intervalos.get(porTicker.get(s)!) ?? 8) : jaGravada?.horasFunding?.[s];
+  if (h !== undefined && Number.isFinite(h) && h > 0) horasFunding[s] = h;
+}
+for (const e of emissoes) {
+  const h = horasFunding[e.s];
+  if (h !== undefined) e.fh = h;
+}
+
 const caminho = new Map<string, Passo[]>();
 let semVelas = 0;
+let comVelasParciais = 0;
 await Promise.all(
   [...candidatas].map(async (ticker) => {
     const symbol = porTicker.get(ticker);
     if (!symbol) return;
-    const v = await velas(symbol, "1h", 1500).catch(() => []);
+    // DESDE O COMEÇO DA CARTEIRA, e não as 1.500 mais recentes. Eram 62 dias,
+    // e o comentário lá em cima dizia que passar disso só devolvia o pedaço
+    // velho ao teste de ponta. Deixou de ser inofensivo: as velas agora também
+    // julgam se o preço do retrato é o do perpétuo (`foraDoPerpetuo`), e sem
+    // elas os preços de pool alheia de setembro — os que deram à HEI três
+    // "alvos" que o perpétuo nunca tocou — voltariam a valer quando a carteira
+    // fizesse 62 dias. De trás para frente (`velasDesde`): se faltar alguma
+    // página, falta a mais velha, nunca as de agora — e a contagem diz quantas.
+    const { velas: v, parcial } = await velasDesde(symbol, "1h", COMECO - 3_600_000).catch(() => ({
+      velas: [] as Awaited<ReturnType<typeof velas>>,
+      parcial: true,
+    }));
+    if (parcial && v.length > 0) comVelasParciais++;
     // Lista vazia é "não consegui", não "não houve movimento" — e as duas não
     // podem terminar no mesmo lugar. Sem velas, esta moeda cai no teste de ponta
     // de sempre, e a contagem abaixo diz quantas ficaram assim.
@@ -129,7 +166,7 @@ await Promise.all(
 
 // As duas leituras, para a diferença ficar medida e não presumida. A de pontas é
 // o que a carteira era; a de caminho é o que ela passa a ser.
-const semCaminho = rodar(emissoes, COMECO);
+const semCaminho = rodar(emissoes, COMECO, caminho, REGRAS, { soPontas: true });
 const c = rodar(emissoes, COMECO, caminho);
 
 const usd = (v: number) => `US$ ${v.toFixed(2)}`;
@@ -139,12 +176,25 @@ console.log(`\ncarteira desde ${new Date(COMECO).toISOString().slice(0, 16).repl
 console.log(`emissões lidas: ${emissoes.length}`);
 console.log(
   `caminho: ${caminho.size} de ${candidatas.size} moedas com vela de 1h` +
-    (semVelas > 0 ? ` · ${semVelas} sem série, testadas só nas pontas` : ""),
+    (semVelas > 0 ? ` · ${semVelas} sem série, testadas só nas pontas` : "") +
+    (comVelasParciais > 0 ? ` · ${comVelasParciais} com série incompleta no começo` : ""),
 );
+{
+  const porPeriodo = new Map<number, number>();
+  for (const h of Object.values(horasFunding)) porPeriodo.set(h, (porPeriodo.get(h) ?? 0) + 1);
+  const resumo = [...porPeriodo.entries()].sort((a, b) => a[0] - b[0]).map(([h, n]) => `${n} de ${h} h`).join(", ");
+  console.log(
+    `financiamento: ${resumo || "nenhum período conhecido"}` +
+      (intervalos ? "" : jaGravada?.horasFunding ? " · a Binance não respondeu, valem os do retrato anterior" : " · sem período nenhum: cobrado de 8 em 8 h"),
+  );
+}
 console.log(
   `só nas pontas o patrimônio seria ${usd(semCaminho.patrimonio)} ` +
     `com ${semCaminho.encerradas} encerrada(s) — a diferença é o que o intervalo escondia\n`,
 );
+if (c.foraDoPerpetuo) {
+  console.log(`${c.foraDoPerpetuo} linha(s) do histórico fora do perpétuo daquela hora — não abrem, não marcam, não fecham\n`);
+}
 console.log(`patrimônio   ${usd(c.patrimonio)}  (${pct(c.retorno)} sobre ${usd(CAPITAL_INICIAL)})`);
 console.log(`caixa        ${usd(c.caixa)}`);
 console.log(`exposto      ${usd(c.patrimonio - c.caixa)} em ${c.abertas.length} posições`);
@@ -304,9 +354,7 @@ if (c.encerradas > 0) {
  * como enviado: a memória só registra o que de fato chegou, para o retrato
  * seguinte tentar de novo o que o Telegram recusou.
  */
-const antes = await readFile("data/carteira.json", "utf8")
-  .then((t) => JSON.parse(t) as Carteira)
-  .catch(() => null);
+const antes = jaGravada;
 const eventos = eventosNovos(antes, c);
 const telegram = telegramFromEnv();
 let avisos = antes?.avisos;
@@ -360,6 +408,7 @@ const gravada: Carteira = {
   ...c,
   comparacao: { meio: MEIO, linhas, anterior: anterior?.curva ?? [] },
   ...(deEmVista.size ? { emVista: [...deEmVista].sort() } : {}),
+  ...(Object.keys(horasFunding).length ? { horasFunding } : {}),
   ...(avisos ? { avisos } : {}),
 };
 

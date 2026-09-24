@@ -81,7 +81,8 @@
  * peneiramento automático tem como evitá-lo.
  */
 
-import { velas } from "./binance";
+import { intervalosDeFunding, velas, type Vela } from "./binance";
+import type { Adiante } from "./emvista";
 import { ATIVAS, WATCHLIST } from "./watchlist";
 import { lerGuardado } from "./guardado";
 
@@ -181,7 +182,7 @@ export interface Achado {
    * motivo de amostra.
    */
   oiSobreMcap: number | null;
-  /** Taxa de financiamento por 8h. Positiva, o comprado paga. */
+  /** Taxa de financiamento POR PERÍODO. Positiva, o comprado paga. */
   funding: number | null;
   /** Dias desde que a Binance listou o perpétuo. */
   idadeDias: number | null;
@@ -205,6 +206,11 @@ export interface Garimpo {
   /** Quantos ficaram sem série de velas — "não consegui", não "não achou". */
   semSerie: number;
   achados: Achado[];
+  /**
+   * A tese das em vista conferida para frente (`medirAdiante`, `lib/emvista.ts`).
+   * Opcional porque os arquivos anteriores a 24/09 não têm.
+   */
+  emVistaAdiante?: Adiante;
 }
 
 interface RawSymbol {
@@ -271,14 +277,20 @@ export const VOLUME_MINIMO = 500_000;
  * existe em nenhum endereço agregado, e a queda desde o pico da vida também
  * não.
  */
-export async function garimpar(): Promise<Garimpo> {
-  const [lista, tickers, premios] = await Promise.all([
+/**
+ * `series`, quando dado, recebe as velas diárias que a peneira já baixou — de
+ * graça para a verificação das em vista, que precisa da praça inteira e não
+ * pode pagar outra requisição por moeda.
+ */
+export async function garimpar(series?: Map<string, Vela[]>): Promise<Garimpo> {
+  const [lista, tickers, premios, intervalos] = await Promise.all([
     universo(),
     pegarJson<{ symbol: string; lastPrice: string; priceChangePercent: string; quoteVolume: string }[]>(
       "/fapi/v1/ticker/24hr",
       60,
     ),
     pegarJson<{ symbol: string; lastFundingRate: string }[]>("/fapi/v1/premiumIndex", 300),
+    intervalosDeFunding(),
   ]);
 
   const porTicker = new Map((tickers ?? []).map((t) => [t.symbol, t]));
@@ -311,6 +323,7 @@ export async function garimpar(): Promise<Garimpo> {
       if (!(preco > 0) || !Number.isFinite(alta24h)) return;
 
       const v = await velas(s.symbol, "1d", 30).catch(() => []);
+      if (v.length > 0) series?.set(s.symbol, v);
       // Lista vazia é "NÃO CONSEGUI", e só isso conta como falha de leitura.
       if (v.length === 0) {
         semSerie++;
@@ -377,7 +390,11 @@ export async function garimpar(): Promise<Garimpo> {
         porque.push(`listada há ${Math.round(idadeDias)} dias`);
       }
       if (funding != null && funding >= 0.0005) {
-        porque.push(`comprado paga ${(funding * 100).toFixed(3)}% por 8h para ficar`);
+        // O período da moeda, não "8h": das do painel, 110 de 113 cobram de 4
+        // em 4 horas, e o rótulo antigo lia metade do custo.
+        // Sem a lista de períodos, "por período" — e não 8 h de palpite.
+        const periodo = intervalos ? `a cada ${intervalos.get(s.symbol) ?? 8} h` : "por período";
+        porque.push(`comprado paga ${(funding * 100).toFixed(3)}% ${periodo} para ficar`);
       }
       // "Na máxima DA SÉRIE" e não "dos 30 dias": numa moeda de quatro velas a
       // série tem quatro dias, e prometer trinta seria mentir no rótulo.

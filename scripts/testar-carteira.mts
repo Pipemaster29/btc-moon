@@ -28,10 +28,11 @@ import {
 } from "../lib/carteira";
 import { eventosNovos, chavesDepois, textoDoEvento, JANELA_REENVIO_MS } from "../lib/avisos";
 import { escapeMarkdown } from "../lib/telegram";
-import { avisadasDepois, emVistaDe, novasEmVista, textoEmVista, textoLigado } from "../lib/emvista";
-import type { EstadoFluxo } from "../lib/fluxo";
+import { avisadasDepois, emVistaDe, INICIO_ADIANTE, medirAdiante, novasEmVista, presasPorPosicao, somarAdiante, textoEmVista, textoLigado } from "../lib/emvista";
+import { perpetuosCandidatos, type EstadoFluxo } from "../lib/fluxo";
 import { WATCHLIST } from "../lib/watchlist";
-import { depthOn, type Pair } from "../lib/dexscreener";
+import { depthOn, precoArbitrado, unidadesDoContrato, type Pair } from "../lib/dexscreener";
+import { ARQUIVO_HISTORICO, arquivoDoHistorico } from "../lib/historico";
 
 const T0 = Date.parse("2026-01-01T00:00:00Z") / 1000;
 const h = (n: number) => T0 + n * 3600;
@@ -294,6 +295,17 @@ console.log("\n--- o caminho entre os retratos, com velas ---");
     `${comLiquidacao.fechadas[0]?.motivo} a ${((comLiquidacao.fechadas[0]?.retorno ?? 0) * 100).toFixed(0)}%`,
   );
 
+  // Mergulho CONTÍNUO até além da liquidação: a vela abre na entrada e desce
+  // a 0,55. O preço cruzou o stop (0,75) antes da liquidação (~0,67), e a ordem
+  // parada lá executa primeiro — liquidar aqui era o motor até 24/09.
+  const mergulhoFundo: Passo[] = mergulho.map((v, i) => (i === 2 ? { ...v, abertura: 1, minima: 0.55 } : v));
+  const semSaltar = rodar(emissoes, T0 * 1000, new Map([["X", mergulhoFundo]]));
+  confere(
+    "mergulho contínuo além da liquidação: o stop, que está antes, executa",
+    semSaltar.fechadas[0]?.motivo === "stop" && Math.abs((semSaltar.fechadas[0]?.precoSaida ?? 0) - (1 - STOP)) < 1e-9,
+    `${semSaltar.fechadas[0]?.motivo} a ${(semSaltar.fechadas[0]?.precoSaida ?? 0).toFixed(4)}`,
+  );
+
   // A ÂNCORA: as velas vêm do perpétuo e o preço do retrato prefere a pool. Um
   // desalinhamento pequeno é base de mercado e tem de ser CORRIGIDO, não
   // recusado — senão a moeda com pool viva perderia o caminho justamente por
@@ -357,6 +369,119 @@ console.log("\n--- o caminho entre os retratos, com velas ---");
     semHeranca.encerradas === 0,
     `${semHeranca.encerradas} saída(s)`,
   );
+}
+
+console.log("\n--- o preço do retrato tem de ser o do perpétuo daquela hora ---");
+{
+  // A FORMA EXATA DA HEI. A pool rasa devolvia de vez em quando 1,6 a 2 vezes o
+  // preço do perpétuo, e o retrato alternava entre os dois. Abaixo do salto de
+  // dez vezes, o motor aceitava: `ancora` recusava o caminho por ser "outra
+  // moeda", e o teste de ponta usava o mesmo preço para fechar no alvo —
+  // US$ 142 de lucro que o perpétuo nunca tocou.
+  const plana: Passo[] = [1, 2, 3, 4, 5, 6].map((i) => ({
+    abriuEm: h(i - 1) * 1000,
+    fechouEm: h(i) * 1000,
+    abertura: 1,
+    maxima: 1.02,
+    minima: 0.98,
+    fechamento: 1,
+  }));
+  const hei: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    { t: h(2), s: "X", preco: 1.7, vies: "long", forca: 3, fund: 0 },
+    { t: h(4), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+  ];
+  const semJuiz = rodar(hei, T0 * 1000);
+  confere("sem velas: o preço alheio fecha no alvo (o defeito)", semJuiz.fechadas[0]?.motivo === "alvo", `${semJuiz.fechadas[0]?.motivo ?? "nada"}`);
+  const comJuiz = rodar(hei, T0 * 1000, new Map([["X", plana]]));
+  confere("com velas: o preço alheio não fecha nada", comJuiz.encerradas === 0 && comJuiz.abertas.length === 1, `${comJuiz.encerradas} saída(s)`);
+  confere("e é contado", comJuiz.foraDoPerpetuo === 1, `${comJuiz.foraDoPerpetuo ?? 0} linha(s)`);
+  // A outra ponta: o mesmo preço alheio também não ABRE posição.
+  const abre = rodar([{ t: h(1), s: "X", preco: 1.7, vies: "long", forca: 3, fund: 0 }], T0 * 1000, new Map([["X", plana]]));
+  confere("o preço alheio não abre posição", abre.abertas.length === 0, `${abre.abertas.length} aberta(s)`);
+  // E um movimento de verdade, forte, dentro da hora, passa: o preço está
+  // entre a mínima e a máxima da vela, que é o que o juiz olha.
+  const pump: Passo[] = plana.map((v, i) => (i === 1 ? { ...v, maxima: 1.9, fechamento: 1.8 } : v));
+  const real = rodar([{ t: h(1) + 1800, s: "X", preco: 1.85, vies: "long", forca: 3, fund: 0 }], T0 * 1000, new Map([["X", pump]]));
+  confere("pump de verdade dentro da hora passa", real.abertas.length === 1 && !real.foraDoPerpetuo, `${real.abertas.length} aberta(s)`);
+  // O preço da série do perpétuo pode vir com uma hora de atraso: na TAKE de
+  // 23/09 o retrato das 06:00 levava o fechamento das 05:00, abaixo da mínima
+  // das 06:00. Cabe na vela anterior, então passa.
+  const disparada: Passo[] = plana.map((v, i) => (i === 2 ? { ...v, abertura: 1.4, minima: 1.4, maxima: 1.6, fechamento: 1.5 } : v));
+  const atrasado = rodar([{ t: h(2) + 60, s: "X", preco: 1, vies: "long", forca: 3, fund: 0 }], T0 * 1000, new Map([["X", disparada]]));
+  confere("preço de uma hora atrás passa", atrasado.abertas.length === 1 && !atrasado.foraDoPerpetuo, `${atrasado.abertas.length} aberta(s)`);
+
+  // A ÂNCORA PELA BASE MEDIDA. Moeda sem pool: o retrato grava o último negócio
+  // (desde 24/09). A posição estopou dentro da vela de h1 e, 40 minutos depois
+  // de h2, a moeda já disparava a 1,4. Contra o fechamento da última vela (1,0),
+  // a razão é 1,4: âncora recusada, caminho descartado, e o stop que aconteceu
+  // não acontece. Com `pp` no retrato a base é 1 e o caminho vale.
+  const estopouEDisparou: Passo[] = [
+    { abriuEm: h(0) * 1000, fechouEm: h(1) * 1000, abertura: 1, maxima: 1.02, minima: 0.98, fechamento: 1 },
+    { abriuEm: h(1) * 1000, fechouEm: h(2) * 1000, abertura: 1, maxima: 1.02, minima: 0.7, fechamento: 1 },
+    { abriuEm: h(2) * 1000, fechouEm: h(3) * 1000, abertura: 1, maxima: 1.45, minima: 1, fechamento: 1.4 },
+  ];
+  const semBase: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    { t: h(2) + 2400, s: "X", preco: 1.4, vies: "long", forca: 3, fund: 0 },
+  ];
+  const comBase: Emissao[] = semBase.map((e) => ({ ...e, pp: e.preco }));
+  const cego = rodar(semBase, T0 * 1000, new Map([["X", estopouEDisparou]]));
+  confere("sem a base: pump depois do stop apaga o stop (o defeito)", cego.encerradas === 0, `${cego.encerradas} saída(s)`);
+  const ancoradoPelaBase = rodar(comBase, T0 * 1000, new Map([["X", estopouEDisparou]]));
+  confere(
+    "com a base medida: o stop dentro da vela executa",
+    ancoradoPelaBase.fechadas[0]?.motivo === "stop" && Math.abs((ancoradoPelaBase.fechadas[0]?.precoSaida ?? 0) - (1 - STOP)) < 1e-9,
+    `${ancoradoPelaBase.fechadas[0]?.motivo ?? "nada"} a ${(ancoradoPelaBase.fechadas[0]?.precoSaida ?? 0).toFixed(4)}`,
+  );
+}
+
+console.log("\n--- linha descartada não apaga o caminho; a régua do salto vence ---");
+{
+  // Achado na revisão do PR #6: a linha descartada pelo juiz deixava a posição
+  // "sem preço", e o financiamento cobrado ali andava o relógio dela — o
+  // retrato seguinte pulava as velas do intervalo e o stop que aconteceu nelas
+  // sumia. Long a 1,0 em h0, vela de h1 com mínima 0,7 (stop em 0,75), linha
+  // de pool alheia a 1,7 em h2 e um minuto, linha boa a 1,0 em h4.
+  const velas: Passo[] = [0, 1, 2, 3, 4, 5].map((i) => ({
+    abriuEm: h(i) * 1000,
+    fechouEm: h(i + 1) * 1000,
+    abertura: 1,
+    maxima: 1.02,
+    minima: i === 1 ? 0.7 : 0.98,
+    fechamento: 1,
+  }));
+  const es: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    { t: h(2) + 60, s: "X", preco: 1.7, vies: "long", forca: 3, fund: 0 },
+    { t: h(4), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+  ];
+  const c = rodar(es, T0 * 1000, new Map([["X", velas]]));
+  confere(
+    "stop dentro da vela sobrevive à linha descartada",
+    c.fechadas[0]?.motivo === "stop" && Math.abs((c.fechadas[0]?.precoSaida ?? 0) - (1 - STOP)) < 1e-9,
+    `${c.fechadas[0]?.motivo ?? "nada"}, ${c.foraDoPerpetuo ?? 0} descartada`,
+  );
+
+  // A régua do salto de dez vezes vence em um dia: a moeda que volta depois
+  // de um dia sem leitura, 95% abaixo, é mercado; a mesma queda em dez
+  // minutos é lixo.
+  const volta = rodar(
+    [
+      { t: h(0), s: "Y", preco: 1, vies: "long", forca: 3, fund: 0 },
+      { t: h(30), s: "Y", preco: 0.05, vies: "long", forca: 3, fund: 0 },
+    ],
+    T0 * 1000,
+  );
+  confere("depois de um dia fora, 95% abaixo é preço", volta.encerradas === 1, `${volta.fechadas[0]?.motivo ?? "nada"}`);
+  const lixo = rodar(
+    [
+      { t: h(0), s: "Y", preco: 1, vies: "long", forca: 3, fund: 0 },
+      { t: h(0) + 600, s: "Y", preco: 0.05, vies: "long", forca: 3, fund: 0 },
+    ],
+    T0 * 1000,
+  );
+  confere("em dez minutos, 95% abaixo é lixo", lixo.encerradas === 0 && lixo.abertas.length === 1, `${lixo.encerradas} saída(s)`);
 }
 
 console.log("\n--- quem entra quando o orçamento de risco acaba ---");
@@ -459,6 +584,31 @@ console.log("\n--- a marcação ao vivo, que roda no navegador ---");
     "24h paradas cobram o financiamento das 24h",
     Math.abs((comFunding.abertas[0]?.funding ?? 0) - esperado) < 1e-9,
     `${((comFunding.abertas[0]?.funding ?? 0) * 100).toFixed(2)}% da margem`,
+  );
+
+  // O PERÍODO DA MOEDA: 39 das 40 negociadas cobram de 4 em 4 horas, e o motor
+  // dividia tudo por 8. A posição guarda o período, e a marcação do navegador
+  // cobra com ele sem pedir nada — seis cobranças no dia, não três.
+  const deQuatro = rodar([{ t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0.001, fh: 4 }], T0 * 1000);
+  const quatro = remarcar(deQuatro, new Map([["X", 1]]), agora, new Map([["X", 0.001]]));
+  confere(
+    "moeda de 4 h: o dobro das cobranças no mesmo dia",
+    deQuatro.abertas[0]?.horasFunding === 4 && Math.abs((quatro.abertas[0]?.funding ?? 0) - 2 * esperado) < 1e-9,
+    `${((quatro.abertas[0]?.funding ?? 0) * 100).toFixed(2)}% da margem`,
+  );
+  // E no motor, entre dois retratos: 48 h depois da abertura, sem velas.
+  const noMotor = (fh?: number) =>
+    rodar(
+      [
+        { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0.001, ...(fh ? { fh } : {}) },
+        { t: h(48), s: "X", preco: 1, vies: "long", forca: 3, fund: 0.001, ...(fh ? { fh } : {}) },
+      ],
+      T0 * 1000,
+    ).abertas[0]?.funding ?? 0;
+  confere(
+    "no motor também: 48 h de 4 h custam o dobro das de 8 h",
+    Math.abs(noMotor(4) - 2 * noMotor()) < 1e-12 && noMotor() > 0,
+    `${(noMotor(4) * 100).toFixed(2)}% contra ${(noMotor() * 100).toFixed(2)}%`,
   );
 
   // A margem isolada é o teto da perda. Sem a trava, `valor * (1 + retorno)`
@@ -805,6 +955,97 @@ console.log(`\nmoedas em vista`);
   }
 }
 
+// ------------------------------------------ a tese das em vista, adiante
+//
+// A conferência só mede alguma coisa se não contar o que trouxe a moeda: o dia
+// da chegada, o dia aberto, e quem saiu de vista não pode sumir da conta.
+console.log(`\nem vista, adiante`);
+{
+  const DIA = 86_400_000;
+  const d0 = INICIO_ADIANTE;
+  // Série diária: `altas` são os índices (a partir de 1) com +30% no dia.
+  const serie = (dias: number, altas: number[]) => {
+    const v: { time: number; close: number }[] = [];
+    let c = 1;
+    for (let i = 0; i < dias; i++) {
+      if (altas.includes(i)) c *= 1.3;
+      v.push({ time: (d0 - 2 * DIA + i * DIA) / 1000, close: c });
+    }
+    return v;
+  };
+  const agora = d0 + 5 * DIA + 3_600_000; // o dia 5 está aberto
+  const id = (perp: string, primeiroVisto: number | undefined, vistoEm: number) => ({
+    symbol: perp, decimals: 18, perp, mult: 1, conferidoEm: vistoEm, vistoEm, primeiroVisto,
+  });
+  const estado: EstadoFluxo = {
+    ultimoBloco: 1,
+    tokens: {
+      "0xa": id("ANTESUSDT", d0 - 3 * DIA, d0 + DIA), // já estava: conta desde o início
+      "0xb": id("CHEGOUUSDT", d0 + 2 * DIA + 5_000, d0 + 2 * DIA + 5_000), // chegou no dia 2
+      "0xc": id("SAIUUSDT", d0 - 20 * DIA, d0 - 20 * DIA), // saiu de vista no meio: fica
+      "0xd": id(WATCHLIST[0].symbol, d0, d0), // na lista: fora dos dois grupos
+    },
+  };
+  const series = new Map([
+    ["ANTESUSDT", serie(10, [1, 3])], // dia 1 é antes do início; dia 3 (= d0+1) conta
+    ["CHEGOUUSDT", serie(10, [4, 5])], // dia 4 = d0+2, a chegada; dia 5 = d0+3, conta
+    ["SAIUUSDT", serie(10, [])],
+    ["RESTOUSDT", serie(10, [2, 6, 7])], // d0 conta, d0+4 conta, d0+5 aberto
+    [WATCHLIST[0].symbol, serie(10, [3, 4, 5])],
+  ]);
+  const bruto = medirAdiante(series, estado, agora);
+  const a = somarAdiante(bruto);
+  confere("antes do início não conta; depois conta", a.emVista.altas === 2, `${a.emVista.altas} altas`);
+  // ANTES: d0..d0+4 = 5 dias; CHEGOU: d0+3..d0+4 = 2; SAIU: 5.
+  confere("dia da chegada e dia aberto ficam fora", a.emVista.moedaDias === 12, `${a.emVista.moedaDias} moeda-dias`);
+  confere("quem saiu de vista continua no grupo", bruto.moedas.emVista === 3, `${bruto.moedas.emVista} moedas`);
+  confere("o resto: sem lista, sem carteira", bruto.moedas.resto === 1 && a.resto.altas === 2 && a.resto.moedaDias === 5, `${a.resto.altas}/${a.resto.moedaDias}`);
+  const semEstado = medirAdiante(series, null, agora);
+  confere("sem estado do fluxo, ninguém é em vista", semEstado.moedas.emVista === 0, `${semEstado.moedas.resto} no resto`);
+
+  // ACUMULADO: 40 dias depois, as velas (30) já não cobrem o começo, e a conta
+  // tem de continuar sendo "desde o início" e não virar janela móvel.
+  const depois = d0 + 40 * DIA + 3_600_000;
+  const recentes = new Map([["RESTOUSDT", serie(42, []).slice(-30)]]);
+  const b = medirAdiante(recentes, estado, depois, WATCHLIST, bruto);
+  const somaB = somarAdiante(b);
+  confere("os dias fora das velas ficam do arquivo anterior", somaB.resto.altas === 2 && b.dias[new Date(d0).toISOString().slice(0, 10)] !== undefined, `${somaB.dias} dias, ${somaB.resto.altas} altas no resto`);
+  // Uma rodada em que as velas de uma moeda não vieram lê MENOS: não apaga.
+  const falha = medirAdiante(new Map([["SAIUUSDT", serie(10, [])]]), estado, agora, WATCHLIST, bruto);
+  confere("leitura que falhou não apaga a que funcionou", somarAdiante(falha).emVista.moedaDias === 12, `${somarAdiante(falha).emVista.moedaDias} moeda-dias`);
+  // A pool secou depois do dump e a reconferência deixou `perp` nulo: a moeda
+  // continua sendo das em vista (`perpVisto`), e não passa a contar no resto.
+  const secou: EstadoFluxo = {
+    ...estado,
+    tokens: { ...estado.tokens, "0xa": { ...estado.tokens["0xa"], perp: null, perpVisto: "ANTESUSDT" } },
+  };
+  const s2 = medirAdiante(series, secou, agora);
+  confere("pool que secou não passa a contar no resto", s2.moedas.emVista === 3 && s2.moedas.resto === 1, `${s2.moedas.emVista} em vista, ${s2.moedas.resto} resto`);
+  const outroComeco = medirAdiante(series, estado, agora, WATCHLIST, { ...bruto, desde: d0 - DIA });
+  confere("arquivo de outro começo não se junta", somarAdiante(outroComeco).emVista.moedaDias === 12, "refeito do zero");
+}
+
+// --------------------------------- posição aberta segura a moeda no retrato
+console.log(`\nsaiu de vista com posição aberta`);
+{
+  const linha = (ticker: string, origem?: string) => ({
+    symbol: `${ticker}USDT`, ticker, chain: "bsc", contract: `0x${ticker.toLowerCase()}`, ...(origem ? { origem } : {}),
+  });
+  const anteriores = [linha("SAIU", "carteira-binance"), linha("AINDA", "carteira-binance"), linha("DALISTA"), linha("SEMPOSICAO", "carteira-binance")];
+  const presas = presasPorPosicao(["SAIU", "AINDA", "DALISTA"], new Set(["AINDAUSDT"]), anteriores);
+  const s = presas.map((t) => t.symbol).join(",");
+  confere("segura a em vista que saiu com posição aberta", s === "SAIUUSDT", s || "nenhuma");
+  confere("volta com contrato, rede e origem da linha anterior", presas[0]?.contract === "0xsaiu" && presas[0]?.origem === "carteira-binance", presas[0]?.contract ?? "—");
+  // Uma leitura falha tirou a moeda do retrato anterior: sem o estado do fluxo,
+  // ela não estaria mais em lugar nenhum para ser segurada.
+  const estadoSegura: EstadoFluxo = {
+    ultimoBloco: 1,
+    tokens: { "0xsumiu": { symbol: "SUMIU", decimals: 18, perp: null, perpVisto: "SUMIUUSDT", mult: 1, conferidoEm: 1 } },
+  };
+  const doEstado = presasPorPosicao(["SUMIU"], new Set(), [], estadoSegura);
+  confere("segura pelo estado do fluxo mesmo fora do retrato anterior", doEstado[0]?.contract === "0xsumiu", doEstado.map((t) => t.symbol).join(",") || "nenhuma");
+}
+
 // ------------------------------------------------ a pool de outra moeda
 //
 // O endereço de um token devolve também as pools em que ele é o PAGAMENTO, e
@@ -822,6 +1063,55 @@ console.log(`\npool de outra moeda`);
   confere("a liquidez não soma a pool alheia", d?.liquidityUsd === 1_463_241, `${d?.liquidityUsd}`);
   confere("só pool alheia: sem profundidade, não preço errado", depthOn([par(false, 0.01846, 1e6)], "bsc") === null, "null");
   confere("busca por nome (sem a marca) segue igual", depthOn([par(undefined, 2, 10)], "bsc")?.priceUsd === 2, "2");
+
+  // O árbitro, que é a mesma regra no retrato, na página de detalhe e nos
+  // alertas on-chain.
+  const arb = (pool: number | null, perp: number | null) => precoArbitrado(pool, perp);
+  confere("pool a 10% do perpétuo manda (a HEI de hoje)", arb(0.1321, 0.1459).fonte === "pool", arb(0.1321, 0.1459).fonte);
+  confere("pool a 1,6x do perpétuo não manda (a HEI de 09/09)", arb(0.1836, 0.115).preco === 0.115, `${arb(0.1836, 0.115).preco}`);
+  confere("sem pool, o perpétuo", arb(null, 0.05).fonte === "perpétuo", arb(null, 0.05).fonte);
+  confere("sem nada, zero declarado", arb(0, null).fonte === "nenhum" && arb(0, null).preco === 0, arb(0, null).fonte);
+  confere("NaN na pool não vira preço", arb(Number.NaN, 0.05).preco === 0.05, `${arb(Number.NaN, 0.05).preco}`);
+  // Contrato de mil unidades: a pool é por token, o perpétuo por mil. Sem a
+  // conversão, a razão de mil mandava o perpétuo, e o detalhe da 1000SHIB
+  // avaliava cada token pelo preço de mil.
+  const shib = precoArbitrado(0.0000056, 0.0056, unidadesDoContrato("1000SHIBUSDT"));
+  confere("1000SHIB: a pool por token manda", shib.fonte === "pool" && shib.preco === 0.0000056, `${shib.fonte} ${shib.preco}`);
+  const bob = precoArbitrado(null, 0.01876, unidadesDoContrato("1000000BOBUSDT"));
+  confere("1000000BOB sem pool: o perpétuo POR TOKEN", Math.abs(bob.preco - 1.876e-8) < 1e-15, `${bob.preco}`);
+  confere("moeda comum: uma unidade por contrato", unidadesDoContrato("TAKEUSDT") === 1 && unidadesDoContrato("4USDT") === 1, "1");
+  // O NOME QUE CASA COM O PERPÉTUO, no fluxo da carteira quente. Até 24/09 o
+  // nome perdia a escrita chinesa e 哈基米 nunca achava `哈基米USDT`.
+  const nomes = (s: string) => perpetuosCandidatos(s).map(([p]) => p);
+  confere("哈基米 procura 哈基米USDT", nomes("哈基米").includes("哈基米USDT"), nomes("哈基米")[0] ?? "nada");
+  confere("BabyDoge procura 1MBABYDOGEUSDT", nomes("BabyDoge").includes("1MBABYDOGEUSDT"), nomes("BabyDoge").join(" "));
+  confere("$WIF perde o cifrão e procura WIFUSDT", nomes("$WIF")[0] === "WIFUSDT", nomes("$WIF")[0] ?? "nada");
+  confere("símbolo vazio não procura nada", perpetuosCandidatos("").length === 0 && perpetuosCandidatos("—").length === 0, "0");
+  confere("1MBABYDOGE: um milhão por contrato", unidadesDoContrato("1MBABYDOGEUSDT") === 1_000_000, `${unidadesDoContrato("1MBABYDOGEUSDT")}`);
+  confere(
+    "1INCH, 0G e 2Z começam com dígito e são uma unidade",
+    ["1INCHUSDT", "0GUSDT", "2ZUSDT"].every((s) => unidadesDoContrato(s) === 1),
+    ["1INCHUSDT", "0GUSDT", "2ZUSDT"].map(unidadesDoContrato).join("/"),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// O ARQUIVO DO HISTÓRICO: um por mês até setembro, um por quinzena desde
+// outubro (`lib/historico.ts`) — o mês com as em vista chegaria a 101 MB, e o
+// GitHub recusa o push inteiro acima de 100. As viradas e o padrão que os
+// leitores reconhecem, que é onde um erro faria linhas sumirem da carteira.
+{
+  console.log("\no arquivo do histórico");
+  const nome = (iso: string) => arquivoDoHistorico(Date.parse(iso));
+  confere("30/09 23:59 ainda é o mensal", nome("2026-09-30T23:59:59Z") === "historico-2026-09.jsonl", nome("2026-09-30T23:59:59Z"));
+  confere("01/10 00:00 abre a 1ª quinzena", nome("2026-10-01T00:00:00Z") === "historico-2026-10-1.jsonl", nome("2026-10-01T00:00:00Z"));
+  confere("15/10 23:59 ainda é a 1ª", nome("2026-10-15T23:59:59Z") === "historico-2026-10-1.jsonl", nome("2026-10-15T23:59:59Z"));
+  confere("16/10 00:00 abre a 2ª", nome("2026-10-16T00:00:00Z") === "historico-2026-10-2.jsonl", nome("2026-10-16T00:00:00Z"));
+  confere("31/12 é a 2ª de dezembro", nome("2026-12-31T23:00:00Z") === "historico-2026-12-2.jsonl", nome("2026-12-31T23:00:00Z"));
+  const aceitos = ["historico-2026-09.jsonl", "historico-2026-10-1.jsonl", "historico-2027-01-2.jsonl"];
+  const recusados = ["historico-2026-10-3.jsonl", "historico-2026-10.json", "fluxo-binance-2026-09.jsonl", "historico-2026-1-1.jsonl"];
+  confere("os leitores reconhecem mensal e quinzenal", aceitos.every((f) => ARQUIVO_HISTORICO.test(f)), aceitos.join(" "));
+  confere("e nada além deles", !recusados.some((f) => ARQUIVO_HISTORICO.test(f)), recusados.filter((f) => ARQUIVO_HISTORICO.test(f)).join(" ") || "nenhum");
 }
 
 console.log(falhas === 0 ? "\ntudo passou" : `\n${falhas} caso(s) FALHARAM`);

@@ -127,10 +127,16 @@ histórico: de ~1.200 para ~4.960 linhas por dia, o que projeta ~38 MB para o m�
 contra os 12 MB do desenho. Se ficar pesado, o número a mexer é o `% 4` do
 retrato.
 
-**Com as em vista o teto ficou à vista.** 113 moedas × 68 retratos × ~270 bytes
-são ~2 MB por dia, ~64 MB num mês de 31 dias — e o GitHub recusa arquivo acima
-de 100 MB. O mês cabe até ~175 moedas; se as em vista crescerem até lá, parta o
-`historico-AAAA-MM.jsonl` por quinzena antes de o push começar a falhar.
+**Com as em vista o teto chegou, e a conta de antes estava errada.** Ela usava
+os 68 retratos por dia de 23/09; medido em 24/09, com as em vista, foram 41
+retratos em 10,1 h — um a cada ~15 min — com 113 moedas e 284 bytes por linha:
+**3,12 MB por dia, 97 MB num mês de 31 dias, 101 MB com o `pp`**. O GitHub
+recusa arquivo acima de 100 MB, e a recusa derruba o push INTEIRO: retrato,
+carteira e garimpo parariam juntos. Por isso, desde outubro, o histórico é
+**um arquivo por quinzena** (`historico-AAAA-MM-1.jsonl` e `-2`, ~52 MB), e o
+nome mora num lugar só (`lib/historico.ts`). Setembro fecha mensal, perto de
+51 MB. `npm run auditar-dados` reprova arquivo acima de 80 MB: se reprovar,
+encurte o pedaço em `arquivoDoHistorico` antes de o push começar a falhar.
 
 As execuções agora aparecem como `cancelled` na aba Actions com frequência, e
 isso é o mecanismo funcionando, não falha: é a execução PENDENTE sendo
@@ -233,6 +239,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/sinais.ts` | o formato de `data/sinais.json` e a leitura dele pela página |
 | `lib/fluxo.ts` | `resumirFluxo`: soma o bruto do fluxo da Binance por moeda, com a cobertura de cada dia junto |
 | `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |
+| `lib/historico.ts` | o nome do arquivo do histórico e o padrão que os leitores reconhecem. **Carrega a medição que partiu o mês em quinzenas** |
 | `lib/emvista.ts` | as moedas **em vista**: todo perpétuo que passou pela carteira quente da Binance e não está na lista entra no painel sozinho. **Carrega a medição que justifica isso** e o aviso do Telegram. Não moram em `watchlist.ts`, e o monitor on-chain segue só com a lista |
 | `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção (branch `dados`, depois `main`), disco primeiro no resto |
 | `lib/avisos.ts` | o que a carteira abriu ou fechou desde o retrato anterior, em texto para o Telegram. A memória do que já foi avisado viaja no `carteira.json` |
@@ -240,19 +247,21 @@ retrato seguinte fechá-la com a hora certa.
 
 ### Os dados
 
-Os que o **robô** grava (panorama, histórico, carteira, garimpo, placar, sinais e
-fluxo) moram na branch órfã `dados`; a lista está no `PADRAO` de
+Os que o **robô** grava (panorama, histórico, carteira, garimpo, placar, sinais,
+fluxo e o estudo das em vista novas) moram na branch órfã `dados`; a lista está no `PADRAO` de
 `scripts/dados.sh` e repetida no `.gitignore`. Os gerados **à mão** (detentores,
 vesting, estudos) ficam no `main`: a página os lê do disco do build.
 
 | arquivo | o que é | quem grava |
 |---|---|---|
 | `data/panorama.json` | o retrato completo, ~70 moedas | `npm run panorama` |
-| `data/historico-AAAA-MM.jsonl` | uma linha por moeda por retrato. **É a memória do projeto** | idem |
+| `data/historico-AAAA-MM.jsonl` e, desde outubro, `historico-AAAA-MM-1.jsonl`/`-2` | uma linha por moeda por retrato, um arquivo por quinzena (`lib/historico.ts`). **É a memória do projeto** | idem |
 | `data/detentores.json` | concentração por moeda. **17 medidas de 37 com contrato**, todas de Ethereum e Base. As 20 da BSC não têm fonte de log: 15 de 16 varridas em 06/09 perderam as 41 faixas da janela | `npm run genese` |
 | `data/vesting.json` | emissão por moeda | `npm run vesting` |
-| `data/estudos.json` | estudo por moeda | `npm run estudar` |
+| `data/estudos.json` | estudo por moeda, **as em vista incluídas**: sem ele a trava de "a moeda continua o movimento" não roda nelas (8 de 70 da lista, 6 de 39 em vista) | `npm run estudar` (`-- --em-vista` só para elas) |
+| `data/estudos-em-vista.json` | **do robô, na branch `dados`**: o estudo das em vista que chegaram depois, feito pelo próprio retrato (até dez por rodada; a sem amostra é tentada de novo depois de um dia). `lerEstudo` junta os dois, e o de mão manda | `npm run panorama` |
 | `data/placar.json` | o painel acertou? | `npm run placar` |
+| `data/quarentena.json` | as linhas do histórico que não são o preço do perpétuo daquela hora, julgadas contra as velas de 1h: **471 em 24/09, de HEI, CAP, SYN e JCT**. O placar não toca em rede e as pula por esta lista. Linha nova fora do perpétuo não nasce mais desde o árbitro de `lib/overview.ts` | `npm run quarentena`, à mão (fica no `main`) |
 | `data/carteira.json` | a carteira, com a tabela de regimes e a curva do regime anterior em `comparacao` — a tela desenha as duas | `npm run carteira` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
@@ -282,7 +291,7 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | Risco agregado | teto de 25% | cripto tem dias em que a lista inteira cai 25% junta |
 | Margem exposta | teto de 50% | |
 | Custo | 0,15% por lado, **sobre o nocional** | a 3x, isso é 0,45% da margem por lado |
-| Financiamento | taxa real da Binance, por 8h | a lista paga de 15% a 20% ao ano |
+| Financiamento | taxa real da Binance, **no período de cada moeda** | 39 das 40 negociadas cobram de 4 em 4 h, não de 8 — até 24/09 o motor cobrava a metade. Em 24/09 a mediana do painel paga 11% ao ano (0,005% a cada 4 h); os 15% a 20% de 03/09 foram contados com três cobranças por dia |
 | Liquidação | margem de manutenção 0,5% | a 3x, o preço andando 33,2% contra |
 
 **Saída pelo primeiro que acontecer:** o painel mudou de ideia (a principal — a
@@ -297,9 +306,17 @@ se uma regra entra. **Nenhuma regra de gestão nova sem passar nela**, e a colun
 "sem a melhor moeda" reprova mais do que as metades: o stop curto passava nas
 duas metades e era uma moeda só.
 
-Medido em 23/09, as mesmas calls: o regime anterior em −11,3% (queda máxima
-−17,2%), o publicado em +14,8% (−5,8%). **Sem a HEI, −19,8% contra −4,3%** — a
-gestão perde muito menos, e lucro continua não demonstrado.
+Medido em 24/09 ao meio-dia, as mesmas calls: o regime anterior em −14,1%
+(queda máxima −18,7%), o publicado em **−2,1%** (−11,0%) — a gestão perde muito
+menos, e lucro continua não demonstrado. **O número de 23/09, +14,8%, estava
+errado**: três "alvos" da HEI eram preço de pool alheia que o perpétuo nunca
+tocou (ver a armadilha nº 7). Cada peça desligada continua pior que o publicado.
+
+E o motor liquidava o que era stop: dentro da vela ele testava a liquidação
+antes do stop, e toda vela que seguia caindo depois do stop virava −100% da
+margem no lugar de −75%. Uma posição em 174, a HEI de 09/09; sobre os mesmos
+dados, −2,8% viraram −2,1%. Hoje a liquidação só vem primeiro quando a vela abre
+além dela ou quando o financiamento a trouxe para aquém do stop.
 
 **Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.**
 `npm run carteira` busca as velas de 1h da Binance das moedas que podem virar
@@ -334,7 +351,8 @@ call que acabou de morrer no MESMO retrato — reproduzido com uma moeda caindo
 28% por retrato e o painel fixo em "long", ela tomou **onze stops seguidos** e
 perdeu 17% do patrimônio na mesma leitura errada. Até 23/09 só stop e liquidação
 queimavam, e a saída por prazo reabria no mesmo lote; com a saída por tempo, a
-diferença é de +14,8% para +5,0%.
+diferença é de −2,1% para −3,3% (refeito em 24/09; com os alvos falsos da HEI,
+era de +14,8% para +5,0%).
 
 **A unidade de cada número importa, e confundi-las já quebrou isto.** `STOP` e
 `ALVO` são variação de PREÇO; `retorno` e `funding` são fração da MARGEM, ou seja
@@ -374,6 +392,13 @@ testes, e **todos são necessários**:
 "sem contrato EVM" porque a busca parou na BNB Chain, onde o endereço é fragmento
 de ponte. Nas duas, o mesmo endereço na Ethereum/Base guarda o supply inteiro.
 
+**E o nome do perpétuo pode não ser latino.** A BINARENSHENG ficou na lista
+como "sem perpétuo em lugar nenhum", sem open interest, posicionamento nem
+estágio — e o perpétuo existia desde 20/10/2025 como `币安人生USDT`, US$ 37
+milhões em aberto, o mesmo caso do `龙虾USDT`. O símbolo DO CONTRATO é o nome do
+perpétuo; o transliterado não acha nada. Conferido em 24/09 sobre as 72 ativas:
+era a única (a BP, a outra sem perpétuo na Binance, vive na Gate de fato).
+
 ### 2. "Não achei" e "não consegui" são coisas diferentes
 
 O modo de falha que este projeto mais teme. Casos reais:
@@ -404,8 +429,19 @@ O modo de falha que este projeto mais teme. Casos reais:
 ### 3. Preço de lixo
 
 O JCT já foi gravado no histórico a **2,9e-27**, quinze ordens de grandeza abaixo
-do preço dele, porque uma pool devolveu isso ao DexScreener. Há dois freios
-independentes hoje (`lib/overview.ts` e `lib/carteira.ts`); mantenha os dois.
+do preço dele, porque uma pool devolveu isso ao DexScreener. Os freios hoje, e
+todos precisam ficar:
+
+- **na leitura**, `precoArbitrado` (`lib/dexscreener.ts`): a pool só vale dentro
+  de 0,8–1,25 do ÚLTIMO NEGÓCIO do perpétuo. Retrato, página de detalhe e
+  alertas on-chain usam a mesma função — até 24/09 cada um tinha a sua, e a do
+  alerta das carteiras mapeadas nem recorria ao perpétuo;
+- **no que foi gravado**, o `pp` de cada linha do histórico e a auditoria que
+  reprova linha fora da faixa;
+- **na carteira**, o `SALTO_ABSURDO` de dez vezes e `foraDoPerpetuo`, que julga
+  cada linha contra a vela de 1h daquela hora;
+- **no placar**, o mesmo salto e `data/quarentena.json` — as linhas antigas,
+  de antes do árbitro, julgadas uma vez contra as velas.
 
 E há o preço que é de OUTRA moeda, que nenhum dos dois pega. `tokens/<endereço>`
 no DexScreener devolve também as pools em que o token é o PAGAMENTO, com o
@@ -461,6 +497,17 @@ quando o lixo chegasse — US$ 1.000 viravam US$ 1,4×10²⁸.
 O mesmo formato apareceu na trava de call queimada: ela distinguia "não houve
 leitura" de "leitura contrária" na SAÍDA e não no descongelamento, e um único
 retrato mudo bastava para o moedor voltar — doze stops seguidos, −18,6%.
+
+E apareceu uma terceira vez, a mais cara. `ancora` recusava o caminho de velas
+quando o preço do retrato estava fora de 0,8–1,25 do perpétuo — "é outra
+moeda" —, e o teste de ponta logo abaixo usava esse MESMO preço para fechar. A
+pool rasa da HEI devolvia 1,6 a 2 vezes o perpétuo em parte dos retratos, e a
+carteira fechou três posições "no alvo" que o perpétuo nunca tocou: US$ 191,
+todo o lucro que a tela mostrava (+14,8% viraram −3,9% em 24/09, contando os
+stops que a linha descartada escondia — ver abaixo). Hoje
+`foraDoPerpetuo` julga cada linha contra a vela daquela hora antes de ela
+abrir, marcar ou fechar qualquer coisa — e as velas vêm desde o começo da
+carteira, porque sem elas o juiz some e os preços falsos voltam a valer.
 
 Quando escrever um freio, procure a outra ponta onde a mesma decisão é tomada.
 

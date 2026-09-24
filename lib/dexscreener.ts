@@ -8,6 +8,7 @@
  */
 
 import { comLimite } from "./limite";
+import { mesmaMoeda } from "./faixa";
 
 const BASE = "https://api.dexscreener.com/latest/dex";
 
@@ -135,6 +136,61 @@ export async function pairsOfToken(address: string): Promise<Pair[]> {
 export async function searchPairs(query: string): Promise<Pair[]> {
   const pairs = (await get(`search?q=${encodeURIComponent(query)}`)).map(normalize);
   return pairs.sort((a, b) => b.liquidityUsd - a.liquidityUsd);
+}
+
+/**
+ * O preço de referência de uma moeda que tem pool e perpétuo: a pool quando ela
+ * é a mesma moeda que o perpétuo, o perpétuo quando não há pool ou quando ela
+ * sai de 0,8–1,25 dele.
+ *
+ * A faixa é a da âncora da carteira ("razão de 1,4 não é base de mercado, é
+ * outra moeda"), e a medição que a sustenta está em `lib/overview.ts`: das 75
+ * moedas com pool e perpétuo em 24/09, 73 ficam a menos de 2% e a mais longe a
+ * 10%. Fora dela ficaram a pool rasa da HEI (1,6–2x), a pool parada da CAP
+ * (1,45x) e a pool alheia da AIOT (0,37x) — todas lidas como preço até aqui.
+ *
+ * `precoPerp` tem de ser o de AGORA (o último negócio), não o fechamento de
+ * uma hora atrás: num pump, a pool certa sairia da faixa contra um perpétuo
+ * velho.
+ */
+export function precoArbitrado(
+  precoPool: number | null | undefined,
+  precoPerp: number | null | undefined,
+  /**
+   * Quantas unidades do token um contrato representa: 1000 em `1000SHIBUSDT`,
+   * 1.000.000 em `1000000BOBUSDT`. O perpétuo é dividido por isto antes de ser
+   * comparado com a pool, que é por unidade — sem isso a razão de mil vezes
+   * mandava o perpétuo, e o detalhe da 1000SHIB avaliava cada token pelo
+   * preço de mil (achado na revisão do PR #6). O retrato passa 1 de propósito:
+   * lá o preço é por contrato, na mesma unidade das velas e do histórico.
+   */
+  unidadesPorContrato = 1,
+): { preco: number; fonte: "pool" | "perpétuo" | "nenhum"; razao: number | null } {
+  const pool = precoPool != null && precoPool > 0 && Number.isFinite(precoPool) ? precoPool : 0;
+  const perp =
+    precoPerp != null && precoPerp > 0 && Number.isFinite(precoPerp) && unidadesPorContrato > 0
+      ? precoPerp / unidadesPorContrato
+      : 0;
+  const razao = pool > 0 && perp > 0 ? pool / perp : null;
+  if (pool > 0 && (razao === null || mesmaMoeda(razao))) return { preco: pool, fonte: "pool", razao };
+  if (perp > 0) return { preco: perp, fonte: "perpétuo", razao };
+  return { preco: 0, fonte: "nenhum", razao };
+}
+
+/**
+ * As unidades do token por contrato, pelo nome do perpétuo da Binance.
+ *
+ * São TRÊS prefixos, e não dois: conferido no exchangeInfo de 24/09, há
+ * `1000X` (dez contratos, 1000SHIB a 1000CHEEMS), `1000000X` (MOG e BOB) e
+ * `1MX` — o `1MBABYDOGEUSDT`, um milhão de BABYDOGE por contrato, que caía
+ * em "uma unidade" e seria avaliado um milhão de vezes acima. `1INCH`, `0G`,
+ * `2Z` e `4` começam com dígito e são uma unidade mesmo.
+ */
+export function unidadesDoContrato(symbol: string): number {
+  if (/^1000000[A-Z0-9]/.test(symbol)) return 1_000_000;
+  if (/^1M[A-Z]/.test(symbol)) return 1_000_000;
+  if (/^1000[A-Z]/.test(symbol)) return 1000;
+  return 1;
 }
 
 export interface TokenDepth {

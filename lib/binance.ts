@@ -155,14 +155,15 @@ export async function circulante(symbol: string): Promise<Circulante | null> {
  *
  * Existe para a carteira poder cobrar o custo de carregar posição, que é o maior
  * item que ela não cobrava. Nestas moedas ele não é detalhe: medido em 03/09, a
- * H paga 20,5% ao ano, a POWER 19,2%, a AKE 15,7%. Uma posição vendida segurada
- * duas semanas come 0,8% só de financiamento — mais do que o custo de entrada e
- * saída somados.
+ * H pagava 20,5% ao ano, a POWER 19,2%, a AKE 15,7% — contados com três
+ * cobranças por dia. As três cobram de 4 em 4 horas (24/09), então o ano delas
+ * era o DOBRO: 41%, 38% e 31%.
  *
  * O endereço devolve os 895 símbolos de uma vez, então o custo é uma requisição
  * por retrato e não uma por moeda.
  *
- * A taxa é por PERÍODO DE OITO HORAS, e o sinal diz quem paga: positiva, o
+ * A taxa é POR PERÍODO, e o período NÃO é de oito horas nestas moedas: ver
+ * `intervalosDeFunding` logo abaixo. O sinal diz quem paga: positiva, o
  * comprado paga o vendido; negativa, o contrário.
  */
 export async function fundings(): Promise<Map<string, number>> {
@@ -183,6 +184,38 @@ export async function fundings(): Promise<Map<string, number>> {
     // Sem financiamento a carteira cobra a estimativa dela e diz que estimou.
   }
   return fora;
+}
+
+/**
+ * De quantas em quantas HORAS cada perpétuo cobra o financiamento.
+ *
+ * A carteira cobrava toda taxa como se fosse de oito em oito horas, que é o
+ * padrão da Binance para as moedas grandes — e não o destas. Medido em 24/09
+ * sobre as 791 que a Binance declara: 468 cobram a cada 4 h, 321 a cada 8 h, 2
+ * a cada 1 h. Das 113 do painel, 110 são de 4 h; das 40 moedas que a carteira
+ * já negociou, 39. O custo de carregar posição era cobrado pela METADE.
+ *
+ * Símbolo fora da lista é o padrão, 8 h. Falha devolve `null`, e não um mapa
+ * vazio: "não consegui ler" não pode virar "todas são de 8 h" (armadilha nº 2).
+ */
+export async function intervalosDeFunding(): Promise<Map<string, number> | null> {
+  try {
+    const res = await fetch(`${BASE}/fapi/v1/fundingInfo`, {
+      signal: AbortSignal.timeout(15_000),
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return null;
+    const cru = (await res.json()) as { symbol: string; fundingIntervalHours: number }[];
+    if (!Array.isArray(cru) || cru.length === 0) return null;
+    const fora = new Map<string, number>();
+    for (const r of cru) {
+      const h = Number(r.fundingIntervalHours);
+      if (r.symbol && Number.isFinite(h) && h > 0) fora.set(r.symbol, h);
+    }
+    return fora.size > 0 ? fora : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -262,6 +295,22 @@ export interface Vela {
   delta: number;
 }
 
+function paraVela(linha: unknown): Vela {
+  const c = linha as (string | number)[];
+  const volume = Number(c[5]);
+  const takerBuy = Number(c[9]);
+  return {
+    time: Math.floor(Number(c[0]) / 1000),
+    open: Number(c[1]),
+    high: Number(c[2]),
+    low: Number(c[3]),
+    close: Number(c[4]),
+    volume,
+    takerBuy,
+    delta: takerBuy - (volume - takerBuy),
+  };
+}
+
 /**
  * As velas do símbolo, ao vivo, direto da praça.
  *
@@ -282,29 +331,72 @@ export interface Vela {
  *
  * São 1500 velas por chamada — mais de quatro anos em diário.
  */
-export async function velas(symbol: string, interval = "1d", limit = 1500): Promise<Vela[]> {
+export async function velas(symbol: string, interval = "1d", limit = 1500, inicio?: number): Promise<Vela[]> {
   const bruto = await pegar<unknown[]>(
-    `/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${Math.min(limit, 1500)}`,
+    `/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${Math.min(limit, 1500)}` +
+      (inicio !== undefined && Number.isFinite(inicio) ? `&startTime=${Math.floor(inicio)}` : ""),
   );
 
   return bruto
-    .map((linha) => {
-      const c = linha as (string | number)[];
-      const volume = Number(c[5]);
-      const takerBuy = Number(c[9]);
-      return {
-        time: Math.floor(Number(c[0]) / 1000),
-        open: Number(c[1]),
-        high: Number(c[2]),
-        low: Number(c[3]),
-        close: Number(c[4]),
-        volume,
-        takerBuy,
-        delta: takerBuy - (volume - takerBuy),
-      };
-    })
+    .map(paraVela)
     .filter((v) => Number.isFinite(v.time) && v.close > 0)
     .sort((a, b) => a.time - b.time);
+}
+
+/**
+ * As velas desde `inicio` até agora, buscadas DE TRÁS PARA FRENTE — a página
+ * mais recente primeiro — e dizendo se vieram inteiras.
+ *
+ * A carteira e a quarentena buscavam do começo para a frente, com teto de
+ * páginas: passado o teto, eram as velas MAIS RECENTES que faltavam, e uma
+ * página do meio que falhasse (`velas` devolve lista vazia na falha) cortava o
+ * fim em silêncio. As velas recentes são as que julgam o preço de agora e
+ * percorrem o stop de agora (achado na revisão do PR #6). De trás para frente,
+ * o que falta é sempre o mais velho, e `parcial` diz quando faltou.
+ */
+export async function velasDesde(
+  symbol: string,
+  interval: string,
+  inicio: number,
+  maxPaginas = 6,
+): Promise<{ velas: Vela[]; parcial: boolean }> {
+  const porTempo = new Map<number, Vela>();
+  let fim: number | null = null;
+  let chegou = false;
+  for (let pagina = 0; pagina < maxPaginas; pagina++) {
+    const caminho =
+      `/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=1500` + (fim !== null ? `&endTime=${fim}` : "");
+    // Direto, e não por `pegar`: aqui "falhou" e "não há mais vela" precisam
+    // terminar em lugares diferentes, e `pegar` devolve lista vazia para os dois.
+    const bruto = await comLimite("binance", TETO_BINANCE, async () => {
+      try {
+        const res = await fetch(`${BASE}${caminho}`, { signal: AbortSignal.timeout(15_000) });
+        if (!res.ok) return null;
+        const d = await res.json();
+        return Array.isArray(d) ? (d as unknown[]) : null;
+      } catch {
+        return null;
+      }
+    });
+    if (bruto === null) break;
+    const lote = bruto.map(paraVela).filter((v) => Number.isFinite(v.time) && v.close > 0);
+    if (lote.length === 0) {
+      chegou = true;
+      break;
+    }
+    let maisAntiga = Infinity;
+    for (const v of lote) {
+      porTempo.set(v.time, v);
+      if (v.time < maisAntiga) maisAntiga = v.time;
+    }
+    if (maisAntiga * 1000 <= inicio || lote.length < 1500) {
+      chegou = true;
+      break;
+    }
+    fim = maisAntiga * 1000 - 1;
+  }
+  const lista = [...porTempo.values()].sort((a, b) => a.time - b.time);
+  return { velas: lista, parcial: !chegou };
 }
 
 /**

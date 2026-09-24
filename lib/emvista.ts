@@ -112,6 +112,138 @@ export function emVistaDe(
   return [...porPerp.values()].map((x) => x.t).sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
+// ------------------------------------------------ a tese, conferida adiante
+
+/**
+ * Quando a conferência para frente começa: o dia em que as em vista entraram no
+ * ar. A medição acima é sobre o PASSADO de moedas escolhidas pelo fluxo de
+ * cinco dias; o que ela prevê é que essas moedas continuem bombando mais que o
+ * resto DAQUI EM DIANTE, e isso só se confere com dias que ainda não existiam.
+ */
+export const INICIO_ADIANTE = Date.UTC(2026, 8, 24);
+
+export interface Contagem {
+  moedaDias: number;
+  /** Dias de alta ≥25% (fechamento sobre fechamento). */
+  altas: number;
+  /** Dias de queda ≤−25%. */
+  quedas: number;
+}
+
+export interface Adiante {
+  desde: number;
+  /**
+   * Uma entrada por dia UTC fechado (`AAAA-MM-DD`): toda moeda que esteve em
+   * vista, contada a partir do dia seguinte à primeira passagem, e a praça sem
+   * a lista e sem nada que tenha passado pela carteira.
+   *
+   * POR DIA E ACUMULADO, e não recontado a cada rodada: o garimpo baixa trinta
+   * velas por moeda, e recontar tudo transformaria "desde 24/09" numa janela
+   * móvel de trinta dias a partir de 23/10, com o rótulo dizendo outra coisa.
+   * Cada rodada refaz os dias que ainda cabem nas velas; os mais velhos ficam
+   * como estavam.
+   */
+  dias: Record<string, { emVista: Contagem; resto: Contagem }>;
+  /** Quantas moedas tiveram algum dia contado na janela desta rodada. */
+  moedas: { emVista: number; resto: number };
+}
+
+/**
+ * Conta os dias de alta e de queda de 25% de cada grupo desde `INICIO_ADIANTE`.
+ *
+ * Três cortes que decidem se isto mede alguma coisa:
+ *
+ *   - o DIA DA CHEGADA não conta. A moeda costuma entrar na carteira porque o
+ *     varejo a compra no meio do pump; contar esse dia seria a carteira
+ *     "prevendo" o que a trouxe. Conta do dia UTC seguinte à primeira passagem.
+ *   - o grupo é quem ESTEVE em vista, não quem está: quem sai por 30 dias sem
+ *     passar é a menos movimentada, e tirá-la da conta inflaria o grupo.
+ *   - o dia de hoje, ainda aberto, não conta: a vela parcial compara meio dia
+ *     com um dia inteiro.
+ *
+ * E um de junção com `anterior`: para cada dia e grupo, fica a leitura com
+ * MAIS moeda-dias. Para um dia passado, o grupo só cresce (quem entra depois
+ * não conta para trás, quem sai continua), então menos moeda-dias numa
+ * rodada é vela que não veio — e leitura que falhou não apaga a que funcionou.
+ */
+export function medirAdiante(
+  series: Map<string, { time: number; close: number }[]>,
+  estado: EstadoFluxo | null,
+  agora: number,
+  lista: WatchedToken[] = WATCHLIST,
+  anterior: Adiante | null = null,
+): Adiante {
+  const naLista = new Set(lista.map((t) => t.symbol));
+  const naCarteira = new Set<string>();
+  const inicioDe = new Map<string, number>();
+  for (const id of Object.values(estado?.tokens ?? {})) {
+    // O perpétuo conferido por último, mesmo que a reconferência de hoje tenha
+    // falhado: quem já passou pela carteira não vira "resto" porque a pool dele
+    // secou depois do dump.
+    const perp = id?.perp ?? id?.perpVisto;
+    if (!perp) continue;
+    naCarteira.add(perp);
+    if (naLista.has(perp)) continue;
+    const visto = id.vistoEm ?? id.conferidoEm;
+    // Em vista em algum momento desde o início: visto dentro da validade dele.
+    if (!Number.isFinite(visto) || visto < INICIO_ADIANTE - VALIDADE_DIAS * DIA) continue;
+    const primeiro = id.primeiroVisto ?? 0;
+    const dia = Math.max(INICIO_ADIANTE, (Math.floor(primeiro / DIA) + 1) * DIA);
+    const atual = inicioDe.get(perp);
+    if (atual === undefined || dia < atual) inicioDe.set(perp, dia);
+  }
+
+  const vazio = (): Contagem => ({ moedaDias: 0, altas: 0, quedas: 0 });
+  const novos: Adiante["dias"] = {};
+  const moedas = { emVista: 0, resto: 0 };
+  for (const [s, v] of series) {
+    const grupo = inicioDe.has(s) ? "emVista" : !naLista.has(s) && !naCarteira.has(s) ? "resto" : null;
+    if (!grupo) continue;
+    const inicio = inicioDe.get(s) ?? INICIO_ADIANTE;
+    let contou = false;
+    for (let i = 1; i < v.length; i++) {
+      const abre = v[i].time * 1000;
+      if (abre < inicio || abre + DIA > agora) continue;
+      const r = v[i].close / v[i - 1].close - 1;
+      if (!Number.isFinite(r)) continue;
+      const d = new Date(abre).toISOString().slice(0, 10);
+      novos[d] ??= { emVista: vazio(), resto: vazio() };
+      const c = novos[d][grupo];
+      c.moedaDias++;
+      if (r >= 0.25) c.altas++;
+      if (r <= -0.25) c.quedas++;
+      contou = true;
+    }
+    if (contou) moedas[grupo]++;
+  }
+
+  // Um arquivo de outro começo é outra medição: não se junta.
+  const dias: Adiante["dias"] = anterior?.desde === INICIO_ADIANTE ? { ...anterior.dias } : {};
+  for (const [d, n] of Object.entries(novos)) {
+    const a = dias[d];
+    dias[d] = a
+      ? {
+          emVista: n.emVista.moedaDias >= a.emVista.moedaDias ? n.emVista : a.emVista,
+          resto: n.resto.moedaDias >= a.resto.moedaDias ? n.resto : a.resto,
+        }
+      : n;
+  }
+  return { desde: INICIO_ADIANTE, dias, moedas };
+}
+
+/** Os dias somados, por grupo. */
+export function somarAdiante(a: Adiante): { emVista: Contagem; resto: Contagem; dias: number } {
+  const soma = { emVista: { moedaDias: 0, altas: 0, quedas: 0 }, resto: { moedaDias: 0, altas: 0, quedas: 0 } };
+  for (const d of Object.values(a.dias ?? {})) {
+    for (const g of ["emVista", "resto"] as const) {
+      soma[g].moedaDias += d[g].moedaDias;
+      soma[g].altas += d[g].altas;
+      soma[g].quedas += d[g].quedas;
+    }
+  }
+  return { ...soma, dias: Object.keys(a.dias ?? {}).length };
+}
+
 function valido(d: unknown): EstadoFluxo | null {
   const e = d as EstadoFluxo;
   return e && typeof e.tokens === "object" && e.tokens !== null ? e : null;
@@ -139,6 +271,52 @@ export function daLinha(r: { symbol: string; chain: string; contract: string; no
     note: r.note ?? NOTA,
     origem: ORIGEM,
   };
+}
+
+/**
+ * As em vista que SAÍRAM de vista com posição aberta na carteira, de volta ao
+ * retrato até a posição fechar.
+ *
+ * Sem isto, a moeda que passasse 30 dias sem tocar a carteira da Binance
+ * sumia do retrato no meio de uma posição, e o motor da carteira só tem o
+ * prazo de 14 dias para fechar moeda ausente — no último preço visto, sem
+ * stop, sem alvo e sem caminho de velas nesse meio-tempo (`rodar`, em
+ * `lib/carteira.ts`). A regra de saída é da carteira; quem decide quando a
+ * moeda deixa de ser lida não pode atropelá-la. Contrato e rede vêm da linha
+ * do retrato anterior, que é onde eles estavam da última vez.
+ */
+export function presasPorPosicao(
+  abertas: string[],
+  cobertas: Set<string>,
+  anteriores: { symbol: string; ticker: string; chain: string; contract: string; note?: string; origem?: string }[],
+  /**
+   * O estado do gravador de fluxo, que é a fonte primeira: ele guarda o
+   * contrato de toda moeda que passou pela carteira, saia ela do retrato ou
+   * não. Só o retrato anterior não bastava (achado na revisão do PR #6): uma
+   * leitura falha tirava a moeda do retrato, e no seguinte ela não estava mais
+   * em lugar nenhum para ser segurada.
+   */
+  estado: EstadoFluxo | null = null,
+  lista: WatchedToken[] = WATCHLIST,
+): WatchedToken[] {
+  const naLista = new Set(lista.map((t) => t.symbol));
+  const querem = new Set(abertas.map((t) => `${t}USDT`).filter((s) => !cobertas.has(s) && !naLista.has(s)));
+  const achadas = new Map<string, { t: WatchedToken; visto: number }>();
+  for (const [contrato, id] of Object.entries(estado?.tokens ?? {})) {
+    const perp = id?.perp ?? id?.perpVisto;
+    if (!perp || !querem.has(perp)) continue;
+    const visto = id.vistoEm ?? id.conferidoEm ?? 0;
+    const atual = achadas.get(perp);
+    if (atual && atual.visto >= visto) continue;
+    achadas.set(perp, {
+      visto,
+      t: { symbol: perp, chain: "bsc", contract: contrato, firstBlock: 0, wallets: [], note: NOTA, origem: ORIGEM },
+    });
+  }
+  for (const r of anteriores) {
+    if (r.origem && querem.has(r.symbol) && !achadas.has(r.symbol)) achadas.set(r.symbol, { visto: 0, t: daLinha(r) });
+  }
+  return [...achadas.values()].map((x) => x.t).sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
 // ------------------------------------------------------------------ o aviso

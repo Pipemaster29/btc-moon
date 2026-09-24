@@ -26,6 +26,8 @@
  */
 
 import { readdir, readFile, writeFile } from "node:fs/promises";
+import { SALTO_ABSURDO } from "../lib/carteira";
+import { ARQUIVO_HISTORICO } from "../lib/historico";
 
 interface Ponto {
   t: number;
@@ -51,12 +53,28 @@ const PRECO_MINIMO = 1e-12;
 
 const HORIZONTE = Number(process.argv[2] ?? 24);
 
+/**
+ * As linhas que não são o preço do perpétuo daquela hora, julgadas contra as
+ * velas por `npm run quarentena` (o placar não toca em rede). Sem o arquivo, a
+ * leitura segue sem ele — e o cabeçalho diz quantas linhas ficaram de fora.
+ */
+const quarentena = new Set<string>(
+  await readFile("data/quarentena.json", "utf8")
+    .then((t) => (JSON.parse(t) as { fora?: string[] }).fora ?? [])
+    .catch(() => []),
+);
+let emQuarentena = 0;
+
 const pontos: Ponto[] = [];
-for (const f of (await readdir("data")).filter((x) => x.startsWith("historico-"))) {
+for (const f of (await readdir("data")).filter((x) => ARQUIVO_HISTORICO.test(x))) {
   for (const linha of (await readFile(`data/${f}`, "utf8")).split("\n")) {
     if (!linha.trim()) continue;
     try {
       const p = JSON.parse(linha) as Ponto;
+      if (quarentena.has(`${p.t}|${p.s}`)) {
+        emQuarentena++;
+        continue;
+      }
       if (p.preco > PRECO_MINIMO) pontos.push(p);
     } catch {
       // Linha truncada no meio de uma escrita: o arquivo é append de várias
@@ -73,10 +91,48 @@ for (const p of pontos) {
 }
 for (const v of porMoeda.values()) v.sort((a, b) => a.t - b.t);
 
+// O SALTO ABSURDO, O MESMO DA CARTEIRA — e que só existia lá.
+//
+// O corte de 1e-12 acima pega o lixo do JCT e nada mais. A SYN, que negocia a
+// US$ 0,09, tem 106 linhas entre 01/09 e 05/09 a US$ 8,19 e a US$ 1,21–1,27:
+// era o preço da OUTRA moeda de uma pool em que ela é o pagamento (o defeito
+// que `depthOn` passou a filtrar em 23/09). Cada uma dessas vira +9.000% ou
+// −99% de retorno à frente. A carteira nunca as usou — o `SALTO_ABSURDO` de
+// `rodar` barra salto de dez vezes contra o último preço bom —, e o placar,
+// que mede as mesmas emissões, usava todas. É a armadilha nº 7: o freio numa
+// ponta só. Mesma regra aqui, contra o último preço bom da moeda.
+let saltos = 0;
+for (const [s, v] of porMoeda) {
+  const bons: Ponto[] = [];
+  for (const p of v) {
+    // Contra o último preço bom DO ÚLTIMO DIA, como na carteira: sem prazo, a
+    // moeda que voltasse ao retrato depois de −90% sumiria do placar para
+    // sempre, cada linha barrada contra o preço de antes da queda.
+    const ultimo = bons.length ? bons[bons.length - 1] : null;
+    const antes = ultimo && p.t - ultimo.t <= 86_400 ? ultimo.preco : null;
+    if (antes !== null && (p.preco / antes > SALTO_ABSURDO || antes / p.preco > SALTO_ABSURDO)) {
+      saltos++;
+      continue;
+    }
+    bons.push(p);
+  }
+  porMoeda.set(s, bons);
+}
+
 interface Obs extends Ponto {
   fwd: number;
 }
 
+// O PONTO À FRENTE TEM DE ESTAR NO HORIZONTE, e não só depois dele. O primeiro
+// retrato passadas as 24 h vinha até 48 h depois quando o robô parava ou a
+// moeda sumia do retrato: medido em 24/09, 1.627 de 125.338 observações
+// (1,3%), quase todas num buraco antigo do robô (18 por moeda) e na BTW-ETH,
+// que ficou fora do retrato uma semana antes de ser aposentada. Um "24 h à
+// frente" medido em dois dias não é a pergunta. Um quarto do horizonte de
+// folga (6 h em 24) cobre o intervalo normal entre retratos com sobra. O
+// veredito não mudou: short +0,19 p.p. (era +0,20), long −0,00 (era −0,01).
+const FOLGA = HORIZONTE * 3600 * 0.25;
+let foraDoHorizonte = 0;
 const obs: Obs[] = [];
 for (const serie of porMoeda.values()) {
   let j = 0;
@@ -85,6 +141,10 @@ for (const serie of porMoeda.values()) {
     // começo a cada ponto seria quadrático, e são 21 mil pontos.
     while (j < serie.length && serie[j].t < p.t + HORIZONTE * 3600) j++;
     if (j >= serie.length) break;
+    if (serie[j].t > p.t + HORIZONTE * 3600 + FOLGA) {
+      foraDoHorizonte++;
+      continue;
+    }
     obs.push({ ...p, fwd: serie[j].preco / p.preco - 1 });
   }
 }
@@ -115,7 +175,9 @@ const janela = {
 };
 
 console.log(
-  `${obs.length} emissões com ${HORIZONTE}h à frente · ${porMoeda.size} moedas · ${janela.de} → ${janela.ate}\n`,
+  `${obs.length} emissões com ${HORIZONTE}h à frente · ${porMoeda.size} moedas · ${janela.de} → ${janela.ate}` +
+    ` · fora: ${emQuarentena} em quarentena, ${saltos} por salto de ${SALTO_ABSURDO}x, ` +
+    `${foraDoHorizonte} sem ponto até ${HORIZONTE * 1.25}h à frente\n`,
 );
 
 /**

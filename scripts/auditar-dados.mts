@@ -8,8 +8,10 @@
  *
  * Rode com: npm run auditar-dados
  */
-import { readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { MOTIVOS, RISCO_TOTAL_MAXIMO } from "../lib/carteira";
+import { mesmaMoeda } from "../lib/faixa";
+import { ARQUIVO_HISTORICO } from "../lib/historico";
 
 let falhas = 0;
 function checa(nome: string, ok: boolean, detalhe = "") {
@@ -35,8 +37,59 @@ if (pan) {
       if (campo !== "price") checa(`${t}.${campo} >= 0`, (v as number) >= 0, `= ${v}`);
     }
     checa(`${t}.score entre 0 e 100`, (m.score as number) >= 0 && (m.score as number) <= 100, `= ${m.score}`);
+    // O ÁRBITRO DA POOL, conferido no que foi gravado: preço fora de 0,8–1,25
+    // do último negócio do perpétuo não pode sair do retrato (`lib/overview.ts`).
+    // Foi um preço assim — a pool rasa da HEI a 1,6–2x — que deu à carteira três
+    // "alvos" que o perpétuo nunca tocou. Retrato de antes do campo não tem
+    // `perpPrice`, e passa.
+    const pp = m.perpPrice;
+    if (typeof pp === "number" && pp > 0 && (m.price as number) > 0) {
+      const r = (m.price as number) / pp;
+      checa(`${t}: preço dentro de 0,8–1,25 do perpétuo`, mesmaMoeda(r), `= ${r.toFixed(3)}`);
+    }
   }
 } else console.log("  (ausente)");
+
+// ---- histórico do mês: a mesma invariante nas linhas, que é o que a carteira
+// e o placar leem. Só as linhas com `pp` (gravado desde 24/09). O mês pode
+// estar em um arquivo ou em dois (por quinzena desde outubro, `lib/historico.ts`).
+{
+  const mes = new Date().toISOString().slice(0, 7);
+  const todos = (await readdir("data").catch(() => [] as string[])).filter((f) => ARQUIVO_HISTORICO.test(f));
+  const doMes = todos.filter((f) => f.startsWith(`historico-${mes}`));
+  const texto = doMes.length
+    ? (await Promise.all(doMes.map((f) => readFile(`data/${f}`, "utf8").catch(() => "")))).join("\n")
+    : null;
+  console.log("histórico:");
+  // O TETO DO GITHUB, antes de ele chegar. Acima de 100 MB o push inteiro é
+  // recusado — e com ele todo retrato seguinte, não só o histórico. Em 24/09 o
+  // mês com as em vista projetava 101 MB; 80 MB dá semanas de folga para
+  // encurtar o pedaço de `arquivoDoHistorico`.
+  for (const f of todos) {
+    const mb = ((await stat(`data/${f}`).catch(() => null))?.size ?? 0) / 1e6;
+    checa(`${f} abaixo de 80 MB (o GitHub recusa acima de 100)`, mb < 80, `= ${mb.toFixed(1)} MB`);
+  }
+  if (texto) {
+    let comPp = 0;
+    let fora = 0;
+    const exemplos: string[] = [];
+    for (const l of texto.split("\n")) {
+      if (!l.includes('"pp"')) continue;
+      try {
+        const o = JSON.parse(l) as { s: string; t: number; preco: number; pp: number };
+        comPp++;
+        const r = o.preco / o.pp;
+        if (!mesmaMoeda(r)) {
+          fora++;
+          if (exemplos.length < 3) exemplos.push(`${o.s} ${new Date(o.t * 1000).toISOString().slice(0, 16)} ${r.toFixed(3)}`);
+        }
+      } catch {
+        // linha truncada: o placar e a carteira já pulam
+      }
+    }
+    checa("linhas com pp dentro de 0,8–1,25 do perpétuo", fora === 0, `(${fora} de ${comPp}: ${exemplos.join(", ")})`);
+  } else console.log("  (ausente)");
+}
 
 // ---- carteira
 const c = await ler<{
@@ -252,6 +305,17 @@ if (gar) {
     (a, i) => i === 0 || gar.achados[i - 1].faixa.mediana7d <= a.faixa.mediana7d,
   );
   checa("ordenado pela mediana medida", ordenado);
+  // A conferência das em vista para frente, que a página soma e divide: um NaN
+  // aqui vira "NaN por mil" na tela, e um dia com mais altas que moeda-dias é
+  // conta errada, não mercado.
+  const adiante = (gar as { emVistaAdiante?: { dias?: Record<string, Record<string, { moedaDias: number; altas: number; quedas: number }>> } })
+    .emVistaAdiante;
+  for (const [d, g] of Object.entries(adiante?.dias ?? {})) {
+    for (const [nome, c] of Object.entries(g)) {
+      const ok = [c.moedaDias, c.altas, c.quedas].every((x) => Number.isInteger(x) && x >= 0) && c.altas + c.quedas <= c.moedaDias;
+      checa(`em vista adiante ${d} ${nome}: contagem coerente`, ok, JSON.stringify(c));
+    }
+  }
 } else console.log("  (ausente)");
 
 // ---- fluxo da carteira quente da Binance

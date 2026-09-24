@@ -74,7 +74,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # 22, e não 20: o Node 20 saiu de manutenção em 30/04/2026 e o próprio
+          # runner já avisa a cada execução. Os scripts são validados em 22.22
+          # (tsc, lint, testar-carteira, testar-vivo) antes de cada commit.
+          node-version: "22"
           cache: npm
 
       # A memória entre execuções vive no cache: o runner é descartado a cada

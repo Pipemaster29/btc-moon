@@ -215,7 +215,14 @@ function porOrigem(c: Carteira, emVista: Set<string>) {
   });
 }
 
-export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
+/**
+ * `bases` é, por moeda, o preço do retrato dividido pelo do perpétuo no mesmo
+ * instante. A camada viva traz o PERPÉTUO, e as posições entraram pelo preço
+ * do retrato, que prefere a pool: sem converter, a marcação saltava pela
+ * diferença entre as duas praças sem o mercado andar nada — na HEI, com a pool
+ * 10% abaixo do perpétuo em 24/09, a posição aparecia US$ 10 acima do que vale.
+ */
+export default function CarteiraPanel({ c: guardada, bases = {} }: { c: Carteira; bases?: Record<string, number> }) {
   const vivo = useVivo();
   const emVista = new Set(guardada.emVista ?? []);
 
@@ -230,7 +237,7 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
       ? guardada
       : remarcar(
           guardada,
-          new Map(Object.entries(vivo.moedas).map(([t, m]) => [t, m.preco])),
+          new Map(Object.entries(vivo.moedas).map(([t, m]) => [t, m.preco * (bases[t] ?? 1)])),
           vivo.em,
           new Map(
             Object.entries(vivo.moedas)
@@ -662,7 +669,9 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
         profundidade real da pool, já que o custo aqui é 0,15% por lado, fixo, e numa pool de
         dois mil dólares uma ordem de sessenta já move mais do que isso.{" "}
         <strong>O que ela passou a cobrar:</strong> financiamento com a taxa real de cada
-        moeda — a lista paga de 15% a 20% ao ano —, e as saídas por stop, alvo e liquidação
+        moeda, no período dela — de quatro em quatro horas em 110 das 113, e até 24/09 ele
+        era cobrado como se fosse de oito, pela metade; a mediana paga 11% ao ano —, e as
+        saídas por stop, alvo e liquidação
         DENTRO do intervalo entre dois retratos, pelas velas de uma hora da Binance. Ordem
         parada não pisca: se o preço tocou o stop às 3h e voltou antes do retrato das 6h, a
         posição estava fechada às 3h. Nas 16 posições medidas até aqui, todas as 16

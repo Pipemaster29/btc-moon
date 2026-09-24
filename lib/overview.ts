@@ -14,7 +14,8 @@
  */
 
 import { perpSeries } from "./perp";
-import { depthOn, pairsOfToken } from "./dexscreener";
+import { cotacoes, type Cotacao } from "./binance";
+import { depthOn, pairsOfToken, precoArbitrado, unidadesDoContrato } from "./dexscreener";
 import { ATIVAS, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
 import { concentracaoDe } from "./detentores";
@@ -35,6 +36,12 @@ export interface OverviewRow {
   origem?: "carteira-binance";
 
   price: number;
+  /**
+   * O último negócio do perpétuo no instante do retrato, na mesma unidade do
+   * contrato (por 1000 em `1000XUSDT`). Zero quando não há. `price / perpPrice`
+   * é a base entre a pool e o perpétuo, que a carteira usa para ancorar as velas.
+   */
+  perpPrice: number;
   change24h: number;
   liquidityUsd: number;
   volume24h: number;
@@ -131,19 +138,31 @@ function score(row: Omit<OverviewRow, "score" | "reasons">): { score: number; re
   return { score: Math.min(total, 100), reasons };
 }
 
-async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
+/**
+ * `vivo` é o último negócio do perpétuo agora, do `ticker/24hr` da Binance —
+ * uma requisição para a praça inteira, feita uma vez por retrato.
+ */
+async function readOne(
+  token: WatchedToken,
+  vivos: Promise<Map<string, Cotacao> | null> = Promise.resolve(null),
+): Promise<OverviewRow | null> {
   // A pool que FALHOU e a pool que não existe têm de terminar em lugares
   // diferentes. Engolir a falha num array vazio pintou a BTW como moeda morta —
   // liquidez, volume, FDV e domínio do perpétuo todos em zero — com US$ 1,1
   // bilhão de market cap e a pool negociando normalmente. Agora, quando a moeda
   // TEM contrato e a consulta não volta, a linha inteira é descartada e a moeda
   // aparece em `caidas`: some do painel de um jeito que dá para ver.
-  const [stats, pairs] = await Promise.all([
+  const [stats, pairs, praca] = await Promise.all([
     perpSeries(token.symbol, "1h", 100).catch(() => []),
     token.contract
       ? pairsOfToken(token.contract).catch(() => null)
       : Promise.resolve([] as Awaited<ReturnType<typeof pairsOfToken>>),
+    // O ticker da praça inteira é UMA requisição, feita uma vez por retrato e
+    // esperada aqui, junto com as leituras da moeda — e não antes delas, o que
+    // tirava o tempo dele do orçamento de 7 s da camada viva da página.
+    vivos,
   ]);
+  const vivo = praca?.get(token.symbol) ?? null;
 
   if (token.contract && pairs === null) return null;
 
@@ -164,14 +183,44 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
   //
   // O árbitro é o perpétuo, pelo mesmo motivo que ele arbitra a identificação de
   // contrato em `descobrir`: é a praça grande, e entre o mesmo ativo a
-  // arbitragem não deixa a diferença passar de um dígito percentual. Cem vezes é
-  // um corte muito frouxo de propósito — não serve para pegar pool rasa
-  // desalinhada, serve para pegar lixo.
+  // arbitragem não deixa a diferença passar de um dígito percentual.
+  //
+  // O CORTE ERA DE CEM VEZES, "frouxo de propósito, para pegar lixo e não pool
+  // desalinhada" — e deixou passar a AIOT lendo o preço da AIT, 2,7 vezes fora,
+  // que a carteira usou para abrir posição (23/09). Medido no dia seguinte, com
+  // a pool alheia já filtrada em `depthOn`: das 75 moedas com pool e perpétuo,
+  // 73 ficam a menos de 2% dele e a mais longe, a HEI, a 10% (pool de US$ 3
+  // mil). Então a faixa é a mesma com que a carteira ancora as velas —
+  // 0,8 a 1,25, "razão de 1,4 não é base de mercado, é outra moeda" — e fora
+  // dela vale o perpétuo. Hoje isso não troca o preço de nenhuma moeda; troca o
+  // da próxima AIOT. Os perpétuos de 1000 e 1.000.000 unidades caem aqui fora
+  // por construção e sempre usaram o perpétuo.
   const precoPool = depth?.priceUsd ?? 0;
-  const precoPerp = last?.price ?? 0;
-  const poolAbsurda =
-    precoPool > 0 && precoPerp > 0 && (precoPool / precoPerp > 100 || precoPerp / precoPool > 100);
-  const price = (poolAbsurda ? 0 : precoPool) || precoPerp || 0;
+  // O PREÇO DO PERPÉTUO É O DE AGORA, e não era. O último ponto da série é o
+  // valor em aberto dividido pelos contratos no fechamento da última HORA: às
+  // 03:27 de 24/09 ele tinha 28 minutos, e ficava a 0,40% do último negócio na
+  // mediana, 1,85% no p90 e 9,75% na UAI — numa madrugada calma. Era esse o
+  // preço gravado no retrato de toda moeda sem pool (mais da metade da lista)
+  // e o árbitro da pool logo abaixo: num pump, a pool certa sairia "fora do
+  // perpétuo" contra um perpétuo de uma hora atrás. A série fica de reserva
+  // para quando o ticker não responde.
+  //
+  // E SEM O ÚLTIMO NEGÓCIO, O PERPÉTUO NÃO ARBITRA. O da série tem até uma
+  // hora, e num pump ele derrubaria a pool certa (achado na revisão do PR #6):
+  // perpétuo só da Gate, ou o ticker fora do ar. Nesse caso fica o freio de
+  // lixo de sempre — pool a mais de cem vezes dele —, e `perpPrice` sai zero,
+  // para o histórico não gravar como base medida uma razão contra preço velho.
+  const vivoOk = vivo !== null && vivo.preco > 0;
+  const precoPerp = vivoOk ? vivo.preco : (last?.price ?? 0);
+  const razaoVelha = precoPool > 0 && precoPerp > 0 ? precoPool / precoPerp : null;
+  const arbitrado = vivoOk
+    ? precoArbitrado(precoPool, precoPerp)
+    : precoPool > 0 && (razaoVelha === null || (razaoVelha > 0.01 && razaoVelha < 100))
+      ? { preco: precoPool, fonte: "pool" as const, razao: razaoVelha }
+      : { preco: precoPerp, fonte: precoPerp > 0 ? ("perpétuo" as const) : ("nenhum" as const), razao: razaoVelha };
+  const razaoPool = arbitrado.razao;
+  const poolFora = razaoPool !== null && arbitrado.fonte !== "pool";
+  const price = arbitrado.preco;
   const liquidityUsd = depth?.liquidityUsd ?? 0;
   // A praça grande manda; a Gate só cobre quem a Binance não lista. E agora vem
   // ao vivo em vez do arquivo de ontem: o bloqueio por região era do host
@@ -197,12 +246,20 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
   // "não tenho 24 horas de série" não pode virar "não andou" logo nela — foi
   // esse tipo de silêncio que deixou o painel emitir short no meio do pump.
   const precoOntem = stats[Math.max(0, stats.length - 25)]?.price ?? 0;
+  // Com o ticker, a variação é a dele: as 24 horas rolantes até o último
+  // negócio, a mesma que a camada viva da página mostra.
   const varPerp =
-    precoOntem > 0 && precoPerp > 0 && stats.length >= 2 ? precoPerp / precoOntem - 1 : 0;
+    vivo && vivo.preco > 0 && Number.isFinite(vivo.variacao24h)
+      ? vivo.variacao24h
+      : precoOntem > 0 && precoPerp > 0 && stats.length >= 2
+        ? precoPerp / precoOntem - 1
+        : 0;
   // A pool continua tendo preferência onde ela existe e gira: é a fonte que o
   // DexScreener calcula sobre o mercado à vista real. O perpétuo entra quando
   // ela não responde, que é o caso que estava zerado.
-  const change24h = depth?.change24h || varPerp;
+  // A variação da pool desalinhada é tão suspeita quanto o preço dela — na AIOT
+  // era a da AIT.
+  const change24h = (!poolFora && depth?.change24h) || varPerp;
 
   const base = {
     symbol: token.symbol,
@@ -215,6 +272,7 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
     // precisam carregar um campo vazio em cada retrato.
     ...(token.origem ? { origem: token.origem } : {}),
     price,
+    perpPrice: vivoOk ? precoPerp : 0,
     change24h,
     liquidityUsd,
     volume24h: depth?.volume24h ?? 0,
@@ -232,7 +290,14 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
     oiChange72h: live?.oiChange72h ?? NaN,
   };
 
-  return { ...base, ...score(base) };
+  const nota = score(base);
+  // Dito na coluna "Atenção", sem mexer na nota: não é o mercado que está
+  // estranho, é a leitura. Os perpétuos de mil ou um milhão de unidades ficam
+  // de fora porque a razão deles é essa por construção.
+  if (poolFora && razaoPool !== null && unidadesDoContrato(token.symbol) === 1) {
+    nota.reasons.push(`pool ${razaoPool > 1 ? "+" : "−"}${Math.abs((razaoPool - 1) * 100).toFixed(0)}% fora do perpétuo — preço pelo perpétuo`);
+  }
+  return { ...base, ...nota };
 }
 
 /** A tabela inteira, já ordenada por quem merece olhar primeiro. */
@@ -252,9 +317,12 @@ export const caidas: string[] = [];
  */
 export async function getOverview(tokens: WatchedToken[] = ATIVAS): Promise<OverviewRow[]> {
   caidas.length = 0;
+  // Uma requisição para os perpétuos todos. Sem ela, cada moeda cai na série
+  // de hora em hora, que é o comportamento de antes — não uma moeda a menos.
+  const vivos = cotacoes().catch(() => null);
   const linhas = await Promise.all(
     tokens.map(async (t) => {
-      const r = await readOne(t).catch(() => null);
+      const r = await readOne(t, vivos).catch(() => null);
       if (!r) caidas.push(t.symbol.replace(/USDT$/, ""));
       return r;
     }),
