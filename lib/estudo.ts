@@ -245,7 +245,9 @@ export async function estudar(symbol: string): Promise<Estudo | null> {
  * motivo: o arquivo é histórico e só muda quando `npm run estudar` regrava, o
  * que acontece num processo diferente deste.
  */
-let cache: Record<string, Estudo> | null = null;
+let deMao: Record<string, Estudo> | null = null;
+/** O do robô, guardado à parte: ele só ACRESCENTA estudo, então o último lido continua valendo. */
+let doRobo: Record<string, Estudo> = {};
 /**
  * Quando o cache foi montado. Ele valia para sempre enquanto o único arquivo era
  * o de mão, que só muda com deploy; o do robô muda sozinho, e uma instância do
@@ -254,6 +256,43 @@ let cache: Record<string, Estudo> | null = null;
  */
 let cacheEm = 0;
 const VALIDADE_CACHE_MS = 3_600_000;
+/**
+ * A releitura em curso, dividida por quem chegar durante ela. `getPanorama` e a
+ * camada viva chamam uma vez por moeda, em paralelo: no começo do processo e a
+ * cada hora vencida, as chamadas viam o cache vazio juntas e cada uma relia e
+ * reinterpretava os dois arquivos — o desperdício que o cache acima existe
+ * para evitar. Medido em 24/09 com as 113 moedas: cada arquivo aberto 113
+ * vezes antes, uma vez agora.
+ */
+let lendo: Promise<void> | null = null;
+
+async function recarregar(): Promise<void> {
+  try {
+    // `import()` dentro da função para o módulo continuar podendo ser importado
+    // por componente de cliente, que é como ele já estava.
+    const { readFile } = await import("node:fs/promises");
+    const arquivo = JSON.parse(await readFile("data/estudos.json", "utf8")) as {
+      moedas?: Record<string, Estudo>;
+    };
+    deMao = arquivo.moedas ?? {};
+  } catch {
+    // Falha NÃO vira cache vazio: um erro momentâneo de leitura calaria o estudo
+    // de todas as moedas, e o painel emitiria viés sem o freio de perfil sem
+    // nada na tela dizendo isso. Fica o que já foi lido.
+  }
+  // O do robô é do robô: em produção vem do raw da branch `dados`
+  // (`lib/guardado.ts`), e faltar não derruba o de mão. Nulo é "não li", e até
+  // 24/09 ele trocava o conjunto inteiro por nenhum durante uma hora.
+  const robo = await lerGuardado<EstudosDoRobo>(
+    ESTUDOS_DO_ROBO,
+    (d) => (d && typeof (d as EstudosDoRobo).moedas === "object" ? (d as EstudosDoRobo) : null),
+    3600,
+  ).catch(() => null);
+  if (robo) doRobo = robo.dado.moedas ?? {};
+  // Sem nunca ter lido o de mão, a próxima chamada tenta de novo; tendo lido, a
+  // falha de agora espera a hora como o acerto esperaria.
+  if (deMao) cacheEm = Date.now();
+}
 
 /**
  * Os estudos que o ROBÔ fez, das moedas em vista que chegaram sem estudo à mão
@@ -263,6 +302,12 @@ export interface EstudosDoRobo {
   moedas: Record<string, Estudo>;
   /** Quando cada moeda sem amostra foi tentada, para não pedir as velas a cada retrato. */
   semAmostra: Record<string, number>;
+  /**
+   * Quando a Binance não respondeu por cada moeda. Espera de uma hora, e não de
+   * um dia: é "não consegui", não "não há". Sem espera nenhuma, uma perpétua
+   * retirada ocuparia uma das dez vagas por retrato para sempre.
+   */
+  semResposta?: Record<string, number>;
 }
 
 export const ESTUDOS_DO_ROBO = "estudos-em-vista.json";
@@ -276,28 +321,11 @@ export const ESTUDOS_DO_ROBO = "estudos-em-vista.json";
  * é histórico, não muda de minuto em minuto. `npm run estudar` regrava.
  */
 export async function lerEstudo(symbol: string): Promise<Estudo | null> {
-  if (cache && Date.now() - cacheEm < VALIDADE_CACHE_MS) return cache[symbol] ?? null;
-  try {
-    // `import()` dentro da função para o módulo continuar podendo ser importado
-    // por componente de cliente, que é como ele já estava.
-    const { readFile } = await import("node:fs/promises");
-    const arquivo = JSON.parse(await readFile("data/estudos.json", "utf8")) as {
-      moedas: Record<string, Estudo>;
-    };
-    // O do robô é do robô: em produção vem do raw da branch `dados`
-    // (`lib/guardado.ts`), e faltar não derruba o de mão.
-    const robo = await lerGuardado<EstudosDoRobo>(
-      ESTUDOS_DO_ROBO,
-      (d) => (d && typeof (d as EstudosDoRobo).moedas === "object" ? (d as EstudosDoRobo) : null),
-      3600,
-    ).catch(() => null);
-    cache = { ...(robo?.dado.moedas ?? {}), ...(arquivo.moedas ?? {}) };
-    cacheEm = Date.now();
-    return cache[symbol] ?? null;
-  } catch {
-    // Falha NÃO vira cache vazio: um erro momentâneo de leitura calaria o estudo
-    // de todas as moedas pelo resto da vida do processo, e o painel emitiria
-    // viés sem o freio de perfil sem nada na tela dizendo isso.
-    return null;
+  if (!deMao || Date.now() - cacheEm >= VALIDADE_CACHE_MS) {
+    lendo ??= recarregar().finally(() => {
+      lendo = null;
+    });
+    await lendo;
   }
+  return deMao?.[symbol] ?? doRobo[symbol] ?? null;
 }

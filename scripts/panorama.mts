@@ -18,7 +18,7 @@
 
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { caidas, getPanorama } from "../lib/overview";
-import { fundings } from "../lib/binance";
+import { fundings, velas } from "../lib/binance";
 import { getEmVista, presasPorPosicao } from "../lib/emvista";
 import type { EstadoFluxo } from "../lib/fluxo";
 import { ESTUDOS_DO_ROBO, estudar, type Estudo, type EstudosDoRobo } from "../lib/estudo";
@@ -101,26 +101,45 @@ const emVista = await getEmVista().catch(() => []);
 // `npm run estudar` — e sem ele, recebia a call que a regra tiraria. Uma
 // requisição de velas por moeda, só para as que faltam, no máximo dez por
 // retrato; a sem amostra é tentada de novo depois de um dia.
+//
+// E "sem amostra" só quando a série VEIO e é curta. `estudar` devolve nulo
+// também quando a Binance não respondeu, e aí a moeda ficava um dia inteiro
+// sem estudo por um soluço de rede (armadilha nº 2). Nulo com série vazia é
+// "não consegui" e tenta de novo em uma hora.
 {
   const lerJsonLocal = <T,>(f: string) => readFile(f, "utf8").then((t) => JSON.parse(t) as T).catch(() => null);
   const deMao = (await lerJsonLocal<{ moedas?: Record<string, Estudo> }>(`${DIR}/estudos.json`))?.moedas ?? {};
   const robo: EstudosDoRobo = (await lerJsonLocal<EstudosDoRobo>(`${DIR}/${ESTUDOS_DO_ROBO}`)) ?? { moedas: {}, semAmostra: {} };
   robo.moedas ??= {};
   robo.semAmostra ??= {};
+  robo.semResposta ??= {};
+  const semResposta = robo.semResposta;
   const faltam = emVista
     .filter((t) => !deMao[t.symbol] && !robo.moedas[t.symbol])
     .filter((t) => !(Date.now() - (robo.semAmostra[t.symbol] ?? 0) < 86_400_000))
+    .filter((t) => !(Date.now() - (semResposta[t.symbol] ?? 0) < 3_600_000))
     .slice(0, 10);
+  let mudas = 0;
   if (faltam.length > 0) {
     for (const t of faltam) {
       const e = await estudar(t.symbol).catch(() => null);
       if (e) {
         robo.moedas[t.symbol] = e;
         delete robo.semAmostra[t.symbol];
-      } else robo.semAmostra[t.symbol] = Date.now();
+        delete semResposta[t.symbol];
+      } else if ((await velas(t.symbol, "1d", 5).catch(() => [])).length > 0) {
+        robo.semAmostra[t.symbol] = Date.now();
+        delete semResposta[t.symbol];
+      } else {
+        semResposta[t.symbol] = Date.now();
+        mudas++;
+      }
     }
     await writeFile(`${DIR}/${ESTUDOS_DO_ROBO}`, `${JSON.stringify(robo)}\n`);
-    console.log(`estudos das em vista: ${faltam.filter((t) => robo.moedas[t.symbol]).length} de ${faltam.length} feitos agora`);
+    console.log(
+      `estudos das em vista: ${faltam.filter((t) => robo.moedas[t.symbol]).length} de ${faltam.length} feitos agora` +
+        (mudas > 0 ? ` · ${mudas} sem resposta da Binance, tentadas de novo em uma hora` : ""),
+    );
   }
 }
 
