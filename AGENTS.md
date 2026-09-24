@@ -297,9 +297,11 @@ se uma regra entra. **Nenhuma regra de gestão nova sem passar nela**, e a colun
 "sem a melhor moeda" reprova mais do que as metades: o stop curto passava nas
 duas metades e era uma moeda só.
 
-Medido em 23/09, as mesmas calls: o regime anterior em −11,3% (queda máxima
-−17,2%), o publicado em +14,8% (−5,8%). **Sem a HEI, −19,8% contra −4,3%** — a
-gestão perde muito menos, e lucro continua não demonstrado.
+Medido em 24/09, as mesmas calls: o regime anterior em −15,3% (queda máxima
+−19,2%), o publicado em **−3,0%** (−10,9%) — a gestão perde muito menos, e
+lucro continua não demonstrado. **O número de 23/09, +14,8%, estava errado**:
+três "alvos" da HEI eram preço de pool alheia que o perpétuo nunca tocou (ver
+a armadilha nº 7). Cada peça desligada continua pior que o publicado.
 
 **Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.**
 `npm run carteira` busca as velas de 1h da Binance das moedas que podem virar
@@ -334,7 +336,8 @@ call que acabou de morrer no MESMO retrato — reproduzido com uma moeda caindo
 28% por retrato e o painel fixo em "long", ela tomou **onze stops seguidos** e
 perdeu 17% do patrimônio na mesma leitura errada. Até 23/09 só stop e liquidação
 queimavam, e a saída por prazo reabria no mesmo lote; com a saída por tempo, a
-diferença é de +14,8% para +5,0%.
+diferença é de −3,0% para −4,5% (refeito em 24/09; com os alvos falsos da HEI,
+era de +14,8% para +5,0%).
 
 **A unidade de cada número importa, e confundi-las já quebrou isto.** `STOP` e
 `ALVO` são variação de PREÇO; `retorno` e `funding` são fração da MARGEM, ou seja
@@ -461,6 +464,16 @@ quando o lixo chegasse — US$ 1.000 viravam US$ 1,4×10²⁸.
 O mesmo formato apareceu na trava de call queimada: ela distinguia "não houve
 leitura" de "leitura contrária" na SAÍDA e não no descongelamento, e um único
 retrato mudo bastava para o moedor voltar — doze stops seguidos, −18,6%.
+
+E apareceu uma terceira vez, a mais cara. `ancora` recusava o caminho de velas
+quando o preço do retrato estava fora de 0,8–1,25 do perpétuo — "é outra
+moeda" —, e o teste de ponta logo abaixo usava esse MESMO preço para fechar. A
+pool rasa da HEI devolvia 1,6 a 2 vezes o perpétuo em parte dos retratos, e a
+carteira fechou três posições "no alvo" que o perpétuo nunca tocou: US$ 191,
+todo o lucro que a tela mostrava (+14,8% viraram −3,0% em 24/09). Hoje
+`foraDoPerpetuo` julga cada linha contra a vela daquela hora antes de ela
+abrir, marcar ou fechar qualquer coisa — e as velas vêm desde o começo da
+carteira, porque sem elas o juiz some e os preços falsos voltam a valer.
 
 Quando escrever um freio, procure a outra ponta onde a mesma decisão é tomada.
 

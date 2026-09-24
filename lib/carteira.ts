@@ -265,6 +265,11 @@ export interface Carteira {
   /** O multiplicador do freio de queda agora: 1 é o orçamento inteiro. */
   freio?: number;
   /**
+   * Quantas linhas do histórico ficaram de fora por não serem o preço do
+   * perpétuo naquela hora (`foraDoPerpetuo`). Opcional: zero não é gravado.
+   */
+  foraDoPerpetuo?: number;
+  /**
    * As moedas que chegaram em vista em algum retrato, tiradas do histórico.
    *
    * Do HISTÓRICO e não do conjunto de agora: uma moeda que sair de vista, ou for
@@ -279,7 +284,7 @@ export interface Carteira {
    *
    * Ela morava só no terminal, e é ela que decide se uma regra entra: o
    * publicado ao lado do anterior e do publicado com cada peça desligada, nas
-   * duas metades e sem a moeda que mais ganhou. Sem ela na página, "+14,8%" não
+   * duas metades e sem a moeda que mais ganhou. Sem ela na página, o retorno não
    * tinha contra o que ser lido — e o número que mais pesa, "sem a melhor
    * moeda", ficava invisível para quem não roda o script.
    */
@@ -597,6 +602,13 @@ export const REGRAS_ANTERIORES: Regras = {
  *   anterior             −11,3%     −10,4%      +2,5%      −17,2%      −11,3%
  *   publicado            +14,8%      +5,9%      +6,3%       −5,8%       +1,7%
  *
+ * CORRIGIDO EM 24/09: esta tabela contava três alvos falsos da HEI, US$ 191
+ * de preço de pool alheia que o perpétuo nunca tocou (`foraDoPerpetuo`).
+ * Refeita com o juiz: anterior −15,3%, publicado −3,0% (queda −10,9%, metades
+ * −5,9% e +7,7%). A ORDEM entre os regimes se manteve — cada peça desligada
+ * continua pior —, o sinal do publicado virou. Os números abaixo são os de
+ * 23/09 e ficam como registro de como a conclusão foi tomada.
+ *
  * Melhora nas duas metades e em todas as datas de início; tirando as duas
  * moedas que mais ganharam com a troca (HEI e UB), a diferença ainda é de
  * +US$ 102 — 19 moedas melhoram, 9 pioram. `npm run carteira` imprime esta
@@ -680,7 +692,8 @@ export const REGRAS: Regras = {
   /**
    * TODA SAÍDA QUEIMA A CALL — ver `fechar`. Sem isto a saída por tempo não
    * funciona: a posição sairia "sem reação" e reabriria no mesmo lote, zerando o
-   * relógio. Medido: o regime novo SEM esta linha fica em −5,2%, contra +14,8%.
+   * relógio. Medido: o regime novo SEM esta linha fica em −5,2%, contra +14,8%
+   * (23/09, com os alvos falsos da HEI; refeito em 24/09: −4,5% contra −3,0%).
    */
   queimaEmToda: true,
   /**
@@ -744,6 +757,8 @@ interface Estado {
   maiorExposicao: number;
   maiorRiscoAberto: number;
   curva: { t: number; patrimonio: number }[];
+  /** Linhas descartadas por `foraDoPerpetuo`. */
+  foraDoPerpetuo?: number;
 }
 
 /**
@@ -948,6 +963,39 @@ function ancora(precoRetrato: number, fechamentoVela: number): number | null {
   if (!(precoRetrato > 0) || !(fechamentoVela > 0)) return null;
   const k = precoRetrato / fechamentoVela;
   return k >= 0.8 && k <= 1.25 ? k : null;
+}
+
+/** As velas de cada série indexadas pela hora de abertura, montadas uma vez por série. */
+const velasPorHora = new WeakMap<Passo[], Map<number, Passo>>();
+
+/**
+ * O preço do retrato é da MESMA moeda que o perpétuo naquela hora?
+ *
+ * A HEI mostrou por que isto tem de existir. A pool dela, rasa, devolvia de vez
+ * em quando um preço 60% acima do perpétuo, e o retrato alternava entre os dois:
+ * US$ 0,115 num, US$ 0,1836 no seguinte. Abaixo do `SALTO_ABSURDO` de dez
+ * vezes, o motor aceitava — e fechou três posições "no alvo" com +46%, +64% e
+ * +66% de preço, US$ 142 somados, sem que o perpétuo passasse de US$ 0,155
+ * em nenhuma das janelas. `ancora` já recusava o CAMINHO dessas velas por ser
+ * "outra moeda"; e em seguida o teste de ponta usava o mesmo preço para
+ * fechar. A armadilha nº 7 inteira: o freio numa ponta só.
+ *
+ * A faixa é a de `ancora` (0,8 a 1,25), mas contra a MÍNIMA e a MÁXIMA da hora
+ * em que o retrato caiu, e não contra um fechamento: numa moeda que anda 30%
+ * dentro da hora, o preço verdadeiro de qualquer minuto dela está entre as duas.
+ * Sem vela para aquela hora — moeda sem série, retrato mais velho que as velas
+ * buscadas — não há juiz, e o preço passa como sempre passou.
+ */
+export function foraDoPerpetuo(preco: number, velas: Passo[] | undefined, quando: number): boolean {
+  if (!velas || velas.length === 0) return false;
+  let indice = velasPorHora.get(velas);
+  if (!indice) {
+    indice = new Map(velas.map((v) => [v.abriuEm, v]));
+    velasPorHora.set(velas, indice);
+  }
+  const v = indice.get(Math.floor(quando / 3_600_000) * 3_600_000);
+  if (!v || !(v.minima > 0) || !(v.maxima > 0)) return false;
+  return preco < v.minima * 0.8 || preco > v.maxima * 1.25;
 }
 
 /**
@@ -1180,6 +1228,13 @@ export function rodar(
       // no último preço bom e espera o retrato seguinte, que é o que aconteceria
       // se a leitura simplesmente tivesse falhado — e é o que ela de fato é.
       if (absurdo) continue;
+      // O mesmo destino para o preço que não é do perpétuo daquela hora: não
+      // abre, não marca, não fecha. Antes de `ultimoBom`, para ele não virar a
+      // régua do próximo salto.
+      if (caminho && foraDoPerpetuo(e.preco, caminho.get(e.s), quando)) {
+        estado.foraDoPerpetuo = (estado.foraDoPerpetuo ?? 0) + 1;
+        continue;
+      }
       ultimoBom.set(e.s, e.preco);
       preco.set(e.s, e.preco);
       vies.set(e.s, e.vies);
@@ -1471,6 +1526,7 @@ function montar(estado: Estado, comecouEm: number, atualizadoEm: number): Cartei
     maiorExposicao: estado.maiorExposicao,
     maiorRiscoAberto: estado.maiorRiscoAberto,
     curva: estado.curva,
+    ...(estado.foraDoPerpetuo ? { foraDoPerpetuo: estado.foraDoPerpetuo } : {}),
     regras: estado.regras,
     freio: freioDeQueda(estado.regras, patrimonio, estado.pico),
     riscoAberto: riscoAberto(estado),

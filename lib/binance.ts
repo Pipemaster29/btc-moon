@@ -282,9 +282,10 @@ export interface Vela {
  *
  * São 1500 velas por chamada — mais de quatro anos em diário.
  */
-export async function velas(symbol: string, interval = "1d", limit = 1500): Promise<Vela[]> {
+export async function velas(symbol: string, interval = "1d", limit = 1500, inicio?: number): Promise<Vela[]> {
   const bruto = await pegar<unknown[]>(
-    `/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${Math.min(limit, 1500)}`,
+    `/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${Math.min(limit, 1500)}` +
+      (inicio !== undefined && Number.isFinite(inicio) ? `&startTime=${Math.floor(inicio)}` : ""),
   );
 
   return bruto

@@ -67,9 +67,9 @@ for (const f of arquivos.sort()) {
  * nada. O conjunto abaixo é o limite superior do que a carteira pode ter
  * carregado, então ele cobre tudo sem buscar o que não serve.
  *
- * 1500 velas de uma hora são 62 dias. Quando a carteira passar disso, o pedaço
- * mais antigo simplesmente volta a ser testado só nas pontas — que é o
- * comportamento anterior, não um erro novo.
+ * As velas vêm desde o começo da carteira, em páginas de 1.500 (62 dias): além
+ * do caminho, elas julgam se o preço de cada retrato é o do perpétuo — ver o
+ * laço de busca abaixo.
  */
 const porTicker = new Map(ATIVAS.map((t) => [t.symbol.replace(/USDT$/, ""), t.symbol]));
 // As em vista também viram posição (`lib/emvista.ts`), e sem caminho de velas o
@@ -97,7 +97,21 @@ await Promise.all(
   [...candidatas].map(async (ticker) => {
     const symbol = porTicker.get(ticker);
     if (!symbol) return;
-    const v = await velas(symbol, "1h", 1500).catch(() => []);
+    // DESDE O COMEÇO DA CARTEIRA, e não as 1.500 mais recentes. Eram 62 dias,
+    // e o comentário lá em cima dizia que passar disso só devolvia o pedaço
+    // velho ao teste de ponta. Deixou de ser inofensivo: as velas agora também
+    // julgam se o preço do retrato é o do perpétuo (`foraDoPerpetuo`), e sem
+    // elas os preços de pool alheia de setembro — os que deram à HEI três
+    // "alvos" que o perpétuo nunca tocou — voltariam a valer quando a carteira
+    // fizesse 62 dias. Uma página a cada 62 dias, até seis (um ano).
+    const v: Awaited<ReturnType<typeof velas>> = [];
+    let inicio = COMECO - 3_600_000;
+    for (let pagina = 0; pagina < 6; pagina++) {
+      const lote = await velas(symbol, "1h", 1500, inicio).catch(() => []);
+      v.push(...lote);
+      if (lote.length < 1500) break;
+      inicio = (lote[lote.length - 1].time + 3600) * 1000;
+    }
     // Lista vazia é "não consegui", não "não houve movimento" — e as duas não
     // podem terminar no mesmo lugar. Sem velas, esta moeda cai no teste de ponta
     // de sempre, e a contagem abaixo diz quantas ficaram assim.
@@ -145,6 +159,9 @@ console.log(
   `só nas pontas o patrimônio seria ${usd(semCaminho.patrimonio)} ` +
     `com ${semCaminho.encerradas} encerrada(s) — a diferença é o que o intervalo escondia\n`,
 );
+if (c.foraDoPerpetuo) {
+  console.log(`${c.foraDoPerpetuo} linha(s) do histórico fora do perpétuo daquela hora — não abrem, não marcam, não fecham\n`);
+}
 console.log(`patrimônio   ${usd(c.patrimonio)}  (${pct(c.retorno)} sobre ${usd(CAPITAL_INICIAL)})`);
 console.log(`caixa        ${usd(c.caixa)}`);
 console.log(`exposto      ${usd(c.patrimonio - c.caixa)} em ${c.abertas.length} posições`);

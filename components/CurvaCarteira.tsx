@@ -3,7 +3,7 @@
 /**
  * O patrimônio da carteira ao longo do tempo, e o regime anterior ao lado.
  *
- * O número "+14,8%" sozinho não diz nada: não diz se foi uma subida constante ou
+ * O retorno sozinho não diz nada: não diz se foi uma subida constante ou
  * um salto numa moeda, nem quanto a conta afundou no caminho, nem contra o que
  * ele deveria ser lido. A curva responde as duas primeiras; a linha cinza — as
  * regras que valiam até 23/09, sobre AS MESMAS calls — responde a terceira. É a

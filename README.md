@@ -329,15 +329,26 @@ A regra nova ataca as três e **não mexe em nada do que o painel diz**. Medida
 sobre as mesmas emissões e o mesmo caminho de velas, e — a parte que importa —
 em cada METADE da janela separadamente, começando do zero:
 
-| | inteira | 1ª metade | 2ª metade | queda máx | sem a HEI |
+| | inteira | 1ª metade | 2ª metade | queda máx | sem a melhor moeda |
 |---|---|---|---|---|---|
-| anterior | −11,3% | −10,4% | +2,5% | −17,2% | −19,8% |
-| **publicada** | **+14,8%** | **+5,9%** | **+6,3%** | **−5,8%** | **−4,3%** |
+| anterior | −15,3% | −16,0% | +2,4% | −19,2% | −20,4% (sem HEI) |
+| **publicada** | **−3,0%** | **−5,9%** | **+7,7%** | **−10,9%** | **−4,8%** (sem BEAT) |
 
-A última coluna é a honesta: a HEI bateu o alvo três vezes e respondeu por
-US$ 191 do resultado. **Sem ela, a carteira nova ainda perde** — só que perde
-−4,3% onde a anterior perderia −19,8%. A melhora da gestão é robusta; lucro
-continua não demonstrado, que é o que o placar diz desde agosto.
+**Esta tabela foi refeita em 24/09, e a de 23/09 estava errada.** Ela dava à
+publicada +14,8%, e a HEI respondia por US$ 191 disso com três saídas no alvo
+(+46%, +64% e +66% de preço). Os três alvos eram preço de outra coisa: a pool
+rasa da HEI devolvia de vez em quando 1,6 a 2 vezes o preço do perpétuo, o
+retrato alternava entre os dois, e o perpétuo nunca passou de US$ 0,155 em
+nenhuma das três janelas. O motor já recusava o CAMINHO de velas nesses
+retratos, por ser "outra moeda" — e em seguida fechava a posição no alvo com o
+mesmo preço. Hoje cada preço de retrato é conferido contra a vela de 1h do
+perpétuo daquela hora (`foraDoPerpetuo`, em `lib/carteira.ts`): saem 211
+linhas, todas da HEI, nenhuma de outra moeda.
+
+O que sobrevive é a conclusão sobre a gestão: com as mesmas calls, a publicada
+perde −3,0% onde a anterior perde −15,3%, e desligar qualquer peça piora (a
+tabela do `npm run carteira`). **Lucro continua não demonstrado** — e agora nem
+o número da tela sugere o contrário.
 
 **O que foi testado e não passou**, e é metade da escolha:
 
@@ -346,6 +357,8 @@ continua não demonstrado, que é o que o placar diz desde agosto.
   +21,6%, com a mesma queda máxima — e era quase tudo a HEI: stop curto é
   posição maior, e a posição maior caiu na moeda que bateu o alvo três vezes.
   Tirando as duas moedas que mais ganharam, os dois PERDEM para o stop de 25%.
+  Refeito em 24/09, sem os alvos falsos da HEI: stop de 20% em −4,5% contra
+  −3,0% do de 25%. A decisão se mantém.
 - **Stop móvel**, de 8/12% a 20/15%: as vencedoras andam pouco (+3,9% de
   excursão mediana) e saem pelo painel antes; o rastro só as encurtava.
 - **Mais tamanho**, 1,5x e 2x o orçamento: a queda máxima dobra e o teto passa a

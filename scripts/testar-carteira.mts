@@ -359,6 +359,41 @@ console.log("\n--- o caminho entre os retratos, com velas ---");
   );
 }
 
+console.log("\n--- o preço do retrato tem de ser o do perpétuo daquela hora ---");
+{
+  // A FORMA EXATA DA HEI. A pool rasa devolvia de vez em quando 1,6 a 2 vezes o
+  // preço do perpétuo, e o retrato alternava entre os dois. Abaixo do salto de
+  // dez vezes, o motor aceitava: `ancora` recusava o caminho por ser "outra
+  // moeda", e o teste de ponta usava o mesmo preço para fechar no alvo —
+  // US$ 142 de lucro que o perpétuo nunca tocou.
+  const plana: Passo[] = [1, 2, 3, 4, 5, 6].map((i) => ({
+    abriuEm: h(i - 1) * 1000,
+    fechouEm: h(i) * 1000,
+    abertura: 1,
+    maxima: 1.02,
+    minima: 0.98,
+    fechamento: 1,
+  }));
+  const hei: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    { t: h(2), s: "X", preco: 1.7, vies: "long", forca: 3, fund: 0 },
+    { t: h(4), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+  ];
+  const semJuiz = rodar(hei, T0 * 1000);
+  confere("sem velas: o preço alheio fecha no alvo (o defeito)", semJuiz.fechadas[0]?.motivo === "alvo", `${semJuiz.fechadas[0]?.motivo ?? "nada"}`);
+  const comJuiz = rodar(hei, T0 * 1000, new Map([["X", plana]]));
+  confere("com velas: o preço alheio não fecha nada", comJuiz.encerradas === 0 && comJuiz.abertas.length === 1, `${comJuiz.encerradas} saída(s)`);
+  confere("e é contado", comJuiz.foraDoPerpetuo === 1, `${comJuiz.foraDoPerpetuo ?? 0} linha(s)`);
+  // A outra ponta: o mesmo preço alheio também não ABRE posição.
+  const abre = rodar([{ t: h(1), s: "X", preco: 1.7, vies: "long", forca: 3, fund: 0 }], T0 * 1000, new Map([["X", plana]]));
+  confere("o preço alheio não abre posição", abre.abertas.length === 0, `${abre.abertas.length} aberta(s)`);
+  // E um movimento de verdade, forte, dentro da hora, passa: o preço está
+  // entre a mínima e a máxima da vela, que é o que o juiz olha.
+  const pump: Passo[] = plana.map((v, i) => (i === 1 ? { ...v, maxima: 1.9, fechamento: 1.8 } : v));
+  const real = rodar([{ t: h(1) + 1800, s: "X", preco: 1.85, vies: "long", forca: 3, fund: 0 }], T0 * 1000, new Map([["X", pump]]));
+  confere("pump de verdade dentro da hora passa", real.abertas.length === 1 && !real.foraDoPerpetuo, `${real.abertas.length} aberta(s)`);
+}
+
 console.log("\n--- quem entra quando o orçamento de risco acaba ---");
 {
   // 40 calls de força 1 (0,5% cada = 20%) chegando ANTES de 10 de força 3
