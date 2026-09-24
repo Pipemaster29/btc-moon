@@ -104,7 +104,11 @@ let saltos = 0;
 for (const [s, v] of porMoeda) {
   const bons: Ponto[] = [];
   for (const p of v) {
-    const antes = bons.length ? bons[bons.length - 1].preco : null;
+    // Contra o último preço bom DO ÚLTIMO DIA, como na carteira: sem prazo, a
+    // moeda que voltasse ao retrato depois de −90% sumiria do placar para
+    // sempre, cada linha barrada contra o preço de antes da queda.
+    const ultimo = bons.length ? bons[bons.length - 1] : null;
+    const antes = ultimo && p.t - ultimo.t <= 86_400 ? ultimo.preco : null;
     if (antes !== null && (p.preco / antes > SALTO_ABSURDO || antes / p.preco > SALTO_ABSURDO)) {
       saltos++;
       continue;
