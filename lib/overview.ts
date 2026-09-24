@@ -15,7 +15,7 @@
 
 import { perpSeries } from "./perp";
 import { cotacoes, type Cotacao } from "./binance";
-import { depthOn, pairsOfToken, precoArbitrado } from "./dexscreener";
+import { depthOn, pairsOfToken, precoArbitrado, unidadesDoContrato } from "./dexscreener";
 import { ATIVAS, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
 import { concentracaoDe } from "./detentores";
@@ -292,9 +292,9 @@ async function readOne(
 
   const nota = score(base);
   // Dito na coluna "Atenção", sem mexer na nota: não é o mercado que está
-  // estranho, é a leitura. Os perpétuos de 1000 unidades ficam de fora porque a
-  // razão deles é de mil por construção.
-  if (poolFora && razaoPool !== null && !/^1000/.test(token.symbol)) {
+  // estranho, é a leitura. Os perpétuos de mil ou um milhão de unidades ficam
+  // de fora porque a razão deles é essa por construção.
+  if (poolFora && razaoPool !== null && unidadesDoContrato(token.symbol) === 1) {
     nota.reasons.push(`pool ${razaoPool > 1 ? "+" : "−"}${Math.abs((razaoPool - 1) * 100).toFixed(0)}% fora do perpétuo — preço pelo perpétuo`);
   }
   return { ...base, ...nota };

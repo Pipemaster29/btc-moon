@@ -177,9 +177,18 @@ export function precoArbitrado(
   return { preco: 0, fonte: "nenhum", razao };
 }
 
-/** As unidades do token por contrato, pelo nome do perpétuo da Binance. */
+/**
+ * As unidades do token por contrato, pelo nome do perpétuo da Binance.
+ *
+ * São TRÊS prefixos, e não dois: conferido no exchangeInfo de 24/09, há
+ * `1000X` (dez contratos, 1000SHIB a 1000CHEEMS), `1000000X` (MOG e BOB) e
+ * `1MX` — o `1MBABYDOGEUSDT`, um milhão de BABYDOGE por contrato, que caía
+ * em "uma unidade" e seria avaliado um milhão de vezes acima. `1INCH`, `0G`,
+ * `2Z` e `4` começam com dígito e são uma unidade mesmo.
+ */
 export function unidadesDoContrato(symbol: string): number {
   if (/^1000000[A-Z0-9]/.test(symbol)) return 1_000_000;
+  if (/^1M[A-Z]/.test(symbol)) return 1_000_000;
   if (/^1000[A-Z]/.test(symbol)) return 1000;
   return 1;
 }

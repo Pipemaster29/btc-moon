@@ -1080,6 +1080,12 @@ console.log(`\npool de outra moeda`);
   const bob = precoArbitrado(null, 0.01876, unidadesDoContrato("1000000BOBUSDT"));
   confere("1000000BOB sem pool: o perpétuo POR TOKEN", Math.abs(bob.preco - 1.876e-8) < 1e-15, `${bob.preco}`);
   confere("moeda comum: uma unidade por contrato", unidadesDoContrato("TAKEUSDT") === 1 && unidadesDoContrato("4USDT") === 1, "1");
+  confere("1MBABYDOGE: um milhão por contrato", unidadesDoContrato("1MBABYDOGEUSDT") === 1_000_000, `${unidadesDoContrato("1MBABYDOGEUSDT")}`);
+  confere(
+    "1INCH, 0G e 2Z começam com dígito e são uma unidade",
+    ["1INCHUSDT", "0GUSDT", "2ZUSDT"].every((s) => unidadesDoContrato(s) === 1),
+    ["1INCHUSDT", "0GUSDT", "2ZUSDT"].map(unidadesDoContrato).join("/"),
+  );
 }
 
 // ---------------------------------------------------------------------------
