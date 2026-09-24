@@ -164,14 +164,23 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
   //
   // O árbitro é o perpétuo, pelo mesmo motivo que ele arbitra a identificação de
   // contrato em `descobrir`: é a praça grande, e entre o mesmo ativo a
-  // arbitragem não deixa a diferença passar de um dígito percentual. Cem vezes é
-  // um corte muito frouxo de propósito — não serve para pegar pool rasa
-  // desalinhada, serve para pegar lixo.
+  // arbitragem não deixa a diferença passar de um dígito percentual.
+  //
+  // O CORTE ERA DE CEM VEZES, "frouxo de propósito, para pegar lixo e não pool
+  // desalinhada" — e deixou passar a AIOT lendo o preço da AIT, 2,7 vezes fora,
+  // que a carteira usou para abrir posição (23/09). Medido no dia seguinte, com
+  // a pool alheia já filtrada em `depthOn`: das 75 moedas com pool e perpétuo,
+  // 73 ficam a menos de 2% dele e a mais longe, a HEI, a 10% (pool de US$ 3
+  // mil). Então a faixa é a mesma com que a carteira ancora as velas —
+  // 0,8 a 1,25, "razão de 1,4 não é base de mercado, é outra moeda" — e fora
+  // dela vale o perpétuo. Hoje isso não troca o preço de nenhuma moeda; troca o
+  // da próxima AIOT. Os perpétuos de 1000 e 1.000.000 unidades caem aqui fora
+  // por construção e sempre usaram o perpétuo.
   const precoPool = depth?.priceUsd ?? 0;
   const precoPerp = last?.price ?? 0;
-  const poolAbsurda =
-    precoPool > 0 && precoPerp > 0 && (precoPool / precoPerp > 100 || precoPerp / precoPool > 100);
-  const price = (poolAbsurda ? 0 : precoPool) || precoPerp || 0;
+  const razaoPool = precoPool > 0 && precoPerp > 0 ? precoPool / precoPerp : null;
+  const poolFora = razaoPool !== null && (razaoPool < 0.8 || razaoPool > 1.25);
+  const price = (poolFora ? 0 : precoPool) || precoPerp || 0;
   const liquidityUsd = depth?.liquidityUsd ?? 0;
   // A praça grande manda; a Gate só cobre quem a Binance não lista. E agora vem
   // ao vivo em vez do arquivo de ontem: o bloqueio por região era do host
@@ -202,7 +211,9 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
   // A pool continua tendo preferência onde ela existe e gira: é a fonte que o
   // DexScreener calcula sobre o mercado à vista real. O perpétuo entra quando
   // ela não responde, que é o caso que estava zerado.
-  const change24h = depth?.change24h || varPerp;
+  // A variação da pool desalinhada é tão suspeita quanto o preço dela — na AIOT
+  // era a da AIT.
+  const change24h = (!poolFora && depth?.change24h) || varPerp;
 
   const base = {
     symbol: token.symbol,
@@ -232,7 +243,14 @@ async function readOne(token: WatchedToken): Promise<OverviewRow | null> {
     oiChange72h: live?.oiChange72h ?? NaN,
   };
 
-  return { ...base, ...score(base) };
+  const nota = score(base);
+  // Dito na coluna "Atenção", sem mexer na nota: não é o mercado que está
+  // estranho, é a leitura. Os perpétuos de 1000 unidades ficam de fora porque a
+  // razão deles é de mil por construção.
+  if (poolFora && razaoPool !== null && !/^1000/.test(token.symbol)) {
+    nota.reasons.push(`pool ${razaoPool > 1 ? "+" : "−"}${Math.abs((razaoPool - 1) * 100).toFixed(0)}% fora do perpétuo — preço pelo perpétuo`);
+  }
+  return { ...base, ...nota };
 }
 
 /** A tabela inteira, já ordenada por quem merece olhar primeiro. */
