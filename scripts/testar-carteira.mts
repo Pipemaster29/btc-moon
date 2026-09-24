@@ -32,6 +32,7 @@ import { avisadasDepois, emVistaDe, INICIO_ADIANTE, medirAdiante, novasEmVista, 
 import type { EstadoFluxo } from "../lib/fluxo";
 import { WATCHLIST } from "../lib/watchlist";
 import { depthOn, precoArbitrado, unidadesDoContrato, type Pair } from "../lib/dexscreener";
+import { ARQUIVO_HISTORICO, arquivoDoHistorico } from "../lib/historico";
 
 const T0 = Date.parse("2026-01-01T00:00:00Z") / 1000;
 const h = (n: number) => T0 + n * 3600;
@@ -1054,6 +1055,25 @@ console.log(`\npool de outra moeda`);
   const bob = precoArbitrado(null, 0.01876, unidadesDoContrato("1000000BOBUSDT"));
   confere("1000000BOB sem pool: o perpétuo POR TOKEN", Math.abs(bob.preco - 1.876e-8) < 1e-15, `${bob.preco}`);
   confere("moeda comum: uma unidade por contrato", unidadesDoContrato("TAKEUSDT") === 1 && unidadesDoContrato("4USDT") === 1, "1");
+}
+
+// ---------------------------------------------------------------------------
+// O ARQUIVO DO HISTÓRICO: um por mês até setembro, um por quinzena desde
+// outubro (`lib/historico.ts`) — o mês com as em vista chegaria a 101 MB, e o
+// GitHub recusa o push inteiro acima de 100. As viradas e o padrão que os
+// leitores reconhecem, que é onde um erro faria linhas sumirem da carteira.
+{
+  console.log("\no arquivo do histórico");
+  const nome = (iso: string) => arquivoDoHistorico(Date.parse(iso));
+  confere("30/09 23:59 ainda é o mensal", nome("2026-09-30T23:59:59Z") === "historico-2026-09.jsonl", nome("2026-09-30T23:59:59Z"));
+  confere("01/10 00:00 abre a 1ª quinzena", nome("2026-10-01T00:00:00Z") === "historico-2026-10-1.jsonl", nome("2026-10-01T00:00:00Z"));
+  confere("15/10 23:59 ainda é a 1ª", nome("2026-10-15T23:59:59Z") === "historico-2026-10-1.jsonl", nome("2026-10-15T23:59:59Z"));
+  confere("16/10 00:00 abre a 2ª", nome("2026-10-16T00:00:00Z") === "historico-2026-10-2.jsonl", nome("2026-10-16T00:00:00Z"));
+  confere("31/12 é a 2ª de dezembro", nome("2026-12-31T23:00:00Z") === "historico-2026-12-2.jsonl", nome("2026-12-31T23:00:00Z"));
+  const aceitos = ["historico-2026-09.jsonl", "historico-2026-10-1.jsonl", "historico-2027-01-2.jsonl"];
+  const recusados = ["historico-2026-10-3.jsonl", "historico-2026-10.json", "fluxo-binance-2026-09.jsonl", "historico-2026-1-1.jsonl"];
+  confere("os leitores reconhecem mensal e quinzenal", aceitos.every((f) => ARQUIVO_HISTORICO.test(f)), aceitos.join(" "));
+  confere("e nada além deles", !recusados.some((f) => ARQUIVO_HISTORICO.test(f)), recusados.filter((f) => ARQUIVO_HISTORICO.test(f)).join(" ") || "nenhum");
 }
 
 console.log(falhas === 0 ? "\ntudo passou" : `\n${falhas} caso(s) FALHARAM`);

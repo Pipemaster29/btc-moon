@@ -127,10 +127,16 @@ histórico: de ~1.200 para ~4.960 linhas por dia, o que projeta ~38 MB para o m�
 contra os 12 MB do desenho. Se ficar pesado, o número a mexer é o `% 4` do
 retrato.
 
-**Com as em vista o teto ficou à vista.** 113 moedas × 68 retratos × ~270 bytes
-são ~2 MB por dia, ~64 MB num mês de 31 dias — e o GitHub recusa arquivo acima
-de 100 MB. O mês cabe até ~175 moedas; se as em vista crescerem até lá, parta o
-`historico-AAAA-MM.jsonl` por quinzena antes de o push começar a falhar.
+**Com as em vista o teto chegou, e a conta de antes estava errada.** Ela usava
+os 68 retratos por dia de 23/09; medido em 24/09, com as em vista, foram 41
+retratos em 10,1 h — um a cada ~15 min — com 113 moedas e 284 bytes por linha:
+**3,12 MB por dia, 97 MB num mês de 31 dias, 101 MB com o `pp`**. O GitHub
+recusa arquivo acima de 100 MB, e a recusa derruba o push INTEIRO: retrato,
+carteira e garimpo parariam juntos. Por isso, desde outubro, o histórico é
+**um arquivo por quinzena** (`historico-AAAA-MM-1.jsonl` e `-2`, ~52 MB), e o
+nome mora num lugar só (`lib/historico.ts`). Setembro fecha mensal, perto de
+51 MB. `npm run auditar-dados` reprova arquivo acima de 80 MB: se reprovar,
+encurte o pedaço em `arquivoDoHistorico` antes de o push começar a falhar.
 
 As execuções agora aparecem como `cancelled` na aba Actions com frequência, e
 isso é o mecanismo funcionando, não falha: é a execução PENDENTE sendo
@@ -233,6 +239,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/sinais.ts` | o formato de `data/sinais.json` e a leitura dele pela página |
 | `lib/fluxo.ts` | `resumirFluxo`: soma o bruto do fluxo da Binance por moeda, com a cobertura de cada dia junto |
 | `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |
+| `lib/historico.ts` | o nome do arquivo do histórico e o padrão que os leitores reconhecem. **Carrega a medição que partiu o mês em quinzenas** |
 | `lib/emvista.ts` | as moedas **em vista**: todo perpétuo que passou pela carteira quente da Binance e não está na lista entra no painel sozinho. **Carrega a medição que justifica isso** e o aviso do Telegram. Não moram em `watchlist.ts`, e o monitor on-chain segue só com a lista |
 | `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção (branch `dados`, depois `main`), disco primeiro no resto |
 | `lib/avisos.ts` | o que a carteira abriu ou fechou desde o retrato anterior, em texto para o Telegram. A memória do que já foi avisado viaja no `carteira.json` |
@@ -248,7 +255,7 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | arquivo | o que é | quem grava |
 |---|---|---|
 | `data/panorama.json` | o retrato completo, ~70 moedas | `npm run panorama` |
-| `data/historico-AAAA-MM.jsonl` | uma linha por moeda por retrato. **É a memória do projeto** | idem |
+| `data/historico-AAAA-MM.jsonl` e, desde outubro, `historico-AAAA-MM-1.jsonl`/`-2` | uma linha por moeda por retrato, um arquivo por quinzena (`lib/historico.ts`). **É a memória do projeto** | idem |
 | `data/detentores.json` | concentração por moeda. **17 medidas de 37 com contrato**, todas de Ethereum e Base. As 20 da BSC não têm fonte de log: 15 de 16 varridas em 06/09 perderam as 41 faixas da janela | `npm run genese` |
 | `data/vesting.json` | emissão por moeda | `npm run vesting` |
 | `data/estudos.json` | estudo por moeda, **as em vista incluídas**: sem ele a trava de "a moeda continua o movimento" não roda nelas (8 de 70 da lista, 6 de 39 em vista) | `npm run estudar` (`-- --em-vista` só para elas) |

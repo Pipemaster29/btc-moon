@@ -27,6 +27,7 @@
 
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { SALTO_ABSURDO } from "../lib/carteira";
+import { ARQUIVO_HISTORICO } from "../lib/historico";
 
 interface Ponto {
   t: number;
@@ -65,7 +66,7 @@ const quarentena = new Set<string>(
 let emQuarentena = 0;
 
 const pontos: Ponto[] = [];
-for (const f of (await readdir("data")).filter((x) => x.startsWith("historico-"))) {
+for (const f of (await readdir("data")).filter((x) => ARQUIVO_HISTORICO.test(x))) {
   for (const linha of (await readFile(`data/${f}`, "utf8")).split("\n")) {
     if (!linha.trim()) continue;
     try {

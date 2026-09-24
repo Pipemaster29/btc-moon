@@ -23,19 +23,19 @@ import { getEmVista, presasPorPosicao } from "../lib/emvista";
 import type { EstadoFluxo } from "../lib/fluxo";
 import { ESTUDOS_DO_ROBO, estudar, type Estudo, type EstudosDoRobo } from "../lib/estudo";
 import { ATIVAS } from "../lib/watchlist";
+import { arquivoDoHistorico } from "../lib/historico";
 
 const DIR = "data";
 const ATUAL = `${DIR}/panorama.json`;
 /**
- * Um arquivo por mês.
- *
- * São 42 linhas por execução e 48 execuções por dia — perto de 400 KB por dia,
- * que num arquivo único viraria 150 MB em um ano e tornaria cada clone do
- * repositório mais pesado que o projeto inteiro. Quebrado por mês, cada pedaço
- * fecha em torno de 12 MB e o mês corrente é o único que muda.
+ * Um arquivo por pedaço de tempo, e não um só: num arquivo único o histórico
+ * passaria dos 100 MB que o GitHub aceita em semanas, e cada clone ficaria mais
+ * pesado que o projeto inteiro. Era um por mês; desde outubro é um por
+ * quinzena, porque o mês com as em vista chegaria a 101 MB — a medição mora em
+ * `lib/historico.ts`.
  */
-function historicoDoMes(quando: number): string {
-  return `${DIR}/historico-${new Date(quando).toISOString().slice(0, 7)}.jsonl`;
+function historicoDe(quando: number): string {
+  return `${DIR}/${arquivoDoHistorico(quando)}`;
 }
 
 /** Só o que vale guardar por moeda por execução — o resto se recalcula. */
@@ -218,7 +218,7 @@ const pontos: PontoHistorico[] = comPreco.map((r) => ({
   ...(r.origem ? { origem: r.origem } : {}),
 }));
 
-const historico = historicoDoMes(agora);
+const historico = historicoDe(agora);
 await appendFile(historico, pontos.map((p) => JSON.stringify(p)).join("\n") + "\n");
 
 const porVies = (v: string) => linhas.filter((r) => r.leitura?.vies === v).length;

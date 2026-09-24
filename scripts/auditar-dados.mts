@@ -8,9 +8,10 @@
  *
  * Rode com: npm run auditar-dados
  */
-import { readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { MOTIVOS, RISCO_TOTAL_MAXIMO } from "../lib/carteira";
 import { mesmaMoeda } from "../lib/faixa";
+import { ARQUIVO_HISTORICO } from "../lib/historico";
 
 let falhas = 0;
 function checa(nome: string, ok: boolean, detalhe = "") {
@@ -50,11 +51,24 @@ if (pan) {
 } else console.log("  (ausente)");
 
 // ---- histórico do mês: a mesma invariante nas linhas, que é o que a carteira
-// e o placar leem. Só as linhas com `pp` (gravado desde 24/09).
+// e o placar leem. Só as linhas com `pp` (gravado desde 24/09). O mês pode
+// estar em um arquivo ou em dois (por quinzena desde outubro, `lib/historico.ts`).
 {
   const mes = new Date().toISOString().slice(0, 7);
-  const texto = await readFile(`data/historico-${mes}.jsonl`, "utf8").catch(() => null);
+  const todos = (await readdir("data").catch(() => [] as string[])).filter((f) => ARQUIVO_HISTORICO.test(f));
+  const doMes = todos.filter((f) => f.startsWith(`historico-${mes}`));
+  const texto = doMes.length
+    ? (await Promise.all(doMes.map((f) => readFile(`data/${f}`, "utf8").catch(() => "")))).join("\n")
+    : null;
   console.log("histórico:");
+  // O TETO DO GITHUB, antes de ele chegar. Acima de 100 MB o push inteiro é
+  // recusado — e com ele todo retrato seguinte, não só o histórico. Em 24/09 o
+  // mês com as em vista projetava 101 MB; 80 MB dá semanas de folga para
+  // encurtar o pedaço de `arquivoDoHistorico`.
+  for (const f of todos) {
+    const mb = ((await stat(`data/${f}`).catch(() => null))?.size ?? 0) / 1e6;
+    checa(`${f} abaixo de 80 MB (o GitHub recusa acima de 100)`, mb < 80, `= ${mb.toFixed(1)} MB`);
+  }
   if (texto) {
     let comPp = 0;
     let fora = 0;

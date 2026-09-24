@@ -26,6 +26,7 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { velasDesde } from "../lib/binance";
 import { foraDoPerpetuo, type Passo } from "../lib/carteira";
 import { comLimite } from "../lib/limite";
+import { ARQUIVO_HISTORICO } from "../lib/historico";
 
 interface Linha {
   t: number;
@@ -34,7 +35,7 @@ interface Linha {
 }
 
 const linhas: Linha[] = [];
-for (const f of (await readdir("data")).filter((x) => /^historico-\d{4}-\d{2}\.jsonl$/.test(x)).sort()) {
+for (const f of (await readdir("data")).filter((x) => ARQUIVO_HISTORICO.test(x)).sort()) {
   for (const l of (await readFile(`data/${f}`, "utf8")).split("\n")) {
     if (!l.trim()) continue;
     try {

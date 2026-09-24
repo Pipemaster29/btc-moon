@@ -72,7 +72,7 @@ interface State {
    *
    * Guarda um ponto só, não uma série: o que a regra pergunta é "mudou desde a
    * última vez que olhei", e para isso a leitura anterior basta. A série longa
-   * de verdade fica em `data/historico-AAAA-MM.jsonl`, gravada pelo panorama.
+   * de verdade fica em `data/historico-*.jsonl`, gravada pelo panorama.
    */
   floatCex?: Record<string, { time: number; fracao: number }>;
   /**

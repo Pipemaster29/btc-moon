@@ -22,6 +22,7 @@ import {
 } from "../lib/carteira";
 import { velas, velasDesde } from "../lib/binance";
 import { ATIVAS } from "../lib/watchlist";
+import { ARQUIVO_HISTORICO } from "../lib/historico";
 import { chavesDepois, eventosNovos, MAX_POR_RETRATO, textoDoEvento, type Evento } from "../lib/avisos";
 import { escapeMarkdown, sendTelegram, telegramFromEnv } from "../lib/telegram";
 
@@ -38,7 +39,7 @@ import { escapeMarkdown, sendTelegram, telegramFromEnv } from "../lib/telegram";
 const COMECO = Date.parse("2026-09-02T20:00:00Z");
 
 const dir = "data";
-const arquivos = (await readdir(dir)).filter((f) => /^historico-\d{4}-\d{2}\.jsonl$/.test(f));
+const arquivos = (await readdir(dir)).filter((f) => ARQUIVO_HISTORICO.test(f));
 
 const emissoes: Emissao[] = [];
 for (const f of arquivos.sort()) {
