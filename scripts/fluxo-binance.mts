@@ -347,7 +347,9 @@ for (const [i, [a, b]] of cortes.entries()) {
   // que não respondeu ERC-20 nesta rodada ainda não tem identificação, e fica.
   for (const tk of porToken.keys()) {
     const id = estado.tokens[tk];
-    if (id) id.vistoEm = Math.max(id.vistoEm ?? 0, t * 1000);
+    if (!id) continue;
+    id.vistoEm = Math.max(id.vistoEm ?? 0, t * 1000);
+    id.primeiroVisto ??= t * 1000;
   }
   const dia = Math.floor((t * 1000) / DIA) * DIA;
   const aoVivo = dia === hoje;

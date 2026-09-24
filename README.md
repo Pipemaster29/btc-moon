@@ -584,6 +584,16 @@ dinheiro. A carteira fictícia opera as calls delas como as da lista, com a
 origem gravada em cada linha do histórico, e a tela separa o resultado das duas.
 É ela que vai dizer se as em vista se comportam diferente.
 
+**E a tese é conferida para frente.** A medição acima olha o passado de moedas
+escolhidas pelo fluxo de cinco dias; o que ela prevê é que elas continuem
+bombando mais DAQUI EM DIANTE. O `npm run garimpar` já baixa as velas diárias da
+praça inteira, e com elas conta, desde 24/09, os dias de alta ≥25% de toda moeda
+que esteve em vista — a partir do dia seguinte à primeira passagem, porque o
+dia da chegada costuma ser o pump que a trouxe — contra o resto da praça. A
+página mostra os dois números com a amostra ao lado; a comparação começa a
+valer perto de mil moeda-dias em vista (~25 dias com 41 moedas: a 16,7 contra
+4,4 por mil, ~17 dias de alta contra ~4).
+
 **E elas trouxeram à tona um defeito que estava em todas.** O endereço de um
 token no DexScreener devolve também as pools em que ele é a moeda de PAGAMENTO,
 e nelas o preço é o da outra moeda. A AIOT entrou lendo o preço da AIT — 0,01846

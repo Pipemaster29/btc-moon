@@ -8,6 +8,7 @@ import GarimpoPanel from "@/components/GarimpoPanel";
 import SinaisPanel from "@/components/SinaisPanel";
 import FluxoPanel from "@/components/FluxoPanel";
 import { getGarimpo } from "@/lib/garimpo";
+import type { Adiante } from "@/lib/emvista";
 import { getSinais } from "@/lib/sinais";
 import { getFluxo } from "@/lib/fluxo";
 import { PrecoVivo, SinalVivo, VariacaoViva } from "@/components/PrecoVivo";
@@ -99,6 +100,25 @@ function Score({ value }: { value: number }) {
       </div>
       <span className="tabular-nums text-xs text-black/40 dark:text-white/40">{value}</span>
     </div>
+  );
+}
+
+/**
+ * A tese das em vista conferida para frente (`medirAdiante`). O número medido
+ * antes vai junto porque é contra ele que este se lê; e com pouca amostra a
+ * frase diz que é pouca, com a conta de quando deixa de ser.
+ */
+function textoAdiante(a: Adiante): string {
+  const desde = new Date(a.desde).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+  if (a.emVista.moedaDias === 0) return `A conferência para frente conta a partir de ${desde}, dia fechado a dia fechado.`;
+  const taxa = (g: Adiante["emVista"]) => (g.moedaDias ? ((g.altas / g.moedaDias) * 1000).toFixed(1).replace(".", ",") : "—");
+  // Mil moeda-dias: a 16,7 contra 4,4 por mil, são ~17 dias de alta contra ~4
+  // esperados — a partir daí a diferença medida antes, se existir, aparece.
+  const pouca = a.emVista.moedaDias < 1000;
+  return (
+    `Conferido para frente, desde ${desde}: ${taxa(a.emVista)} por mil nas em vista contra ${taxa(a.resto)} no resto ` +
+    `(${a.emVista.moedaDias.toLocaleString("pt-BR")} e ${a.resto.moedaDias.toLocaleString("pt-BR")} moeda-dias)` +
+    (pouca ? " — amostra ainda pequena; a comparação começa a valer perto de mil moeda-dias em vista." : ".")
   );
 }
 
@@ -276,6 +296,7 @@ export default async function Radar() {
     : null;
   const comCarteiras = rows.filter((r) => r.hasWallets).length;
   const emVista = rows.filter((r) => r.origem).length;
+  const adiante = garimpo?.emVistaAdiante ?? null;
 
   const porVies = (v: Vies) =>
     rows
@@ -354,6 +375,7 @@ export default async function Radar() {
               vezes mais que o resto da Binance, no mesmo tamanho e nas duas metades da janela.
               Isso diz que elas se mexem. Que dê para ganhar com isso não está medido — a
               carteira fictícia opera as calls delas separadas por origem, e é ela que vai dizer.
+              {adiante && <> {textoAdiante(adiante)}</>}
             </p>
           )}
           {snapshot.novas.length > 0 && (

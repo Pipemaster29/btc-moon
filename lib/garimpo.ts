@@ -81,7 +81,8 @@
  * peneiramento automático tem como evitá-lo.
  */
 
-import { velas } from "./binance";
+import { velas, type Vela } from "./binance";
+import type { Adiante } from "./emvista";
 import { ATIVAS, WATCHLIST } from "./watchlist";
 import { lerGuardado } from "./guardado";
 
@@ -205,6 +206,11 @@ export interface Garimpo {
   /** Quantos ficaram sem série de velas — "não consegui", não "não achou". */
   semSerie: number;
   achados: Achado[];
+  /**
+   * A tese das em vista conferida para frente (`medirAdiante`, `lib/emvista.ts`).
+   * Opcional porque os arquivos anteriores a 24/09 não têm.
+   */
+  emVistaAdiante?: Adiante;
 }
 
 interface RawSymbol {
@@ -271,7 +277,12 @@ export const VOLUME_MINIMO = 500_000;
  * existe em nenhum endereço agregado, e a queda desde o pico da vida também
  * não.
  */
-export async function garimpar(): Promise<Garimpo> {
+/**
+ * `series`, quando dado, recebe as velas diárias que a peneira já baixou — de
+ * graça para a verificação das em vista, que precisa da praça inteira e não
+ * pode pagar outra requisição por moeda.
+ */
+export async function garimpar(series?: Map<string, Vela[]>): Promise<Garimpo> {
   const [lista, tickers, premios] = await Promise.all([
     universo(),
     pegarJson<{ symbol: string; lastPrice: string; priceChangePercent: string; quoteVolume: string }[]>(
@@ -311,6 +322,7 @@ export async function garimpar(): Promise<Garimpo> {
       if (!(preco > 0) || !Number.isFinite(alta24h)) return;
 
       const v = await velas(s.symbol, "1d", 30).catch(() => []);
+      if (v.length > 0) series?.set(s.symbol, v);
       // Lista vazia é "NÃO CONSEGUI", e só isso conta como falha de leitura.
       if (v.length === 0) {
         semSerie++;

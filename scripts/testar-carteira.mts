@@ -28,7 +28,7 @@ import {
 } from "../lib/carteira";
 import { eventosNovos, chavesDepois, textoDoEvento, JANELA_REENVIO_MS } from "../lib/avisos";
 import { escapeMarkdown } from "../lib/telegram";
-import { avisadasDepois, emVistaDe, novasEmVista, textoEmVista, textoLigado } from "../lib/emvista";
+import { avisadasDepois, emVistaDe, INICIO_ADIANTE, medirAdiante, novasEmVista, textoEmVista, textoLigado } from "../lib/emvista";
 import type { EstadoFluxo } from "../lib/fluxo";
 import { WATCHLIST } from "../lib/watchlist";
 import { depthOn, type Pair } from "../lib/dexscreener";
@@ -803,6 +803,54 @@ console.log(`\nmoedas em vista`);
     const solto = escapeMarkdown(texto).replace(/\\./g, "").match(/[_*[\]()~`>#+\-=|{}.!]/);
     confere(`MarkdownV2 limpo (${nome})`, solto === null, solto ? `solto: ${solto[0]}` : "limpo");
   }
+}
+
+// ------------------------------------------ a tese das em vista, adiante
+//
+// A conferência só mede alguma coisa se não contar o que trouxe a moeda: o dia
+// da chegada, o dia aberto, e quem saiu de vista não pode sumir da conta.
+console.log(`\nem vista, adiante`);
+{
+  const DIA = 86_400_000;
+  const d0 = INICIO_ADIANTE;
+  // Série diária: `altas` são os índices (a partir de 1) com +30% no dia.
+  const serie = (dias: number, altas: number[]) => {
+    const v: { time: number; close: number }[] = [];
+    let c = 1;
+    for (let i = 0; i < dias; i++) {
+      if (altas.includes(i)) c *= 1.3;
+      v.push({ time: (d0 - 2 * DIA + i * DIA) / 1000, close: c });
+    }
+    return v;
+  };
+  const agora = d0 + 5 * DIA + 3_600_000; // o dia 5 está aberto
+  const id = (perp: string, primeiroVisto: number | undefined, vistoEm: number) => ({
+    symbol: perp, decimals: 18, perp, mult: 1, conferidoEm: vistoEm, vistoEm, primeiroVisto,
+  });
+  const estado: EstadoFluxo = {
+    ultimoBloco: 1,
+    tokens: {
+      "0xa": id("ANTESUSDT", d0 - 3 * DIA, d0 + DIA), // já estava: conta desde o início
+      "0xb": id("CHEGOUUSDT", d0 + 2 * DIA + 5_000, d0 + 2 * DIA + 5_000), // chegou no dia 2
+      "0xc": id("SAIUUSDT", d0 - 20 * DIA, d0 - 20 * DIA), // saiu de vista no meio: fica
+      "0xd": id(WATCHLIST[0].symbol, d0, d0), // na lista: fora dos dois grupos
+    },
+  };
+  const series = new Map([
+    ["ANTESUSDT", serie(10, [1, 3])], // dia 1 é antes do início; dia 3 (= d0+1) conta
+    ["CHEGOUUSDT", serie(10, [4, 5])], // dia 4 = d0+2, a chegada; dia 5 = d0+3, conta
+    ["SAIUUSDT", serie(10, [])],
+    ["RESTOUSDT", serie(10, [2, 6, 7])], // d0 conta, d0+4 conta, d0+5 aberto
+    [WATCHLIST[0].symbol, serie(10, [3, 4, 5])],
+  ]);
+  const a = medirAdiante(series, estado, agora);
+  confere("antes do início não conta; depois conta", a.emVista.altas === 2, `${a.emVista.altas} altas`);
+  // ANTES: d0..d0+4 = 5 dias; CHEGOU: d0+3..d0+4 = 2; SAIU: 5.
+  confere("dia da chegada e dia aberto ficam fora", a.emVista.moedaDias === 12, `${a.emVista.moedaDias} moeda-dias`);
+  confere("quem saiu de vista continua no grupo", a.emVista.moedas === 3, `${a.emVista.moedas} moedas`);
+  confere("o resto: sem lista, sem carteira", a.resto.moedas === 1 && a.resto.altas === 2 && a.resto.moedaDias === 5, `${a.resto.altas}/${a.resto.moedaDias}`);
+  const semEstado = medirAdiante(series, null, agora);
+  confere("sem estado do fluxo, ninguém é em vista", semEstado.emVista.moedas === 0, `${semEstado.resto.moedas} no resto`);
 }
 
 // ------------------------------------------------ a pool de outra moeda

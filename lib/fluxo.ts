@@ -32,6 +32,12 @@ export interface IdentificacaoFluxo {
    * `conferidoEm`, que é no máximo sete dias mais velho.
    */
   vistoEm?: number;
+  /**
+   * A primeira passagem que este gravador registrou. É o começo da janela em que
+   * a moeda conta na verificação para frente (`medirAdiante`, `lib/emvista.ts`):
+   * o dia em que ela chegou não conta, porque é o pump que a trouxe.
+   */
+  primeiroVisto?: number;
 }
 
 /** O `data/fluxo-binance.json`: de onde o gravador continua, e quem é quem. */

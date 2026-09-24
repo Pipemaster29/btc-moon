@@ -112,6 +112,91 @@ export function emVistaDe(
   return [...porPerp.values()].map((x) => x.t).sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
+// ------------------------------------------------ a tese, conferida adiante
+
+/**
+ * Quando a conferência para frente começa: o dia em que as em vista entraram no
+ * ar. A medição acima é sobre o PASSADO de moedas escolhidas pelo fluxo de
+ * cinco dias; o que ela prevê é que essas moedas continuem bombando mais que o
+ * resto DAQUI EM DIANTE, e isso só se confere com dias que ainda não existiam.
+ */
+export const INICIO_ADIANTE = Date.UTC(2026, 8, 24);
+
+export interface GrupoAdiante {
+  moedas: number;
+  moedaDias: number;
+  /** Dias de alta ≥25% (fechamento sobre fechamento). */
+  altas: number;
+  /** Dias de queda ≤−25%. */
+  quedas: number;
+}
+
+export interface Adiante {
+  desde: number;
+  /** Toda moeda que esteve em vista desde o início, contada a partir do dia seguinte à primeira passagem. */
+  emVista: GrupoAdiante;
+  /** A praça sem a lista e sem nada que tenha passado pela carteira. */
+  resto: GrupoAdiante;
+}
+
+/**
+ * Conta os dias de alta e de queda de 25% de cada grupo desde `INICIO_ADIANTE`.
+ *
+ * Três cortes que decidem se isto mede alguma coisa:
+ *
+ *   - o DIA DA CHEGADA não conta. A moeda costuma entrar na carteira porque o
+ *     varejo a compra no meio do pump; contar esse dia seria a carteira
+ *     "prevendo" o que a trouxe. Conta do dia UTC seguinte à primeira passagem.
+ *   - o grupo é quem ESTEVE em vista, não quem está: quem sai por 30 dias sem
+ *     passar é a menos movimentada, e tirá-la da conta inflaria o grupo.
+ *   - o dia de hoje, ainda aberto, não conta: a vela parcial compara meio dia
+ *     com um dia inteiro.
+ */
+export function medirAdiante(
+  series: Map<string, { time: number; close: number }[]>,
+  estado: EstadoFluxo | null,
+  agora: number,
+  lista: WatchedToken[] = WATCHLIST,
+): Adiante {
+  const naLista = new Set(lista.map((t) => t.symbol));
+  const naCarteira = new Set<string>();
+  const inicioDe = new Map<string, number>();
+  for (const id of Object.values(estado?.tokens ?? {})) {
+    if (!id?.perp) continue;
+    naCarteira.add(id.perp);
+    if (naLista.has(id.perp)) continue;
+    const visto = id.vistoEm ?? id.conferidoEm;
+    // Em vista em algum momento desde o início: visto dentro da validade dele.
+    if (!Number.isFinite(visto) || visto < INICIO_ADIANTE - VALIDADE_DIAS * DIA) continue;
+    const primeiro = id.primeiroVisto ?? 0;
+    const dia = Math.max(INICIO_ADIANTE, (Math.floor(primeiro / DIA) + 1) * DIA);
+    const atual = inicioDe.get(id.perp);
+    if (atual === undefined || dia < atual) inicioDe.set(id.perp, dia);
+  }
+
+  const vazio = (): GrupoAdiante => ({ moedas: 0, moedaDias: 0, altas: 0, quedas: 0 });
+  const emVista = vazio();
+  const resto = vazio();
+  for (const [s, v] of series) {
+    const g = inicioDe.has(s) ? emVista : !naLista.has(s) && !naCarteira.has(s) ? resto : null;
+    if (!g) continue;
+    const inicio = inicioDe.get(s) ?? INICIO_ADIANTE;
+    let contou = false;
+    for (let i = 1; i < v.length; i++) {
+      const abre = v[i].time * 1000;
+      if (abre < inicio || abre + DIA > agora) continue;
+      const r = v[i].close / v[i - 1].close - 1;
+      if (!Number.isFinite(r)) continue;
+      g.moedaDias++;
+      contou = true;
+      if (r >= 0.25) g.altas++;
+      if (r <= -0.25) g.quedas++;
+    }
+    if (contou) g.moedas++;
+  }
+  return { desde: INICIO_ADIANTE, emVista, resto };
+}
+
 function valido(d: unknown): EstadoFluxo | null {
   const e = d as EstadoFluxo;
   return e && typeof e.tokens === "object" && e.tokens !== null ? e : null;
