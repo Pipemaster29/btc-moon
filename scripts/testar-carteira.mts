@@ -29,7 +29,7 @@ import {
 import { eventosNovos, chavesDepois, textoDoEvento, JANELA_REENVIO_MS } from "../lib/avisos";
 import { escapeMarkdown } from "../lib/telegram";
 import { avisadasDepois, emVistaDe, INICIO_ADIANTE, medirAdiante, novasEmVista, presasPorPosicao, somarAdiante, textoEmVista, textoLigado } from "../lib/emvista";
-import type { EstadoFluxo } from "../lib/fluxo";
+import { perpetuosCandidatos, type EstadoFluxo } from "../lib/fluxo";
 import { WATCHLIST } from "../lib/watchlist";
 import { depthOn, precoArbitrado, unidadesDoContrato, type Pair } from "../lib/dexscreener";
 import { ARQUIVO_HISTORICO, arquivoDoHistorico } from "../lib/historico";
@@ -1080,6 +1080,13 @@ console.log(`\npool de outra moeda`);
   const bob = precoArbitrado(null, 0.01876, unidadesDoContrato("1000000BOBUSDT"));
   confere("1000000BOB sem pool: o perpétuo POR TOKEN", Math.abs(bob.preco - 1.876e-8) < 1e-15, `${bob.preco}`);
   confere("moeda comum: uma unidade por contrato", unidadesDoContrato("TAKEUSDT") === 1 && unidadesDoContrato("4USDT") === 1, "1");
+  // O NOME QUE CASA COM O PERPÉTUO, no fluxo da carteira quente. Até 24/09 o
+  // nome perdia a escrita chinesa e 哈基米 nunca achava `哈基米USDT`.
+  const nomes = (s: string) => perpetuosCandidatos(s).map(([p]) => p);
+  confere("哈基米 procura 哈基米USDT", nomes("哈基米").includes("哈基米USDT"), nomes("哈基米")[0] ?? "nada");
+  confere("BabyDoge procura 1MBABYDOGEUSDT", nomes("BabyDoge").includes("1MBABYDOGEUSDT"), nomes("BabyDoge").join(" "));
+  confere("$WIF perde o cifrão e procura WIFUSDT", nomes("$WIF")[0] === "WIFUSDT", nomes("$WIF")[0] ?? "nada");
+  confere("símbolo vazio não procura nada", perpetuosCandidatos("").length === 0 && perpetuosCandidatos("—").length === 0, "0");
   confere("1MBABYDOGE: um milhão por contrato", unidadesDoContrato("1MBABYDOGEUSDT") === 1_000_000, `${unidadesDoContrato("1MBABYDOGEUSDT")}`);
   confere(
     "1INCH, 0G e 2Z começam com dígito e são uma unidade",

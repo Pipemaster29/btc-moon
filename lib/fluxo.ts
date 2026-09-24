@@ -224,3 +224,28 @@ export async function getFluxo(): Promise<FluxoResumo | null> {
   const g = await lerGuardado<FluxoResumo>("fluxo-binance-resumo.json", valido, 300);
   return g?.dado ?? null;
 }
+
+/** O símbolo do token como a Binance o escreve no perpétuo: letras de QUALQUER escrita e dígitos. */
+export function baseDoSimbolo(simbolo: string): string {
+  return simbolo.toUpperCase().replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+/**
+ * Os perpétuos que PODEM ser deste token, com as unidades por contrato. Quem
+ * decide é o preço (`scripts/fluxo-binance.mts`), não o nome — a armadilha nº 1.
+ *
+ * Até 24/09 o nome perdia tudo que não fosse A–Z e 0–9, e "哈基米" nunca casava
+ * com `哈基米USDT`; e faltava o prefixo `1M` do `1MBABYDOGEUSDT`. Medido no
+ * estado daquele dia: 我踏马来了, 哈基米 e 牛来 passavam pela carteira quente
+ * com perpétuo na Binance, a 0,2–0,3% do preço da pool, gravadas "sem perpétuo".
+ */
+export function perpetuosCandidatos(simbolo: string): [string, number][] {
+  const b = baseDoSimbolo(simbolo);
+  if (!b) return [];
+  return [
+    [`${b}USDT`, 1],
+    [`1000${b}USDT`, 1000],
+    [`1000000${b}USDT`, 1e6],
+    [`1M${b}USDT`, 1e6],
+  ];
+}

@@ -67,7 +67,7 @@ import {
   type Movimento,
 } from "../lib/onchain";
 import { cotacoes } from "../lib/binance";
-import { resumirFluxo, type EstadoFluxo, type IdentificacaoFluxo } from "../lib/fluxo";
+import { baseDoSimbolo, perpetuosCandidatos, resumirFluxo, type EstadoFluxo, type IdentificacaoFluxo } from "../lib/fluxo";
 import { avisadasDepois, emVistaDe, MAX_AVISOS, novasEmVista, textoEmVista, textoLigado } from "../lib/emvista";
 import { escapeMarkdown, sendTelegram, telegramFromEnv } from "../lib/telegram";
 
@@ -110,6 +110,18 @@ const POOL_MINIMA = 20_000;
  * esconderia justamente quando ela passasse a interessar.
  */
 const RECONFERIR_DIAS = 7;
+
+/**
+ * Quando o nome passou a casar com perpétuo de escrita não latina e de prefixo
+ * `1M` (24/09). A identificação apagava tudo que não fosse A–Z e 0–9 do
+ * símbolo do token: "哈基米" virava "" e nunca casava com `哈基米USDT`. Medido
+ * no estado de 24/09: 23 dos 494 tokens têm símbolo sem letra latina, e dois
+ * deles — 我踏马来了 e 哈基米, este listado em 06/09 — têm perpétuo na Binance e
+ * estavam gravados "sem perpétuo". Quem foi conferido antes disto com
+ * "sem perpétuo" e cabe num dos dois casos é conferido de novo na próxima
+ * passagem, sem esperar a semana.
+ */
+const NOMES_CORRIGIDOS_EM = Date.UTC(2026, 8, 24, 12);
 
 const DIA = 86_400_000;
 
@@ -308,7 +320,11 @@ for (const [i, [a, b]] of cortes.entries()) {
   // o do perpétuo. Homônimo fica 30% ou 30.000% fora.
   const aConferir = [...porToken.keys()].filter((tk) => {
     const id = estado.tokens[tk];
-    return !id || agora - id.conferidoEm > RECONFERIR_DIAS * DIA;
+    if (!id || agora - id.conferidoEm > RECONFERIR_DIAS * DIA) return true;
+    // O "sem perpétuo" que o código anterior não tinha como achar.
+    if (id.perp !== null || id.conferidoEm >= NOMES_CORRIGIDOS_EM || !id.symbol) return false;
+    const base = baseDoSimbolo(id.symbol);
+    return /[^A-Z0-9]/.test(base) || perps.has(`1M${base}USDT`);
   });
   const precosDex = await dex(aConferir);
   // A RECONFERÊNCIA SUBSTITUÍA O OBJETO INTEIRO, e com ele iam embora a
@@ -339,10 +355,9 @@ for (const [i, [a, b]] of cortes.entries()) {
       } catch {
         return; // não respondeu ERC-20 hoje; tenta de novo na próxima rodada
       }
-      const base = info.symbol.toUpperCase().replace(/[^A-Z0-9]/g, "");
       let perp: string | null = null;
       let mult = 1;
-      for (const [s, k] of [[`${base}USDT`, 1], [`1000${base}USDT`, 1000], [`1000000${base}USDT`, 1e6]] as const) {
+      for (const [s, k] of perpetuosCandidatos(info.symbol)) {
         const c = perps.get(s);
         if (!c) continue;
         const razao = (d.preco * k) / c.preco;
