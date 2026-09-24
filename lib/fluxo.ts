@@ -38,6 +38,13 @@ export interface IdentificacaoFluxo {
    * o dia em que ela chegou não conta, porque é o pump que a trouxe.
    */
   primeiroVisto?: number;
+  /**
+   * O último perpétuo conferido, que fica quando uma reconferência falha. A
+   * moeda que despencou costuma perder a pool mínima logo depois — e com
+   * `perp` nulo ela sumia da carteira para `medirAdiante`, que passava a
+   * contá-la no "resto" os mesmos dias em que ela já estava nas em vista.
+   */
+  perpVisto?: string;
 }
 
 /** O `data/fluxo-binance.json`: de onde o gravador continua, e quem é quem. */

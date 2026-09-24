@@ -67,7 +67,7 @@ import {
   type Movimento,
 } from "../lib/onchain";
 import { cotacoes } from "../lib/binance";
-import { resumirFluxo, type EstadoFluxo } from "../lib/fluxo";
+import { resumirFluxo, type EstadoFluxo, type IdentificacaoFluxo } from "../lib/fluxo";
 import { avisadasDepois, emVistaDe, MAX_AVISOS, novasEmVista, textoEmVista, textoLigado } from "../lib/emvista";
 import { escapeMarkdown, sendTelegram, telegramFromEnv } from "../lib/telegram";
 
@@ -311,11 +311,26 @@ for (const [i, [a, b]] of cortes.entries()) {
     return !id || agora - id.conferidoEm > RECONFERIR_DIAS * DIA;
   });
   const precosDex = await dex(aConferir);
+  // A RECONFERÊNCIA SUBSTITUÍA O OBJETO INTEIRO, e com ele iam embora a
+  // primeira e a última passagem. A primeira voltava como "agora", e a
+  // conferência das em vista (`medirAdiante`) empurrava o começo da moeda uma
+  // semana a cada semana, perdendo o dia da reconferência toda vez. Achado na
+  // revisão do PR #6. O que é da passagem fica; o que é da identificação muda.
+  const reconferir = (tk: string, novo: Omit<IdentificacaoFluxo, "vistoEm" | "primeiroVisto" | "perpVisto">) => {
+    const antes = estado.tokens[tk];
+    const perpVisto = novo.perp ?? antes?.perp ?? antes?.perpVisto;
+    estado.tokens[tk] = {
+      ...novo,
+      ...(antes?.vistoEm !== undefined ? { vistoEm: antes.vistoEm } : {}),
+      ...(antes?.primeiroVisto !== undefined ? { primeiroVisto: antes.primeiroVisto } : {}),
+      ...(perpVisto ? { perpVisto } : {}),
+    };
+  };
   await Promise.all(
     aConferir.map(async (tk) => {
       const d = precosDex.get(tk);
       if (!d || d.pool < POOL_MINIMA || !(d.preco > 0)) {
-        estado.tokens[tk] = { symbol: "", decimals: 18, perp: null, mult: 1, conferidoEm: agora };
+        reconferir(tk, { symbol: "", decimals: 18, perp: null, mult: 1, conferidoEm: agora });
         return;
       }
       let info: Awaited<ReturnType<typeof tokenInfo>>;
@@ -337,7 +352,7 @@ for (const [i, [a, b]] of cortes.entries()) {
           break;
         }
       }
-      estado.tokens[tk] = { symbol: info.symbol, decimals: info.decimals, perp, mult, conferidoEm: agora };
+      reconferir(tk, { symbol: info.symbol, decimals: info.decimals, perp, mult, conferidoEm: agora });
     }),
   );
 

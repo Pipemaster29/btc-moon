@@ -50,6 +50,11 @@ const [estadoFluxo, garimpoAntes] = await Promise.all([
 ]);
 if (estadoFluxo) {
   g.emVistaAdiante = medirAdiante(series, estadoFluxo, Date.now(), undefined, garimpoAntes?.emVistaAdiante ?? null);
+} else if (garimpoAntes?.emVistaAdiante) {
+  // Sem o estado do fluxo não há como contar hoje — mas o acumulado não pode
+  // sumir: a rodada seguinte recomeçaria das trinta velas e "desde 24/09"
+  // viraria janela móvel, justo o que a conta por dia existe para evitar.
+  g.emVistaAdiante = garimpoAntes.emVistaAdiante;
 }
 
 const pct = (v: number | null) =>

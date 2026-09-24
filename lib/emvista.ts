@@ -177,16 +177,20 @@ export function medirAdiante(
   const naCarteira = new Set<string>();
   const inicioDe = new Map<string, number>();
   for (const id of Object.values(estado?.tokens ?? {})) {
-    if (!id?.perp) continue;
-    naCarteira.add(id.perp);
-    if (naLista.has(id.perp)) continue;
+    // O perpétuo conferido por último, mesmo que a reconferência de hoje tenha
+    // falhado: quem já passou pela carteira não vira "resto" porque a pool dele
+    // secou depois do dump.
+    const perp = id?.perp ?? id?.perpVisto;
+    if (!perp) continue;
+    naCarteira.add(perp);
+    if (naLista.has(perp)) continue;
     const visto = id.vistoEm ?? id.conferidoEm;
     // Em vista em algum momento desde o início: visto dentro da validade dele.
     if (!Number.isFinite(visto) || visto < INICIO_ADIANTE - VALIDADE_DIAS * DIA) continue;
     const primeiro = id.primeiroVisto ?? 0;
     const dia = Math.max(INICIO_ADIANTE, (Math.floor(primeiro / DIA) + 1) * DIA);
-    const atual = inicioDe.get(id.perp);
-    if (atual === undefined || dia < atual) inicioDe.set(id.perp, dia);
+    const atual = inicioDe.get(perp);
+    if (atual === undefined || dia < atual) inicioDe.set(perp, dia);
   }
 
   const vazio = (): Contagem => ({ moedaDias: 0, altas: 0, quedas: 0 });

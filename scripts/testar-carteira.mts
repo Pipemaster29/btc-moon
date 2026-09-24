@@ -976,6 +976,14 @@ console.log(`\nem vista, adiante`);
   // Uma rodada em que as velas de uma moeda não vieram lê MENOS: não apaga.
   const falha = medirAdiante(new Map([["SAIUUSDT", serie(10, [])]]), estado, agora, WATCHLIST, bruto);
   confere("leitura que falhou não apaga a que funcionou", somarAdiante(falha).emVista.moedaDias === 12, `${somarAdiante(falha).emVista.moedaDias} moeda-dias`);
+  // A pool secou depois do dump e a reconferência deixou `perp` nulo: a moeda
+  // continua sendo das em vista (`perpVisto`), e não passa a contar no resto.
+  const secou: EstadoFluxo = {
+    ...estado,
+    tokens: { ...estado.tokens, "0xa": { ...estado.tokens["0xa"], perp: null, perpVisto: "ANTESUSDT" } },
+  };
+  const s2 = medirAdiante(series, secou, agora);
+  confere("pool que secou não passa a contar no resto", s2.moedas.emVista === 3 && s2.moedas.resto === 1, `${s2.moedas.emVista} em vista, ${s2.moedas.resto} resto`);
   const outroComeco = medirAdiante(series, estado, agora, WATCHLIST, { ...bruto, desde: d0 - DIA });
   confere("arquivo de outro começo não se junta", somarAdiante(outroComeco).emVista.moedaDias === 12, "refeito do zero");
 }
