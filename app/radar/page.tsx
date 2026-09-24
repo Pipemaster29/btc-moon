@@ -296,6 +296,14 @@ export default async function Radar() {
     ? remarcar(guardada, new Map(rows.filter((r) => r.price > 0).map((r) => [r.ticker, r.price])))
     : null;
   const comCarteiras = rows.filter((r) => r.hasWallets).length;
+  // A base pool–perpétuo de cada moeda neste retrato, para a carteira remarcar
+  // ao vivo na escala em que as posições entraram. Fora de 0,8–1,25 não é
+  // base, é leitura quebrada: fica 1, e a marcação usa o perpétuo cru.
+  const bases: Record<string, number> = {};
+  for (const r of rows) {
+    const b = r.perpPrice > 0 && r.price > 0 ? r.price / r.perpPrice : NaN;
+    if (Number.isFinite(b) && b >= 0.8 && b <= 1.25 && Math.abs(b - 1) > 1e-4) bases[r.ticker] = b;
+  }
   const emVista = rows.filter((r) => r.origem).length;
   const adiante = garimpo?.emVistaAdiante ?? null;
 
@@ -391,7 +399,7 @@ export default async function Radar() {
         {/* O painel dizendo o que a própria régua já acertou. Vem ANTES das
             recomendações de propósito: quem lê "vender" precisa saber, na mesma
             tela, que o viés ainda não separou de nada. */}
-        {carteira && <CarteiraPanel c={carteira} />}
+        {carteira && <CarteiraPanel c={carteira} bases={bases} />}
 
         {placar && (
           <section className="rounded-xl border border-black/10 dark:border-white/10 p-4">

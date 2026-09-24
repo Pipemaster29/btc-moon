@@ -215,7 +215,14 @@ function porOrigem(c: Carteira, emVista: Set<string>) {
   });
 }
 
-export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
+/**
+ * `bases` é, por moeda, o preço do retrato dividido pelo do perpétuo no mesmo
+ * instante. A camada viva traz o PERPÉTUO, e as posições entraram pelo preço
+ * do retrato, que prefere a pool: sem converter, a marcação saltava pela
+ * diferença entre as duas praças sem o mercado andar nada — na HEI, com a pool
+ * 10% abaixo do perpétuo em 24/09, a posição aparecia US$ 10 acima do que vale.
+ */
+export default function CarteiraPanel({ c: guardada, bases = {} }: { c: Carteira; bases?: Record<string, number> }) {
   const vivo = useVivo();
   const emVista = new Set(guardada.emVista ?? []);
 
@@ -230,7 +237,7 @@ export default function CarteiraPanel({ c: guardada }: { c: Carteira }) {
       ? guardada
       : remarcar(
           guardada,
-          new Map(Object.entries(vivo.moedas).map(([t, m]) => [t, m.preco])),
+          new Map(Object.entries(vivo.moedas).map(([t, m]) => [t, m.preco * (bases[t] ?? 1)])),
           vivo.em,
           new Map(
             Object.entries(vivo.moedas)
