@@ -41,6 +41,14 @@ interface PontoHistorico {
   t: number;
   s: string;
   preco: number;
+  /**
+   * O último negócio do perpétuo no instante do retrato. `preco / pp` é a base
+   * pool–perpétuo daquele momento, e é por ela que a carteira ancora as velas
+   * de 1h desde 24/09 — antes, a âncora era o fechamento da última vela, que
+   * num pump dentro da hora fica mais de 25% longe do preço de agora e fazia o
+   * caminho ser recusado justo quando ele importa.
+   */
+  pp?: number;
   liq: number;
   oi: number;
   dom: number;
@@ -127,6 +135,7 @@ const pontos: PontoHistorico[] = comPreco.map((r) => ({
   t: Math.floor(agora / 1000),
   s: r.ticker,
   preco: Number(r.price.toPrecision(6)),
+  ...(r.perpPrice > 0 ? { pp: Number(r.perpPrice.toPrecision(6)) } : {}),
   liq: Math.round(r.liquidityUsd),
   oi: Math.round(r.openInterestUsd),
   dom: Number(r.perpDominance.toFixed(1)),

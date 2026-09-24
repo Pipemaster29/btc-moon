@@ -398,6 +398,30 @@ console.log("\n--- o preço do retrato tem de ser o do perpétuo daquela hora --
   const disparada: Passo[] = plana.map((v, i) => (i === 2 ? { ...v, abertura: 1.4, minima: 1.4, maxima: 1.6, fechamento: 1.5 } : v));
   const atrasado = rodar([{ t: h(2) + 60, s: "X", preco: 1, vies: "long", forca: 3, fund: 0 }], T0 * 1000, new Map([["X", disparada]]));
   confere("preço de uma hora atrás passa", atrasado.abertas.length === 1 && !atrasado.foraDoPerpetuo, `${atrasado.abertas.length} aberta(s)`);
+
+  // A ÂNCORA PELA BASE MEDIDA. Moeda sem pool: o retrato grava o último negócio
+  // (desde 24/09). A posição estopou dentro da vela de h1 e, 40 minutos depois
+  // de h2, a moeda já disparava a 1,4. Contra o fechamento da última vela (1,0),
+  // a razão é 1,4: âncora recusada, caminho descartado, e o stop que aconteceu
+  // não acontece. Com `pp` no retrato a base é 1 e o caminho vale.
+  const estopouEDisparou: Passo[] = [
+    { abriuEm: h(0) * 1000, fechouEm: h(1) * 1000, abertura: 1, maxima: 1.02, minima: 0.98, fechamento: 1 },
+    { abriuEm: h(1) * 1000, fechouEm: h(2) * 1000, abertura: 1, maxima: 1.02, minima: 0.7, fechamento: 1 },
+    { abriuEm: h(2) * 1000, fechouEm: h(3) * 1000, abertura: 1, maxima: 1.45, minima: 1, fechamento: 1.4 },
+  ];
+  const semBase: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    { t: h(2) + 2400, s: "X", preco: 1.4, vies: "long", forca: 3, fund: 0 },
+  ];
+  const comBase: Emissao[] = semBase.map((e) => ({ ...e, pp: e.preco }));
+  const cego = rodar(semBase, T0 * 1000, new Map([["X", estopouEDisparou]]));
+  confere("sem a base: pump depois do stop apaga o stop (o defeito)", cego.encerradas === 0, `${cego.encerradas} saída(s)`);
+  const ancoradoPelaBase = rodar(comBase, T0 * 1000, new Map([["X", estopouEDisparou]]));
+  confere(
+    "com a base medida: o stop dentro da vela executa",
+    ancoradoPelaBase.fechadas[0]?.motivo === "stop" && Math.abs((ancoradoPelaBase.fechadas[0]?.precoSaida ?? 0) - (1 - STOP)) < 1e-9,
+    `${ancoradoPelaBase.fechadas[0]?.motivo ?? "nada"} a ${(ancoradoPelaBase.fechadas[0]?.precoSaida ?? 0).toFixed(4)}`,
+  );
 }
 
 console.log("\n--- quem entra quando o orçamento de risco acaba ---");

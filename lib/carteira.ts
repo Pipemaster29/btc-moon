@@ -729,6 +729,8 @@ export interface Emissao {
   fund?: number | null;
   /** Só nas moedas em vista, que entraram sozinhas (`lib/emvista.ts`). */
   origem?: string;
+  /** O último negócio do perpétuo no instante do retrato (desde 24/09). */
+  pp?: number | null;
 }
 
 interface Estado {
@@ -1029,6 +1031,8 @@ function percorrer(
   ate: number,
   precoRetrato: number,
   taxa: number,
+  /** A base pool–perpétuo medida NO retrato (`preco / pp`), quando a linha a tem. */
+  baseMedida: number | null = null,
 ): boolean {
   // Só vela FECHADA, ainda não percorrida, e que não começou antes da posição
   // existir. `ultimoFunding` é o relógio de onde esta posição parou, e ele avança
@@ -1039,7 +1043,16 @@ function percorrer(
     .sort((a, b) => a.fechouEm - b.fechouEm);
   if (janela.length === 0) return false;
 
-  const k = ancora(precoRetrato, janela[janela.length - 1].fechamento);
+  // A BASE MEDIDA NO RETRATO manda quando existe. O fechamento da última vela
+  // fechada tem até uma hora, e desde que o retrato grava o último negócio
+  // (24/09) um pump dentro da hora o põe mais de 25% longe do preço de agora:
+  // a âncora recusaria o caminho justo na hora em que ele decide o stop. A
+  // base medida é a mesma faixa de `ancora`, mas entre dois preços do mesmo
+  // instante.
+  const k =
+    baseMedida !== null && baseMedida >= 0.8 && baseMedida <= 1.25
+      ? baseMedida
+      : ancora(precoRetrato, janela[janela.length - 1].fechamento);
   if (k === null) return false;
 
   const r = estado.regras;
@@ -1226,6 +1239,7 @@ export function rodar(
     ultimo = quando;
 
     const preco = new Map<string, number>();
+    const base = new Map<string, number>();
     const vies = new Map<string, string | null>();
     const fund = new Map<string, number>();
     for (const e of lote) {
@@ -1246,6 +1260,7 @@ export function rodar(
       }
       ultimoBom.set(e.s, e.preco);
       preco.set(e.s, e.preco);
+      if (e.pp != null && e.pp > 0) base.set(e.s, e.preco / e.pp);
       vies.set(e.s, e.vies);
       if (e.fund != null && Number.isFinite(e.fund)) fund.set(e.s, e.fund);
     }
@@ -1266,7 +1281,11 @@ export function rodar(
       // Precisa de preço do retrato para ancorar as velas na escala certa, e
       // por isso vem depois de `atual` estar em mãos. Sem caminho, ou sem
       // âncora confiável, o motor cai no teste de ponta de sempre.
-      if (atual !== undefined && caminho && percorrer(estado, p, caminho.get(p.symbol) ?? [], quando, atual, taxa)) {
+      if (
+        atual !== undefined &&
+        caminho &&
+        percorrer(estado, p, caminho.get(p.symbol) ?? [], quando, atual, taxa, base.get(p.symbol) ?? null)
+      ) {
         continue;
       }
 

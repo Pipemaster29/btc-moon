@@ -36,6 +36,12 @@ export interface OverviewRow {
   origem?: "carteira-binance";
 
   price: number;
+  /**
+   * O último negócio do perpétuo no instante do retrato, na mesma unidade do
+   * contrato (por 1000 em `1000XUSDT`). Zero quando não há. `price / perpPrice`
+   * é a base entre a pool e o perpétuo, que a carteira usa para ancorar as velas.
+   */
+  perpPrice: number;
   change24h: number;
   liquidityUsd: number;
   volume24h: number;
@@ -245,6 +251,7 @@ async function readOne(token: WatchedToken, vivo: Cotacao | null = null): Promis
     // precisam carregar um campo vazio em cada retrato.
     ...(token.origem ? { origem: token.origem } : {}),
     price,
+    perpPrice: precoPerp,
     change24h,
     liquidityUsd,
     volume24h: depth?.volume24h ?? 0,
