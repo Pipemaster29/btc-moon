@@ -31,7 +31,7 @@ import { escapeMarkdown } from "../lib/telegram";
 import { avisadasDepois, emVistaDe, INICIO_ADIANTE, medirAdiante, novasEmVista, presasPorPosicao, somarAdiante, textoEmVista, textoLigado } from "../lib/emvista";
 import type { EstadoFluxo } from "../lib/fluxo";
 import { WATCHLIST } from "../lib/watchlist";
-import { depthOn, precoArbitrado, type Pair } from "../lib/dexscreener";
+import { depthOn, precoArbitrado, unidadesDoContrato, type Pair } from "../lib/dexscreener";
 
 const T0 = Date.parse("2026-01-01T00:00:00Z") / 1000;
 const h = (n: number) => T0 + n * 3600;
@@ -1027,6 +1027,14 @@ console.log(`\npool de outra moeda`);
   confere("sem pool, o perpétuo", arb(null, 0.05).fonte === "perpétuo", arb(null, 0.05).fonte);
   confere("sem nada, zero declarado", arb(0, null).fonte === "nenhum" && arb(0, null).preco === 0, arb(0, null).fonte);
   confere("NaN na pool não vira preço", arb(Number.NaN, 0.05).preco === 0.05, `${arb(Number.NaN, 0.05).preco}`);
+  // Contrato de mil unidades: a pool é por token, o perpétuo por mil. Sem a
+  // conversão, a razão de mil mandava o perpétuo, e o detalhe da 1000SHIB
+  // avaliava cada token pelo preço de mil.
+  const shib = precoArbitrado(0.0000056, 0.0056, unidadesDoContrato("1000SHIBUSDT"));
+  confere("1000SHIB: a pool por token manda", shib.fonte === "pool" && shib.preco === 0.0000056, `${shib.fonte} ${shib.preco}`);
+  const bob = precoArbitrado(null, 0.01876, unidadesDoContrato("1000000BOBUSDT"));
+  confere("1000000BOB sem pool: o perpétuo POR TOKEN", Math.abs(bob.preco - 1.876e-8) < 1e-15, `${bob.preco}`);
+  confere("moeda comum: uma unidade por contrato", unidadesDoContrato("TAKEUSDT") === 1 && unidadesDoContrato("4USDT") === 1, "1");
 }
 
 console.log(falhas === 0 ? "\ntudo passou" : `\n${falhas} caso(s) FALHARAM`);

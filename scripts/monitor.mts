@@ -24,7 +24,7 @@ import {
   transfersBetween,
   CHAINS,
 } from "../lib/onchain";
-import { depthOn, pairsOfToken, precoArbitrado } from "../lib/dexscreener";
+import { depthOn, pairsOfToken, precoArbitrado, unidadesDoContrato } from "../lib/dexscreener";
 import { precoBinance } from "../lib/binance";
 import { CARTEIRAS_CEX } from "../lib/lifecycle";
 import { currentMove } from "../lib/positioning";
@@ -380,7 +380,7 @@ async function vigiarCorretoras(
   if (!(supply > 0)) return [];
 
   const depth = depthOn(pairs, token.chain);
-  const price = precoArbitrado(depth?.priceUsd, perpPrice).preco;
+  const price = precoArbitrado(depth?.priceUsd, perpPrice, unidadesDoContrato(token.symbol)).preco;
 
   const saldos = await balancesOf(token.chain, token.contract, CARTEIRAS_CEX);
   let emCorretora = 0;
@@ -487,7 +487,7 @@ async function inspect(
   // ainda aberto: sem pool, todo alerta em dólar sumia calado; com a pool rasa
   // da HEI a 1,6–2x do perpétuo, os valores e os pisos de alerta saíam
   // inflados. Agora a mesma regra das outras leituras (`precoArbitrado`).
-  const price = precoArbitrado(depth?.priceUsd, perpPrice).preco;
+  const price = precoArbitrado(depth?.priceUsd, perpPrice, unidadesDoContrato(token.symbol)).preco;
 
   const current: Observation[] = token.wallets.map((wallet) => {
     const key = wallet.address.toLowerCase();

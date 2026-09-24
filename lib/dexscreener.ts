@@ -156,13 +156,32 @@ export async function searchPairs(query: string): Promise<Pair[]> {
 export function precoArbitrado(
   precoPool: number | null | undefined,
   precoPerp: number | null | undefined,
+  /**
+   * Quantas unidades do token um contrato representa: 1000 em `1000SHIBUSDT`,
+   * 1.000.000 em `1000000BOBUSDT`. O perpétuo é dividido por isto antes de ser
+   * comparado com a pool, que é por unidade — sem isso a razão de mil vezes
+   * mandava o perpétuo, e o detalhe da 1000SHIB avaliava cada token pelo
+   * preço de mil (achado na revisão do PR #6). O retrato passa 1 de propósito:
+   * lá o preço é por contrato, na mesma unidade das velas e do histórico.
+   */
+  unidadesPorContrato = 1,
 ): { preco: number; fonte: "pool" | "perpétuo" | "nenhum"; razao: number | null } {
   const pool = precoPool != null && precoPool > 0 && Number.isFinite(precoPool) ? precoPool : 0;
-  const perp = precoPerp != null && precoPerp > 0 && Number.isFinite(precoPerp) ? precoPerp : 0;
+  const perp =
+    precoPerp != null && precoPerp > 0 && Number.isFinite(precoPerp) && unidadesPorContrato > 0
+      ? precoPerp / unidadesPorContrato
+      : 0;
   const razao = pool > 0 && perp > 0 ? pool / perp : null;
   if (pool > 0 && (razao === null || mesmaMoeda(razao))) return { preco: pool, fonte: "pool", razao };
   if (perp > 0) return { preco: perp, fonte: "perpétuo", razao };
   return { preco: 0, fonte: "nenhum", razao };
+}
+
+/** As unidades do token por contrato, pelo nome do perpétuo da Binance. */
+export function unidadesDoContrato(symbol: string): number {
+  if (/^1000000[A-Z0-9]/.test(symbol)) return 1_000_000;
+  if (/^1000[A-Z]/.test(symbol)) return 1000;
+  return 1;
 }
 
 export interface TokenDepth {
