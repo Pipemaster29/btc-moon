@@ -75,6 +75,13 @@ interface PontoHistorico {
    */
   forca: number | null;
   nota: number;
+  /**
+   * O motor, `[testes que passam, testes medidos]` (`lib/motor.ts`), desde
+   * 24/09. Não era gravado, e por isso "motor cheio sobe mais?" não tinha como
+   * ser medido: 34 das 115 moedas estavam com 3/3 ou 4/4 naquele dia, e só 3
+   * delas com call. O placar agrupa por ele quando a amostra existir.
+   */
+  mot?: [number, number];
   floatCex: number | null;
   /** Circulante ÷ supply total. */
   floatTk: number | null;
@@ -205,6 +212,7 @@ const pontos: PontoHistorico[] = comPreco.map((r) => ({
   fund: taxas.get(r.symbol) ?? null,
   forca: r.leitura?.forca ?? null,
   nota: r.score,
+  ...(r.motor ? { mot: [r.motor.motores, r.motor.medidos] as [number, number] } : {}),
   floatCex: r.vida?.floatCex === null || r.vida?.floatCex === undefined
     ? null
     : Number(r.vida.floatCex.toFixed(5)),

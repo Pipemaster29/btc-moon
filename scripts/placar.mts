@@ -39,6 +39,8 @@ interface Ponto {
   dom: number;
   floatCex: number | null;
   mcap: number | null;
+  /** `[passam, medidos]` do motor, gravado desde 24/09. */
+  mot?: [number, number];
 }
 
 /**
@@ -244,6 +246,19 @@ porGrupo(
   (o) => (o.nota >= 60 ? "nota 60+" : o.nota >= 35 ? "nota 35-59" : "nota 0-34"),
   "por nota de atenção",
 );
+// O MOTOR, que não era gravado até 24/09 — só as linhas de depois entram.
+// "Cheio" é passar em todos os testes medidos, com pelo menos três medidos: com
+// um ou dois, cheio não diz muito. A pergunta que este grupo existe para
+// responder é se motor cheio sobe mais que a referência — e ele NÃO é regra de
+// nada até responder.
+porGrupo((o) => {
+  if (!o.mot) return null;
+  const [passam, medidos] = o.mot;
+  if (medidos === 0) return "motor não medido";
+  if (passam === medidos && medidos >= 3) return "motor cheio";
+  if (passam === 0) return "motor zero";
+  return "motor parcial";
+}, "por motor (desde 24/09)");
 
 /**
  * O placar POR MOEDA.

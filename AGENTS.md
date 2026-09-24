@@ -255,7 +255,7 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | arquivo | o que é | quem grava |
 |---|---|---|
 | `data/panorama.json` | o retrato completo, ~70 moedas | `npm run panorama` |
-| `data/historico-AAAA-MM.jsonl` e, desde outubro, `historico-AAAA-MM-1.jsonl`/`-2` | uma linha por moeda por retrato, um arquivo por quinzena (`lib/historico.ts`). **É a memória do projeto** | idem |
+| `data/historico-AAAA-MM.jsonl` e, desde outubro, `historico-AAAA-MM-1.jsonl`/`-2` | uma linha por moeda por retrato, um arquivo por quinzena (`lib/historico.ts`). Desde 24/09 grava também o motor (`mot`), para o placar medir se motor cheio sobe mais. **É a memória do projeto** | idem |
 | `data/detentores.json` | concentração por moeda. **17 medidas de 37 com contrato**, todas de Ethereum e Base. As 20 da BSC não têm fonte de log: 15 de 16 varridas em 06/09 perderam as 41 faixas da janela | `npm run genese` |
 | `data/vesting.json` | emissão por moeda | `npm run vesting` |
 | `data/estudos.json` | estudo por moeda, **as em vista incluídas**: sem ele a trava de "a moeda continua o movimento" não roda nelas (8 de 70 da lista, 6 de 39 em vista) | `npm run estudar` (`-- --em-vista` só para elas) |
@@ -282,6 +282,7 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 |---|---|---|
 | Alavancagem | **3x** | o teto em que o stop ainda dispara antes da liquidação: 25% de preço × 3 = 75% da margem. A 4x seriam 100%, e a corretora fecharia a posição exatamente onde o stop fecharia |
 | Stop | −25% de preço | fora do ruído de um dia: desvio diário mediano de 11,2% (`estudos.json`), ~2,2σ. Mais curto foi medido em 23/09 e não passou — o ganho era de uma moeda |
+| Confirmação da saída | **1 h** | "painel mudou" só fecha se a leitura contrária durar uma hora. A VELVET fechou e reabriu em 37 min quando o market cap piscou nos US$ 30 mi da régua; 120 de 146 saídas por painel eram seguidas de reabertura do mesmo lado em 24 h. De 30 min a 2 h melhora inteira, sem a melhor e as duas metades; 3–4 h pioram; 1 h é o meio do platô. Ganho de −0,5% para +0,6%, 43 idas e voltas a menos |
 | Sem reação | **3 dias** | a posição que não andou a favor em três dias sai. Platô: 1 a 5 dias melhoram as duas metades da janela |
 | Alvo | +40% de preço | o dobro da assimetria que sustenta a regra de compra (sobe +20% em 21,0% das semanas) |
 | Prazo | 14 dias | as regras direcionais foram medidas em janelas de 7 e 14 dias |
