@@ -23,7 +23,7 @@ import {
   CHAINS,
   type Chain,
 } from "./onchain";
-import { depthOn, pairsOfToken } from "./dexscreener";
+import { depthOn, pairsOfToken, precoArbitrado } from "./dexscreener";
 import { precoBinance } from "./binance";
 import { findToken, labelOf, type WalletRole, type WatchedToken } from "./watchlist";
 
@@ -159,12 +159,9 @@ export async function getRadar(symbol: string, dado?: WatchedToken): Promise<Rad
   //
   // O perpétuo cobre o caso: é onde essas moedas negociam. A pool continua
   // mandando quando existe, porque é o preço que a própria rede pratica.
-  const price = depth?.priceUsd || perpPrice || 0;
-  const priceSource: RadarSnapshot["priceSource"] = depth?.priceUsd
-    ? "pool"
-    : perpPrice
-      ? "perpétuo"
-      : "nenhum";
+  // E a pool só manda quando é a mesma moeda que o perpétuo (`precoArbitrado`):
+  // a pool rasa da HEI, a 1,6–2x dele, inflava o valor de cada carteira.
+  const { preco: price, fonte: priceSource } = precoArbitrado(depth?.priceUsd, perpPrice);
   const supply = toUnits(info.totalSupply, info.decimals);
 
   // Contrato não paga o próprio gás — quem o chama paga. O sinal de paralisia

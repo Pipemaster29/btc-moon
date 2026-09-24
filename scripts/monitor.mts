@@ -24,7 +24,7 @@ import {
   transfersBetween,
   CHAINS,
 } from "../lib/onchain";
-import { depthOn, pairsOfToken } from "../lib/dexscreener";
+import { depthOn, pairsOfToken, precoArbitrado } from "../lib/dexscreener";
 import { precoBinance } from "../lib/binance";
 import { CARTEIRAS_CEX } from "../lib/lifecycle";
 import { currentMove } from "../lib/positioning";
@@ -380,7 +380,7 @@ async function vigiarCorretoras(
   if (!(supply > 0)) return [];
 
   const depth = depthOn(pairs, token.chain);
-  const price = depth?.priceUsd || perpPrice || 0;
+  const price = precoArbitrado(depth?.priceUsd, perpPrice).preco;
 
   const saldos = await balancesOf(token.chain, token.contract, CARTEIRAS_CEX);
   let emCorretora = 0;
@@ -472,16 +472,22 @@ async function inspect(
 ): Promise<Alert[]> {
   const addresses = token.wallets.map((w) => w.address);
 
-  const [info, head, pairs, balances, gas] = await Promise.all([
+  const [info, head, pairs, balances, gas, perpPrice] = await Promise.all([
     tokenInfo(token.chain, token.contract),
     blockNumber(token.chain),
     pairsOfToken(token.contract),
     balancesOf(token.chain, token.contract, addresses),
     gasOf(token.chain, addresses),
+    precoBinance(token.symbol).catch(() => null),
   ]);
 
   const depth = depthOn(pairs, token.chain);
-  const price = depth?.priceUsd ?? 0;
+  // A POOL SÓ, e sem árbitro, era o preço destes alertas — o mesmo buraco que
+  // `vigiarCorretoras` já tinha fechado ("US$ 0 chegando na corretora"), aqui
+  // ainda aberto: sem pool, todo alerta em dólar sumia calado; com a pool rasa
+  // da HEI a 1,6–2x do perpétuo, os valores e os pisos de alerta saíam
+  // inflados. Agora a mesma regra das outras leituras (`precoArbitrado`).
+  const price = precoArbitrado(depth?.priceUsd, perpPrice).preco;
 
   const current: Observation[] = token.wallets.map((wallet) => {
     const key = wallet.address.toLowerCase();

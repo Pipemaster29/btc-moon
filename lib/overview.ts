@@ -15,7 +15,7 @@
 
 import { perpSeries } from "./perp";
 import { cotacoes, type Cotacao } from "./binance";
-import { depthOn, pairsOfToken } from "./dexscreener";
+import { depthOn, pairsOfToken, precoArbitrado } from "./dexscreener";
 import { ATIVAS, type WatchedToken } from "./watchlist";
 import { lerVida, lerVies, type Leitura, type Vida } from "./lifecycle";
 import { concentracaoDe } from "./detentores";
@@ -197,9 +197,10 @@ async function readOne(token: WatchedToken, vivo: Cotacao | null = null): Promis
   // perpétuo" contra um perpétuo de uma hora atrás. A série fica de reserva
   // para quando o ticker não responde.
   const precoPerp = (vivo && vivo.preco > 0 ? vivo.preco : 0) || (last?.price ?? 0);
-  const razaoPool = precoPool > 0 && precoPerp > 0 ? precoPool / precoPerp : null;
-  const poolFora = razaoPool !== null && (razaoPool < 0.8 || razaoPool > 1.25);
-  const price = (poolFora ? 0 : precoPool) || precoPerp || 0;
+  const arbitrado = precoArbitrado(precoPool, precoPerp);
+  const razaoPool = arbitrado.razao;
+  const poolFora = razaoPool !== null && arbitrado.fonte !== "pool";
+  const price = arbitrado.preco;
   const liquidityUsd = depth?.liquidityUsd ?? 0;
   // A praça grande manda; a Gate só cobre quem a Binance não lista. E agora vem
   // ao vivo em vez do arquivo de ontem: o bloqueio por região era do host

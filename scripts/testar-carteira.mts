@@ -31,7 +31,7 @@ import { escapeMarkdown } from "../lib/telegram";
 import { avisadasDepois, emVistaDe, INICIO_ADIANTE, medirAdiante, novasEmVista, presasPorPosicao, somarAdiante, textoEmVista, textoLigado } from "../lib/emvista";
 import type { EstadoFluxo } from "../lib/fluxo";
 import { WATCHLIST } from "../lib/watchlist";
-import { depthOn, type Pair } from "../lib/dexscreener";
+import { depthOn, precoArbitrado, type Pair } from "../lib/dexscreener";
 
 const T0 = Date.parse("2026-01-01T00:00:00Z") / 1000;
 const h = (n: number) => T0 + n * 3600;
@@ -962,6 +962,15 @@ console.log(`\npool de outra moeda`);
   confere("a liquidez não soma a pool alheia", d?.liquidityUsd === 1_463_241, `${d?.liquidityUsd}`);
   confere("só pool alheia: sem profundidade, não preço errado", depthOn([par(false, 0.01846, 1e6)], "bsc") === null, "null");
   confere("busca por nome (sem a marca) segue igual", depthOn([par(undefined, 2, 10)], "bsc")?.priceUsd === 2, "2");
+
+  // O árbitro, que é a mesma regra no retrato, na página de detalhe e nos
+  // alertas on-chain.
+  const arb = (pool: number | null, perp: number | null) => precoArbitrado(pool, perp);
+  confere("pool a 10% do perpétuo manda (a HEI de hoje)", arb(0.1321, 0.1459).fonte === "pool", arb(0.1321, 0.1459).fonte);
+  confere("pool a 1,6x do perpétuo não manda (a HEI de 09/09)", arb(0.1836, 0.115).preco === 0.115, `${arb(0.1836, 0.115).preco}`);
+  confere("sem pool, o perpétuo", arb(null, 0.05).fonte === "perpétuo", arb(null, 0.05).fonte);
+  confere("sem nada, zero declarado", arb(0, null).fonte === "nenhum" && arb(0, null).preco === 0, arb(0, null).fonte);
+  confere("NaN na pool não vira preço", arb(Number.NaN, 0.05).preco === 0.05, `${arb(Number.NaN, 0.05).preco}`);
 }
 
 console.log(falhas === 0 ? "\ntudo passou" : `\n${falhas} caso(s) FALHARAM`);

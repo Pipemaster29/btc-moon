@@ -137,6 +137,33 @@ export async function searchPairs(query: string): Promise<Pair[]> {
   return pairs.sort((a, b) => b.liquidityUsd - a.liquidityUsd);
 }
 
+/**
+ * O preço de referência de uma moeda que tem pool e perpétuo: a pool quando ela
+ * é a mesma moeda que o perpétuo, o perpétuo quando não há pool ou quando ela
+ * sai de 0,8–1,25 dele.
+ *
+ * A faixa é a da âncora da carteira ("razão de 1,4 não é base de mercado, é
+ * outra moeda"), e a medição que a sustenta está em `lib/overview.ts`: das 75
+ * moedas com pool e perpétuo em 24/09, 73 ficam a menos de 2% e a mais longe a
+ * 10%. Fora dela ficaram a pool rasa da HEI (1,6–2x), a pool parada da CAP
+ * (1,45x) e a pool alheia da AIOT (0,37x) — todas lidas como preço até aqui.
+ *
+ * `precoPerp` tem de ser o de AGORA (o último negócio), não o fechamento de
+ * uma hora atrás: num pump, a pool certa sairia da faixa contra um perpétuo
+ * velho.
+ */
+export function precoArbitrado(
+  precoPool: number | null | undefined,
+  precoPerp: number | null | undefined,
+): { preco: number; fonte: "pool" | "perpétuo" | "nenhum"; razao: number | null } {
+  const pool = precoPool != null && precoPool > 0 && Number.isFinite(precoPool) ? precoPool : 0;
+  const perp = precoPerp != null && precoPerp > 0 && Number.isFinite(precoPerp) ? precoPerp : 0;
+  const razao = pool > 0 && perp > 0 ? pool / perp : null;
+  if (pool > 0 && (razao === null || (razao >= 0.8 && razao <= 1.25))) return { preco: pool, fonte: "pool", razao };
+  if (perp > 0) return { preco: perp, fonte: "perpétuo", razao };
+  return { preco: 0, fonte: "nenhum", razao };
+}
+
 export interface TokenDepth {
   priceUsd: number;
   /** Variação de 24h da pool mais funda, em fração. */
