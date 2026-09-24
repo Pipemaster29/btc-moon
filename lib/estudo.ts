@@ -246,6 +246,14 @@ export async function estudar(symbol: string): Promise<Estudo | null> {
  * que acontece num processo diferente deste.
  */
 let cache: Record<string, Estudo> | null = null;
+/**
+ * Quando o cache foi montado. Ele valia para sempre enquanto o único arquivo era
+ * o de mão, que só muda com deploy; o do robô muda sozinho, e uma instância do
+ * servidor de pé por horas seguiria sem os estudos novos. Uma hora de validade,
+ * a mesma do `revalidate` da leitura dele.
+ */
+let cacheEm = 0;
+const VALIDADE_CACHE_MS = 3_600_000;
 
 /**
  * Os estudos que o ROBÔ fez, das moedas em vista que chegaram sem estudo à mão
@@ -268,7 +276,7 @@ export const ESTUDOS_DO_ROBO = "estudos-em-vista.json";
  * é histórico, não muda de minuto em minuto. `npm run estudar` regrava.
  */
 export async function lerEstudo(symbol: string): Promise<Estudo | null> {
-  if (cache) return cache[symbol] ?? null;
+  if (cache && Date.now() - cacheEm < VALIDADE_CACHE_MS) return cache[symbol] ?? null;
   try {
     // `import()` dentro da função para o módulo continuar podendo ser importado
     // por componente de cliente, que é como ele já estava.
@@ -284,6 +292,7 @@ export async function lerEstudo(symbol: string): Promise<Estudo | null> {
       3600,
     ).catch(() => null);
     cache = { ...(robo?.dado.moedas ?? {}), ...(arquivo.moedas ?? {}) };
+    cacheEm = Date.now();
     return cache[symbol] ?? null;
   } catch {
     // Falha NÃO vira cache vazio: um erro momentâneo de leitura calaria o estudo
