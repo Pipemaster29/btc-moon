@@ -81,7 +81,7 @@
  * peneiramento automático tem como evitá-lo.
  */
 
-import { velas, type Vela } from "./binance";
+import { intervalosDeFunding, velas, type Vela } from "./binance";
 import type { Adiante } from "./emvista";
 import { ATIVAS, WATCHLIST } from "./watchlist";
 import { lerGuardado } from "./guardado";
@@ -182,7 +182,7 @@ export interface Achado {
    * motivo de amostra.
    */
   oiSobreMcap: number | null;
-  /** Taxa de financiamento por 8h. Positiva, o comprado paga. */
+  /** Taxa de financiamento POR PERÍODO. Positiva, o comprado paga. */
   funding: number | null;
   /** Dias desde que a Binance listou o perpétuo. */
   idadeDias: number | null;
@@ -283,13 +283,14 @@ export const VOLUME_MINIMO = 500_000;
  * pode pagar outra requisição por moeda.
  */
 export async function garimpar(series?: Map<string, Vela[]>): Promise<Garimpo> {
-  const [lista, tickers, premios] = await Promise.all([
+  const [lista, tickers, premios, intervalos] = await Promise.all([
     universo(),
     pegarJson<{ symbol: string; lastPrice: string; priceChangePercent: string; quoteVolume: string }[]>(
       "/fapi/v1/ticker/24hr",
       60,
     ),
     pegarJson<{ symbol: string; lastFundingRate: string }[]>("/fapi/v1/premiumIndex", 300),
+    intervalosDeFunding(),
   ]);
 
   const porTicker = new Map((tickers ?? []).map((t) => [t.symbol, t]));
@@ -389,7 +390,11 @@ export async function garimpar(series?: Map<string, Vela[]>): Promise<Garimpo> {
         porque.push(`listada há ${Math.round(idadeDias)} dias`);
       }
       if (funding != null && funding >= 0.0005) {
-        porque.push(`comprado paga ${(funding * 100).toFixed(3)}% por 8h para ficar`);
+        // O período da moeda, não "8h": das do painel, 110 de 113 cobram de 4
+        // em 4 horas, e o rótulo antigo lia metade do custo.
+        // Sem a lista de períodos, "por período" — e não 8 h de palpite.
+        const periodo = intervalos ? `a cada ${intervalos.get(s.symbol) ?? 8} h` : "por período";
+        porque.push(`comprado paga ${(funding * 100).toFixed(3)}% ${periodo} para ficar`);
       }
       // "Na máxima DA SÉRIE" e não "dos 30 dias": numa moeda de quatro velas a
       // série tem quatro dias, e prometer trinta seria mentir no rótulo.

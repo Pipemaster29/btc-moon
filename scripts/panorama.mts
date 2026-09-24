@@ -60,7 +60,10 @@ interface PontoHistorico {
   saida: number;
   estagio: string | null;
   vies: string | null;
-  /** Taxa de financiamento por período de 8h. É o custo de carregar posição. */
+  /**
+   * Taxa de financiamento POR PERÍODO, como a Binance publica. O período não é
+   * gravado, e nestas moedas quase sempre é de 4 h, não de 8 (`intervalosDeFunding`).
+   */
   fund: number | null;
   /**
    * Força da call, de 0 a 3. Existe para a carteira poder dimensionar a posição.

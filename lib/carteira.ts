@@ -95,6 +95,12 @@ export interface Aberta {
   /** Última taxa vista, para o caso de o retrato seguinte não trazer nenhuma. */
   ultimaTaxa: number | null;
   /**
+   * De quantas em quantas horas o perpétuo cobra a taxa (`intervalosDeFunding`).
+   * Ausente é o padrão da Binance, 8 h — e nas moedas daqui quase sempre é 4.
+   * Mora na posição para a remarcação do navegador cobrar certo sem pedir nada.
+   */
+  horasFunding?: number;
+  /**
    * Fração do patrimônio que esta posição arriscava até o stop na ENTRADA, já
    * com a escala, o fator do lado e o freio de queda aplicados. É a unidade do
    * teto agregado — e ela mora na posição porque deixou de ser função só da
@@ -280,6 +286,12 @@ export interface Carteira {
    * que já fez. É com isto que a tela separa o resultado de cada origem.
    */
   emVista?: string[];
+  /**
+   * O período de financiamento de cada moeda candidata, em horas, como lido
+   * pelo `npm run carteira`. Fica guardado para o retrato seguinte usar se a
+   * Binance não responder.
+   */
+  horasFunding?: Record<string, number>;
   /** Risco comprometido agora, em fração do patrimônio. */
   riscoAberto?: number;
   /**
@@ -501,9 +513,10 @@ export const MARGEM_MANUTENCAO = 0.005;
  * Financiamento presumido quando o histórico não gravou a taxa real.
  *
  * As linhas anteriores a 03/09 não têm o campo. Medido nas moedas da lista, a
- * taxa fica em torno de 0,015% por período de oito horas — 16% ao ano —, e é
- * esse o valor usado como piso. O sinal segue a convenção da Binance: positivo,
- * o comprado paga.
+ * taxa fica em torno de 0,015% POR PERÍODO, e é esse o valor usado como piso.
+ * A conta de 03/09 lia o período como de oito horas e dava 16% ao ano; o
+ * período delas é de quatro (`intervalosDeFunding`), e o ano é de 33%. O
+ * sinal segue a convenção da Binance: positivo, o comprado paga.
  */
 export const FUNDING_PRESUMIDO = 0.00015;
 
@@ -730,8 +743,13 @@ export interface Emissao {
   vies: string | null;
   forca?: number | null;
   nota?: number;
-  /** Taxa de financiamento por 8h, quando o retrato a gravou. */
+  /** Taxa de financiamento POR PERÍODO, como a Binance publica, quando o retrato a gravou. */
   fund?: number | null;
+  /**
+   * O período dela em horas. Não é gravado no histórico: `npm run carteira` o
+   * põe aqui com `intervalosDeFunding`, e sem ele vale o padrão de 8 h.
+   */
+  fh?: number | null;
   /** Só nas moedas em vista, que entraram sozinhas (`lib/emvista.ts`). */
   origem?: string;
   /** O último negócio do perpétuo no instante do retrato (desde 24/09). */
@@ -950,7 +968,12 @@ function cobrarFunding(p: Aberta, ate: number, taxa: number): void {
   p.ultimaTaxa = taxa;
   // Positiva, o comprado paga; negativa, o vendido paga. Vezes a alavancagem
   // porque a taxa incide sobre o NOCIONAL e `funding` é fração da margem.
-  p.funding += (horas / 8) * taxa * (p.lado === "long" ? 1 : -1) * ALAVANCAGEM;
+  //
+  // POR PERÍODO DA MOEDA, e não por oito horas. Até 24/09 era `horas / 8`, e 39
+  // das 40 moedas negociadas cobram a cada quatro: o custo de carregar saía
+  // pela metade (`intervalosDeFunding`, em `lib/binance.ts`).
+  const periodo = p.horasFunding !== undefined && p.horasFunding > 0 ? p.horasFunding : 8;
+  p.funding += (horas / periodo) * taxa * (p.lado === "long" ? 1 : -1) * ALAVANCAGEM;
   p.ultimoFunding = ate;
 }
 
@@ -1271,7 +1294,11 @@ export function rodar(
     const base = new Map<string, number>();
     const vies = new Map<string, string | null>();
     const fund = new Map<string, number>();
+    const horasDe = new Map<string, number>();
     for (const e of lote) {
+      // O período é da MOEDA, não do preço: vale mesmo na linha que o preço
+      // descarta logo abaixo.
+      if (e.fh != null && e.fh > 0) horasDe.set(e.s, e.fh);
       // A RÉGUA VENCE EM UM DIA. Sem prazo, uma moeda que saísse do retrato e
       // voltasse depois de uma queda de 90% — o ciclo destas moedas — teria
       // TODA linha seguinte julgada contra o preço de antes da queda, e ficaria
@@ -1303,6 +1330,8 @@ export function rodar(
 
     // 1. marcar a mercado e decidir saídas
     for (const p of [...estado.abertas.values()]) {
+      const periodo = horasDe.get(p.symbol);
+      if (periodo !== undefined) p.horasFunding = periodo;
       const atual = preco.get(p.symbol);
       const dias = (quando - p.abertaEm) / 86_400_000;
       const taxa = fund.get(p.symbol) ?? p.ultimaTaxa ?? FUNDING_PRESUMIDO;
@@ -1545,6 +1574,7 @@ export function rodar(
         funding: 0,
         ultimoFunding: quando,
         ultimaTaxa: fund.get(e.s) ?? null,
+        ...(horasDe.has(e.s) ? { horasFunding: horasDe.get(e.s) } : {}),
         precoLiquidacao: precoDeLiquidacao(e.vies, entrada),
         // O risco EFETIVO: quando a margem sai menor que o alvo — teto de
         // exposição ou caixa —, a posição arrisca menos do que a régua pedia, e
@@ -1668,11 +1698,11 @@ export function remarcar(
     mudou = true;
 
     // O FINANCIAMENTO DAS HORAS DESDE O RETRATO, que a marcação anterior não
-    // cobrava. Não é detalhe e nem tem sinal aleatório: são três cobranças por
-    // dia sobre o nocional, e com retratos separados por cinco a dez horas a
-    // marcação viva mostrava sistematicamente MAIS do que a posição valia. A
-    // carteira gravada em 04/09 tinha posição pagando 0,052% por 8h — a 3x, 0,16%
-    // da margem por dia parada.
+    // cobrava. Não é detalhe e nem tem sinal aleatório: são seis cobranças por
+    // dia sobre o nocional nas moedas de 4 h (`horasFunding`), e com retratos
+    // separados por horas a marcação viva mostrava sistematicamente MAIS do que
+    // a posição valia. A carteira gravada em 04/09 tinha posição pagando 0,052%
+    // por período — a 3x e de quatro em quatro horas, 0,94% da margem por dia.
     const viva = { ...p };
     cobrarFunding(viva, agora, taxas?.get(p.symbol) ?? p.ultimaTaxa ?? FUNDING_PRESUMIDO);
     viva.precoAtual = preco;

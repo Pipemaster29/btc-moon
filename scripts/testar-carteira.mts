@@ -586,6 +586,31 @@ console.log("\n--- a marcação ao vivo, que roda no navegador ---");
     `${((comFunding.abertas[0]?.funding ?? 0) * 100).toFixed(2)}% da margem`,
   );
 
+  // O PERÍODO DA MOEDA: 39 das 40 negociadas cobram de 4 em 4 horas, e o motor
+  // dividia tudo por 8. A posição guarda o período, e a marcação do navegador
+  // cobra com ele sem pedir nada — seis cobranças no dia, não três.
+  const deQuatro = rodar([{ t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0.001, fh: 4 }], T0 * 1000);
+  const quatro = remarcar(deQuatro, new Map([["X", 1]]), agora, new Map([["X", 0.001]]));
+  confere(
+    "moeda de 4 h: o dobro das cobranças no mesmo dia",
+    deQuatro.abertas[0]?.horasFunding === 4 && Math.abs((quatro.abertas[0]?.funding ?? 0) - 2 * esperado) < 1e-9,
+    `${((quatro.abertas[0]?.funding ?? 0) * 100).toFixed(2)}% da margem`,
+  );
+  // E no motor, entre dois retratos: 48 h depois da abertura, sem velas.
+  const noMotor = (fh?: number) =>
+    rodar(
+      [
+        { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0.001, ...(fh ? { fh } : {}) },
+        { t: h(48), s: "X", preco: 1, vies: "long", forca: 3, fund: 0.001, ...(fh ? { fh } : {}) },
+      ],
+      T0 * 1000,
+    ).abertas[0]?.funding ?? 0;
+  confere(
+    "no motor também: 48 h de 4 h custam o dobro das de 8 h",
+    Math.abs(noMotor(4) - 2 * noMotor()) < 1e-12 && noMotor() > 0,
+    `${(noMotor(4) * 100).toFixed(2)}% contra ${(noMotor() * 100).toFixed(2)}%`,
+  );
+
   // A margem isolada é o teto da perda. Sem a trava, `valor * (1 + retorno)`
   // virava dinheiro NEGATIVO e o patrimônio da tela ficava abaixo do caixa.
   const estourada = remarcar(base, new Map([["X", 0.5]]), agora);

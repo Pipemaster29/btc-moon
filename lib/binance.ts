@@ -155,14 +155,15 @@ export async function circulante(symbol: string): Promise<Circulante | null> {
  *
  * Existe para a carteira poder cobrar o custo de carregar posição, que é o maior
  * item que ela não cobrava. Nestas moedas ele não é detalhe: medido em 03/09, a
- * H paga 20,5% ao ano, a POWER 19,2%, a AKE 15,7%. Uma posição vendida segurada
- * duas semanas come 0,8% só de financiamento — mais do que o custo de entrada e
- * saída somados.
+ * H pagava 20,5% ao ano, a POWER 19,2%, a AKE 15,7% — contados com três
+ * cobranças por dia. As três cobram de 4 em 4 horas (24/09), então o ano delas
+ * era o DOBRO: 41%, 38% e 31%.
  *
  * O endereço devolve os 895 símbolos de uma vez, então o custo é uma requisição
  * por retrato e não uma por moeda.
  *
- * A taxa é por PERÍODO DE OITO HORAS, e o sinal diz quem paga: positiva, o
+ * A taxa é POR PERÍODO, e o período NÃO é de oito horas nestas moedas: ver
+ * `intervalosDeFunding` logo abaixo. O sinal diz quem paga: positiva, o
  * comprado paga o vendido; negativa, o contrário.
  */
 export async function fundings(): Promise<Map<string, number>> {
@@ -183,6 +184,38 @@ export async function fundings(): Promise<Map<string, number>> {
     // Sem financiamento a carteira cobra a estimativa dela e diz que estimou.
   }
   return fora;
+}
+
+/**
+ * De quantas em quantas HORAS cada perpétuo cobra o financiamento.
+ *
+ * A carteira cobrava toda taxa como se fosse de oito em oito horas, que é o
+ * padrão da Binance para as moedas grandes — e não o destas. Medido em 24/09
+ * sobre as 791 que a Binance declara: 468 cobram a cada 4 h, 321 a cada 8 h, 2
+ * a cada 1 h. Das 113 do painel, 110 são de 4 h; das 40 moedas que a carteira
+ * já negociou, 39. O custo de carregar posição era cobrado pela METADE.
+ *
+ * Símbolo fora da lista é o padrão, 8 h. Falha devolve `null`, e não um mapa
+ * vazio: "não consegui ler" não pode virar "todas são de 8 h" (armadilha nº 2).
+ */
+export async function intervalosDeFunding(): Promise<Map<string, number> | null> {
+  try {
+    const res = await fetch(`${BASE}/fapi/v1/fundingInfo`, {
+      signal: AbortSignal.timeout(15_000),
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return null;
+    const cru = (await res.json()) as { symbol: string; fundingIntervalHours: number }[];
+    if (!Array.isArray(cru) || cru.length === 0) return null;
+    const fora = new Map<string, number>();
+    for (const r of cru) {
+      const h = Number(r.fundingIntervalHours);
+      if (r.symbol && Number.isFinite(h) && h > 0) fora.set(r.symbol, h);
+    }
+    return fora.size > 0 ? fora : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -20,7 +20,7 @@ import {
   type Passo,
   type Regras,
 } from "../lib/carteira";
-import { velas, velasDesde } from "../lib/binance";
+import { intervalosDeFunding, velas, velasDesde } from "../lib/binance";
 import { ATIVAS } from "../lib/watchlist";
 import { ARQUIVO_HISTORICO } from "../lib/historico";
 import { chavesDepois, eventosNovos, MAX_POR_RETRATO, textoDoEvento, type Evento } from "../lib/avisos";
@@ -92,6 +92,29 @@ const candidatas = new Set(
     .map((e) => e.s),
 );
 
+/**
+ * DE QUANTAS EM QUANTAS HORAS CADA MOEDA COBRA O FINANCIAMENTO.
+ *
+ * O motor cobrava toda taxa como se fosse de oito horas, e 39 das 40 moedas que
+ * a carteira já negociou cobram a cada quatro (`intervalosDeFunding`). Sem
+ * resposta da Binance, vale o último período lido, que viaja no próprio
+ * `carteira.json` — cair no padrão de 8 h faria o custo de carregar dobrar e
+ * desdobrar de um retrato para o outro, e com ele o tamanho das posições.
+ */
+const jaGravada = await readFile("data/carteira.json", "utf8")
+  .then((t) => JSON.parse(t) as Carteira)
+  .catch(() => null);
+const intervalos = await intervalosDeFunding();
+const horasFunding: Record<string, number> = {};
+for (const s of candidatas) {
+  const h = intervalos ? (intervalos.get(porTicker.get(s)!) ?? 8) : jaGravada?.horasFunding?.[s];
+  if (h !== undefined && Number.isFinite(h) && h > 0) horasFunding[s] = h;
+}
+for (const e of emissoes) {
+  const h = horasFunding[e.s];
+  if (h !== undefined) e.fh = h;
+}
+
 const caminho = new Map<string, Passo[]>();
 let semVelas = 0;
 let comVelasParciais = 0;
@@ -156,6 +179,15 @@ console.log(
     (semVelas > 0 ? ` · ${semVelas} sem série, testadas só nas pontas` : "") +
     (comVelasParciais > 0 ? ` · ${comVelasParciais} com série incompleta no começo` : ""),
 );
+{
+  const porPeriodo = new Map<number, number>();
+  for (const h of Object.values(horasFunding)) porPeriodo.set(h, (porPeriodo.get(h) ?? 0) + 1);
+  const resumo = [...porPeriodo.entries()].sort((a, b) => a[0] - b[0]).map(([h, n]) => `${n} de ${h} h`).join(", ");
+  console.log(
+    `financiamento: ${resumo || "nenhum período conhecido"}` +
+      (intervalos ? "" : jaGravada?.horasFunding ? " · a Binance não respondeu, valem os do retrato anterior" : " · sem período nenhum: cobrado de 8 em 8 h"),
+  );
+}
 console.log(
   `só nas pontas o patrimônio seria ${usd(semCaminho.patrimonio)} ` +
     `com ${semCaminho.encerradas} encerrada(s) — a diferença é o que o intervalo escondia\n`,
@@ -322,9 +354,7 @@ if (c.encerradas > 0) {
  * como enviado: a memória só registra o que de fato chegou, para o retrato
  * seguinte tentar de novo o que o Telegram recusou.
  */
-const antes = await readFile("data/carteira.json", "utf8")
-  .then((t) => JSON.parse(t) as Carteira)
-  .catch(() => null);
+const antes = jaGravada;
 const eventos = eventosNovos(antes, c);
 const telegram = telegramFromEnv();
 let avisos = antes?.avisos;
@@ -378,6 +408,7 @@ const gravada: Carteira = {
   ...c,
   comparacao: { meio: MEIO, linhas, anterior: anterior?.curva ?? [] },
   ...(deEmVista.size ? { emVista: [...deEmVista].sort() } : {}),
+  ...(Object.keys(horasFunding).length ? { horasFunding } : {}),
   ...(avisos ? { avisos } : {}),
 };
 

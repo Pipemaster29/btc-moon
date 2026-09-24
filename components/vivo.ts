@@ -26,8 +26,8 @@
  * faz. `/api/vivo` devolve o último negócio e a variação sobre a abertura de 24h
  * (`/fapi/v1/ticker/24hr`); o miniTicker traz exatamente esses dois números (`c`
  * e `o`). O markPrice traria financiamento junto, mas o preço dele é o de marca
- * — outro número — e custa outros 4 KB/s pela mesma informação que muda de oito
- * em oito horas.
+ * — outro número — e custa outros 4 KB/s pela mesma informação que muda de
+ * quatro em quatro horas na maioria destas moedas.
  *
  * E ELE PARA QUANDO A ABA SAI DE VISTA. Uma aba esquecida aberta a noite inteira
  * são 5.760 consultas, ou 14 MB/h de WebSocket, que ninguém vai ler; ao voltar, a
@@ -72,7 +72,7 @@ const INTERVALO_MS = 15_000;
 
 /**
  * E COM o WebSocket de pé: só pelo financiamento e para reconciliar as moedas que
- * não negociaram. A taxa muda de oito em oito horas; um minuto é folga.
+ * não negociaram. A taxa muda de quatro em quatro horas; um minuto é folga.
  */
 const INTERVALO_COM_SOCKET_MS = 60_000;
 

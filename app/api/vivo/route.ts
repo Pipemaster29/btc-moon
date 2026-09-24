@@ -67,7 +67,7 @@ export interface MoedaViva {
   preco: number;
   /** Fração, não porcento. */
   variacao24h: number;
-  /** Taxa por período de 8h, quando a Binance a publica para o símbolo. */
+  /** Taxa POR PERÍODO (de 4 h na maioria destas moedas), quando a Binance a publica. */
   funding: number | null;
 }
 
