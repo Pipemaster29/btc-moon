@@ -123,6 +123,16 @@ interface Obs extends Ponto {
   fwd: number;
 }
 
+// O PONTO À FRENTE TEM DE ESTAR NO HORIZONTE, e não só depois dele. O primeiro
+// retrato passadas as 24 h vinha até 48 h depois quando o robô parava ou a
+// moeda sumia do retrato: medido em 24/09, 1.627 de 125.338 observações
+// (1,3%), quase todas num buraco antigo do robô (18 por moeda) e na BTW-ETH,
+// que ficou fora do retrato uma semana antes de ser aposentada. Um "24 h à
+// frente" medido em dois dias não é a pergunta. Um quarto do horizonte de
+// folga (6 h em 24) cobre o intervalo normal entre retratos com sobra. O
+// veredito não mudou: short +0,19 p.p. (era +0,20), long −0,00 (era −0,01).
+const FOLGA = HORIZONTE * 3600 * 0.25;
+let foraDoHorizonte = 0;
 const obs: Obs[] = [];
 for (const serie of porMoeda.values()) {
   let j = 0;
@@ -131,6 +141,10 @@ for (const serie of porMoeda.values()) {
     // começo a cada ponto seria quadrático, e são 21 mil pontos.
     while (j < serie.length && serie[j].t < p.t + HORIZONTE * 3600) j++;
     if (j >= serie.length) break;
+    if (serie[j].t > p.t + HORIZONTE * 3600 + FOLGA) {
+      foraDoHorizonte++;
+      continue;
+    }
     obs.push({ ...p, fwd: serie[j].preco / p.preco - 1 });
   }
 }
@@ -162,7 +176,8 @@ const janela = {
 
 console.log(
   `${obs.length} emissões com ${HORIZONTE}h à frente · ${porMoeda.size} moedas · ${janela.de} → ${janela.ate}` +
-    ` · fora: ${emQuarentena} em quarentena, ${saltos} por salto de ${SALTO_ABSURDO}x\n`,
+    ` · fora: ${emQuarentena} em quarentena, ${saltos} por salto de ${SALTO_ABSURDO}x, ` +
+    `${foraDoHorizonte} sem ponto até ${HORIZONTE * 1.25}h à frente\n`,
 );
 
 /**
