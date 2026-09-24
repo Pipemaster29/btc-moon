@@ -26,6 +26,7 @@
  */
 
 import { readdir, readFile, writeFile } from "node:fs/promises";
+import { SALTO_ABSURDO } from "../lib/carteira";
 
 interface Ponto {
   t: number;
@@ -73,6 +74,30 @@ for (const p of pontos) {
 }
 for (const v of porMoeda.values()) v.sort((a, b) => a.t - b.t);
 
+// O SALTO ABSURDO, O MESMO DA CARTEIRA — e que só existia lá.
+//
+// O corte de 1e-12 acima pega o lixo do JCT e nada mais. A SYN, que negocia a
+// US$ 0,09, tem 106 linhas entre 01/09 e 05/09 a US$ 8,19 e a US$ 1,21–1,27:
+// era o preço da OUTRA moeda de uma pool em que ela é o pagamento (o defeito
+// que `depthOn` passou a filtrar em 23/09). Cada uma dessas vira +9.000% ou
+// −99% de retorno à frente. A carteira nunca as usou — o `SALTO_ABSURDO` de
+// `rodar` barra salto de dez vezes contra o último preço bom —, e o placar,
+// que mede as mesmas emissões, usava todas. É a armadilha nº 7: o freio numa
+// ponta só. Mesma regra aqui, contra o último preço bom da moeda.
+let saltos = 0;
+for (const [s, v] of porMoeda) {
+  const bons: Ponto[] = [];
+  for (const p of v) {
+    const antes = bons.length ? bons[bons.length - 1].preco : null;
+    if (antes !== null && (p.preco / antes > SALTO_ABSURDO || antes / p.preco > SALTO_ABSURDO)) {
+      saltos++;
+      continue;
+    }
+    bons.push(p);
+  }
+  porMoeda.set(s, bons);
+}
+
 interface Obs extends Ponto {
   fwd: number;
 }
@@ -115,7 +140,8 @@ const janela = {
 };
 
 console.log(
-  `${obs.length} emissões com ${HORIZONTE}h à frente · ${porMoeda.size} moedas · ${janela.de} → ${janela.ate}\n`,
+  `${obs.length} emissões com ${HORIZONTE}h à frente · ${porMoeda.size} moedas · ${janela.de} → ${janela.ate}` +
+    ` · ${saltos} linha(s) de preço fora por salto de ${SALTO_ABSURDO}x\n`,
 );
 
 /**
