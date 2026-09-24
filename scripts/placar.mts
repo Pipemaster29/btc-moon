@@ -52,12 +52,28 @@ const PRECO_MINIMO = 1e-12;
 
 const HORIZONTE = Number(process.argv[2] ?? 24);
 
+/**
+ * As linhas que não são o preço do perpétuo daquela hora, julgadas contra as
+ * velas por `npm run quarentena` (o placar não toca em rede). Sem o arquivo, a
+ * leitura segue sem ele — e o cabeçalho diz quantas linhas ficaram de fora.
+ */
+const quarentena = new Set<string>(
+  await readFile("data/quarentena.json", "utf8")
+    .then((t) => (JSON.parse(t) as { fora?: string[] }).fora ?? [])
+    .catch(() => []),
+);
+let emQuarentena = 0;
+
 const pontos: Ponto[] = [];
 for (const f of (await readdir("data")).filter((x) => x.startsWith("historico-"))) {
   for (const linha of (await readFile(`data/${f}`, "utf8")).split("\n")) {
     if (!linha.trim()) continue;
     try {
       const p = JSON.parse(linha) as Ponto;
+      if (quarentena.has(`${p.t}|${p.s}`)) {
+        emQuarentena++;
+        continue;
+      }
       if (p.preco > PRECO_MINIMO) pontos.push(p);
     } catch {
       // Linha truncada no meio de uma escrita: o arquivo é append de várias
@@ -141,7 +157,7 @@ const janela = {
 
 console.log(
   `${obs.length} emissões com ${HORIZONTE}h à frente · ${porMoeda.size} moedas · ${janela.de} → ${janela.ate}` +
-    ` · ${saltos} linha(s) de preço fora por salto de ${SALTO_ABSURDO}x\n`,
+    ` · fora: ${emQuarentena} em quarentena, ${saltos} por salto de ${SALTO_ABSURDO}x\n`,
 );
 
 /**
