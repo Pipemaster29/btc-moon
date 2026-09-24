@@ -55,6 +55,14 @@ no código, com número:
   metades — vender RSI > 80 em 30–100 mi — caiu no ataque: mediana −8% por
   trade, +0,04 R, negativo mudando a faixa. `npm run medir-sinais` refaz tudo.
 
+- **O tamanho deixou de bloquear call (24/09, a pedido do usuário).** A compra
+  em "exausta" exigia menos de US$ 30 mi de market cap e a venda em
+  "ressuscitando" exigia mais. Refeitas no histórico de agosto e setembro, a
+  trava da venda tinha invertido (as pequenas medem −2,0 p.p.) e a da compra
+  cortava calls que a carteira acertou: sem as duas, +0,6% → +3,6%, as duas
+  metades melhores. As liberadas entram com força 1, e a cauda das grandes
+  exaustas continua contra — 19,8% das semanas caem 20%.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
