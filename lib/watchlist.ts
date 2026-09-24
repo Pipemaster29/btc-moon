@@ -370,11 +370,23 @@ export const WATCHLIST: WatchedToken[] = [
     //
     // Sem carteira mapeada, entra pelo lado do preço e da liquidez. O perpétuo
     // da Binance é o mesmo símbolo, então não há painel de derivativos próprio.
+    //
+    // A leitura acima estava errada, e o motivo está no `porque` abaixo: a
+    // liquidez era de pool que não gira — o teste que a armadilha nº 1 manda
+    // fazer e que esta entrada não fez.
     symbol: "BTW-ETH",
     chain: "ethereum",
     contract: "0x41c9eE7a06FF69F0BF63Ec4B5A928279B26469EE",
     firstBlock: 0,
     wallets: [],
+    aposentada: {
+      desde: "2026-09-24",
+      porque:
+        "Sem dado desde 15/09: o DexScreener deixou de devolver pool para o contrato, e o retrato a marcava " +
+        "como caída em toda rodada. Conferido on-chain pelo Blockscout em 24/09: 11 detentores, última " +
+        "transferência em 14/09, e as do mês são poeira (0 a 25 tokens). Os US$ 39–50 mi de liquidez que " +
+        "justificaram a entrada eram pool sem giro. O BTW que negocia é o da BNB Chain (BTWUSDT).",
+    },
   },
   {
     symbol: "PRLUSDT",
