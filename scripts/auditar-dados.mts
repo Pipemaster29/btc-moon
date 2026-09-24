@@ -35,8 +35,46 @@ if (pan) {
       if (campo !== "price") checa(`${t}.${campo} >= 0`, (v as number) >= 0, `= ${v}`);
     }
     checa(`${t}.score entre 0 e 100`, (m.score as number) >= 0 && (m.score as number) <= 100, `= ${m.score}`);
+    // O ÁRBITRO DA POOL, conferido no que foi gravado: preço fora de 0,8–1,25
+    // do último negócio do perpétuo não pode sair do retrato (`lib/overview.ts`).
+    // Foi um preço assim — a pool rasa da HEI a 1,6–2x — que deu à carteira três
+    // "alvos" que o perpétuo nunca tocou. Retrato de antes do campo não tem
+    // `perpPrice`, e passa.
+    const pp = m.perpPrice;
+    if (typeof pp === "number" && pp > 0 && (m.price as number) > 0) {
+      const r = (m.price as number) / pp;
+      checa(`${t}: preço dentro de 0,8–1,25 do perpétuo`, r >= 0.8 && r <= 1.25, `= ${r.toFixed(3)}`);
+    }
   }
 } else console.log("  (ausente)");
+
+// ---- histórico do mês: a mesma invariante nas linhas, que é o que a carteira
+// e o placar leem. Só as linhas com `pp` (gravado desde 24/09).
+{
+  const mes = new Date().toISOString().slice(0, 7);
+  const texto = await readFile(`data/historico-${mes}.jsonl`, "utf8").catch(() => null);
+  console.log("histórico:");
+  if (texto) {
+    let comPp = 0;
+    let fora = 0;
+    const exemplos: string[] = [];
+    for (const l of texto.split("\n")) {
+      if (!l.includes('"pp"')) continue;
+      try {
+        const o = JSON.parse(l) as { s: string; t: number; preco: number; pp: number };
+        comPp++;
+        const r = o.preco / o.pp;
+        if (!(r >= 0.8 && r <= 1.25)) {
+          fora++;
+          if (exemplos.length < 3) exemplos.push(`${o.s} ${new Date(o.t * 1000).toISOString().slice(0, 16)} ${r.toFixed(3)}`);
+        }
+      } catch {
+        // linha truncada: o placar e a carteira já pulam
+      }
+    }
+    checa("linhas com pp dentro de 0,8–1,25 do perpétuo", fora === 0, `(${fora} de ${comPp}: ${exemplos.join(", ")})`);
+  } else console.log("  (ausente)");
+}
 
 // ---- carteira
 const c = await ler<{
