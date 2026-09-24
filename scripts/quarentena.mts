@@ -23,7 +23,7 @@
  */
 
 import { readdir, readFile, writeFile } from "node:fs/promises";
-import { velas } from "../lib/binance";
+import { velasDesde } from "../lib/binance";
 import { foraDoPerpetuo, type Passo } from "../lib/carteira";
 import { comLimite } from "../lib/limite";
 
@@ -64,6 +64,7 @@ const HORA = 3_600_000;
 const fora: string[] = [];
 const contagem: Record<string, { fora: number; julgadas: number }> = {};
 let semSerie = 0;
+let parciais = 0;
 
 await Promise.all(
   [...porMoeda.keys()].map((s) =>
@@ -71,21 +72,23 @@ await Promise.all(
     // peso 10 cada na Binance, e o orçamento é de 2.400 por minuto.
     comLimite("quarentena", 4, async () => {
       const passos: Passo[] = [];
-      let de = inicio * 1000 - 2 * HORA;
-      for (let pagina = 0; pagina < 6; pagina++) {
-        const lote = await velas(`${s}USDT`, "1h", 1500, de).catch(() => []);
-        for (const x of lote) {
-          passos.push({
-            abriuEm: x.time * 1000,
-            fechouEm: x.time * 1000 + HORA,
-            abertura: x.open,
-            maxima: x.high,
-            minima: x.low,
-            fechamento: x.close,
-          });
-        }
-        if (lote.length < 1500) break;
-        de = (lote[lote.length - 1].time + 3600) * 1000;
+      // De trás para frente (`velasDesde`): o que faltar é o mais velho, e a
+      // linha sem vela na hora dela fica sem julgamento — nunca julgada contra
+      // vela errada.
+      const { velas: lote, parcial } = await velasDesde(`${s}USDT`, "1h", inicio * 1000 - 2 * HORA).catch(() => ({
+        velas: [] as Awaited<ReturnType<typeof velasDesde>>["velas"],
+        parcial: true,
+      }));
+      if (parcial && lote.length > 0) parciais++;
+      for (const x of lote) {
+        passos.push({
+          abriuEm: x.time * 1000,
+          fechouEm: x.time * 1000 + HORA,
+          abertura: x.open,
+          maxima: x.high,
+          minima: x.low,
+          fechamento: x.close,
+        });
       }
       if (passos.length === 0) {
         semSerie++;
@@ -118,7 +121,7 @@ await writeFile(
 );
 console.log(
   `${linhas.length} linhas · ${julgadas} julgadas contra as velas · ${fora.length} fora do perpétuo · ` +
-    `${semSerie} moeda(s) sem série`,
+    `${semSerie} moeda(s) sem série · ${parciais} com série incompleta no começo`,
 );
 for (const [s, c] of Object.entries(porMoedaFora)) console.log(`  ${s.padEnd(12)} ${c.fora} de ${c.julgadas}`);
 console.log("data/quarentena.json gravado");

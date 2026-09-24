@@ -262,6 +262,22 @@ export interface Vela {
   delta: number;
 }
 
+function paraVela(linha: unknown): Vela {
+  const c = linha as (string | number)[];
+  const volume = Number(c[5]);
+  const takerBuy = Number(c[9]);
+  return {
+    time: Math.floor(Number(c[0]) / 1000),
+    open: Number(c[1]),
+    high: Number(c[2]),
+    low: Number(c[3]),
+    close: Number(c[4]),
+    volume,
+    takerBuy,
+    delta: takerBuy - (volume - takerBuy),
+  };
+}
+
 /**
  * As velas do símbolo, ao vivo, direto da praça.
  *
@@ -289,23 +305,65 @@ export async function velas(symbol: string, interval = "1d", limit = 1500, inici
   );
 
   return bruto
-    .map((linha) => {
-      const c = linha as (string | number)[];
-      const volume = Number(c[5]);
-      const takerBuy = Number(c[9]);
-      return {
-        time: Math.floor(Number(c[0]) / 1000),
-        open: Number(c[1]),
-        high: Number(c[2]),
-        low: Number(c[3]),
-        close: Number(c[4]),
-        volume,
-        takerBuy,
-        delta: takerBuy - (volume - takerBuy),
-      };
-    })
+    .map(paraVela)
     .filter((v) => Number.isFinite(v.time) && v.close > 0)
     .sort((a, b) => a.time - b.time);
+}
+
+/**
+ * As velas desde `inicio` até agora, buscadas DE TRÁS PARA FRENTE — a página
+ * mais recente primeiro — e dizendo se vieram inteiras.
+ *
+ * A carteira e a quarentena buscavam do começo para a frente, com teto de
+ * páginas: passado o teto, eram as velas MAIS RECENTES que faltavam, e uma
+ * página do meio que falhasse (`velas` devolve lista vazia na falha) cortava o
+ * fim em silêncio. As velas recentes são as que julgam o preço de agora e
+ * percorrem o stop de agora (achado na revisão do PR #6). De trás para frente,
+ * o que falta é sempre o mais velho, e `parcial` diz quando faltou.
+ */
+export async function velasDesde(
+  symbol: string,
+  interval: string,
+  inicio: number,
+  maxPaginas = 6,
+): Promise<{ velas: Vela[]; parcial: boolean }> {
+  const porTempo = new Map<number, Vela>();
+  let fim: number | null = null;
+  let chegou = false;
+  for (let pagina = 0; pagina < maxPaginas; pagina++) {
+    const caminho =
+      `/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=1500` + (fim !== null ? `&endTime=${fim}` : "");
+    // Direto, e não por `pegar`: aqui "falhou" e "não há mais vela" precisam
+    // terminar em lugares diferentes, e `pegar` devolve lista vazia para os dois.
+    const bruto = await comLimite("binance", TETO_BINANCE, async () => {
+      try {
+        const res = await fetch(`${BASE}${caminho}`, { signal: AbortSignal.timeout(15_000) });
+        if (!res.ok) return null;
+        const d = await res.json();
+        return Array.isArray(d) ? (d as unknown[]) : null;
+      } catch {
+        return null;
+      }
+    });
+    if (bruto === null) break;
+    const lote = bruto.map(paraVela).filter((v) => Number.isFinite(v.time) && v.close > 0);
+    if (lote.length === 0) {
+      chegou = true;
+      break;
+    }
+    let maisAntiga = Infinity;
+    for (const v of lote) {
+      porTempo.set(v.time, v);
+      if (v.time < maisAntiga) maisAntiga = v.time;
+    }
+    if (maisAntiga * 1000 <= inicio || lote.length < 1500) {
+      chegou = true;
+      break;
+    }
+    fim = maisAntiga * 1000 - 1;
+  }
+  const lista = [...porTempo.values()].sort((a, b) => a.time - b.time);
+  return { velas: lista, parcial: !chegou };
 }
 
 /**

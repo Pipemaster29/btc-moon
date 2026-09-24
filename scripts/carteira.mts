@@ -20,7 +20,7 @@ import {
   type Passo,
   type Regras,
 } from "../lib/carteira";
-import { velas } from "../lib/binance";
+import { velas, velasDesde } from "../lib/binance";
 import { ATIVAS } from "../lib/watchlist";
 import { chavesDepois, eventosNovos, MAX_POR_RETRATO, textoDoEvento, type Evento } from "../lib/avisos";
 import { escapeMarkdown, sendTelegram, telegramFromEnv } from "../lib/telegram";
@@ -93,6 +93,7 @@ const candidatas = new Set(
 
 const caminho = new Map<string, Passo[]>();
 let semVelas = 0;
+let comVelasParciais = 0;
 await Promise.all(
   [...candidatas].map(async (ticker) => {
     const symbol = porTicker.get(ticker);
@@ -103,15 +104,13 @@ await Promise.all(
     // julgam se o preço do retrato é o do perpétuo (`foraDoPerpetuo`), e sem
     // elas os preços de pool alheia de setembro — os que deram à HEI três
     // "alvos" que o perpétuo nunca tocou — voltariam a valer quando a carteira
-    // fizesse 62 dias. Uma página a cada 62 dias, até seis (um ano).
-    const v: Awaited<ReturnType<typeof velas>> = [];
-    let inicio = COMECO - 3_600_000;
-    for (let pagina = 0; pagina < 6; pagina++) {
-      const lote = await velas(symbol, "1h", 1500, inicio).catch(() => []);
-      v.push(...lote);
-      if (lote.length < 1500) break;
-      inicio = (lote[lote.length - 1].time + 3600) * 1000;
-    }
+    // fizesse 62 dias. De trás para frente (`velasDesde`): se faltar alguma
+    // página, falta a mais velha, nunca as de agora — e a contagem diz quantas.
+    const { velas: v, parcial } = await velasDesde(symbol, "1h", COMECO - 3_600_000).catch(() => ({
+      velas: [] as Awaited<ReturnType<typeof velas>>,
+      parcial: true,
+    }));
+    if (parcial && v.length > 0) comVelasParciais++;
     // Lista vazia é "não consegui", não "não houve movimento" — e as duas não
     // podem terminar no mesmo lugar. Sem velas, esta moeda cai no teste de ponta
     // de sempre, e a contagem abaixo diz quantas ficaram assim.
@@ -153,7 +152,8 @@ console.log(`\ncarteira desde ${new Date(COMECO).toISOString().slice(0, 16).repl
 console.log(`emissões lidas: ${emissoes.length}`);
 console.log(
   `caminho: ${caminho.size} de ${candidatas.size} moedas com vela de 1h` +
-    (semVelas > 0 ? ` · ${semVelas} sem série, testadas só nas pontas` : ""),
+    (semVelas > 0 ? ` · ${semVelas} sem série, testadas só nas pontas` : "") +
+    (comVelasParciais > 0 ? ` · ${comVelasParciais} com série incompleta no começo` : ""),
 );
 console.log(
   `só nas pontas o patrimônio seria ${usd(semCaminho.patrimonio)} ` +
