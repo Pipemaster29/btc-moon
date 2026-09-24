@@ -49,6 +49,9 @@
  * arranjo de `lib/estudo.ts`.
  */
 
+import { FAIXA_MESMA_MOEDA, mesmaMoeda } from "./faixa";
+
+
 export type Lado = "long" | "short";
 export type Motivo =
   | "painel mudou"
@@ -964,7 +967,7 @@ function cobrarFunding(p: Aberta, ate: number, taxa: number): void {
 function ancora(precoRetrato: number, fechamentoVela: number): number | null {
   if (!(precoRetrato > 0) || !(fechamentoVela > 0)) return null;
   const k = precoRetrato / fechamentoVela;
-  return k >= 0.8 && k <= 1.25 ? k : null;
+  return mesmaMoeda(k) ? k : null;
 }
 
 /** As velas de cada série indexadas pela hora de abertura, montadas uma vez por série. */
@@ -1006,7 +1009,9 @@ export function foraDoPerpetuo(preco: number, velas: Passo[] | undefined, quando
     (v): v is Passo => v !== undefined && v.minima > 0 && v.maxima > 0,
   );
   if (velasDaHora.length === 0) return false;
-  return velasDaHora.every((v) => preco < v.minima * 0.8 || preco > v.maxima * 1.25);
+  return velasDaHora.every(
+    (v) => preco < v.minima * FAIXA_MESMA_MOEDA.min || preco > v.maxima * FAIXA_MESMA_MOEDA.max,
+  );
 }
 
 /**
@@ -1050,7 +1055,7 @@ function percorrer(
   // base medida é a mesma faixa de `ancora`, mas entre dois preços do mesmo
   // instante.
   const k =
-    baseMedida !== null && baseMedida >= 0.8 && baseMedida <= 1.25
+    baseMedida !== null && mesmaMoeda(baseMedida)
       ? baseMedida
       : ancora(precoRetrato, janela[janela.length - 1].fechamento);
   if (k === null) return false;

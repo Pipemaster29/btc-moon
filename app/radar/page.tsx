@@ -8,6 +8,7 @@ import GarimpoPanel from "@/components/GarimpoPanel";
 import SinaisPanel from "@/components/SinaisPanel";
 import FluxoPanel from "@/components/FluxoPanel";
 import { getGarimpo } from "@/lib/garimpo";
+import { mesmaMoeda } from "@/lib/faixa";
 import { lerDetentores } from "@/lib/detentores";
 import { lerVesting } from "@/lib/vesting";
 import { somarAdiante, type Adiante } from "@/lib/emvista";
@@ -330,7 +331,7 @@ export default async function Radar() {
   const bases: Record<string, number> = {};
   for (const r of rows) {
     const b = r.perpPrice > 0 && r.price > 0 ? r.price / r.perpPrice : NaN;
-    if (Number.isFinite(b) && b >= 0.8 && b <= 1.25 && Math.abs(b - 1) > 1e-4) bases[r.ticker] = b;
+    if (mesmaMoeda(b) && Math.abs(b - 1) > 1e-4) bases[r.ticker] = b;
   }
   const emVista = rows.filter((r) => r.origem).length;
   const adiante = garimpo?.emVistaAdiante ?? null;

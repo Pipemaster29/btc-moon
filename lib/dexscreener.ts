@@ -8,6 +8,7 @@
  */
 
 import { comLimite } from "./limite";
+import { mesmaMoeda } from "./faixa";
 
 const BASE = "https://api.dexscreener.com/latest/dex";
 
@@ -159,7 +160,7 @@ export function precoArbitrado(
   const pool = precoPool != null && precoPool > 0 && Number.isFinite(precoPool) ? precoPool : 0;
   const perp = precoPerp != null && precoPerp > 0 && Number.isFinite(precoPerp) ? precoPerp : 0;
   const razao = pool > 0 && perp > 0 ? pool / perp : null;
-  if (pool > 0 && (razao === null || (razao >= 0.8 && razao <= 1.25))) return { preco: pool, fonte: "pool", razao };
+  if (pool > 0 && (razao === null || mesmaMoeda(razao))) return { preco: pool, fonte: "pool", razao };
   if (perp > 0) return { preco: perp, fonte: "perpétuo", razao };
   return { preco: 0, fonte: "nenhum", razao };
 }

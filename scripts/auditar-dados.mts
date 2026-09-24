@@ -10,6 +10,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { MOTIVOS, RISCO_TOTAL_MAXIMO } from "../lib/carteira";
+import { mesmaMoeda } from "../lib/faixa";
 
 let falhas = 0;
 function checa(nome: string, ok: boolean, detalhe = "") {
@@ -43,7 +44,7 @@ if (pan) {
     const pp = m.perpPrice;
     if (typeof pp === "number" && pp > 0 && (m.price as number) > 0) {
       const r = (m.price as number) / pp;
-      checa(`${t}: preço dentro de 0,8–1,25 do perpétuo`, r >= 0.8 && r <= 1.25, `= ${r.toFixed(3)}`);
+      checa(`${t}: preço dentro de 0,8–1,25 do perpétuo`, mesmaMoeda(r), `= ${r.toFixed(3)}`);
     }
   }
 } else console.log("  (ausente)");
@@ -64,7 +65,7 @@ if (pan) {
         const o = JSON.parse(l) as { s: string; t: number; preco: number; pp: number };
         comPp++;
         const r = o.preco / o.pp;
-        if (!(r >= 0.8 && r <= 1.25)) {
+        if (!mesmaMoeda(r)) {
           fora++;
           if (exemplos.length < 3) exemplos.push(`${o.s} ${new Date(o.t * 1000).toISOString().slice(0, 16)} ${r.toFixed(3)}`);
         }
