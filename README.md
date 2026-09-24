@@ -331,8 +331,8 @@ em cada METADE da janela separadamente, começando do zero:
 
 | | inteira | 1ª metade | 2ª metade | queda máx | sem a melhor moeda |
 |---|---|---|---|---|---|
-| anterior | −15,3% | −16,0% | +2,4% | −19,2% | −20,4% (sem HEI) |
-| **publicada** | **−3,0%** | **−5,9%** | **+7,7%** | **−10,9%** | **−4,8%** (sem BEAT) |
+| anterior | −15,6% | −16,0% | +1,4% | −19,2% | −20,7% (sem HEI) |
+| **publicada** | **−3,9%** | **−6,8%** | **+6,4%** | **−11,6%** | **−5,7%** (sem BEAT) |
 
 **Esta tabela foi refeita em 24/09, e a de 23/09 estava errada.** Ela dava à
 publicada +14,8%, e a HEI respondia por US$ 191 disso com três saídas no alvo
@@ -346,7 +346,7 @@ perpétuo daquela hora (`foraDoPerpetuo`, em `lib/carteira.ts`): saem 211
 linhas, todas da HEI, nenhuma de outra moeda.
 
 O que sobrevive é a conclusão sobre a gestão: com as mesmas calls, a publicada
-perde −3,0% onde a anterior perde −15,3%, e desligar qualquer peça piora (a
+perde −3,9% onde a anterior perde −15,6%, e desligar qualquer peça piora (a
 tabela do `npm run carteira`). **Lucro continua não demonstrado** — e agora nem
 o número da tela sugere o contrário.
 
@@ -357,8 +357,8 @@ o número da tela sugere o contrário.
   +21,6%, com a mesma queda máxima — e era quase tudo a HEI: stop curto é
   posição maior, e a posição maior caiu na moeda que bateu o alvo três vezes.
   Tirando as duas moedas que mais ganharam, os dois PERDEM para o stop de 25%.
-  Refeito em 24/09, sem os alvos falsos da HEI: stop de 20% em −4,5% contra
-  −3,0% do de 25%. A decisão se mantém.
+  Refeito em 24/09, sem os alvos falsos da HEI: stop de 20% em −5,9% contra
+  −3,9% do de 25%. A decisão se mantém.
 - **Stop móvel**, de 8/12% a 20/15%: as vencedoras andam pouco (+3,9% de
   excursão mediana) e saem pelo painel antes; o rastro só as encurtava.
 - **Mais tamanho**, 1,5x e 2x o orçamento: a queda máxima dobra e o teto passa a

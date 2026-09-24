@@ -424,6 +424,54 @@ console.log("\n--- o preço do retrato tem de ser o do perpétuo daquela hora --
   );
 }
 
+console.log("\n--- linha descartada não apaga o caminho; a régua do salto vence ---");
+{
+  // Achado na revisão do PR #6: a linha descartada pelo juiz deixava a posição
+  // "sem preço", e o financiamento cobrado ali andava o relógio dela — o
+  // retrato seguinte pulava as velas do intervalo e o stop que aconteceu nelas
+  // sumia. Long a 1,0 em h0, vela de h1 com mínima 0,7 (stop em 0,75), linha
+  // de pool alheia a 1,7 em h2 e um minuto, linha boa a 1,0 em h4.
+  const velas: Passo[] = [0, 1, 2, 3, 4, 5].map((i) => ({
+    abriuEm: h(i) * 1000,
+    fechouEm: h(i + 1) * 1000,
+    abertura: 1,
+    maxima: 1.02,
+    minima: i === 1 ? 0.7 : 0.98,
+    fechamento: 1,
+  }));
+  const es: Emissao[] = [
+    { t: h(0), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+    { t: h(2) + 60, s: "X", preco: 1.7, vies: "long", forca: 3, fund: 0 },
+    { t: h(4), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 },
+  ];
+  const c = rodar(es, T0 * 1000, new Map([["X", velas]]));
+  confere(
+    "stop dentro da vela sobrevive à linha descartada",
+    c.fechadas[0]?.motivo === "stop" && Math.abs((c.fechadas[0]?.precoSaida ?? 0) - (1 - STOP)) < 1e-9,
+    `${c.fechadas[0]?.motivo ?? "nada"}, ${c.foraDoPerpetuo ?? 0} descartada`,
+  );
+
+  // A régua do salto de dez vezes vence em um dia: a moeda que volta depois
+  // de um dia sem leitura, 95% abaixo, é mercado; a mesma queda em dez
+  // minutos é lixo.
+  const volta = rodar(
+    [
+      { t: h(0), s: "Y", preco: 1, vies: "long", forca: 3, fund: 0 },
+      { t: h(30), s: "Y", preco: 0.05, vies: "long", forca: 3, fund: 0 },
+    ],
+    T0 * 1000,
+  );
+  confere("depois de um dia fora, 95% abaixo é preço", volta.encerradas === 1, `${volta.fechadas[0]?.motivo ?? "nada"}`);
+  const lixo = rodar(
+    [
+      { t: h(0), s: "Y", preco: 1, vies: "long", forca: 3, fund: 0 },
+      { t: h(0) + 600, s: "Y", preco: 0.05, vies: "long", forca: 3, fund: 0 },
+    ],
+    T0 * 1000,
+  );
+  confere("em dez minutos, 95% abaixo é lixo", lixo.encerradas === 0 && lixo.abertas.length === 1, `${lixo.encerradas} saída(s)`);
+}
+
 console.log("\n--- quem entra quando o orçamento de risco acaba ---");
 {
   // 40 calls de força 1 (0,5% cada = 20%) chegando ANTES de 10 de força 3

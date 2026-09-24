@@ -607,8 +607,8 @@ export const REGRAS_ANTERIORES: Regras = {
  *
  * CORRIGIDO EM 24/09: esta tabela contava três alvos falsos da HEI, US$ 191
  * de preço de pool alheia que o perpétuo nunca tocou (`foraDoPerpetuo`).
- * Refeita com o juiz: anterior −15,3%, publicado −3,0% (queda −10,9%, metades
- * −5,9% e +7,7%). A ORDEM entre os regimes se manteve — cada peça desligada
+ * Refeita com o juiz: anterior −15,6%, publicado −3,9% (queda −11,6%, metades
+ * −6,8% e +6,4%). A ORDEM entre os regimes se manteve — cada peça desligada
  * continua pior —, o sinal do publicado virou. Os números abaixo são os de
  * 23/09 e ficam como registro de como a conclusão foi tomada.
  *
@@ -696,7 +696,7 @@ export const REGRAS: Regras = {
    * TODA SAÍDA QUEIMA A CALL — ver `fechar`. Sem isto a saída por tempo não
    * funciona: a posição sairia "sem reação" e reabriria no mesmo lote, zerando o
    * relógio. Medido: o regime novo SEM esta linha fica em −5,2%, contra +14,8%
-   * (23/09, com os alvos falsos da HEI; refeito em 24/09: −4,5% contra −3,0%).
+   * (23/09, com os alvos falsos da HEI; refeito em 24/09: −5,0% contra −3,9%).
    */
   queimaEmToda: true,
   /**
@@ -1207,6 +1207,14 @@ export function rodar(
   comecouEm: number,
   caminho?: Map<string, Passo[]>,
   regras: Regras = REGRAS,
+  /**
+   * `soPontas`: as velas continuam julgando cada preço (`foraDoPerpetuo`), mas
+   * o caminho entre retratos não é percorrido. É a comparação que o
+   * `npm run carteira` imprime — "o que o intervalo escondia" —, e sem isto ela
+   * rodava sem velas nenhuma e atribuía ao intervalo o que era o juiz tirando
+   * preço falso.
+   */
+  opcoes: { soPontas?: boolean } = {},
 ): Carteira {
   const r = regras;
   const estado: Estado = {
@@ -1237,7 +1245,7 @@ export function rodar(
   // O último preço que passou no teste de sanidade, por moeda. É contra ele que
   // o preço novo é comparado — não contra o preço anterior cru, senão duas
   // linhas de lixo seguidas se validariam uma à outra.
-  const ultimoBom = new Map<string, number>();
+  const ultimoBom = new Map<string, { preco: number; quando: number }>();
 
   for (const [t, lote] of [...lotes.entries()].sort((a, b) => a[0] - b[0])) {
     const quando = t * 1000;
@@ -1248,7 +1256,14 @@ export function rodar(
     const vies = new Map<string, string | null>();
     const fund = new Map<string, number>();
     for (const e of lote) {
-      const antes = ultimoBom.get(e.s);
+      // A RÉGUA VENCE EM UM DIA. Sem prazo, uma moeda que saísse do retrato e
+      // voltasse depois de uma queda de 90% — o ciclo destas moedas — teria
+      // TODA linha seguinte julgada contra o preço de antes da queda, e ficaria
+      // congelada para sempre (achado na revisão do PR #6). O lixo que o freio
+      // existe para pegar — o 2,9e-27 do JCT, a pool alheia da SYN — chega entre
+      // retratos de minutos, não depois de um dia sem leitura.
+      const anterior = ultimoBom.get(e.s);
+      const antes = anterior && quando - anterior.quando <= 86_400_000 ? anterior.preco : undefined;
       const absurdo =
         antes !== undefined &&
         (e.preco / antes > SALTO_ABSURDO || antes / e.preco > SALTO_ABSURDO);
@@ -1263,7 +1278,7 @@ export function rodar(
         estado.foraDoPerpetuo = (estado.foraDoPerpetuo ?? 0) + 1;
         continue;
       }
-      ultimoBom.set(e.s, e.preco);
+      ultimoBom.set(e.s, { preco: e.preco, quando });
       preco.set(e.s, e.preco);
       if (e.pp != null && e.pp > 0) base.set(e.s, e.preco / e.pp);
       vies.set(e.s, e.vies);
@@ -1289,6 +1304,7 @@ export function rodar(
       if (
         atual !== undefined &&
         caminho &&
+        !opcoes.soPontas &&
         percorrer(estado, p, caminho.get(p.symbol) ?? [], quando, atual, taxa, base.get(p.symbol) ?? null)
       ) {
         continue;
@@ -1299,10 +1315,15 @@ export function rodar(
       // 3x cada uma custa três vezes mais da margem. Numa vendida de duas
       // semanas isso passa de 2% — mais do que entrada e saída somadas.
       //
-      // E antes do `continue` da moeda ausente, que é o conserto: uma posição
-      // que fechasse por prazo enquanto a moeda estava fora do retrato saía sem
-      // pagar o intervalo em que ficou de pé.
-      cobrarFunding(p, quando, taxa);
+      // MAS NÃO PARA A MOEDA SEM PREÇO NESTE RETRATO, a menos que ela feche
+      // aqui. `cobrarFunding` anda o relógio da posição (`ultimoFunding`), e é
+      // por ele que `percorrer` sabe de que vela recomeçar: cobrar agora fazia
+      // o retrato seguinte pular as velas deste intervalo, e um stop que
+      // aconteceu nelas sumia. Achado na revisão do PR #6 com a forma da HEI —
+      // linha de pool alheia descartada pelo juiz, stop dentro da vela anterior
+      // —, que tinha 211 linhas descartadas intercaladas com boas. O
+      // financiamento não se perde: o retrato seguinte cobra o intervalo
+      // inteiro, vela a vela no caminho ou de uma vez no teste de ponta.
 
       // MOEDA QUE SAIU DO RETRATO NÃO PODE PRENDER CAPITAL PARA SEMPRE.
       //
@@ -1315,9 +1336,14 @@ export function rodar(
       // cotação. A saída é pelo último preço conhecido, que é a única coisa
       // honesta a fazer quando não há preço de hoje.
       if (atual === undefined) {
-        if (dias >= r.prazoDias) fechar(estado, p, p.precoAtual, quando, "prazo");
+        // Fechando por prazo, o intervalo em que ficou de pé é pago agora.
+        if (dias >= r.prazoDias) {
+          cobrarFunding(p, quando, taxa);
+          fechar(estado, p, p.precoAtual, quando, "prazo");
+        }
         continue;
       }
+      cobrarFunding(p, quando, taxa);
 
       p.precoAtual = atual;
       p.retorno = sobreMargem(p, atual);

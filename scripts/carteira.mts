@@ -143,7 +143,7 @@ await Promise.all(
 
 // As duas leituras, para a diferença ficar medida e não presumida. A de pontas é
 // o que a carteira era; a de caminho é o que ela passa a ser.
-const semCaminho = rodar(emissoes, COMECO);
+const semCaminho = rodar(emissoes, COMECO, caminho, REGRAS, { soPontas: true });
 const c = rodar(emissoes, COMECO, caminho);
 
 const usd = (v: number) => `US$ ${v.toFixed(2)}`;
