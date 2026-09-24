@@ -291,7 +291,7 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | Risco agregado | teto de 25% | cripto tem dias em que a lista inteira cai 25% junta |
 | Margem exposta | teto de 50% | |
 | Custo | 0,15% por lado, **sobre o nocional** | a 3x, isso é 0,45% da margem por lado |
-| Financiamento | taxa real da Binance, **no período de cada moeda** | 39 das 40 negociadas cobram de 4 em 4 h, não de 8 — até 24/09 o motor cobrava a metade, e a lista paga de 30% a 40% ao ano, não os 15% a 20% contados em 03/09 |
+| Financiamento | taxa real da Binance, **no período de cada moeda** | 39 das 40 negociadas cobram de 4 em 4 h, não de 8 — até 24/09 o motor cobrava a metade. Em 24/09 a mediana do painel paga 11% ao ano (0,005% a cada 4 h); os 15% a 20% de 03/09 foram contados com três cobranças por dia |
 | Liquidação | margem de manutenção 0,5% | a 3x, o preço andando 33,2% contra |
 
 **Saída pelo primeiro que acontecer:** o painel mudou de ideia (a principal — a

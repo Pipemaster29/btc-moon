@@ -669,7 +669,9 @@ export default function CarteiraPanel({ c: guardada, bases = {} }: { c: Carteira
         profundidade real da pool, já que o custo aqui é 0,15% por lado, fixo, e numa pool de
         dois mil dólares uma ordem de sessenta já move mais do que isso.{" "}
         <strong>O que ela passou a cobrar:</strong> financiamento com a taxa real de cada
-        moeda — a lista paga de 15% a 20% ao ano —, e as saídas por stop, alvo e liquidação
+        moeda, no período dela — de quatro em quatro horas em 110 das 113, e até 24/09 ele
+        era cobrado como se fosse de oito, pela metade; a mediana paga 11% ao ano —, e as
+        saídas por stop, alvo e liquidação
         DENTRO do intervalo entre dois retratos, pelas velas de uma hora da Binance. Ordem
         parada não pisca: se o preço tocou o stop às 3h e voltou antes do retrato das 6h, a
         posição estava fechada às 3h. Nas 16 posições medidas até aqui, todas as 16
