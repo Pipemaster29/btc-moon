@@ -8065,6 +8065,80 @@
       "janelas7d": 371,
       "veredito": "Sem memória: nenhuma das 8 defasagens passa de 2.73σ depois de corrigir pelas tentativas. O retorno de amanhã não tem relação com o de hoje, e qualquer regra de continuação ou reversão nesta moeda estaria lendo ruído. Volatilidade de 9.9% ao dia; em sete dias sobe 20% em 9.2% das janelas e cai 20% em 11.3%. Maior dia: +150.1%; pior: −39.6%.",
       "medidoEm": 1790213025201
+    },
+    "币安人生USDT": {
+      "symbol": "币安人生USDT",
+      "ticker": "币安人生",
+      "dias": 340,
+      "de": "2025-10-20",
+      "ate": "2026-09-24",
+      "volDiaria": 0.09573845987237871,
+      "volAnual": 182.90807076338373,
+      "maiorAlta": 0.6614097044168159,
+      "maiorQueda": -0.351821548531565,
+      "memoria": [
+        {
+          "lag": 1,
+          "r": -0.032721402673138375,
+          "n": 338,
+          "sigmas": 0.6015756687229059
+        },
+        {
+          "lag": 2,
+          "r": 0.016985649348879448,
+          "n": 337,
+          "sigmas": 0.31181507282625215
+        },
+        {
+          "lag": 3,
+          "r": 0.11645953986156084,
+          "n": 336,
+          "sigmas": 2.134738627261318
+        },
+        {
+          "lag": 5,
+          "r": 0.020133496448582346,
+          "n": 334,
+          "sigmas": 0.3679530742742287
+        },
+        {
+          "lag": 7,
+          "r": 0.15754137860072834,
+          "n": 332,
+          "sigmas": 2.870540531417521
+        },
+        {
+          "lag": 10,
+          "r": 0.006074284604503338,
+          "n": 329,
+          "sigmas": 0.11017754357032364
+        },
+        {
+          "lag": 14,
+          "r": -0.04227864966524255,
+          "n": 325,
+          "sigmas": 0.7621891961270522
+        },
+        {
+          "lag": 21,
+          "r": 0.003531374321699933,
+          "n": 318,
+          "sigmas": 0.0629734250520631
+        }
+      ],
+      "perfil": "continua",
+      "melhorLag": {
+        "lag": 7,
+        "r": 0.15754137860072834,
+        "n": 332,
+        "sigmas": 2.870540531417521
+      },
+      "sobe20": 0.13513513513513514,
+      "cai20": 0.12312312312312312,
+      "assimetria": 1.0975609756097562,
+      "janelas7d": 333,
+      "veredito": "Continua: o movimento se estende por 7 dia(s) (r = 0.158, 2.9σ em 332 dias). É a minoria destas moedas, e a única em que seguir o movimento tem base. Volatilidade de 9.6% ao dia; em sete dias sobe 20% em 13.5% das janelas e cai 20% em 12.3%. Maior dia: +66.1%; pior: −35.2%.",
+      "medidoEm": 1790250510539
     }
   }
 }

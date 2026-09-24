@@ -392,6 +392,13 @@ testes, e **todos são necessários**:
 "sem contrato EVM" porque a busca parou na BNB Chain, onde o endereço é fragmento
 de ponte. Nas duas, o mesmo endereço na Ethereum/Base guarda o supply inteiro.
 
+**E o nome do perpétuo pode não ser latino.** A BINARENSHENG ficou na lista
+como "sem perpétuo em lugar nenhum", sem open interest, posicionamento nem
+estágio — e o perpétuo existia desde 20/10/2025 como `币安人生USDT`, US$ 37
+milhões em aberto, o mesmo caso do `龙虾USDT`. O símbolo DO CONTRATO é o nome do
+perpétuo; o transliterado não acha nada. Conferido em 24/09 sobre as 72 ativas:
+era a única (a BP, a outra sem perpétuo na Binance, vive na Gate de fato).
+
 ### 2. "Não achei" e "não consegui" são coisas diferentes
 
 O modo de falha que este projeto mais teme. Casos reais:

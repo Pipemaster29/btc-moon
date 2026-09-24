@@ -1365,13 +1365,14 @@ export const WATCHLIST: WatchedToken[] = [
     note: "Só o perpétuo: o BTR está partido entre três redes e nenhuma guarda a moeda inteira. A BSC tem 221 milhões e a Ethereum 192, contra 333 milhões circulando — ler qualquer uma delas mediria dois terços ou menos. A implantação com o supply cheio, 1 bilhão, está na Solana, fora do alcance daqui.",
   },
   {
-    // sem perpétuo em lugar nenhum — só leitura à vista e on-chain
-    symbol: "BINARENSHENG",
+    // perpétuo desde 20/10/2025, com o nome em chinês · preço bate em 0.1% ·
+    // 1bi de 1bi circulando · pool 8.1mi girando 0.54mi/dia · OI 37mi
+    symbol: "币安人生USDT",
     chain: "bsc",
     contract: "0x924fa68a0FC644485b8df8AbfA0A41C2e7744444",
     firstBlock: 0,
     wallets: [],
-    note: "Não tem perpétuo na Binance nem na Gate, então metade do sistema não se aplica: sem open interest não há posicionamento, não há saída de baleia e não há estágio de ciclo, que sai do histórico do derivativo. O que dá para ler é o lado à vista — pool de US$ 7,8 milhões girando US$ 1,2 milhão por dia — e o on-chain do contrato na BSC.",
+    note: "Binance Life. Ficou até 24/09 como \"sem perpétuo em lugar nenhum\" sob o nome BINARENSHENG — e o perpétuo existia desde 20/10/2025, com o nome em chinês, como o da Lagosta. Procurar pelo nome transliterado não achava; o símbolo do contrato é o do perpétuo. Conferido nos quatro testes: preço a 0,1% do perpétuo, supply de 1 bilhão igual ao circulante, pool de US$ 8,1 milhões girando US$ 540 mil por dia. Com o perpétuo, a moeda ganha o que não tinha: US$ 37 milhões de open interest, posicionamento, saída de baleia e estágio de ciclo.",
   },
   {
     // +767% em 90 dias · OI 39.8mi na Binance · pool 1.9mi · 25.1% em corretora
