@@ -392,6 +392,12 @@ console.log("\n--- o preço do retrato tem de ser o do perpétuo daquela hora --
   const pump: Passo[] = plana.map((v, i) => (i === 1 ? { ...v, maxima: 1.9, fechamento: 1.8 } : v));
   const real = rodar([{ t: h(1) + 1800, s: "X", preco: 1.85, vies: "long", forca: 3, fund: 0 }], T0 * 1000, new Map([["X", pump]]));
   confere("pump de verdade dentro da hora passa", real.abertas.length === 1 && !real.foraDoPerpetuo, `${real.abertas.length} aberta(s)`);
+  // O preço da série do perpétuo pode vir com uma hora de atraso: na TAKE de
+  // 23/09 o retrato das 06:00 levava o fechamento das 05:00, abaixo da mínima
+  // das 06:00. Cabe na vela anterior, então passa.
+  const disparada: Passo[] = plana.map((v, i) => (i === 2 ? { ...v, abertura: 1.4, minima: 1.4, maxima: 1.6, fechamento: 1.5 } : v));
+  const atrasado = rodar([{ t: h(2) + 60, s: "X", preco: 1, vies: "long", forca: 3, fund: 0 }], T0 * 1000, new Map([["X", disparada]]));
+  confere("preço de uma hora atrás passa", atrasado.abertas.length === 1 && !atrasado.foraDoPerpetuo, `${atrasado.abertas.length} aberta(s)`);
 }
 
 console.log("\n--- quem entra quando o orçamento de risco acaba ---");

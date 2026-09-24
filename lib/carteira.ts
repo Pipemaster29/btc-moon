@@ -981,8 +981,9 @@ const velasPorHora = new WeakMap<Passo[], Map<number, Passo>>();
  * fechar. A armadilha nº 7 inteira: o freio numa ponta só.
  *
  * A faixa é a de `ancora` (0,8 a 1,25), mas contra a MÍNIMA e a MÁXIMA da hora
- * em que o retrato caiu, e não contra um fechamento: numa moeda que anda 30%
- * dentro da hora, o preço verdadeiro de qualquer minuto dela está entre as duas.
+ * em que o retrato caiu (ou da anterior — ver abaixo), e não contra um
+ * fechamento: numa moeda que anda 30% dentro da hora, o preço verdadeiro de
+ * qualquer minuto dela está entre as duas.
  * Sem vela para aquela hora — moeda sem série, retrato mais velho que as velas
  * buscadas — não há juiz, e o preço passa como sempre passou.
  */
@@ -993,9 +994,17 @@ export function foraDoPerpetuo(preco: number, velas: Passo[] | undefined, quando
     indice = new Map(velas.map((v) => [v.abriuEm, v]));
     velasPorHora.set(velas, indice);
   }
-  const v = indice.get(Math.floor(quando / 3_600_000) * 3_600_000);
-  if (!v || !(v.minima > 0) || !(v.maxima > 0)) return false;
-  return preco < v.minima * 0.8 || preco > v.maxima * 1.25;
+  const hora = Math.floor(quando / 3_600_000) * 3_600_000;
+  // A HORA DO RETRATO E A ANTERIOR. Moeda sem pool usa o preço da série do
+  // perpétuo, que é de hora em hora e pode ter até uma hora de atraso: a TAKE,
+  // subindo 221% em 23/09, foi gravada às 06:00 com o fechamento das 05:00,
+  // 23% abaixo da mínima da vela das 06:00. Era preço de verdade, só atrasado.
+  // Basta caber numa das duas; o preço de outra moeda não cabe em nenhuma.
+  const velasDaHora = [indice.get(hora), indice.get(hora - 3_600_000)].filter(
+    (v): v is Passo => v !== undefined && v.minima > 0 && v.maxima > 0,
+  );
+  if (velasDaHora.length === 0) return false;
+  return velasDaHora.every((v) => preco < v.minima * 0.8 || preco > v.maxima * 1.25);
 }
 
 /**
