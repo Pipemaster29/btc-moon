@@ -757,6 +757,7 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 | comando | o que faz |
 | --- | --- |
 | `npm run placar` | lê o histórico de emissões e mede se o painel acertou |
+| `npm run quarentena` | julga as linhas do histórico contra as velas de 1h do perpétuo e grava em `data/quarentena.json` as que não são o preço daquela hora, para o placar pular (à mão; o retrato já não grava linha assim) |
 | `npm run carteira` | mil dólares de mentira seguindo as calls, e o que sobrou |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
@@ -767,6 +768,7 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 | `npm run dados` | traz para `data/` os arquivos vivos do robô, que moram na branch `dados` |
 | `npm run fluxo-binance` | grava o fluxo da carteira quente da Binance desde a última rodada, separando varejo na DEX de depósito/saque, e refaz o resumo que a tela lê (`-- --resumo` só o resumo) |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
+| `npm run estudar` | o estudo de cada moeda — memória, volatilidade, assimetria — em `data/estudos.json` (`-- --em-vista` só as em vista; as que chegam depois o próprio retrato estuda) |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |
 | `npm run monitor` | um ciclo de vigilância, com envio ao Telegram |
