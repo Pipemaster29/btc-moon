@@ -45,6 +45,11 @@
  * para medir depois, e o resto é quase tudo lixo — das 368 moedas que tocaram a
  * carteira em 24 horas, 174 não tinham pool de US$ 20 mil.
  *
+ * AS MOEDAS EM VISTA SAEM DAQUI. Todo perpétuo identificado que não está na
+ * lista entra no painel sozinho (`lib/emvista.ts`, com a medição que sustenta
+ * isso), e quando entra um novo o Telegram avisa — no fim da rodada, depois de
+ * o estado estar gravado.
+ *
  * Rode com: npm run fluxo-binance
  *           npm run fluxo-binance -- --semear 96   (só sem estado: grava o passado que o nó ainda tem)
  */
@@ -62,7 +67,9 @@ import {
   type Movimento,
 } from "../lib/onchain";
 import { cotacoes } from "../lib/binance";
-import { resumirFluxo } from "../lib/fluxo";
+import { resumirFluxo, type EstadoFluxo } from "../lib/fluxo";
+import { avisadasDepois, emVistaDe, MAX_AVISOS, novasEmVista, textoEmVista, textoLigado } from "../lib/emvista";
+import { escapeMarkdown, sendTelegram, telegramFromEnv } from "../lib/telegram";
 
 const CARTEIRA = "0x73D8bD54F7Cf5FAb43fE4Ef40A62D390644946Db";
 const ESTADO = "data/fluxo-binance.json";
@@ -106,24 +113,9 @@ const RECONFERIR_DIAS = 7;
 
 const DIA = 86_400_000;
 
-interface Identificacao {
-  symbol: string;
-  decimals: number;
-  /** Símbolo do perpétuo (`TAKEUSDT`), ou nulo quando não há ou o preço não bate. */
-  perp: string | null;
-  /** Unidades do token por contrato: 1000 em `1000XUSDT`. */
-  mult: number;
-  conferidoEm: number;
-}
-
-interface Estado {
-  ultimoBloco: number;
-  tokens: Record<string, Identificacao>;
-}
-
-async function lerEstado(): Promise<Estado | null> {
+async function lerEstado(): Promise<EstadoFluxo | null> {
   try {
-    return JSON.parse(await readFile(ESTADO, "utf8")) as Estado;
+    return JSON.parse(await readFile(ESTADO, "utf8")) as EstadoFluxo;
   } catch {
     return null;
   }
@@ -237,7 +229,7 @@ if (semear !== null && (antes || !(semear > 0) || semear > SEMEAR_MAX_H)) {
   );
   process.exit(1);
 }
-const estado: Estado = antes ?? { ultimoBloco: 0, tokens: {} };
+const estado: EstadoFluxo = antes ?? { ultimoBloco: 0, tokens: {} };
 const ponta = (await blockNumber("bsc")) - FOLGA;
 let de = antes ? antes.ultimoBloco + 1 : ponta - blocosPara("bsc", semear ?? JANELA_INICIAL_H);
 let lacuna: { de: number; ate: number } | null = null;
@@ -350,6 +342,13 @@ for (const [i, [a, b]] of cortes.entries()) {
   );
 
   const t = await blockTime("bsc", b);
+  // A última passagem de cada token: é ela que tira da vista a moeda que a
+  // Binance parou de movimentar (`VALIDADE_DIAS` em `lib/emvista.ts`). O token
+  // que não respondeu ERC-20 nesta rodada ainda não tem identificação, e fica.
+  for (const tk of porToken.keys()) {
+    const id = estado.tokens[tk];
+    if (id) id.vistoEm = Math.max(id.vistoEm ?? 0, t * 1000);
+  }
   const dia = Math.floor((t * 1000) / DIA) * DIA;
   const aoVivo = dia === hoje;
   const comPerp = [...porToken.keys()].filter((tk) => estado.tokens[tk]?.perp);
@@ -442,3 +441,41 @@ for (const [s, r] of mais.slice(0, 12)) {
 
 console.log("");
 await gravarResumo();
+
+// ------------------------------------------------------------------ em vista
+//
+// Depois de tudo gravado, e por último: uma falha do Telegram não pode custar
+// a janela lida. A memória das anunciadas mora no próprio estado, então se o
+// push desta rodada perder a corrida o aviso sai de novo na seguinte — o mesmo
+// lado de erro escolhido para os avisos da carteira: repetir é melhor do que
+// calar.
+{
+  const atuais = emVistaDe(estado, Date.now());
+  const { primeira, novas } = novasEmVista(estado, atuais);
+  const telegram = telegramFromEnv();
+  const anteriores = estado.emVista?.avisadas ?? [];
+  console.log(`em vista: ${atuais.length} moeda(s)${primeira ? " · primeira vez" : ` · ${novas.length} nova(s)`}`);
+  if (telegram && primeira && atuais.length > 0) {
+    // Primeira vez: uma mensagem com o conjunto, e não quarenta avisos de uma vez.
+    if (await sendTelegram(telegram, escapeMarkdown(textoLigado(atuais)))) {
+      estado.emVista = { avisadas: avisadasDepois([], atuais, atuais.map((x) => x.symbol)) };
+    }
+  } else if (telegram && novas.length > 0) {
+    const enviadas: string[] = [];
+    for (const n of novas.slice(0, MAX_AVISOS)) {
+      const cot = perps.get(n.symbol);
+      const texto = textoEmVista(n, { preco: cot?.preco ?? null, variacao24h: cot?.variacao24h ?? null, fluxo: resumo.get(n.symbol) ?? null });
+      if (await sendTelegram(telegram, escapeMarkdown(texto))) enviadas.push(n.symbol);
+    }
+    const resto = novas.slice(MAX_AVISOS);
+    if (resto.length > 0) {
+      const texto = `…e mais ${resto.length} moeda(s) em vista: ${resto.map((x) => x.symbol.replace(/USDT$/, "")).join(", ")}.`;
+      if (await sendTelegram(telegram, escapeMarkdown(texto))) enviadas.push(...resto.map((x) => x.symbol));
+    }
+    estado.emVista = { avisadas: avisadasDepois(anteriores, atuais, enviadas) };
+  } else if (estado.emVista) {
+    // Nada a avisar, mas quem saiu de vista sai da memória também.
+    estado.emVista = { avisadas: avisadasDepois(anteriores, atuais, []) };
+  }
+  await writeFile(ESTADO, `${JSON.stringify(estado)}\n`);
+}

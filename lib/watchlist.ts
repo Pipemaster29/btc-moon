@@ -84,6 +84,12 @@ export interface WatchedToken {
    * junto de quem a explica.
    */
   note?: string;
+  /**
+   * De onde a moeda veio quando não foi alguém que a escreveu aqui. Só as em
+   * vista (`lib/emvista.ts`) têm, e elas nunca moram neste arquivo: mudam
+   * sozinhas a cada execução do gravador de fluxo.
+   */
+  origem?: "carteira-binance";
 }
 
 export const WATCHLIST: WatchedToken[] = [

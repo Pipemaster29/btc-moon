@@ -19,6 +19,8 @@
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { caidas, getPanorama } from "../lib/overview";
 import { fundings } from "../lib/binance";
+import { getEmVista } from "../lib/emvista";
+import { ATIVAS } from "../lib/watchlist";
 
 const DIR = "data";
 const ATUAL = `${DIR}/panorama.json`;
@@ -67,10 +69,21 @@ interface PontoHistorico {
   mcap: number | null;
   /** Maior unlock dos últimos 21 dias, em fração. */
   unlock: number | null;
+  /**
+   * Só nas em vista: a moeda entrou sozinha, pela carteira da Binance. Gravado
+   * na LINHA, e não deduzido depois, porque o conjunto em vista muda — uma que
+   * sair dele ou for escrita na lista não pode mudar de origem para trás, e é
+   * por este campo que a carteira separa as calls de cada origem.
+   */
+  origem?: "carteira-binance";
 }
 
 const t0 = Date.now();
-const linhas = await getPanorama();
+// A lista curada e as em vista (`lib/emvista.ts`), lidas do estado do gravador
+// de fluxo que o `dados.sh baixar` acabou de trazer. Sem ele, só a lista — e o
+// retrato diz quantas entraram, para a ausência não ficar calada.
+const emVista = await getEmVista().catch(() => []);
+const linhas = await getPanorama([...ATIVAS, ...emVista]);
 // Uma requisição para os 895 perpétuos, e não uma por moeda.
 const taxas = await fundings();
 const levou = (Date.now() - t0) / 1000;
@@ -125,6 +138,7 @@ const pontos: PontoHistorico[] = comPreco.map((r) => ({
       ? Number(Math.max(...recentes.map((u) => u.variacao)).toFixed(4))
       : null;
   })(),
+  ...(r.origem ? { origem: r.origem } : {}),
 }));
 
 const historico = historicoDoMes(agora);
@@ -132,7 +146,7 @@ await appendFile(historico, pontos.map((p) => JSON.stringify(p)).join("\n") + "\
 
 const porVies = (v: string) => linhas.filter((r) => r.leitura?.vies === v).length;
 console.log(
-  `${linhas.length} moedas em ${levou.toFixed(1)}s · ` +
+  `${linhas.length} moedas em ${levou.toFixed(1)}s (${linhas.filter((r) => r.origem).length} em vista, de ${emVista.length}) · ` +
     `${porVies("short")} a vender · ${porVies("long")} a comprar · ` +
     `${linhas.filter((r) => r.vida?.estagio === "exausta").length} exaustas`,
 );

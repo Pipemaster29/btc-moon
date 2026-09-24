@@ -549,6 +549,50 @@ haver dado: depósito líquido ≥ 1% do market cap → vender; compra líquida 
 varejo na DEX ≥ 1% → vender; os espelhos → comprar. Até ter 30 eventos em 10
 moedas, com 7 dias de preço à frente de cada, ela diz "amostra insuficiente".
 
+### As moedas em vista: a carteira da Binance aponta, o painel acompanha
+
+A lista tem as moedas que alguém apontou. A pergunta foi se passar por esta
+carteira bastava para uma moeda merecer o painel sem ninguém apontar — e foi
+medida antes de virar código, sobre 200 velas diárias dos 528 perpétuos,
+**cortadas em 17/09**, antes de a carteira começar a ser lida (19/09): os pumps
+contados aconteceram antes, não são a carteira pegando o pump em andamento.
+
+| dias de alta ≥25% por mil moeda-dias | todas | vol. pequeno | médio | grande |
+| --- | --- | --- | --- | --- |
+| passaram pela carteira, fora da lista (40) | 16,7 | 9,5 | 19,0 | 22,7 |
+| passaram pela carteira e estão na lista (29) | 43,2 | 15,6 | 34,5 | 56,4 |
+| na lista, sem passar pela carteira (41) | 25,6 | 15,6 | 23,3 | 28,0 |
+| resto da Binance (414) | 4,4 | 2,7 | 5,7 | 5,3 |
+
+Entre parênteses, as moedas com 30 dias de série ou mais. As de fora da lista
+bombam **3,8 vezes** mais que o resto, nos três terços de
+volume e nas duas metades da janela (20,3 contra 5,3; 12,7 contra 3,6). E caem
+junto: dia de −25% ou pior é 6,6 por mil contra 1,0. É a assinatura do objeto
+deste painel. Não é "a maioria das manipuladas" — as 70 são 13% da praça e têm
+40% dos dias de alta ≥25% —, é concentração, três vezes o peso delas.
+
+Então elas **entram sozinhas**: todo perpétuo que o gravador identifica e não
+está na lista vira linha do painel, com a leitura inteira, marcada "em vista", e
+sai depois de 30 dias sem passar pela carteira (higiene, não medido). A
+identificação parte do CONTRATO que a Binance custodia e exige o preço da pool
+batendo com o do perpétuo — a direção oposta da busca por nome que já errou duas
+vezes. Aposentada não volta por aqui. O Telegram avisa cada uma que entra.
+
+**O que isso não mede é vantagem.** Depois do pump elas caem como o resto do
+garimpo (mediana de −15,9% em 7 dias, 21 de 28 moedas), e vender isso perde
+dinheiro. A carteira fictícia opera as calls delas como as da lista, com a
+origem gravada em cada linha do histórico, e a tela separa o resultado das duas.
+É ela que vai dizer se as em vista se comportam diferente.
+
+**E elas trouxeram à tona um defeito que estava em todas.** O endereço de um
+token no DexScreener devolve também as pools em que ele é a moeda de PAGAMENTO,
+e nelas o preço é o da outra moeda. A AIOT entrou lendo o preço da AIT — 0,01846
+contra 0,05025, 2,7 vezes fora, abaixo do freio de 100 vezes — e a carteira
+abriu posição nele; a marcação ao vivo, que usa o perpétuo, a mostrava
+multiplicada por seis. Das 78 moedas com contrato, 35 aparecem como pagamento em
+alguma pool e 2 tinham essa como a mais funda, as duas em vista. Hoje a
+profundidade só conta pool em que a moeda é a base.
+
 ## Identificar a moeda certa
 
 O erro mais caro deste projeto foi analisar o token errado — duas vezes. Buscar

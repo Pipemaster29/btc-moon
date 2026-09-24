@@ -10,6 +10,7 @@ import { textoVeredito, veredito, vestingDe, type Veredito, type Vesting } from 
 import { getRadar, type AlertLevel, type RadarSnapshot } from "@/lib/radar";
 import { getPositioning } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
+import { getEmVista } from "@/lib/emvista";
 
 /**
  * O painel é leitura ao vivo da cadeia, então revalida de cinco em cinco
@@ -641,14 +642,15 @@ export default async function Page({
   // tabela do painel com link e o link dava 404, que é o tipo de erro que
   // ninguém vê até clicar.
   const alvo = decodeURIComponent(symbol).toUpperCase();
-  const token = WATCHLIST.find(
-    (t) => t.symbol === alvo || t.symbol === `${alvo}USDT`,
-  );
+  const casa = (t: { symbol: string }) => t.symbol === alvo || t.symbol === `${alvo}USDT`;
+  // A lista primeiro; as em vista só quando ela não tem — a tabela linka as
+  // duas, e sem isto o link de uma moeda que entrou sozinha dava 404.
+  const token = WATCHLIST.find(casa) ?? (await getEmVista().catch(() => [])).find(casa);
   if (!token) notFound();
 
   const [snapshot, perp] = await Promise.all([
-    token.contract ? getRadar(token.symbol) : Promise.resolve(null),
-    getPositioning(token.symbol),
+    token.contract ? getRadar(token.symbol, token) : Promise.resolve(null),
+    getPositioning(token.symbol, token),
   ]);
 
   const preco = snapshot?.priceUsd ?? perp?.price ?? 0;

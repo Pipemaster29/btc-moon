@@ -27,13 +27,25 @@ export interface Pair {
   /** Valor de todo o supply ao preço atual. */
   fdv: number;
   marketCap: number;
+  /**
+   * A moeda consultada é a BASE desta pool — então o preço e a liquidez são
+   * dela. Só `pairsOfToken` sabe dizer; na busca por nome fica indefinido.
+   *
+   * O endereço de um token devolve também as pools em que ele é a moeda de
+   * PAGAMENTO, e nessas o `priceUsd` é o da OUTRA moeda. Medido em 23/09: das
+   * 78 moedas com contrato, 35 aparecem como pagamento em alguma pool, e em
+   * duas a mais funda era essa — a AIOT lia o preço da AIT (0,01846 contra
+   * 0,05025 do perpétuo, 2,7 vezes, abaixo do freio de 100 vezes) e a liquidez
+   * de US$ 15,3 mi em vez de 1,5 mi.
+   */
+  propria?: boolean;
 }
 
 interface RawPair {
   chainId?: string;
   dexId?: string;
   pairAddress?: string;
-  baseToken?: { symbol?: string };
+  baseToken?: { symbol?: string; address?: string };
   quoteToken?: { symbol?: string };
   priceUsd?: string;
   liquidity?: { usd?: number };
@@ -109,7 +121,13 @@ async function get(path: string): Promise<RawPair[]> {
 
 /** Todas as pools de um token, da mais líquida para a menos. */
 export async function pairsOfToken(address: string): Promise<Pair[]> {
-  const pairs = (await get(`tokens/${address}`)).map(normalize);
+  const alvo = address.toLowerCase();
+  // Todas continuam na lista: o saldo do token numa pool em que ele é o
+  // pagamento é saldo de verdade, e o `lib/motor.ts` conta essas também.
+  const pairs = (await get(`tokens/${address}`)).map((raw) => ({
+    ...normalize(raw),
+    propria: raw.baseToken?.address?.toLowerCase() === alvo,
+  }));
   return pairs.sort((a, b) => b.liquidityUsd - a.liquidityUsd);
 }
 
@@ -138,7 +156,9 @@ export interface TokenDepth {
  * facilmente empurrado por poucos dólares, e a média deixaria esse ruído entrar.
  */
 export function depthOn(pairs: Pair[], chain: string): TokenDepth | null {
-  const local = pairs.filter((p) => p.chain === chain && p.liquidityUsd > 0);
+  // Só as pools em que a moeda é a base: nas outras o preço é de outra moeda
+  // (ver `propria`). Indefinido passa, que é a busca por nome de sempre.
+  const local = pairs.filter((p) => p.chain === chain && p.liquidityUsd > 0 && p.propria !== false);
   if (local.length === 0) return null;
 
   const deepest = local[0];

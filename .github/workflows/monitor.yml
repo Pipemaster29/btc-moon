@@ -159,7 +159,8 @@ jobs:
       # que fique ligada.
       #
       # Doze minutos e não três: o `panorama` leva 36 segundos e faz perto de
-      # quinhentas requisições a APIs públicas gratuitas. A cada três minutos
+      # quinhentas requisições a APIs públicas gratuitas — 51 segundos desde
+      # que as 41 moedas em vista entraram (23/09, 113 moedas). A cada três minutos
       # isso multiplicaria por quatro a carga sobre DexScreener e sobre os nós
       # RPC, que é exatamente o abuso que este workflow evita desde o começo — e
       # bloqueio por abuso pararia o monitor de vez, muito pior do que decidir de

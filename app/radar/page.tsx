@@ -126,6 +126,11 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
         <p className="text-xs text-black/35 dark:text-white/35">
           {row.contract ? row.chain : "só perpétuo"}
           {row.hasWallets && " · carteiras mapeadas"}
+          {row.origem && (
+            <span title="Entrou sozinha: passou pela carteira quente da Binance com o perpétuo conferido pelo preço. Ninguém mapeou as carteiras do projeto.">
+              {" · em vista"}
+            </span>
+          )}
         </p>
       </td>
       {/* Preço e 24h continuam andando depois que a página é servida: são os dois
@@ -270,6 +275,7 @@ export default async function Radar() {
     ? remarcar(guardada, new Map(rows.filter((r) => r.price > 0).map((r) => [r.ticker, r.price])))
     : null;
   const comCarteiras = rows.filter((r) => r.hasWallets).length;
+  const emVista = rows.filter((r) => r.origem).length;
 
   const porVies = (v: Vies) =>
     rows
@@ -293,7 +299,7 @@ export default async function Radar() {
           <h1 className="text-3xl font-bold">Radar de moedas manipuladas</h1>
           <p className="text-black/60 dark:text-white/60 max-w-3xl">
             {rows.length} moedas vigiadas, {comCarteiras} com carteiras mapeadas na
-            blockchain. A ordem é por quanto cada uma merece atenção agora — não por
+            blockchain{emVista > 0 && `, ${emVista} em vista`}. A ordem é por quanto cada uma merece atenção agora — não por
             tamanho, que colocaria em cima justamente as que não estão fazendo nada.
             Clique numa moeda para o retrato completo.
           </p>
@@ -335,6 +341,21 @@ export default async function Radar() {
             )}
             <SinalVivo />
           </p>
+          {/* O QUE É "EM VISTA", com o número que a sustenta e o que ele não
+              diz. Sem a segunda metade, "entrou sozinha no painel" seria lido
+              como "o robô achou uma oportunidade" — e o que foi medido é que
+              elas se MEXEM, não que dá para ganhar com elas. */}
+          {emVista > 0 && (
+            <p className="text-xs text-black/50 dark:text-white/50 max-w-3xl">
+              <span className="font-medium">Em vista</span> são as {emVista} que entraram
+              sozinhas: passaram pela carteira quente da Binance na BNB Chain com o perpétuo
+              conferido pelo preço, e saem depois de 30 dias sem passar. Medido em 23/09 sobre
+              200 dias da praça inteira: essas moedas tiveram dia de alta de 25% ou mais 3,8
+              vezes mais que o resto da Binance, no mesmo tamanho e nas duas metades da janela.
+              Isso diz que elas se mexem. Que dê para ganhar com isso não está medido — a
+              carteira fictícia opera as calls delas separadas por origem, e é ela que vai dizer.
+            </p>
+          )}
           {snapshot.novas.length > 0 && (
             <p className="text-xs text-black/40 dark:text-white/40">
               {snapshot.novas.join(", ")} {snapshot.novas.length === 1 ? "entrou" : "entraram"} na
@@ -547,7 +568,7 @@ export default async function Radar() {
             a lista nem sempre tem, e ainda é descrição sem medição de vantagem. */}
         {fluxo && <FluxoPanel f={fluxo} s={sinais} />}
 
-        {garimpo && <GarimpoPanel g={garimpo} />}
+        {garimpo && <GarimpoPanel g={garimpo} naTela={rows.map((r) => r.symbol)} />}
 
         <p className="text-xs text-black/40 dark:text-white/40 max-w-3xl">
           Perpétuo pela API pública da Gate, mercado à vista pelo DexScreener, blockchain

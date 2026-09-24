@@ -264,6 +264,14 @@ export interface Carteira {
   regras?: Regras;
   /** O multiplicador do freio de queda agora: 1 é o orçamento inteiro. */
   freio?: number;
+  /**
+   * As moedas que chegaram em vista em algum retrato, tiradas do histórico.
+   *
+   * Do HISTÓRICO e não do conjunto de agora: uma moeda que sair de vista, ou for
+   * escrita na lista, continua tendo entrado pela carteira da Binance nas calls
+   * que já fez. É com isto que a tela separa o resultado de cada origem.
+   */
+  emVista?: string[];
   /** Risco comprometido agora, em fração do patrimônio. */
   riscoAberto?: number;
   /**
@@ -706,6 +714,8 @@ export interface Emissao {
   nota?: number;
   /** Taxa de financiamento por 8h, quando o retrato a gravou. */
   fund?: number | null;
+  /** Só nas moedas em vista, que entraram sozinhas (`lib/emvista.ts`). */
+  origem?: string;
 }
 
 interface Estado {
