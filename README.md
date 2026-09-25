@@ -292,9 +292,12 @@ fração fixa do patrimônio até o stop, e o tamanho sai dessa conta: força 3
 arrisca 3%, força 2 arrisca 2%, força 1 arrisca 1%. Parece pouco até
 lembrar que o painel emite treze calls de uma vez num dia normal, e que cripto
 tem dia em que a lista inteira cai 25% junta. Teto de 50% de margem exposta e de
-25% de risco agregado. **O vendido arrisca um quarto disso**, e abaixo de 10% do
-pico o orçamento inteiro encolhe até um quarto em −25% — as duas coisas vêm da
-gestão de 23/09, logo abaixo.
+25% de risco agregado. **A carteira não opera vendido desde 25/09** — arriscava
+um quarto até então, e ainda assim o lado vendido somava −US$ 28,51 em 60
+posições; sem ele a carteira foi de −1,0% para +2,0% com as duas metades
+melhores. O painel continua dando as vendas e o placar continua medindo cada
+uma. Abaixo de 10% do pico o orçamento inteiro encolhe até um quarto em −25%,
+da gestão de 23/09, logo abaixo.
 
 **Quando sai — seis gatilhos, o primeiro que acontecer:**
 

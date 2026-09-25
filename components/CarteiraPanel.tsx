@@ -313,10 +313,23 @@ export default function CarteiraPanel({ c: guardada, bases = {} }: { c: Carteira
               sai a posição que não andou a favor em <strong>{r.semReacaoDias} dias</strong>;{" "}
             </>
           )}
-          {r.fatorVendido !== 1 && (
+          {r.fatorVendido === 0 ? (
             <>
-              o vendido arrisca <strong>{(r.fatorVendido * 100).toFixed(0)}%</strong> da régua do
-              comprado, porque a cauda destas moedas é para cima;{" "}
+              <strong>não opera vendido</strong> — o painel continua dando as vendas e o placar
+              continua medindo cada uma, mas a cauda destas moedas é para cima;{" "}
+            </>
+          ) : (
+            r.fatorVendido !== 1 && (
+              <>
+                o vendido arrisca <strong>{(r.fatorVendido * 100).toFixed(0)}%</strong> da régua do
+                comprado, porque a cauda destas moedas é para cima;{" "}
+              </>
+            )
+          )}
+          {r.confirmacaoSaidaH != null && r.confirmacaoSaidaH > 0 && (
+            <>
+              quando o painel muda de ideia, a posição só sai se a leitura contrária durar{" "}
+              <strong>{r.confirmacaoSaidaH} h</strong>;{" "}
             </>
           )}
           {r.freio && (

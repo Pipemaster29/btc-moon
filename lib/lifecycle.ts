@@ -929,6 +929,12 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
   // foi medida, e por isso não decide nada — nela a leitura cai para o que os
   // outros sinais disserem.
   //
+  // DESDE 24/09 O DE 30 MILHÕES NÃO BLOQUEIA MAIS NADA, a pedido do usuário e
+  // com a medida refeita ao lado de cada regra: ele só separa força. A compra em
+  // "exausta" acima dele e a venda em "ressuscitando" abaixo dele saem com força
+  // 1. Tirar as duas travas, sobre as mesmas calls da carteira: +0,6% → +3,6%,
+  // sem a melhor moeda −1,8% → +1,1%, metades −5,6/+12,3 → −3,7/+13,6.
+  //
   // O tamanho NÃO é simétrico, e a mediana escondia isso. Medindo as caudas em
   // sete dias, que é o que importa numa moeda fácil de empurrar:
   //
@@ -1100,20 +1106,32 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
       };
     }
 
-    // Pequena demais: a fase é de queda, mas o tamanho inverte o resultado.
+    // PEQUENA JÁ NÃO BLOQUEIA A VENDA — vende com força 1.
+    //
+    // Até 24/09 a moeda abaixo de 30 milhões nesta fase virava "observar": a
+    // medida de setembro dizia +1,7% contra −1,9% das demais, 7 de 13 moedas. O
+    // usuário pediu o painel sem o limite de tamanho, e a medida refeita no
+    // histórico maior não sustenta mais a trava — ela inverteu:
+    //
+    //   ressuscitando, até 30 mi     −2,0 p.p. em 7d · 2,6% sobem 20% · 14,2% caem 20%
+    //                                12 de 17 moedas abaixo da referência
+    //   ressuscitando, acima de 30   +1,0 p.p.       · 11,7% sobem    · 9,0% caem
+    //
+    // Na carteira, sobre as mesmas calls: +0,6% → +0,8%, as duas metades
+    // levemente melhores. Força 1, a menor, porque a amostra é de 17 moedas e a
+    // medida já trocou de sinal uma vez.
     if (pequena) {
       return {
-        vies: "observar",
+        vies: "short",
         forca: 1,
         ateQuando: textoAteQuando(vida),
-        titulo: "Fase de devolver, mas pequena demais para valer o short",
+        titulo: "Pequena e devolvendo — venda pequena, sem trava de tamanho",
         porque:
-          `${pct(vida.altaDesdeFundo)} desde o fundo, e a fase mede −1,5% em sete dias. Mas com ` +
-          `${dinheiro(mcap!)} de market cap ela está do lado errado do tamanho: dentro desta mesma ` +
-          `fase, moedas abaixo de 30 milhões medem +1,7% contra −1,9% das demais — 3,6 pontos ` +
-          `acima (p = 0,000), ainda que a concordância entre moedas seja fraca, 7 de 13. Quem já ` +
-          `caiu 90% e vale 19 milhões não tem de onde tirar mais 30%: sobra risco de squeeze e ` +
-          `falta prêmio.`,
+          `${pct(vida.altaDesdeFundo)} desde o fundo, com ${dinheiro(mcap!)} de market cap. Esta ` +
+          `venda ficava bloqueada abaixo de 30 milhões, e a trava saiu em 24/09: no histórico de ` +
+          `agosto e setembro, as pequenas desta fase medem 2,0 pontos ABAIXO da referência em sete ` +
+          `dias, com 14,2% das semanas caindo 20% contra 2,6% subindo — 12 de 17 moedas. É a força ` +
+          `mínima porque a amostra é curta e essa medida já trocou de sinal uma vez.`,
       };
     }
 
@@ -1299,21 +1317,37 @@ export function lerVies(vida: Vida, agora: SinaisAgora): Leitura {
     // "sobe mais": é sobre o FORMATO do resultado, não sobre o meio dele. Quem
     // compra aqui compra a cauda, e a cauda existe.
     //
-    // Acima de 30 milhões a assimetria some junto com a vantagem, e a fase
-    // volta a ser só descrição.
+    // ACIMA DE 30 MILHÕES A COMPRA CONTINUA, COM FORÇA 1.
+    //
+    // Até 24/09 a moeda grande nesta fase virava "observar", e o corte fixo
+    // piscava: a VELVET valia 29,3 milhões às 15:04, 30,2 às 15:22 e 29,8 às
+    // 15:59, e a carteira fechou e reabriu a posição no meio. O usuário pediu o
+    // painel sem o limite de tamanho. O que a medida diz, sobre o histórico de
+    // agosto e setembro:
+    //
+    //   exausta, até 30 mi      −0,4 p.p. em 7d · 13,2% sobem 20% ·  7,1% caem 20%
+    //   exausta, acima de 30    +0,7 p.p.       ·  8,5% sobem     · 19,8% CAEM
+    //
+    // A mediana das grandes é até melhor, mas a cauda é contra: uma semana em
+    // cinco cai 20%. Na carteira, onde o stop corta essa cauda em 25% e a saída
+    // "sem reação" em três dias, sobre as mesmas calls: +0,6% → +3,4%, sem a
+    // melhor moeda −1,8% → +0,9%, as duas metades melhores e a queda máxima
+    // menor. Força 1, a menor, porque a assimetria que sustenta a compra não
+    // existe nesta faixa — o que sustenta é só a carteira ter ido bem com ela.
     if (!pequena) {
       return {
-        vies: "observar",
+        vies: "long",
         forca: 1,
         ateQuando: textoAteQuando(vida),
-        titulo: "Derretida, mas sem o tamanho que dá a assimetria",
+        titulo: "Derretida e grande — compra pequena, sem trava de tamanho",
         porque:
           `${pct(vida.queda)} do topo de ${vida.diasDesdePico} dias e só ${pct(vida.altaDesdeFundo)} ` +
-          `desde o fundo. Esta fase já foi a regra de compra do sistema, e a remedição na janela ` +
-          `de seis meses que roda ao vivo derrubou o número: +2,0 pontos em sete dias com ` +
-          `p = 0,060, com 26 de 44 moedas subindo — não passa nem no limiar simples. O que ` +
-          `sobrevive é a assimetria, e ela só aparece abaixo de 30 milhões de market cap` +
-          (mcap !== null ? `; esta tem ${dinheiro(mcap)}` : "") + `.`,
+          `desde o fundo` +
+          (mcap !== null ? `, com ${dinheiro(mcap)} de market cap` : "") +
+          `. Esta compra ficava bloqueada acima de 30 milhões, e a trava saiu em 24/09. Nesta ` +
+          `faixa a mediana em sete dias é 0,7 ponto acima da referência, mas a cauda é contra: ` +
+          `19,8% das semanas caem 20%, contra 8,5% que sobem 20%. É a força mínima, e quem ` +
+          `segura a cauda é o stop.`,
       };
     }
 
