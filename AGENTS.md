@@ -290,12 +290,12 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 |---|---|---|
 | Alavancagem | **3x** | o teto em que o stop ainda dispara antes da liquidação: 25% de preço × 3 = 75% da margem. A 4x seriam 100%, e a corretora fecharia a posição exatamente onde o stop fecharia |
 | Stop | −25% de preço | fora do ruído de um dia: desvio diário mediano de 11,2% (`estudos.json`), ~2,2σ. Mais curto foi medido em 23/09 e não passou — o ganho era de uma moeda |
-| Confirmação da saída | **1 h** | "painel mudou" só fecha se a leitura contrária durar uma hora. A VELVET fechou e reabriu em 37 min quando o market cap piscou nos US$ 30 mi da régua; 120 de 146 saídas por painel eram seguidas de reabertura do mesmo lado em 24 h. De 30 min a 2 h melhora inteira, sem a melhor e as duas metades; 3–4 h pioram; 1 h é o meio do platô. Ganho de −0,5% para +0,6%, 43 idas e voltas a menos |
+| Confirmação da saída | **6 h** | "painel mudou" só fecha se a leitura contrária durar seis horas. A VELVET fechou e reabriu em 37 min quando o market cap piscou nos US$ 30 mi da régua; 120 de 146 saídas por painel eram seguidas de reabertura do mesmo lado em 24 h. Entrou com 1 h em 24/09; em 25/09, já sem o vendido, o platô de 5 a 10 h ganhou de 1 h nas quatro colunas (+2,0% → +4,5%), e 3–4 h continuaram num vale — medido em dois dias que dividem quase todos os dados |
 | Sem reação | **3 dias** | a posição que não andou a favor em três dias sai. Platô: 1 a 5 dias melhoram as duas metades da janela |
 | Alvo | +40% de preço | o dobro da assimetria que sustenta a regra de compra (sobe +20% em 21,0% das semanas) |
 | Prazo | 14 dias | as regras direcionais foram medidas em janelas de 7 e 14 dias |
 | Risco por call | **3% / 2% / 1%** do patrimônio (força 3/2/1) | dobrado em 05/09: na régua anterior o pico de risco agregado era 13% de um teto de 25% e 85% do dinheiro ficava parado — a carteira não conseguia testar se a estratégia quebra a conta, que é para o que ela existe |
-| Vendido | **¼ do risco** | depois de cada call de venda o preço subiu contra a referência em 72h nos dois meses (+0,44 p.p. em agosto, +2,29 em setembro); a cauda destas moedas é para cima. Um quarto, e não zero, para continuar medindo |
+| Vendido | **zero desde 25/09** (¼ até então) | depois de cada call de venda o preço subiu contra a referência em 72h nos dois meses (+0,44 p.p. em agosto, +2,29 em setembro); a cauda destas moedas é para cima. A ¼, o lado vendido ainda somava −US$ 28,51 em 60 posições; sem ele −1,0% → +2,0%, as duas metades melhores. O placar continua medindo as vendas, e a tabela de regimes imprime "com vendido a ¼" a cada retrato |
 | Freio de queda | a partir de −10% do pico, até ¼ do orçamento em −25% | mecânico, não medido: nunca encosta na amostra. Dois dias seguidos de tudo estopar custariam −44% sem ele e −30% com ele |
 | Risco agregado | teto de 25% | cripto tem dias em que a lista inteira cai 25% junta |
 | Margem exposta | teto de 50% | |
@@ -314,6 +314,13 @@ duas metades da janela e sem a moeda que mais ganhou — é essa tabela que deci
 se uma regra entra. **Nenhuma regra de gestão nova sem passar nela**, e a coluna
 "sem a melhor moeda" reprova mais do que as metades: o stop curto passava nas
 duas metades e era uma moeda só.
+
+**Em 25/09, sem o vendido e com a confirmação de 6 h**, sobre as mesmas calls:
+o publicado em **+4,5%** (queda máxima −8,5%, sem a melhor moeda +1,2%, metades
+−1,6% e +20,0%), contra −1,0% do regime de um dia antes. Primeiro número
+positivo "sem a melhor moeda" da carteira — e são 55 posições em três semanas,
+o que não demonstra vantagem: é a gestão perdendo menos e deixando as compras
+que dão certo correrem.
 
 Medido em 24/09 ao meio-dia, as mesmas calls: o regime anterior em −14,1%
 (queda máxima −18,7%), o publicado em **−2,1%** (−11,0%) — a gestão perde muito

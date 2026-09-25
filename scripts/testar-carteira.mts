@@ -47,8 +47,13 @@ function confere(nome: string, ok: boolean, obtido: string): void {
 // moedor imprimiam "← ESPERADO" ou "SOMA NÃO BATE" e deixavam o código de saída
 // em zero: o arquivo prometia ser portão e só metade dele era. Um limiar de stop
 // quebrado passava num `npm run testar-carteira && ...` sem ninguém ler a linha.
+// Os casos-limite testam o MECANISMO, e o vendido está desligado no publicado
+// desde 25/09 (`fatorVendido: 0`): sem ligá-lo aqui, os casos de venda não
+// abririam posição e passariam sem testar nada.
+const COM_VENDIDO = { ...REGRAS, fatorVendido: 1 };
+
 function caso(nome: string, es: Emissao[]) {
-  const c = rodar(es, T0 * 1000);
+  const c = rodar(es, T0 * 1000, undefined, COM_VENDIDO);
   const exposto = c.abertas.reduce((s, p) => s + p.valor * (1 + p.retorno), 0);
   const bate = Math.abs(c.caixa + exposto - c.patrimonio) < 1e-6;
   const sano = Number.isFinite(c.patrimonio) && c.patrimonio > 0 && c.patrimonio < 1.5 * CAPITAL_INICIAL;
@@ -126,6 +131,8 @@ function ate(varPreco: number, lado: "long" | "short" = "long") {
       { t: h(1), s: "X", preco: p2, vies: lado, forca: 2, fund: 0 },
     ],
     T0 * 1000,
+    undefined,
+    COM_VENDIDO,
   );
   return c.fechadas[0]?.motivo ?? "aberta";
 }
@@ -715,27 +722,34 @@ console.log("\n--- o prazo queima a call (antes reabria no mesmo lote) ---");
 
 console.log("\n--- o vendido arrisca a fração dele ---");
 {
-  const r = rodar(
-    [
-      { t: h(0), s: "C", preco: 1, vies: "long", forca: 2, fund: 0 },
-      { t: h(0), s: "V", preco: 1, vies: "short", forca: 2, fund: 0 },
-    ],
-    T0 * 1000,
-  );
+  // O mecanismo, a ¼ (o valor até 25/09): a fração vale na margem e no risco.
+  const QUARTO = { ...REGRAS, fatorVendido: 0.25 };
+  const lote = [
+    { t: h(0), s: "C", preco: 1, vies: "long", forca: 2, fund: 0 },
+    { t: h(0), s: "V", preco: 1, vies: "short", forca: 2, fund: 0 },
+  ];
+  const r = rodar(lote, T0 * 1000, undefined, QUARTO);
   const c = r.abertas.find((p) => p.symbol === "C");
   const v = r.abertas.find((p) => p.symbol === "V");
   // Um milésimo de folga, e não um bilionésimo: a vendida abre DEPOIS da
   // comprada no mesmo lote, quando o patrimônio já pagou a entrada dela (0,24
   // dólar). A régua é sobre o patrimônio do instante — o risco abaixo é exato.
   confere(
-    `margem do vendido = ${REGRAS.fatorVendido} × a do comprado`,
-    c != null && v != null && Math.abs(v.valor / c.valor - REGRAS.fatorVendido) < 1e-3,
+    `margem do vendido = ${QUARTO.fatorVendido} × a do comprado`,
+    c != null && v != null && Math.abs(v.valor / c.valor - QUARTO.fatorVendido) < 1e-3,
     `${c?.valor.toFixed(2)} vs ${v?.valor.toFixed(2)}`,
   );
   confere(
     "e o risco gravado na posição é o mesmo",
-    c?.risco != null && v?.risco != null && Math.abs(v.risco / c.risco - REGRAS.fatorVendido) < 1e-9,
+    c?.risco != null && v?.risco != null && Math.abs(v.risco / c.risco - QUARTO.fatorVendido) < 1e-9,
     `${((c?.risco ?? 0) * 100).toFixed(2)}% vs ${((v?.risco ?? 0) * 100).toFixed(2)}%`,
+  );
+  // O publicado desde 25/09: a venda não vira posição, e a compra do lote abre igual.
+  const zero = rodar(lote, T0 * 1000);
+  confere(
+    `publicado (vendido × ${REGRAS.fatorVendido}): só a compra abre`,
+    zero.abertas.length === 1 && zero.abertas[0].symbol === "C",
+    zero.abertas.map((p) => `${p.symbol} ${p.lado}`).join(", ") || "nada",
   );
 }
 
@@ -1116,14 +1130,19 @@ console.log(`\npool de outra moeda`);
     vaiEVolta.fechadas.length === 0 && vaiEVolta.abertas.length === 1,
     `${vaiEVolta.fechadas.length} fechada(s)`,
   );
-  const virou = rodar([linha(0, "long"), linha(0.3, "observar"), linha(0.9, "observar"), linha(1.3, "observar")], T0 * 1000);
+  // A espera publicada (6 h desde 25/09): quase lá não fecha, lá fecha.
+  const H = REGRAS.confirmacaoSaidaH ?? 0;
+  const virou = rodar(
+    [linha(0, "long"), linha(0.3, "observar"), linha(0.3 + H - 0.4, "observar"), linha(0.3 + H, "observar")],
+    T0 * 1000,
+  );
   confere(
-    "leitura contrária por uma hora fecha, pelo painel",
-    virou.fechadas.length === 1 && virou.fechadas[0].motivo === "painel mudou" && virou.fechadas[0].fechadaEm === h(1.3) * 1000,
+    `leitura contrária por ${H} h fecha, pelo painel`,
+    virou.fechadas.length === 1 && virou.fechadas[0].motivo === "painel mudou" && virou.fechadas[0].fechadaEm === h(0.3 + H) * 1000,
     `${virou.fechadas[0]?.motivo ?? "nada"} às ${virou.fechadas[0] ? ((virou.fechadas[0].fechadaEm / 1000 - T0) / 3600).toFixed(1) : "—"} h`,
   );
   // Ausência de leitura não é leitura contrária, nem zera a contagem.
-  const mudo = rodar([linha(0, "long"), linha(0.3, "observar"), linha(0.9, null), linha(1.3, "observar")], T0 * 1000);
+  const mudo = rodar([linha(0, "long"), linha(0.3, "observar"), linha(1, null), linha(0.3 + H, "observar")], T0 * 1000);
   confere("retrato mudo no meio não conta a favor", mudo.fechadas.length === 1, `${mudo.fechadas.length} fechada(s)`);
   const antes = rodar([linha(0, "long"), linha(0.3, "observar")], T0 * 1000, undefined, { ...REGRAS, confirmacaoSaidaH: null });
   confere("sem a regra, sai no primeiro retrato contrário", antes.fechadas.length === 1, `${antes.fechadas.length} fechada(s)`);

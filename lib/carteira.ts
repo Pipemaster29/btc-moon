@@ -711,13 +711,22 @@ export const REGRAS: Regras = {
    * O mecanismo é o do projeto inteiro: moeda pequena e fácil de empurrar tem a
    * cauda PARA CIMA, e quem está vendido é quem paga essa cauda.
    *
-   * POR QUE NÃO ZERO, se zero mediu melhor (+18,1%): a carteira existe para
-   * medir as calls, e o retorno sobre a margem — que é o que a tabela "por lado"
-   * mostra — não depende do tamanho. Um quarto é a menor fração que mantém a
-   * venda de força 1 acima do piso de US$ 1 de posição mesmo com a conta pela
-   * metade: 1% × ¼ = 0,25% de risco, margem de 0,33% do patrimônio.
+   * ATÉ 25/09 ERA UM QUARTO, "e não zero, para continuar medindo". Passou a
+   * zero a pedido do usuário — "melhore o trade" —, e a medida sustenta: no
+   * dia, o vendido somava −US$ 28,51 em 60 posições mesmo a ¼, todas de
+   * "ressuscitando", só 31 no positivo. Na tabela de regimes, sobre as mesmas
+   * calls (inteira · sem a melhor · 1ª metade · 2ª metade):
+   *
+   *   vendido a ¼     −1,0%   −3,4%   −6,3%   +16,3%
+   *   sem vendido     +2,0%   −0,5%   −3,6%   +17,6%
+   *
+   * O que se perde é a medida do vendido DENTRO da carteira, e ela não some: o
+   * placar continua medindo cada call de venda do painel, e `npm run carteira`
+   * imprime "com vendido a ¼" na tabela a cada retrato. O painel segue dando
+   * as vendas; a carteira só não as opera — risco zero dá posição abaixo do
+   * piso de US$ 1, e o motor não abre.
    */
-  fatorVendido: 0.25,
+  fatorVendido: 0,
   /**
    * TODA SAÍDA QUEIMA A CALL — ver `fechar`. Sem isto a saída por tempo não
    * funciona: a posição sairia "sem reação" e reabriria no mesmo lote, zerando o
@@ -726,7 +735,7 @@ export const REGRAS: Regras = {
    */
   queimaEmToda: true,
   /**
-   * A SAÍDA "PAINEL MUDOU" ESPERA A LEITURA CONTRÁRIA DURAR UMA HORA.
+   * A SAÍDA "PAINEL MUDOU" ESPERA A LEITURA CONTRÁRIA DURAR SEIS HORAS.
    *
    * Regra de corte fixo pisca: em 24/09 a VELVET estava comprada pela régua de
    * "pequena e exausta", que exige market cap abaixo de US$ 30 milhões. Às 15:04
@@ -757,10 +766,27 @@ export const REGRAS: Regras = {
    * sorte de caminho, e o vale de 3–4 h no meio diz que a curva ainda é ruído
    * além da primeira hora. `npm run carteira` segue imprimindo 2 h e 6 h.
    *
-   * O custo é deixar de seguir o painel por até uma hora quando ele muda de
+   * REFEITO EM 25/09, JÁ SEM O VENDIDO, e o segundo platô se manteve — agora
+   * na frente do primeiro nas quatro colunas:
+   *
+   *   sem confirmar   +0,8%   −1,5%   −4,3%   +17,7%
+   *   1 h             +2,0%   −0,5%   −3,6%   +17,6%
+   *   3–4 h           +1,1 a +1,7% — o mesmo vale de 24/09
+   *   5 h             +3,7%   +0,7%   −1,6%   +19,3%
+   *   6 h             +4,5%   +1,2%   −1,6%   +20,0%   ← 55 encerradas
+   *   8 h             +5,2%   +2,3%   −0,7%   +17,9%
+   *   10 h            +4,5%   +1,3%   −1,4%   +18,3%
+   *
+   * Dois dias medindo o mesmo platô de 5 a 10 h — com a ressalva honesta de que
+   * os dois dias dividem quase todos os dados. Seis é o meio dele, e não o 8,
+   * que é o maior número. O mecanismo é o mesmo de 1 h, maior: a saída "painel
+   * mudou" das compras é onde a carteira ganha (53 de 57 no positivo em 25/09),
+   * e uma leitura que pisca por algumas horas cortava justamente essas.
+   *
+   * O custo é deixar de seguir o painel por até seis horas quando ele muda de
    * ideia de verdade — e esse custo está dentro dos números acima.
    */
-  confirmacaoSaidaH: 1,
+  confirmacaoSaidaH: 6,
   /**
    * O FREIO DE QUEDA, e este não vem de medição: vem de mecânica, dito em voz
    * alta como a regra de concentração do `lib/lifecycle.ts`.
