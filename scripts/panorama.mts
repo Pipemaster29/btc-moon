@@ -82,6 +82,15 @@ interface PontoHistorico {
    * delas com call. O placar agrupa por ele quando a amostra existir.
    */
   mot?: [number, number];
+  /**
+   * QUAL REGRA decidiu a leitura — o título dela, cortado em 40 caracteres, que
+   * basta para separar as ~30 regras de `lerVies`. Desde 28/09. Antes o
+   * histórico guardava só o viés, e "a trava de concentração ajuda?" ou "a
+   * compra das grandes exaustas acerta?" não tinham como ser medidas: todas as
+   * travas terminam em "observar" com força 1. ~45 bytes por linha, ~8 MB por
+   * quinzena; a quinzena vai de ~52 para ~60 MB, abaixo dos 80 da auditoria.
+   */
+  regra?: string;
   floatCex: number | null;
   /** Circulante ÷ supply total. */
   floatTk: number | null;
@@ -213,6 +222,7 @@ const pontos: PontoHistorico[] = comPreco.map((r) => ({
   forca: r.leitura?.forca ?? null,
   nota: r.score,
   ...(r.motor ? { mot: [r.motor.motores, r.motor.medidos] as [number, number] } : {}),
+  ...(r.leitura?.titulo ? { regra: r.leitura.titulo.slice(0, 40).trim() } : {}),
   floatCex: r.vida?.floatCex === null || r.vida?.floatCex === undefined
     ? null
     : Number(r.vida.floatCex.toFixed(5)),

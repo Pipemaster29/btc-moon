@@ -263,7 +263,7 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | arquivo | o que é | quem grava |
 |---|---|---|
 | `data/panorama.json` | o retrato completo, ~70 moedas | `npm run panorama` |
-| `data/historico-AAAA-MM.jsonl` e, desde outubro, `historico-AAAA-MM-1.jsonl`/`-2` | uma linha por moeda por retrato, um arquivo por quinzena (`lib/historico.ts`). Desde 24/09 grava também o motor (`mot`), para o placar medir se motor cheio sobe mais. **É a memória do projeto** | idem |
+| `data/historico-AAAA-MM.jsonl` e, desde outubro, `historico-AAAA-MM-1.jsonl`/`-2` | uma linha por moeda por retrato, um arquivo por quinzena (`lib/historico.ts`). Desde 24/09 grava também o motor (`mot`), para o placar medir se motor cheio sobe mais, e desde 28/09 a regra que decidiu a leitura (`regra`, o título cortado em 40), para cada trava de `lerVies` ter placar próprio. **É a memória do projeto** | idem |
 | `data/detentores.json` | concentração por moeda. **17 medidas de 37 com contrato**, todas de Ethereum e Base. As 20 da BSC não têm fonte de log: 15 de 16 varridas em 06/09 perderam as 41 faixas da janela | `npm run genese` |
 | `data/vesting.json` | emissão por moeda | `npm run vesting` |
 | `data/estudos.json` | estudo por moeda, **as em vista incluídas**: sem ele a trava de "a moeda continua o movimento" não roda nelas (8 de 70 da lista, 6 de 39 em vista) | `npm run estudar` (`-- --em-vista` só para elas) |
@@ -314,6 +314,13 @@ duas metades da janela e sem a moeda que mais ganhou — é essa tabela que deci
 se uma regra entra. **Nenhuma regra de gestão nova sem passar nela**, e a coluna
 "sem a melhor moeda" reprova mais do que as metades: o stop curto passava nas
 duas metades e era uma moeda só.
+
+**Em 28/09 foram testadas e reprovadas** mais seis ideias de trade: filtro de
+funding na entrada, filtro de varejo lotado, confirmar a entrada, teto de risco
+maior ou menor e mais tamanho na força 1. Nenhuma melhora as quatro colunas num
+platô; as quatro primeiras ficam no motor, desligadas (`fundingMaxEntrada`,
+`varejoMaxEntrada`, `confirmacaoEntradaH`, `riscoMaximo`), e a tabela segue
+medindo três delas a cada retrato. Os números moram no comentário de `REGRAS`.
 
 **Em 25/09, sem o vendido e com a confirmação de 6 h**, sobre as mesmas calls:
 o publicado em **+4,5%** (queda máxima −8,5%, sem a melhor moeda +1,2%, metades
