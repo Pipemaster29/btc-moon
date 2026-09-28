@@ -1149,6 +1149,33 @@ console.log(`\npool de outra moeda`);
 }
 
 // ---------------------------------------------------------------------------
+// OS FILTROS DE ENTRADA E A CONFIRMAÇÃO DA ENTRADA, desligados no publicado
+// desde 28/09 mas medidos a cada retrato — então precisam funcionar certo.
+{
+  console.log("\nfiltros e confirmação de entrada");
+  const linha = (horas: number, extra: Record<string, unknown> = {}) =>
+    ({ t: h(horas), s: "X", preco: 1, vies: "long", forca: 2, ...extra }) as Emissao;
+  const fund = rodar([linha(0, { fund: 0.0003 })], T0 * 1000, undefined, { ...REGRAS, fundingMaxEntrada: 0.00015 });
+  confere("funding acima do corte não abre", fund.abertas.length === 0, `${fund.abertas.length} aberta(s)`);
+  // Só na entrada: a posição aberta com funding baixo não fecha quando ele sobe.
+  const sobe = rodar([linha(0, { fund: 0.0001 }), linha(1, { fund: 0.0005 })], T0 * 1000, undefined, { ...REGRAS, fundingMaxEntrada: 0.00015 });
+  confere("e não fecha a posição quando o funding sobe", sobe.abertas.length === 1 && sobe.fechadas.length === 0, `${sobe.abertas.length} aberta(s)`);
+  const lotado = rodar([linha(0, { varejo: 4.2 })], T0 * 1000, undefined, { ...REGRAS, varejoMaxEntrada: 3.5 });
+  confere("varejo lotado não abre", lotado.abertas.length === 0, `${lotado.abertas.length} aberta(s)`);
+  const espera = { ...REGRAS, confirmacaoEntradaH: 1 };
+  const cedo = rodar([linha(0), linha(0.5)], T0 * 1000, undefined, espera);
+  const depois = rodar([linha(0), linha(0.5), linha(1.1)], T0 * 1000, undefined, espera);
+  confere(
+    "confirmação de entrada: meia hora não abre, uma hora abre",
+    cedo.abertas.length === 0 && depois.abertas.length === 1 && depois.abertas[0].abertaEm === h(1.1) * 1000,
+    `${cedo.abertas.length} e ${depois.abertas.length}`,
+  );
+  const piscou = rodar([linha(0), linha(0.5, { vies: "observar" }), linha(1.1)], T0 * 1000, undefined, espera);
+  confere("viés que piscou recomeça a contagem", piscou.abertas.length === 0, `${piscou.abertas.length} aberta(s)`);
+  confere("publicado: nenhum dos três ligado", REGRAS.fundingMaxEntrada === null && REGRAS.varejoMaxEntrada === null && REGRAS.confirmacaoEntradaH === null, "nulos");
+}
+
+// ---------------------------------------------------------------------------
 // O ARQUIVO DO HISTÓRICO: um por mês até setembro, um por quinzena desde
 // outubro (`lib/historico.ts`) — o mês com as em vista chegaria a 101 MB, e o
 // GitHub recusa o push inteiro acima de 100. As viradas e o padrão que os

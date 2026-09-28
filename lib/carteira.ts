@@ -580,6 +580,23 @@ export interface Regras {
    * "painel mudou" acontecer. Nulo: sai no primeiro retrato contrário.
    */
   confirmacaoSaidaH: number | null;
+  /**
+   * Financiamento POR PERÍODO a partir do qual a carteira não ABRE compra. Só
+   * na entrada: a posição aberta não sai por isso. Nulo: desligado.
+   */
+  fundingMaxEntrada: number | null;
+  /**
+   * Razão de contas compradas/vendidas do varejo a partir da qual a carteira
+   * não ABRE compra. Só na entrada. Nulo: desligado.
+   */
+  varejoMaxEntrada: number | null;
+  /** Teto do risco agregado das posições abertas, em fração do PATRIMÔNIO. */
+  riscoMaximo: number;
+  /**
+   * Por quantas HORAS o viés precisa estar do mesmo lado antes de a carteira
+   * ABRIR a posição. Nulo: abre no primeiro retrato.
+   */
+  confirmacaoEntradaH: number | null;
 }
 
 /**
@@ -610,6 +627,10 @@ export const REGRAS_ANTERIORES: Regras = {
   queimaEmToda: false,
   escala: 1,
   confirmacaoSaidaH: null,
+  fundingMaxEntrada: null,
+  varejoMaxEntrada: null,
+  riscoMaximo: RISCO_TOTAL_MAXIMO,
+  confirmacaoEntradaH: null,
 };
 
 /**
@@ -788,6 +809,37 @@ export const REGRAS: Regras = {
    */
   confirmacaoSaidaH: 6,
   /**
+   * TESTADO EM 28/09 E NÃO PASSOU — as quatro peças abaixo existem no motor,
+   * desligadas, e a tabela de regimes segue imprimindo cada uma. Sobre as mesmas
+   * calls (inteira · sem a melhor · 1ª metade · 2ª metade), publicado em
+   * +4,2% · +0,9% · −1,1% · +13,1%:
+   *
+   *   FILTRO DE FINANCIAMENTO NA ENTRADA. No histórico, "exausta" com funding
+   *   ≥ 0,015% por período media −10,6 e −6,1 p.p. em 7 dias nas duas metades,
+   *   16 de 23 moedas abaixo, a assimetria invertida (2,4% sobem 20%, 14,9%
+   *   caem). Na carteira piorou em todo limite: 0,010% +1,2%, 0,015% +1,3%,
+   *   0,020% +2,5%, 0,050% +4,0%. As compras de funding alto da 2ª metade
+   *   deram lucro com a saída pelo painel. Aplicado como troca de VIÉS, e não
+   *   só na entrada, era pior ainda (−4,3%): o funding pisca em volta do corte
+   *   e a posição saía e voltava com ele.
+   *
+   *   FILTRO DE VAREJO LOTADO NA ENTRADA (contas compradas ÷ vendidas). Só o
+   *   3,5 melhorou as quatro colunas (+4,8% · +1,5% · −0,7% · +15,2%); com 3 e
+   *   com 5 já piora. Pico, não platô — e a regra da tabela é platô.
+   *
+   *   CONFIRMAR A ENTRADA (o viés precisa durar N h antes de abrir). Pior em
+   *   todos: 30 min +3,8%, 1 h +1,1%, 2 h −1,3%, 3 h −4,1%, 12 h −1,9%. Nestas
+   *   compras o valor está em entrar logo; esperar perde o começo do movimento.
+   *
+   *   TETO DE RISCO AGREGADO. 30%, 35% e 45% dão os mesmos +4,2% — o teto de 25%
+   *   encostou (risco pico 25%) mas não segurou nada que importasse; 20% e 15%
+   *   pioram. E força 1 a 1,5% em vez de 1% deu +4,6% com a 2ª metade igual, e a
+   *   2% piorou: sem platô, fica 1%.
+   */
+  fundingMaxEntrada: null,
+  varejoMaxEntrada: null,
+  confirmacaoEntradaH: null,
+  /**
    * O FREIO DE QUEDA, e este não vem de medição: vem de mecânica, dito em voz
    * alta como a regra de concentração do `lib/lifecycle.ts`.
    *
@@ -827,6 +879,8 @@ export interface Emissao {
   origem?: string;
   /** O último negócio do perpétuo no instante do retrato (desde 24/09). */
   pp?: number | null;
+  /** Contas compradas ÷ vendidas no varejo da Binance, quando o retrato leu. */
+  varejo?: number | null;
 }
 
 interface Estado {
@@ -847,6 +901,8 @@ interface Estado {
    * quando o viés dela sair daquele lado — aí é call nova, não a mesma.
    */
   queimadas: Map<string, Lado>;
+  /** Desde quando cada moeda está com o viés de agora (`confirmacaoEntradaH`). */
+  viesDesde: Map<string, { vies: string; desde: number }>;
   /** O regime de gestão desta rodada. */
   regras: Regras;
   /** O maior patrimônio já visto, e a maior queda a partir dele. */
@@ -1334,6 +1390,7 @@ export function rodar(
     abertas: new Map(),
     fechadas: [],
     queimadas: new Map(),
+    viesDesde: new Map(),
     regras,
     pico: CAPITAL_INICIAL,
     quedaMaxima: 0,
@@ -1399,6 +1456,13 @@ export function rodar(
       if (e.pp != null && e.pp > 0) base.set(e.s, e.preco / e.pp);
       vies.set(e.s, e.vies);
       if (e.fund != null && Number.isFinite(e.fund)) fund.set(e.s, e.fund);
+    }
+
+    // Desde quando cada moeda lê o que lê agora. Leitura ausente não zera: não
+    // houve leitura, não houve mudança.
+    for (const [s, v] of vies) {
+      if (v == null) continue;
+      if (estado.viesDesde.get(s)?.vies !== v) estado.viesDesde.set(s, { vies: v, desde: quando });
     }
 
     // 1. marcar a mercado e decidir saídas
@@ -1580,6 +1644,16 @@ export function rodar(
       if (e.vies !== "long" && e.vies !== "short") continue;
       if (estado.abertas.has(e.s)) continue;
       if (estado.queimadas.get(e.s) === e.vies) continue;
+      if (r.confirmacaoEntradaH != null && r.confirmacaoEntradaH > 0) {
+        const d = estado.viesDesde.get(e.s);
+        if (!d || d.vies !== e.vies || quando - d.desde < r.confirmacaoEntradaH * 3_600_000) continue;
+      }
+      // Os filtros de ENTRADA: não abrem a compra, e não fecham a que está
+      // aberta — fechar pelo mesmo corte faria a posição piscar com ele.
+      if (e.vies === "long") {
+        if (r.fundingMaxEntrada != null && e.fund != null && Number.isFinite(e.fund) && e.fund >= r.fundingMaxEntrada) continue;
+        if (r.varejoMaxEntrada != null && e.varejo != null && e.varejo > 0 && e.varejo > r.varejoMaxEntrada) continue;
+      }
 
       // O FREIO DE PREÇO DE LIXO TAMBÉM VALE PARA ABRIR, e não valia — este era
       // o buraco por onde a catástrofe do topo do arquivo continuava passando
@@ -1629,7 +1703,7 @@ export function rodar(
 
       // O risco já comprometido, em fração do patrimônio: cada posição aberta
       // vale o que ela perderia se batesse no stop onde ele está agora.
-      if (riscoAberto(estado) + risco > RISCO_TOTAL_MAXIMO + 1e-12) continue;
+      if (riscoAberto(estado) + risco > (r.riscoMaximo ?? RISCO_TOTAL_MAXIMO) + 1e-12) continue;
 
       const valor = Math.min(alvo, cabe, estado.caixa);
       // Posição pequena demais é ruído de arredondamento contra custo fixo.
