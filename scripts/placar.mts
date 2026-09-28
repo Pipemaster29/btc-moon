@@ -41,6 +41,8 @@ interface Ponto {
   mcap: number | null;
   /** `[passam, medidos]` do motor, gravado desde 24/09. */
   mot?: [number, number];
+  /** O título da regra que decidiu a leitura, cortado em 40, desde 28/09. */
+  regra?: string;
 }
 
 /**
@@ -209,8 +211,11 @@ function porGrupo(chave: (o: Obs) => string | null, titulo: string) {
     grupos.set(k, g);
   }
 
+  // A coluna do grupo acompanha o nome mais longo: os títulos das regras têm
+  // até 40 caracteres e desalinhavam a tabela inteira.
+  const largura = Math.max(17, ...[...grupos.keys()].map((k) => k.length));
   console.log(`=== ${titulo} ===`);
-  console.log("grupo              n     mediana   vs referência   moedas a favor   subiu");
+  console.log(`${"grupo".padEnd(largura)}     n     mediana   vs referência   moedas a favor   subiu`);
   const linhas = [...grupos.entries()].sort((a, b) => b[1].length - a[1].length);
   for (const [k, g] of linhas) {
     const med = mediana(g.map((o) => o.fwd));
@@ -229,7 +234,7 @@ function porGrupo(chave: (o: Obs) => string | null, titulo: string) {
     const subiu = g.filter((o) => o.fwd > 0).length / g.length;
 
     console.log(
-      k.padEnd(17),
+      k.padEnd(largura),
       String(g.length).padStart(5),
       pct(med).padStart(10),
       (delta >= 0 ? "+" : "−") + (Math.abs(delta) * 100).toFixed(2).padStart(5) + " p.p.",
@@ -259,6 +264,11 @@ porGrupo((o) => {
   if (passam === 0) return "motor zero";
   return "motor parcial";
 }, "por motor (desde 24/09)");
+// A REGRA QUE DECIDIU, desde 28/09. É onde cada trava de `lerVies` passa a ter
+// placar próprio: até aqui todas terminavam em "observar" com força 1, e o
+// placar as media juntas. Com poucos dias, o grupo diz mais sobre a amostra do
+// que sobre a regra — a concordância entre moedas é a coluna a olhar.
+porGrupo((o) => o.regra ?? null, "por regra que decidiu (desde 28/09)");
 
 /**
  * O placar POR MOEDA.

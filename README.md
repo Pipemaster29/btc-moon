@@ -378,6 +378,20 @@ o número da tela sugere o contrário.
   O que ficou só começa em −10% — nunca encosta nesta amostra, e existe para o
   cenário que ela não tem: dois dias seguidos de tudo estopar junto custariam
   −44% sem ele e −30% com ele.
+- **Filtros de entrada (28/09)**, contra o publicado em +4,2%:
+  - *Não comprar com financiamento alto.* No histórico, "exausta" com funding
+    ≥ 0,015% por período mede −10,6 e −6,1 pontos em 7 dias, com 16 de 23
+    moedas abaixo. Na carteira piorou em todo limite testado (+1,2% a +4,0%),
+    porque as compras dessa faixa na segunda metade deram lucro saindo pelo
+    painel.
+  - *Não comprar com varejo lotado* (mais de 3,5 contas compradas por vendida).
+    Só o 3,5 melhorou; 3 e 5 pioraram. É pico, não platô.
+- **Confirmar a entrada (28/09)**: esperar o viés durar de 30 min a 12 h antes
+  de abrir piora em todos, até −4,1%. Nestas compras o valor está em entrar
+  logo.
+- **Teto de risco e tamanho da força 1 (28/09)**: subir o teto de 25% não muda
+  nada; baixar piora. Força 1 a 1,5% deu +4,6% com a segunda metade igual, e a
+  2% piorou.
 
 `npm run carteira` imprime esta comparação **a cada retrato** — o publicado, o
 anterior, e cada peça desligada uma de cada vez, com as duas metades e a coluna

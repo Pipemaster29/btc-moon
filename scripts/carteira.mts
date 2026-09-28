@@ -269,6 +269,9 @@ const regimes: [string, Regras][] = [
   ["  sem confirmar a saída", { ...REGRAS, confirmacaoSaidaH: null }],
   ["  confirmar saída 1 h", { ...REGRAS, confirmacaoSaidaH: 1 }],
   ["  confirmar saída 10 h", { ...REGRAS, confirmacaoSaidaH: 10 }],
+  ["  confirmar entrada 1 h", { ...REGRAS, confirmacaoEntradaH: 1 }],
+  ["  filtro funding 0,015%", { ...REGRAS, fundingMaxEntrada: 0.00015 }],
+  ["  filtro varejo 3,5", { ...REGRAS, varejoMaxEntrada: 3.5 }],
   ["  escala 1,5x", { ...REGRAS, escala: 1.5 }],
   ["  escala 2x", { ...REGRAS, escala: 2 }],
 ];
