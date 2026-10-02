@@ -432,6 +432,79 @@ tabela. Nenhuma moeda entra na análise completa sozinha: o próximo passo é
 sempre `npm run descobrir`, porque identificar o token errado é o erro mais caro
 daqui e já foi cometido duas vezes.
 
+## E se fosse BTC, as top 100, ou ouro?
+
+É a pergunta mais natural que se faz sobre este projeto, e a intuição por trás
+dela é boa — mais universo é mais amostra, e amostra é exatamente o que falta
+para o placar concluir qualquer coisa. `npm run aferir-tamanho` mede, e a
+resposta é não por três motivos que não dependem um do outro.
+
+**O sinal é função do tamanho da moeda, e morre antes de chegar nas top 100.** A
+tabela do garimpo mede os 526 juntos, e isso esconde o principal. Separando o
+mesmo gatilho por market cap, cada faixa contra a referência dela:
+
+| faixa | moedas | mediana 7d | vs referência | moedas a favor |
+| --- | --- | --- | --- | --- |
+| até 30 mi | 189 | −18,28% | **−17,37 p.p.** | 107/122 |
+| 30 a 100 mi | 167 | −12,38% | −11,86 p.p. | 76/87 |
+| 100 a 300 mi | 71 | −7,63% | −7,47 p.p. | 18/28 |
+| 300 mi a 1 bi | 41 | −2,98% | −2,87 p.p. | 7/12 |
+| 1 a 10 bi | 39 | −0,02% | **+0,07 p.p.** | 9/14 |
+| acima de 10 bi | 12 | +9,77% | +9,73 p.p. | 0/1 (n=2) |
+
+De 1 a 10 bilhões é onde as top 100 moram. Lá o efeito não enfraquece: ele
+**acaba**, em +0,07 p.p. sobre 34 observações. A última linha tem n=2 e não mede
+nada — está na tabela para isso ficar dito em vez de parecer um achado.
+
+**E o gatilho nem dispara nessas moedas.** BTC, ETH, BNB, SOL, PAXG e XAUT:
+**zero** dias de alta ≥25% em 199 dias de vela diária. Não é "o sinal é fraco
+nelas", é que a condição de entrada nunca acontece.
+
+**O ouro falha por outro motivo, e é de calibração.** O mapa de saída desta
+carteira é inteiro em volatilidade: o stop de −25% existe porque são ~3 desvios
+de UM DIA nestas moedas, e a medição confirma — 4,3 σ na faixa de baixo. No PAXG
+são **18,4 σ** e no XAUT **19,5 σ**. Stop e alvo nunca disparariam, toda posição
+sairia por prazo ou por "painel mudou", e a carteira voltaria a medir as minhas
+regras de saída em vez do painel — que é precisamente o que ela existe para não
+fazer.
+
+### "BTC como fator" era a versão boa da ideia, e também foi refutada
+
+Se estas moedas fossem beta de cripto, as doze posições abertas seriam uma aposta
+de tamanho doze e o BTC serviria de hedge. Medido, com controle — porque um
+resultado de correlação baixa é indistinguível de código quebrado sem um par que
+se saiba alto:
+
+| par | r | n |
+| --- | --- | --- |
+| ETH × BTC | 0,90 | 199 dias |
+| ETH × SOL | 0,83 | 199 dias |
+| BTC × XRP | 0,85 | 199 dias |
+| BTC × PAXG | 0,51 | 199 dias |
+| **BTC × as 29 moedas da carteira** | **0,08 mediano** | 199 dias |
+
+**Zero das 29 passa de 0,30**, e entre si o ρ médio é 0,04. Não há exposição
+comum para o BTC proteger. E a explicação se lê sozinha dado o resto do projeto:
+moeda manipulada segue o manipulador dela, não o mercado.
+
+**Isso tem uma consequência a favor do projeto, e ela é a parte mais útil de
+tudo isto.** Com ρ de 0,04, as 12 posições abertas valem **8,2 apostas
+independentes**. O veredito do placar — "nenhum viés separa da referência" —
+sobre amostra correlacionada seria evidência fraca, porque o n efetivo seria uma
+fração do n contado. Sobre amostra quase independente, é evidência forte. A
+conclusão desconfortável deste projeto fica mais firme, não menos.
+
+### Onde sobra espaço é ao lado, não para cima
+
+Nas duas faixas em que o sinal vive existem 356 perpétuos e a lista cobre 54 —
+16% da faixa de baixo e 14% da seguinte. É a direção em que expandir significa
+mais do mesmo sinal, e não um sinal diferente.
+
+Com a ressalva que a seção anterior já estabeleceu e que não muda: **vender esse
+sinal perde dinheiro em toda largura de stop testada**, porque o caminho estopa a
+posição antes da deriva. Expandir de lado compra **amostra**, que é o que falta.
+Não compra lucro, e nada aqui finge que compra.
+
 ## Identificar a moeda certa
 
 O erro mais caro deste projeto foi analisar o token errado — duas vezes. Buscar
@@ -558,6 +631,7 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
 | `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
+| `npm run aferir-tamanho` | o sinal por faixa de market cap — por que BTC e ouro ficam fora |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |

@@ -70,6 +70,51 @@
  * há — nem que a alta do X, que é de onde essas moedas costumam vir, seja
  * mensurável daqui.
  *
+ * ============================= E SE FOSSE BTC, AS TOP 100, OU OURO? MEDIDO.
+ *
+ * É a pergunta mais natural que se faz aqui, e a intuição por trás dela é boa:
+ * mais universo é mais amostra, e amostra é o que falta ao placar. A resposta é
+ * não, e `npm run aferir-tamanho` é onde ela é refeita — porque O SINAL ACIMA É
+ * UMA FUNÇÃO DO TAMANHO DA MOEDA, e a tabela dos 526 juntos esconde isso.
+ *
+ * O mesmo gatilho, o mesmo horizonte, cada faixa contra a referência DELA:
+ *
+ *   faixa             moedas   mediana 7d   vs refer.    moedas a favor
+ *   até 30 mi           189      −18,28%   −17,37 p.p.      107/122
+ *   30 a 100 mi         167      −12,38%   −11,86 p.p.       76/87
+ *   100 a 300 mi         71      − 7,63%   − 7,47 p.p.       18/28
+ *   300 mi a 1 bi        41      − 2,98%   − 2,87 p.p.        7/12
+ *   1 a 10 bi            39      − 0,02%   + 0,07 p.p.        9/14
+ *   acima de 10 bi       12      + 9,77%   + 9,73 p.p.        0/1  (n=2)
+ *
+ * De 1 a 10 bilhões é onde as top 100 moram, e lá o efeito não enfraquece: ele
+ * ACABA, em +0,07 p.p. sobre 34 observações. E o gatilho nem dispara — BTC, ETH,
+ * BNB, SOL, PAXG e XAUT tiveram ZERO dias de alta ≥25% em 199 dias de vela.
+ *
+ * O ouro falha por outro motivo, e é de calibração: o stop de −25% da carteira
+ * existe porque são ~3 desvios de UM DIA nestas moedas (medido: 4,3 σ na faixa
+ * de baixo). No PAXG são 18,4 σ e no XAUT 19,5 σ — stop e alvo nunca disparariam
+ * e toda posição sairia por prazo, com a carteira medindo as regras de saída em
+ * vez do painel.
+ *
+ * E "USAR BTC COMO FATOR" — a versão boa da ideia, BTC como hedge em vez de
+ * posição — também foi refutada, com controle para provar que não é bug: o mesmo
+ * código mede r = 0,90 entre ETH e BTC, e mede r mediano de 0,08 entre o BTC e
+ * as 29 moedas que a carteira negociou, com ZERO delas acima de 0,30 sobre 199
+ * dias. Entre si, ρ médio de 0,04. Não há exposição comum para proteger: moeda
+ * manipulada segue o manipulador dela, não o mercado.
+ *
+ * Isso deixa uma consequência que vale a favor do projeto: com ρ de 0,04, as 12
+ * posições abertas valem 8,2 apostas independentes. O veredito do
+ * `lib/placar.ts` — "nenhum viés separa da referência" — sobre amostra
+ * correlacionada seria evidência fraca, porque o n efetivo seria uma fração do n
+ * contado. Sobre amostra quase independente, é evidência forte.
+ *
+ * ONDE SOBRA ESPAÇO É AO LADO, NÃO PARA CIMA: nas duas faixas em que o sinal
+ * vive existem 356 perpétuos e a lista cobre 54. Com a ressalva que esta mesma
+ * seção já estabeleceu duas telas acima — vender o sinal perde em toda largura
+ * de stop —, expandir de lado compra AMOSTRA e não lucro.
+ *
  * ===================================================================== ENTÃO
  *
  * Isto é uma LISTA DE TRIAGEM, não um emissor de calls. Ele responde "o que

@@ -48,6 +48,11 @@ no código, com número:
   mais forte já medido aqui, e **vendê-lo perde dinheiro em toda largura de stop
   testada**, porque o caminho estopa a posição antes. `npm run garimpar` entrega
   fila de investigação, com essa frase na tela.
+- **Operar BTC, as top 100 ou ouro não ajuda, e isso é medido.** O sinal acima é
+  função do TAMANHO da moeda: −17,37 p.p. até 30 mi, −11,86 de 30 a 100 mi, e
+  **+0,07 p.p. de 1 a 10 bi**, que é onde as top 100 moram. Ele não enfraquece,
+  acaba. E o gatilho nem dispara: BTC, ETH, BNB, SOL, PAXG e XAUT tiveram ZERO
+  dias de alta ≥25% em 199 dias. `npm run aferir-tamanho` refaz a conta.
 
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
@@ -315,6 +320,56 @@ rede. **Cada um deles quebrou de verdade** — o pior fazia mil dólares virarem
 código diferente de zero quando algum caso falha, então serve de portão.
 
 `npm run auditar-dados` confere as invariantes de tudo que está em `data/`.
+
+---
+
+## Por que o universo é de moeda pequena, e por que BTC e ouro não entram
+
+A pergunta aparece sozinha — "e se operasse BTC, as top 100, talvez ouro?" — e a
+intuição por trás dela é boa: mais universo é mais amostra, e amostra é o que
+falta para o placar concluir qualquer coisa. `npm run aferir-tamanho` mede, e a
+resposta é não por três motivos independentes.
+
+**1. O sinal é função do tamanho e morre antes das top 100.** O mesmo gatilho do
+garimpo, cada faixa contra a referência dela:
+
+| faixa | moedas | mediana 7d | vs referência | moedas a favor |
+|---|---|---|---|---|
+| até 30 mi | 189 | −18,28% | **−17,37 p.p.** | 107/122 |
+| 30 a 100 mi | 167 | −12,38% | −11,86 p.p. | 76/87 |
+| 100 a 300 mi | 71 | −7,63% | −7,47 p.p. | 18/28 |
+| 300 mi a 1 bi | 41 | −2,98% | −2,87 p.p. | 7/12 |
+| 1 a 10 bi | 39 | −0,02% | **+0,07 p.p.** | 9/14 |
+| acima de 10 bi | 12 | +9,77% | +9,73 p.p. | 0/1 (n=2) |
+
+**2. O gatilho nem dispara.** BTC, ETH, BNB, SOL, PAXG e XAUT: **zero** dias de
+alta ≥25% em 199 dias de vela.
+
+**3. O mapa de saída é calibrado em volatilidade.** O stop de −25% existe porque
+são ~3 desvios de UM DIA nestas moedas (medido: 4,3 σ na faixa de baixo). No
+PAXG são **18,4 σ** e no XAUT **19,5 σ** — stop e alvo nunca disparariam, toda
+posição sairia por prazo, e a carteira voltaria a medir as minhas regras de saída
+em vez do painel.
+
+**E "BTC como FATOR" em vez de posição foi refutado**, que era a versão boa da
+ideia. Com controle, para um resultado baixo não se confundir com código
+quebrado: o mesmo código mede r = 0,90 entre ETH e BTC, r = 0,85 entre BTC e XRP
+— e **r mediano de 0,08** entre o BTC e as 29 moedas que a carteira negociou,
+com **zero delas acima de 0,30** sobre 199 dias de sobreposição. Entre si, ρ
+médio de 0,04. Não há exposição comum para o BTC proteger: moeda manipulada
+segue o manipulador dela, não o mercado.
+
+**Isso tem uma consequência a favor do projeto.** Com ρ de 0,04, as 12 posições
+abertas valem **8,2 apostas independentes**. O veredito do `lib/placar.ts` —
+"nenhum viés separa da referência" — sobre amostra correlacionada seria evidência
+fraca, porque o n efetivo seria uma fração do n contado; sobre amostra quase
+independente, é evidência forte. A conclusão desconfortável fica mais firme, não
+menos.
+
+**Onde sobra espaço é AO LADO.** Nas duas faixas em que o sinal vive existem 356
+perpétuos e a lista cobre 54 (16% e 14%). Com a ressalva que o `lib/garimpo.ts`
+já estabeleceu: vender esse sinal perde em toda largura de stop testada, então
+expandir de lado compra **amostra**, que é o que falta, e não lucro.
 
 ---
 
