@@ -106,10 +106,13 @@
  * CUSTO: duas requisições por símbolo nos ~528 perpétuos, mais velas diárias das
  * moedas da carteira para a correlação. Leva de dois a quatro minutos.
  *
+ * Precisa dos dados do robô em `data/`: rode `npm run dados` antes.
+ *
  * Rode com: npm run aferir-tamanho
  */
 
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
+import { ARQUIVO_HISTORICO } from "../lib/historico";
 import { velas } from "../lib/binance";
 import { comLimite } from "../lib/limite";
 import { ATIVAS } from "../lib/watchlist";
@@ -440,15 +443,13 @@ console.log(`\n4. A COBERTURA DAS FAIXAS ONDE O SINAL VIVE — é aqui que sobra
  */
 const mcapDaLista = new Map<string, number>();
 {
-  const mes = new Date().toISOString().slice(0, 7);
-  for (const arquivo of [`data/historico-${mes}.jsonl`, "data/historico-2026-09.jsonl"]) {
-    let texto = "";
-    try {
-      texto = await readFile(arquivo, "utf8");
-    } catch {
-      continue;
-    }
-    const quando = new Map<string, number>();
+  // Todos os arquivos do histórico, pelo mesmo padrão que o resto do projeto usa
+  // — desde outubro eles são partidos por quinzena, e um nome fixo de mês
+  // deixaria a cobertura em branco sem erro nenhum. Fica o valor mais recente.
+  const quando = new Map<string, number>();
+  const arquivos = (await readdir("data")).filter((f) => ARQUIVO_HISTORICO.test(f)).sort();
+  for (const arquivo of arquivos) {
+    const texto = await readFile(`data/${arquivo}`, "utf8");
     for (const linha of texto.split("\n")) {
       if (!linha.trim()) continue;
       try {
@@ -464,7 +465,9 @@ const mcapDaLista = new Map<string, number>();
         // linha truncada por escrita concorrente
       }
     }
-    if (mcapDaLista.size > 0) break;
+  }
+  if (mcapDaLista.size === 0) {
+    console.log("   (sem histórico em data/ — rode `npm run dados` antes; a cobertura fica em branco)");
   }
 }
 
