@@ -130,6 +130,27 @@ await Promise.all(
     // "alvos" que o perpétuo nunca tocou — voltariam a valer quando a carteira
     // fizesse 62 dias. De trás para frente (`velasDesde`): se faltar alguma
     // página, falta a mais velha, nunca as de agora — e a contagem diz quantas.
+    //
+    // DE UMA HORA, E 15 MIN FOI MEDIDO E NÃO ENTROU. A vela que contém a
+    // entrada é descartada, então a de uma hora deixa o motor sem caminho por
+    // até sessenta minutos logo depois de abrir; a de quinze cortaria isso a um
+    // quarto. Medido em 03/10, com o histórico até 02/10 e com prazo e "sem
+    // reação" já decididos só no retrato (ver `percorrer`): ZERO das 93
+    // encerradas do regime publicado mudam — ele toca ordem parada pouco (3
+    // stops e 2 alvos), e é só ordem parada que a vela decide. No regime
+    // anterior, que estopa mais, muda (−14,7% → −15,3%, 119 → 110 encerradas).
+    //
+    // E o custo cresce sozinho: cada página de 1.500 velas pesa 10 no orçamento
+    // de 2.400 por minuto da Binance, a série de 15 min ganha uma página a cada
+    // 15,6 dias, e este passo roda no mesmo job que o `garimpar` (~1.050 de
+    // peso). Em dois meses só ela estouraria o minuto. Ganho zero medido contra
+    // risco que cresce: fica uma hora. Se o regime publicado passar a estopar
+    // muito, refaça a conta — é aí que a resolução passa a decidir.
+    //
+    // E SE ALGUÉM REFIZER: o juiz (`foraDoPerpetuo`) indexa por HORA CHEIA e
+    // compara o preço contra a faixa da hora e da anterior. Vela de 15 min no
+    // mesmo array faria ele julgar contra uma faixa de quinze minutos e reprovar
+    // preço legítimo — o juiz precisa continuar recebendo a série horária.
     const { velas: v, parcial } = await velasDesde(symbol, "1h", COMECO - 3_600_000).catch(() => ({
       velas: [] as Awaited<ReturnType<typeof velas>>,
       parcial: true,

@@ -735,6 +735,49 @@ console.log("\n--- sem reação: a posição que não anda sai, e não reabre --
   confere("viés que sai e volta é call nova", reabre.abertas.length === 1, `${reabre.abertas.length} aberta(s)`);
 }
 
+console.log("\n--- prazo e \"sem reação\" são decisão do robô: só no retrato ---");
+{
+  // Stop e alvo são ordens paradas na corretora e o caminho de velas decide
+  // ONDE elas executam. Prazo e "sem reação" são decisões do robô, que só roda
+  // a cada retrato — testá-las em todo fechamento de vela fingia um robô de hora
+  // em hora, e a resolução da vela passava a decidir quando a carteira sai. A ON
+  // saía às 10h30 de 19/09 em vez de 03h22 de 20/09 por UMA vela de 15 min.
+  //
+  // Aqui: retratos de 12 em 12 h, todos a +1%. Entre o 7º e o 8º, já depois dos
+  // três dias, uma vela fecha 2% ABAIXO da entrada e volta. O robô, olhando o
+  // retrato, nunca viu a posição sem reação.
+  const retratos: Emissao[] = Array.from({ length: 10 }, (_, i) => ({
+    t: h(12 * i), s: "X", preco: i === 0 ? 1 : 1.01, vies: "long", forca: 2, fund: 0,
+  }));
+  const velas: Passo[] = Array.from({ length: 12 * 9 }, (_, i) => {
+    const mergulha = i === 12 * 6 + 5; // a vela das 77h–78h, entre os retratos de 72h e 84h
+    return {
+      abriuEm: h(i) * 1000,
+      fechouEm: h(i + 1) * 1000,
+      abertura: 1.01,
+      maxima: 1.02,
+      minima: mergulha ? 0.97 : 1.0,
+      fechamento: mergulha ? 0.98 : 1.01,
+    };
+  });
+  const r = rodar(retratos, T0 * 1000, new Map([["X", velas]]));
+  confere(
+    "vela abaixo entre retratos a favor: não sai",
+    r.encerradas === 0 && r.abertas.length === 1,
+    `${r.encerradas} saída(s)${r.fechadas[0] ? ` por ${r.fechadas[0].motivo}` : ""}`,
+  );
+
+  // E o retrato abaixo da entrada depois dos três dias tira, NO retrato.
+  const caiu = retratos.map((e, i) => (i === 7 ? { ...e, preco: 0.99 } : e));
+  const velasCaiu = velas.map((v, i) => (i >= 12 * 7 - 1 && i < 12 * 7 ? { ...v, fechamento: 0.99 } : v));
+  const sai = rodar(caiu, T0 * 1000, new Map([["X", velasCaiu]]));
+  confere(
+    "retrato abaixo depois de 3 dias: sai no retrato",
+    sai.fechadas[0]?.motivo === "sem reação" && sai.fechadas[0]?.fechadaEm === h(84) * 1000,
+    `${sai.fechadas[0]?.motivo} às ${((sai.fechadas[0]?.fechadaEm ?? 0) / 1000 - T0) / 3600} h`,
+  );
+}
+
 console.log("\n--- o prazo queima a call (antes reabria no mesmo lote) ---");
 {
   // Duas semanas a favor e o painel ainda comprado. No regime anterior a

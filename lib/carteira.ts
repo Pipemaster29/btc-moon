@@ -1283,15 +1283,26 @@ function percorrer(
       fechar(estado, p, preenche(nivelAlvo, "favor"), v.fechouEm, "alvo");
       return true;
     }
-    const dias = (v.fechouEm - p.abertaEm) / 86_400_000;
-    if (dias >= r.prazoDias) {
-      fechar(estado, p, v.fechamento * k, v.fechouEm, "prazo");
-      return true;
-    }
-    if (r.semReacaoDias !== null && dias >= r.semReacaoDias && aFavor(p, v.fechamento * k) <= 0) {
-      fechar(estado, p, v.fechamento * k, v.fechouEm, "sem reação");
-      return true;
-    }
+    // PRAZO E "SEM REAÇÃO" NÃO MORAM AQUI, e moravam.
+    //
+    // Stop, alvo e liquidação são ORDENS PARADAS NA CORRETORA: executam a
+    // qualquer instante, com o robô rodando ou não, e o caminho de velas é o
+    // modelo certo para elas. Prazo e "sem reação" são DECISÕES DO ROBÔ, e o
+    // robô só decide quando roda — a cada retrato, ~22 min, e nunca dentro de
+    // um buraco do histórico. Testá-las em todo fechamento de vela fingia um
+    // robô que roda de hora em hora, e a resolução da vela passava a decidir
+    // QUANDO a carteira sai, o que não tem nada a ver com a corretora.
+    //
+    // Apareceu ao trocar as velas de 1 h por 15 min: 34 das 93 encerradas
+    // mudaram, quase todas na hora do "sem reação". A ON saía às 10h30 de 19/09
+    // em vez de 03h22 de 20/09 só porque UMA vela de quinze minutos fechou
+    // abaixo da entrada. As duas respostas estavam erradas, cada uma do seu
+    // jeito; a certa é a do retrato, que o teste de ponta em `rodar` já faz.
+    //
+    // MEDIDO EM 03/10, com o histórico até 02/10: no regime publicado, tirar
+    // as duas daqui muda 3 posições (LYN, AIO, SIREN) e soma +US$ 0,26. E com
+    // elas fora, a resolução da vela deixa de importar: de 1 h para 15 min,
+    // ZERO posições do publicado mudam — ver a nota em `scripts/carteira.mts`.
 
     p.precoAtual = v.fechamento * k;
     p.retorno = sobreMargem(p, p.precoAtual);
