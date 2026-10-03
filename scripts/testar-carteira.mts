@@ -155,6 +155,43 @@ for (const [nome, v, esperado] of casos) {
   console.log(`  vendido: ${nome.padEnd(35)} ${got.padEnd(11)} ${got === esperado ? "ok" : `← ESPERADO ${esperado}`}`);
 }
 
+// ONDE as pontas executam, e não só SE. O teste de cima só olha o motivo, e o
+// teste de ponta fechava no preço do retrato: o alvo levava o movimento
+// inteiro e o stop a queda inteira. Pego na US em 30/09, que realizou a +40,41%
+// com a ordem parada em +40%. Ordem parada executa no nível dela.
+console.log("\n--- nas pontas, stop e alvo executam no NÍVEL da ordem ---");
+{
+  const saida = (varPreco: number, lado: "long" | "short") => {
+    const p2 = lado === "long" ? 1 + varPreco : 1 - varPreco;
+    const r = rodar(
+      [
+        { t: h(0), s: "X", preco: 1, vies: lado, forca: 2, fund: 0 },
+        { t: h(1), s: "X", preco: p2, vies: lado, forca: 2, fund: 0 },
+      ],
+      T0 * 1000,
+      undefined,
+      COM_VENDIDO,
+    );
+    return r.fechadas[0];
+  };
+  for (const lado of ["long", "short"] as const) {
+    const alvo = saida(0.55, lado);
+    const nivelAlvo = lado === "long" ? 1 + ALVO : 1 - ALVO;
+    confere(
+      `${lado}: preço +55% sai no alvo em +40%, não em +55%`,
+      alvo?.motivo === "alvo" && Math.abs((alvo?.precoSaida ?? 0) - nivelAlvo) < 1e-9,
+      `${alvo?.motivo} a ${alvo?.precoSaida?.toFixed(4)}`,
+    );
+    const stop = saida(-0.3, lado);
+    const nivelStop = lado === "long" ? 1 - STOP : 1 + STOP;
+    confere(
+      `${lado}: preço −30% sai no stop em −25%, não em −30%`,
+      stop?.motivo === "stop" && Math.abs((stop?.precoSaida ?? 0) - nivelStop) < 1e-9,
+      `${stop?.motivo} a ${stop?.precoSaida?.toFixed(4)}`,
+    );
+  }
+}
+
 console.log("\n--- o caso que preocupa: lixo e volta ---");
 const c = rodar(
   [

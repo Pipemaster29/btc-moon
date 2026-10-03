@@ -1563,8 +1563,21 @@ export function rodar(
       // A ordem dos testes é a ordem do pior caso: dentro de um intervalo entre
       // retratos o preço passou por lugares que não vemos, e supor que ele
       // tocou o stop antes do alvo é a suposição conservadora.
-      if (passouDoStop(p, atual)) fechar(estado, p, atual, quando, motivoDoStop(p, r));
-      else if (r.alvo !== null && varPreco >= r.alvo) fechar(estado, p, atual, quando, "alvo");
+      //
+      // MAS O PREÇO DE SAÍDA É O NÍVEL DA ORDEM, e não o do retrato. Fechar em
+      // `atual` dava ao alvo o movimento INTEIRO — ordem de realização parada em
+      // +40% não executa em +55% porque o retrato seguinte apareceu lá — e ao
+      // stop a queda inteira. Otimista de um lado, pessimista do outro, e errado
+      // nos dois. É a mesma regra que `percorrer` já aplica às velas: lá dá para
+      // distinguir caminhada de salto pela abertura da vela; aqui, entre a última
+      // vela fechada e o retrato, não há informação sobre o meio, e fica a
+      // caminhada, que é o caso comum num perpétuo em minutos.
+      //
+      // A liquidação, testada logo acima, continua fechando em `atual`: é o modo
+      // cego do motor guardando a leitura pessimista para o caso extremo.
+      if (passouDoStop(p, atual)) fechar(estado, p, p.nivelStop, quando, motivoDoStop(p, r));
+      else if (r.alvo !== null && varPreco >= r.alvo)
+        fechar(estado, p, p.precoEntrada * (p.lado === "long" ? 1 + r.alvo : 1 - r.alvo), quando, "alvo");
       else if (dias >= r.prazoDias) fechar(estado, p, atual, quando, "prazo");
       // SEM REAÇÃO: passados N dias, a posição precisa estar pagando para ficar.
       // Não é stop — ela pode estar a 1% da entrada. É o tempo dizendo que a
