@@ -306,6 +306,7 @@ US$ 1.000 entrando em toda call de compra e venda do painel, para a pergunta
 | Risco agregado | teto de 25% | cripto tem dias em que a lista inteira cai 25% junta |
 | Margem exposta | teto de 50% | |
 | Custo | 0,15% por lado, **sobre o nocional** | a 3x, isso é 0,45% da margem por lado |
+| Impacto | `σ × √(Q/V)` na última vela fechada antes da ordem | no livro do PERPÉTUO, não na pool. Medido: 0,040% por ponta na média contra 0,15% fixos, máximo 0,149%. Serve para o custo **saber do tamanho** — tira 0,7 p.p. do publicado e 1,3 da escala 2x |
 | Financiamento | taxa real da Binance, **no período de cada moeda** | 39 das 40 negociadas cobram de 4 em 4 h, não de 8 — até 24/09 o motor cobrava a metade. Em 24/09 a mediana do painel paga 11% ao ano (0,005% a cada 4 h); os 15% a 20% de 03/09 foram contados com três cobranças por dia |
 | Liquidação | margem de manutenção 0,5% | a 3x, o preço andando 33,2% contra |
 
@@ -370,9 +371,18 @@ duas leituras lado a lado para isso continuar visível.
 um número enganoso: as regras do painel foram ajustadas ao longo dos dois meses
 gravados, todas depois de ver os dados.
 
-**O que ela não cobra:** a diferença entre o preço do retrato e o preço real de
-execução; a profundidade da pool (o custo é fixo, e numa pool de US$ 2 mil uma
-ordem de US$ 60 move mais que isso).
+**O que ela cobra além do fixo: o impacto de mercado**, `σ × √(Q/V)` na última
+vela FECHADA antes da ordem (a que contém a entrada é o futuro). No livro do
+perpétuo, que é quem serve a ordem — o exemplo antigo, uma pool à vista de
+US$ 2 mil, media a praça errada. Medido nas 102 aberturas até 02/10: 0,040% por
+ponta na média contra 0,15% fixos, máximo 0,149%. Custa −0,7 p.p. no publicado,
+−1,0 na escala 1,5x e −1,3 na 2x: o custo passou a saber do tamanho da ordem.
+
+**O que ela não cobra, medido:** o minuto entre o preço do retrato e a ordem. O
+panorama carimba `t` no fim da execução (55 s), então o preço tem até ~1 min.
+Com velas de 1 min em 84 entradas, o perpétuo andou +0,045% contra a entrada
+nesse minuto, ±0,089% — indistinguível de zero, e igual com 1, 5 e 10 min de
+atraso. Ruído, não deriva; cobrá-lo seria inventar número.
 
 **A call queimada não se repete.** Depois de QUALQUER saída, a moeda só volta a
 valer quando o viés dela sair daquele lado. Sem isso a carteira recomprava a

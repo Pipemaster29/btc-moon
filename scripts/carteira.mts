@@ -180,6 +180,10 @@ await Promise.all(
           maxima: x.high,
           minima: x.low,
           fechamento: x.close,
+          // O que a barra negociou em dólar, para o impacto de mercado. Ausente
+          // vira `undefined` e não zero: barra rala e barra não medida não podem
+          // terminar no mesmo lugar.
+          ...(x.quote !== undefined && Number.isFinite(x.quote) && x.quote > 0 ? { dolares: x.quote } : {}),
         })),
     );
   }),
@@ -213,6 +217,16 @@ console.log(
   `só nas pontas o patrimônio seria ${usd(semCaminho.patrimonio)} ` +
     `com ${semCaminho.encerradas} encerrada(s) — a diferença é o que o intervalo escondia\n`,
 );
+if (c.impacto) {
+  const total = c.impacto.medidas + c.impacto.semMedida;
+  console.log(
+    `impacto de mercado: medido em ${c.impacto.medidas} de ${total} abertura(s) · ` +
+      `médio ${(c.impacto.medio * 100).toFixed(4)}% · máximo ${(c.impacto.maximo * 100).toFixed(4)}% ` +
+      `por ponta, contra ${(0.0015 * 100).toFixed(2)}% de custo fixo` +
+      (c.impacto.semMedida > 0 ? ` · ${c.impacto.semMedida} sem barra legível pagam só o fixo` : "") +
+      "\n",
+  );
+}
 if (c.foraDoPerpetuo) {
   console.log(`${c.foraDoPerpetuo} linha(s) do histórico fora do perpétuo daquela hora — não abrem, não marcam, não fecham\n`);
 }

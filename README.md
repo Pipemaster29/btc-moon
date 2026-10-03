@@ -426,11 +426,34 @@ ajustadas ao longo desses dois meses — o freio de perfil, o de emissão, a tra
 de alta — e todas foram escritas depois de ver os dados. Um resultado
 retrospectivo mediria o quanto eu ajustei o painel olhando para o passado.
 
-**O que a conta não cobra, e cada um empurra o número para cima:** a diferença
-entre o preço do retrato e o preço em que a ordem de ENTRADA sairia — a saída
-deixou de ter esse problema —, e a profundidade real da pool, já que o custo é
-0,15% por lado, fixo, e numa pool de dois mil dólares uma ordem de sessenta já
-move mais que isso.
+**Os dois itens que esta conta listava como não cobrados foram medidos em 03/10,
+e terminaram em lugares diferentes.**
+
+A **profundidade** virou custo. O exemplo antigo — numa pool de dois mil dólares
+uma ordem de sessenta move mais que 0,15% — media a praça errada: a carteira é
+perpétuo, e quem serve a ordem é o livro da Binance. Lá, o impacto segue a lei
+da raiz, `σ × √(Q/V)`, medido na última vela fechada antes da ordem: 0,040% por
+ponta na média nas 102 aberturas, máximo 0,149%, contra 0,15% de custo fixo. No
+regime publicado custa −0,7 p.p.; na escala 1,5x, −1,0; na 2x, −1,3. O valor do
+termo não é o número de hoje, é o custo **saber do tamanho**: fixo em 0,15%, uma
+conta de mil e uma de um milhão pagariam o mesmo por ordem, o que é falso e
+sempre a favor do resultado.
+
+A **execução** não virou custo, porque medida ela não se distingue de zero. O
+panorama carimba o retrato no fim da execução — a última levou 55 s —, então o
+preço tem até um minuto quando o robô decide. Com velas de um minuto do
+perpétuo em 84 das 102 entradas, o quanto o preço andou contra a entrada desde
+o minuto anterior ao carimbo:
+
+| atraso da ordem | média | ± 2 erros-padrão | a favor/contra |
+| --- | --- | --- | --- |
+| no minuto do carimbo | +0,045% | ±0,089% | 29/43 |
+| 1 min | +0,084% | ±0,117% | 35/40 |
+| 5 min | +0,076% | ±0,176% | 40/40 |
+| 10 min | +0,116% | ±0,218% | 44/37 |
+
+Ruído, não deriva contra a entrada. Cobrar um custo que não se separa de zero
+seria inventar número.
 
 ## O ciclo, em quatro estágios
 

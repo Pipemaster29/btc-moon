@@ -291,6 +291,20 @@ export interface Vela {
   low: number;
   close: number;
   volume: number;
+  /**
+   * O que a barra negociou em DÓLAR, que é coisa diferente de `volume`.
+   *
+   * `volume` é em moeda, e moeda sem preço não compara duas barras: um milhão de
+   * tokens de US$ 0,0001 e mil de US$ 100 são a mesma barra rala em números que
+   * diferem por mil vezes. A Binance manda o total em dólar na mesma resposta,
+   * no campo 7, e é ele que `lib/carteira.ts` usa para medir quanto a ordem
+   * pesa contra o que estava girando.
+   *
+   * Opcional porque nem toda origem de vela o traz: as da Gate vêm em CONTRATOS,
+   * e contrato vezes preço não é dólar. Ausente lá de propósito — quem consome
+   * trata ausência como "não consegui medir", e não como zero.
+   */
+  quote?: number;
   takerBuy: number;
   delta: number;
 }
@@ -306,6 +320,7 @@ function paraVela(linha: unknown): Vela {
     low: Number(c[3]),
     close: Number(c[4]),
     volume,
+    quote: Number(c[7]),
     takerBuy,
     delta: takerBuy - (volume - takerBuy),
   };

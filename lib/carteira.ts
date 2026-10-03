@@ -20,15 +20,30 @@
  * escritas DEPOIS de ver os dados. Um resultado retrospectivo mediria o quanto
  * eu ajustei o painel olhando para o passado, e não o quanto ele acerta.
  *
- * O QUE ISTO NÃO MODELA, e cada um destes empurra o resultado para cima:
+ * OS DOIS ITENS QUE ESTA LISTA TINHA COMO "NÃO MODELADO", medidos em 03/10:
  *
- *   EXECUÇÃO        o preço de ENTRADA é o do retrato. Na vida real a ordem sai
- *                   segundos ou minutos depois, e numa moeda que anda 100% num
- *                   dia esses minutos custam. (A SAÍDA deixou de ter esse
- *                   problema — ver `Passo` abaixo.)
- *   PROFUNDIDADE    o custo de 0,15% por lado é uma estimativa fixa. Numa pool
- *                   de dois mil dólares — a C tem exatamente isso — uma ordem de
- *                   sessenta dólares já move o preço mais do que isso.
+ *   EXECUÇÃO        o preço de ENTRADA é o do retrato, lido até ~1 min antes do
+ *                   carimbo `t` (o panorama carimba no FIM da execução, que
+ *                   levou 55 s). A ordem real sairia em `t`. Medido com velas de
+ *                   1 min em 84 das 102 entradas, o quanto o perpétuo andou
+ *                   CONTRA a entrada desde o minuto anterior ao carimbo:
+ *
+ *                     atraso   média      ± 2 erros-padrão   a favor/contra
+ *                     0 min   +0,045%        ±0,089%            29/43
+ *                     1 min   +0,084%        ±0,117%            35/40
+ *                     5 min   +0,076%        ±0,176%            40/40
+ *                    10 min   +0,116%        ±0,218%            44/37
+ *
+ *                   Nenhum se distingue de zero: o minuto é ruído, não deriva
+ *                   contra a entrada. NÃO É COBRADO, porque cobrar um custo que
+ *                   não se separa de zero seria inventar número. Se o panorama
+ *                   passar a demorar muito mais, refaça a conta.
+ *   PROFUNDIDADE    era "o custo de 0,15% é fixo, e numa pool de dois mil
+ *                   dólares uma ordem de sessenta move mais que isso". O exemplo
+ *                   media a PRAÇA ERRADA — a carteira é perpétuo, e quem serve a
+ *                   ordem é o livro da Binance. Virou `impactoDe`: médio 0,040%
+ *                   por ponta nas 102 aberturas, máximo 0,149%, e −0,7 p.p. no
+ *                   publicado, −1,0 na escala 1,5x, −1,3 na 2x.
  *
  * O que ELA MODELA e é fácil esquecer que precisa modelar: é PERPÉTUO a 3x, não
  * mercado à vista — ela opera vendido, e vendido não existe à vista. Então
@@ -90,6 +105,13 @@ export interface Aberta {
   funding: number;
   /** Preço de liquidação nominal, sem contar o financiamento já pago. */
   precoLiquidacao: number;
+  /**
+   * Custo de ida e volta DESTA posição, em fração da MARGEM — o fixo das duas
+   * pontas mais o impacto medido na barra da entrada. Opcional porque a página
+   * lê `data/carteira.json` do GitHub raw, que pode ter sido gravado antes deste
+   * campo existir; sem ele vale a constante antiga (`custoDe`).
+   */
+  custo?: number;
   /**
    * Desde quando a leitura está CONTRA a posição, para a confirmação de saída
    * (`Regras.confirmacaoSaidaH`). Some quando a leitura volta ao lado dela.
@@ -196,6 +218,13 @@ export interface Passo {
   maxima: number;
   minima: number;
   fechamento: number;
+  /**
+   * Quanto o perpétuo NEGOCIOU nesta barra, em dólares — o campo 7 das velas da
+   * Binance, que já vinha na mesma resposta. É o que deixa o custo saber do
+   * tamanho da ordem (`impactoDe`). Opcional: onde não vem, fica só o custo
+   * fixo, que é o comportamento anterior.
+   */
+  dolares?: number;
 }
 
 export interface Fechada {
@@ -283,6 +312,11 @@ export interface Carteira {
    * perpétuo naquela hora (`foraDoPerpetuo`). Opcional: zero não é gravado.
    */
   foraDoPerpetuo?: number;
+  /**
+   * O impacto de mercado cobrado nas aberturas, e em quantas não deu para medir
+   * — "não consegui" contado, e não somado como zero. Fração do PREÇO por ponta.
+   */
+  impacto?: { medidas: number; semMedida: number; medio: number; maximo: number };
   /**
    * As moedas que chegaram em vista em algum retrato, tiradas do histórico.
    *
@@ -913,6 +947,8 @@ interface Estado {
   curva: { t: number; patrimonio: number }[];
   /** Linhas descartadas por `foraDoPerpetuo`. */
   foraDoPerpetuo?: number;
+  /** Ver `Carteira.impacto`; aqui a soma, para a média sair no fim. */
+  impacto?: { medidas: number; semMedida: number; soma: number; maximo: number };
 }
 
 /**
@@ -1052,7 +1088,73 @@ function motivoDoStop(p: Aberta, r: Regras): Motivo {
  * Esquecer isso é o erro que faz backtest alavancado parecer melhor do que é.
  */
 function sobreMargem(p: Aberta, preco: number): number {
-  return aFavor(p, preco) * ALAVANCAGEM - 2 * CUSTO * ALAVANCAGEM - p.funding;
+  return aFavor(p, preco) * ALAVANCAGEM - custoDe(p) - p.funding;
+}
+
+/**
+ * O custo de ida e volta da posição, em fração da MARGEM.
+ *
+ * Lê o campo, com a constante antiga como piso — e o piso não é zelo: a página
+ * lê `data/carteira.json` do GitHub raw, que pode ter sido gravado por uma
+ * execução anterior a este campo existir. Sem o piso, `remarcar` devolveria
+ * `NaN` no navegador — e `NaN` fura guarda (armadilha 5), então o painel
+ * quebraria em silêncio.
+ */
+function custoDe(p: Aberta): number {
+  return p.custo !== undefined && Number.isFinite(p.custo) ? p.custo : 2 * CUSTO * ALAVANCAGEM;
+}
+
+/**
+ * Teto do impacto, em fração do PREÇO por ponta. Guarda de absurdo, não escolha
+ * de modelo: uma barra que negociou dez dólares faria a raiz explodir. O maior
+ * impacto medido nas aberturas reais fica duas ordens de grandeza abaixo.
+ */
+export const IMPACTO_MAXIMO = 0.05;
+
+/**
+ * O impacto de mercado de uma ordem, em fração do PREÇO e por ponta.
+ *
+ * É a linha "PROFUNDIDADE" do topo deste arquivo virando número — e na praça
+ * CERTA. O topo citava uma pool à vista de dois mil dólares, mas esta carteira é
+ * perpétuo: quem serve a ordem é o livro da Binance, outra ordem de grandeza.
+ *
+ * O modelo é a lei da raiz, o padrão da literatura de microestrutura: o impacto
+ * anda com a volatilidade da barra e com a RAIZ da participação, `σ × √(Q/V)`
+ * — Q o nocional da ordem, V o que a barra negociou, σ a amplitude da própria
+ * barra. É modelo e não medição deste livro: não há execução real aqui para
+ * calibrar, e a constante fica em 1.
+ *
+ * A barra é a ÚLTIMA FECHADA ANTES da ordem, e não a que a contém: a que contém
+ * a entrada carrega os minutos depois dela, e mesmo para estimar custo isso é
+ * olhar o futuro. A fechada é o que um robô de verdade saberia na hora.
+ *
+ * Devolve `null` quando a barra não dá para ler — volume ausente, zerado,
+ * amplitude não finita. Quem chama soma zero ao custo fixo e CONTA, em vez de
+ * fingir que mediu.
+ */
+export function impactoDe(nocional: number, v: Passo | undefined): number | null {
+  if (!v) return null;
+  const volume = v.dolares;
+  if (volume === undefined || !Number.isFinite(volume) || volume <= 0) return null;
+  if (!Number.isFinite(nocional) || nocional <= 0) return null;
+  const amplitude = (v.maxima - v.minima) / v.fechamento;
+  if (!Number.isFinite(amplitude) || amplitude < 0) return null;
+  const i = amplitude * Math.sqrt(nocional / volume);
+  return Number.isFinite(i) ? Math.min(i, IMPACTO_MAXIMO) : null;
+}
+
+/** A última vela FECHADA até `quando`, pelo índice por abertura que o juiz já monta. */
+function ultimaFechada(velas: Passo[] | undefined, quando: number): Passo | undefined {
+  if (!velas || velas.length === 0) return undefined;
+  let indice = velasPorHora.get(velas);
+  if (!indice) {
+    indice = new Map(velas.map((v) => [v.abriuEm, v]));
+    velasPorHora.set(velas, indice);
+  }
+  // A vela que abriu uma hora antes da hora corrente é a última que já fechou;
+  // a da hora corrente ainda está em formação no instante da ordem.
+  const hora = Math.floor(quando / 3_600_000) * 3_600_000;
+  return indice.get(hora - 3_600_000);
 }
 
 /**
@@ -1077,7 +1179,7 @@ function precoDeLiquidacao(lado: Lado, entrada: number): number {
  * também faz.
  */
 function precoNoRetorno(p: Aberta, retorno: number): number {
-  const favor = (retorno + 2 * CUSTO * ALAVANCAGEM + p.funding) / ALAVANCAGEM;
+  const favor = (retorno + custoDe(p) + p.funding) / ALAVANCAGEM;
   return p.lado === "long" ? p.precoEntrada * (1 + favor) : p.precoEntrada * (1 - favor);
 }
 
@@ -1733,6 +1835,19 @@ export function rodar(
       // Posição pequena demais é ruído de arredondamento contra custo fixo.
       if (valor < 1) continue;
 
+      // O IMPACTO DESTA ORDEM, e as duas pontas pagam o da entrada: é a mesma
+      // escolha conservadora que o custo fixo já fazia — cobrar tudo na abertura
+      // impede a marcação a mercado de mostrar um lucro que a saída vai comer.
+      const imp = impactoDe(valor * ALAVANCAGEM, ultimaFechada(caminho?.get(e.s), quando));
+      const conta = (estado.impacto ??= { medidas: 0, semMedida: 0, soma: 0, maximo: 0 });
+      if (imp === null) conta.semMedida++;
+      else {
+        conta.medidas++;
+        conta.soma += imp;
+        if (imp > conta.maximo) conta.maximo = imp;
+      }
+      const custo = 2 * (CUSTO + (imp ?? 0)) * ALAVANCAGEM;
+
       estado.caixa -= valor;
       const nova: Aberta = {
         symbol: e.s,
@@ -1745,7 +1860,8 @@ export function rodar(
         valor,
         forca,
         precoAtual: entrada,
-        retorno: -2 * CUSTO * ALAVANCAGEM,
+        retorno: -custo,
+        custo,
         funding: 0,
         ultimoFunding: quando,
         ultimaTaxa: fund.get(e.s) ?? null,
@@ -1807,6 +1923,16 @@ function montar(estado: Estado, comecouEm: number, atualizadoEm: number): Cartei
     maiorRiscoAberto: estado.maiorRiscoAberto,
     curva: estado.curva,
     ...(estado.foraDoPerpetuo ? { foraDoPerpetuo: estado.foraDoPerpetuo } : {}),
+    ...(estado.impacto
+      ? {
+          impacto: {
+            medidas: estado.impacto.medidas,
+            semMedida: estado.impacto.semMedida,
+            medio: estado.impacto.medidas > 0 ? estado.impacto.soma / estado.impacto.medidas : 0,
+            maximo: estado.impacto.maximo,
+          },
+        }
+      : {}),
     regras: estado.regras,
     freio: freioDeQueda(estado.regras, patrimonio, estado.pico),
     riscoAberto: riscoAberto(estado),

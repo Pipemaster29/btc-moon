@@ -192,6 +192,61 @@ console.log("\n--- nas pontas, stop e alvo executam no NÍVEL da ordem ---");
   }
 }
 
+console.log("\n--- o impacto de mercado: o custo sabe do tamanho da ordem ---");
+{
+  // `σ × √(Q/V)` na última barra FECHADA antes da ordem — no livro do
+  // perpétuo, que é quem serve esta carteira, e não na pool.
+  const es: Emissao[] = [{ t: h(1), s: "X", preco: 1, vies: "long", forca: 3, fund: 0 }];
+  const barra = (dolares: number | undefined, abriu = h(0)): Passo => ({
+    abriuEm: abriu * 1000,
+    fechouEm: (abriu + 3600) * 1000,
+    abertura: 1,
+    maxima: 1.05,
+    minima: 0.95,
+    fechamento: 1,
+    ...(dolares !== undefined ? { dolares } : {}),
+  });
+  const custoFixo = 2 * 0.0015 * ALAVANCAGEM;
+  const grossa = rodar(es, T0 * 1000, new Map([["X", [barra(1e9)]]]));
+  const rala = rodar(es, T0 * 1000, new Map([["X", [barra(1e4)]]]));
+  const cega = rodar(es, T0 * 1000, new Map([["X", [barra(undefined)]]]));
+  confere(
+    "barra rala custa mais que barra grossa",
+    (rala.abertas[0]?.custo ?? 0) > (grossa.abertas[0]?.custo ?? 0) + 1e-6,
+    `${((rala.abertas[0]?.custo ?? 0) * 100).toFixed(3)}% vs ${((grossa.abertas[0]?.custo ?? 0) * 100).toFixed(3)}% da margem`,
+  );
+  confere(
+    "barra grossa fica no custo fixo",
+    Math.abs((grossa.abertas[0]?.custo ?? 0) - custoFixo) < 5e-4,
+    `${((grossa.abertas[0]?.custo ?? 0) * 100).toFixed(4)}% contra ${(custoFixo * 100).toFixed(2)}%`,
+  );
+  // "Não consegui medir" não pode virar "não houve impacto" em silêncio: paga só
+  // o fixo — o comportamento anterior — e é CONTADA.
+  confere(
+    "barra sem volume não inventa impacto, e é contada",
+    Math.abs((cega.abertas[0]?.custo ?? 0) - custoFixo) < 1e-12 &&
+      cega.impacto?.semMedida === 1 &&
+      cega.impacto?.medidas === 0,
+    `custo ${((cega.abertas[0]?.custo ?? 0) * 100).toFixed(2)}%, ${cega.impacto?.semMedida} sem medida`,
+  );
+  // A barra que CONTÉM a ordem carrega os minutos depois dela: mesmo para
+  // estimar custo, usá-la é olhar o futuro. Só ela, rala, e nada fechado antes:
+  // não há o que medir.
+  const futuro = rodar(es, T0 * 1000, new Map([["X", [barra(1e4, h(1))]]]));
+  confere(
+    "a barra em formação na hora da ordem não é usada",
+    futuro.impacto?.semMedida === 1 && Math.abs((futuro.abertas[0]?.custo ?? 0) - custoFixo) < 1e-12,
+    `${futuro.impacto?.medidas} medida(s), ${futuro.impacto?.semMedida} sem`,
+  );
+  // E o custo inteiro entra no retorno desde a abertura: a marcação não mostra
+  // um lucro que a saída vai comer.
+  confere(
+    "o retorno de abertura é menos o custo inteiro",
+    Math.abs((rala.abertas[0]?.retorno ?? 0) + (rala.abertas[0]?.custo ?? 0)) < 1e-12,
+    `${((rala.abertas[0]?.retorno ?? 0) * 100).toFixed(3)}%`,
+  );
+}
+
 console.log("\n--- o caso que preocupa: lixo e volta ---");
 const c = rodar(
   [
