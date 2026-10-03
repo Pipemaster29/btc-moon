@@ -19,6 +19,8 @@
     "replay": "tsx scripts/replay.mts",
     "descobrir": "tsx scripts/descobrir.mts",
     "garimpar": "tsx scripts/garimpar.mts",
+    "fluxo-binance": "tsx scripts/fluxo-binance.mts",
+    "medir-sinais": "tsx scripts/medir-sinais.mts",
     "aferir-garimpo": "tsx scripts/aferir-garimpo.mts",
     "aferir-tamanho": "tsx scripts/aferir-tamanho.mts",
     "auditar": "tsx scripts/auditar.mts",
@@ -36,7 +38,10 @@
     "vesting": "tsx scripts/vesting.mts",
     "carteira": "tsx scripts/carteira.mts",
     "testar-carteira": "tsx scripts/testar-carteira.mts",
-    "auditar-dados": "tsx scripts/auditar-dados.mts"
+    "testar-vivo": "tsx scripts/testar-vivo.mts",
+    "dados": "bash scripts/dados.sh baixar",
+    "auditar-dados": "tsx scripts/auditar-dados.mts",
+    "quarentena": "tsx scripts/quarentena.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

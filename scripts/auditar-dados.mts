@@ -8,7 +8,10 @@
  *
  * Rode com: npm run auditar-dados
  */
-import { readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { MOTIVOS, RISCO_TOTAL_MAXIMO } from "../lib/carteira";
+import { mesmaMoeda } from "../lib/faixa";
+import { ARQUIVO_HISTORICO } from "../lib/historico";
 
 let falhas = 0;
 function checa(nome: string, ok: boolean, detalhe = "") {
@@ -34,8 +37,59 @@ if (pan) {
       if (campo !== "price") checa(`${t}.${campo} >= 0`, (v as number) >= 0, `= ${v}`);
     }
     checa(`${t}.score entre 0 e 100`, (m.score as number) >= 0 && (m.score as number) <= 100, `= ${m.score}`);
+    // O ÁRBITRO DA POOL, conferido no que foi gravado: preço fora de 0,8–1,25
+    // do último negócio do perpétuo não pode sair do retrato (`lib/overview.ts`).
+    // Foi um preço assim — a pool rasa da HEI a 1,6–2x — que deu à carteira três
+    // "alvos" que o perpétuo nunca tocou. Retrato de antes do campo não tem
+    // `perpPrice`, e passa.
+    const pp = m.perpPrice;
+    if (typeof pp === "number" && pp > 0 && (m.price as number) > 0) {
+      const r = (m.price as number) / pp;
+      checa(`${t}: preço dentro de 0,8–1,25 do perpétuo`, mesmaMoeda(r), `= ${r.toFixed(3)}`);
+    }
   }
 } else console.log("  (ausente)");
+
+// ---- histórico do mês: a mesma invariante nas linhas, que é o que a carteira
+// e o placar leem. Só as linhas com `pp` (gravado desde 24/09). O mês pode
+// estar em um arquivo ou em dois (por quinzena desde outubro, `lib/historico.ts`).
+{
+  const mes = new Date().toISOString().slice(0, 7);
+  const todos = (await readdir("data").catch(() => [] as string[])).filter((f) => ARQUIVO_HISTORICO.test(f));
+  const doMes = todos.filter((f) => f.startsWith(`historico-${mes}`));
+  const texto = doMes.length
+    ? (await Promise.all(doMes.map((f) => readFile(`data/${f}`, "utf8").catch(() => "")))).join("\n")
+    : null;
+  console.log("histórico:");
+  // O TETO DO GITHUB, antes de ele chegar. Acima de 100 MB o push inteiro é
+  // recusado — e com ele todo retrato seguinte, não só o histórico. Em 24/09 o
+  // mês com as em vista projetava 101 MB; 80 MB dá semanas de folga para
+  // encurtar o pedaço de `arquivoDoHistorico`.
+  for (const f of todos) {
+    const mb = ((await stat(`data/${f}`).catch(() => null))?.size ?? 0) / 1e6;
+    checa(`${f} abaixo de 80 MB (o GitHub recusa acima de 100)`, mb < 80, `= ${mb.toFixed(1)} MB`);
+  }
+  if (texto) {
+    let comPp = 0;
+    let fora = 0;
+    const exemplos: string[] = [];
+    for (const l of texto.split("\n")) {
+      if (!l.includes('"pp"')) continue;
+      try {
+        const o = JSON.parse(l) as { s: string; t: number; preco: number; pp: number };
+        comPp++;
+        const r = o.preco / o.pp;
+        if (!mesmaMoeda(r)) {
+          fora++;
+          if (exemplos.length < 3) exemplos.push(`${o.s} ${new Date(o.t * 1000).toISOString().slice(0, 16)} ${r.toFixed(3)}`);
+        }
+      } catch {
+        // linha truncada: o placar e a carteira já pulam
+      }
+    }
+    checa("linhas com pp dentro de 0,8–1,25 do perpétuo", fora === 0, `(${fora} de ${comPp}: ${exemplos.join(", ")})`);
+  } else console.log("  (ausente)");
+}
 
 // ---- carteira
 const c = await ler<{
@@ -45,6 +99,8 @@ const c = await ler<{
   acertos: number; encerradas: number;
   pico?: number; quedaMaxima?: number; maiorExposicao?: number;
   maiorRiscoAberto?: number; curva?: { t: number; patrimonio: number }[];
+  riscoAberto?: number; freio?: number;
+  regras?: { freio: { piso: number } | null };
 }>("data/carteira.json");
 console.log("carteira:");
 if (c) {
@@ -66,8 +122,22 @@ if (c) {
   for (const f of c.fechadas) {
     checa("fechada: retorno >= -100%", f.retorno >= -1.0000001, `= ${f.retorno}`);
     checa("fechada: dias >= 0", f.dias >= 0);
-    checa("fechada: motivo válido",
-      ["painel mudou", "stop", "alvo", "prazo", "liquidada"].includes(f.motivo), `= ${f.motivo}`);
+    // A lista sai do código e não de um literal daqui: com "stop móvel" e "sem
+    // reação" entrando, a lista copiada reprovaria o arquivo certo — ou, pior,
+    // alguém a alargaria à mão até passar.
+    checa("fechada: motivo válido", (MOTIVOS as readonly string[]).includes(f.motivo), `= ${f.motivo}`);
+  }
+
+  // O RISCO DE AGORA, que o arquivo passou a gravar. O teto agregado é o freio
+  // que segura o pior dia; se o número gravado passar dele, o freio não
+  // segurou, e isso não pode ficar só na tela.
+  if (c.riscoAberto !== undefined) {
+    checa("risco aberto entre 0 e o teto", c.riscoAberto >= 0 && c.riscoAberto <= RISCO_TOTAL_MAXIMO + 1e-9,
+      `= ${c.riscoAberto}`);
+  }
+  if (c.freio !== undefined) {
+    const piso = c.regras?.freio?.piso ?? 1;
+    checa("freio entre o piso e 1", c.freio >= piso - 1e-9 && c.freio <= 1 + 1e-9, `= ${c.freio}`);
   }
 
   // O LADO DO RISCO. Opcional porque o arquivo do `main` pode ter sido gravado
@@ -235,7 +305,102 @@ if (gar) {
     (a, i) => i === 0 || gar.achados[i - 1].faixa.mediana7d <= a.faixa.mediana7d,
   );
   checa("ordenado pela mediana medida", ordenado);
+  // A conferência das em vista para frente, que a página soma e divide: um NaN
+  // aqui vira "NaN por mil" na tela, e um dia com mais altas que moeda-dias é
+  // conta errada, não mercado.
+  const adiante = (gar as { emVistaAdiante?: { dias?: Record<string, Record<string, { moedaDias: number; altas: number; quedas: number }>> } })
+    .emVistaAdiante;
+  for (const [d, g] of Object.entries(adiante?.dias ?? {})) {
+    for (const [nome, c] of Object.entries(g)) {
+      const ok = [c.moedaDias, c.altas, c.quedas].every((x) => Number.isInteger(x) && x >= 0) && c.altas + c.quedas <= c.moedaDias;
+      checa(`em vista adiante ${d} ${nome}: contagem coerente`, ok, JSON.stringify(c));
+    }
+  }
 } else console.log("  (ausente)");
+
+// ---- fluxo da carteira quente da Binance
+//
+// A invariante que importa é a CONTIGUIDADE: cada janela começa no bloco
+// seguinte ao fim da anterior, ou declara a lacuna. Um buraco calado viraria
+// "não entrou nada" num dia em que simplesmente não se leu — a armadilha nº 2,
+// e numa carteira que recebe dez mil transferências por hora.
+{
+  const { readdir } = await import("node:fs/promises");
+  const arquivos = (await readdir("data")).filter((f) => /^fluxo-binance-\d{4}-\d{2}\.jsonl$/.test(f)).sort();
+  console.log("fluxo-binance:");
+  if (arquivos.length === 0) console.log("  (ausente)");
+  let anterior: number | null = null;
+  for (const f of arquivos) {
+    for (const l of (await readFile(`data/${f}`, "utf8")).split("\n")) {
+      if (!l.trim()) continue;
+      let o: Record<string, unknown>;
+      try { o = JSON.parse(l); } catch { checa(`${f}: linha legível`, false, l.slice(0, 40)); continue; }
+      if ("janela" in o) {
+        const j = o.janela as { de: number; ate: number };
+        const lac = o.lacuna as { de: number; ate: number } | null;
+        checa(`${f}: janela com fim depois do começo`, j.ate >= j.de, JSON.stringify(j));
+        if (anterior !== null) {
+          const comeco = lac ? lac.de : j.de;
+          checa(`${f}: janela contígua à anterior`, comeco === anterior + 1, `anterior terminou em ${anterior}, esta começa em ${comeco}`);
+        }
+        anterior = j.ate;
+        // A SENTINELA DO EXECUTOR. A porta da DEX é reconhecida por endereço, e
+        // se a Binance trocar de executor o novo cairia calado na porta de
+        // depósito — compra de cliente virando "depósito para vender". Medido
+        // em 23/09, o executor responde por ~96% das transferências de cada
+        // janela; um desconhecido nesse papel é troca de encanamento.
+        const maior = o.maior as { addr: string; fracao: number; conhecido: boolean } | undefined;
+        if (maior) {
+          checa(`${f}: contraparte dominante é executor conhecido`, maior.conhecido || maior.fracao <= 0.5,
+            `${maior.addr} com ${(maior.fracao * 100).toFixed(0)}% das transferências`);
+        }
+      } else {
+        for (const campo of ["cmp", "vnd", "dep", "saq"]) {
+          const v = o[campo];
+          checa(`${f}: ${o.s}.${campo} finito e não negativo`, typeof v === "number" && Number.isFinite(v) && v >= 0, `= ${v}`);
+        }
+      }
+    }
+  }
+}
+
+// ---- o resumo do fluxo e a medição de sinais, que a tela lê
+//
+// Os dois são derivados — do bruto acima e das velas da Binance —, e o defeito
+// que se procura é o de sempre: um NaN ou um infinito passando para a página
+// como número. Uma cobertura acima de 1 diria "lido inteiro" sobre um dia que
+// não foi.
+{
+  const r = await ler<{ dias: { d: string; cobertura: number }[]; moedas: Record<string, unknown>[] }>(
+    "data/fluxo-binance-resumo.json",
+  );
+  console.log("fluxo-binance-resumo:");
+  if (r) {
+    for (const d of r.dias) {
+      checa(`${d.d}: cobertura entre 0 e 1`, Number.isFinite(d.cobertura) && d.cobertura >= 0 && d.cobertura <= 1, `= ${d.cobertura}`);
+    }
+    for (const m of r.moedas) {
+      for (const campo of ["dex", "dep", "bruto"]) {
+        checa(`${m.s}.${campo} finito`, typeof m[campo] === "number" && Number.isFinite(m[campo] as number), `= ${m[campo]}`);
+      }
+      checa(`${m.s}.bruto cobre os líquidos`, (m.bruto as number) + 1 >= Math.abs(m.dex as number) + Math.abs(m.dep as number) - 1,
+        `bruto ${m.bruto}, dex ${m.dex}, dep ${m.dep}`);
+    }
+  } else console.log("  (ausente)");
+
+  const s = await ler<{ sinais: { nome: string; n: number; mediana7: number; p: number; aFavor: number; moedas: number }[] }>(
+    "data/sinais.json",
+  );
+  console.log("sinais:");
+  if (s) {
+    for (const x of s.sinais) {
+      checa(`${x.nome}: mediana finita`, Number.isFinite(x.mediana7), `= ${x.mediana7}`);
+      checa(`${x.nome}: ao menos 20 eventos`, x.n >= 20, `= ${x.n}`);
+      checa(`${x.nome}: p entre 0 e 1`, x.p >= 0 && x.p <= 1, `= ${x.p}`);
+      checa(`${x.nome}: moedas a favor ≤ moedas`, x.aFavor <= x.moedas, `${x.aFavor}/${x.moedas}`);
+    }
+  } else console.log("  (ausente)");
+}
 
 console.log(falhas === 0 ? "\nTUDO OK" : `\n${falhas} FALHAS`);
 

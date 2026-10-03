@@ -60,13 +60,24 @@ jobs:
     # coisas conferidas na documentação. É esse par que torna a execução longa a
     # saída para o agendador não confiável.
     timeout-minutes: 330
+    # O TELEGRAM PARA O JOB INTEIRO, e não só para o laço do monitor: a carteira
+    # roda na abertura, no laço e no fechamento, e cada uma dessas rodadas pode
+    # abrir ou fechar posição — o aviso de trade (`lib/avisos.ts`) sai de onde a
+    # decisão foi tomada. Com o segredo só no laço, as posições decididas na
+    # abertura e no fechamento sairiam caladas.
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # 22, e não 20: o Node 20 saiu de manutenção em 30/04/2026 e o próprio
+          # runner já avisa a cada execução. Os scripts são validados em 22.22
+          # (tsc, lint, testar-carteira, testar-vivo) antes de cada commit.
+          node-version: "22"
           cache: npm
 
       # A memória entre execuções vive no cache: o runner é descartado a cada
@@ -101,19 +112,37 @@ jobs:
       - name: Retrato de abertura
         continue-on-error: true
         run: |
+          # O relógio do laço começa AQUI, e não quando o laço começa: a medição
+          # de sinais abaixo pode levar doze minutos, e o teto do job é de 330.
+          # Contando do início, o tempo dela sai do laço, e não do fechamento.
+          echo "INICIO_JOB=$(date +%s)" >> "$GITHUB_ENV"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch --quiet origin main
           git checkout --quiet -B main origin/main
+          # OS DADOS MORAM NA BRANCH `dados`, não no `main` (ver scripts/dados.sh):
+          # cada commit do robô no `main` gastava um deploy da cota diária da
+          # Vercel — 74 em 24 h, medido em 23/09. Traz os vivos para ./data
+          # ANTES de tudo, e se não conseguir, não roda: panorama sobre histórico
+          # vazio, gravado por cima, apagaria a memória do projeto.
+          bash scripts/dados.sh baixar || exit 0
+          # Uma vez só, na transição: tira do `main` os arquivos que agora moram
+          # na `dados`. Sem efeito depois disso.
+          bash scripts/dados.sh desocupar-main || echo "desocupar o main falhou, a próxima execução tenta"
           npm run panorama || exit 0
           # A carteira consome as linhas que o panorama acabou de gravar, então
           # vem depois dele e no mesmo commit. Falhar aqui não derruba o
           # retrato: ele é o dado, a carteira é a leitura em cima do dado.
           npm run carteira || echo "carteira falhou, seguindo"
-          git add data/
-          git diff --cached --quiet && exit 0
-          git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
-          git push --quiet origin HEAD:main || echo "abertura perdeu a corrida, o fechamento tenta de novo"
+          # OS SINAIS CLÁSSICOS, UMA VEZ POR DIA. `--diario` sai na hora se o
+          # `sinais.json` tem menos de 20 horas; senão coleta os 528 perpétuos
+          # em ritmo abaixo dos tetos da Binance (medido: ver o script) e grava.
+          # Na abertura e não no fechamento porque o fechamento repete em corrida
+          # perdida, e aqui ele roda uma vez. No 418 ele para sem gravar nada,
+          # para não alongar um banimento que pegaria o panorama seguinte.
+          npm run medir-sinais -- --diario || echo "medição de sinais falhou, seguindo"
+          bash scripts/dados.sh gravar "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)" \
+            || echo "abertura não gravou, o laço tenta de novo"
 
       # O RETRATO TAMBÉM ENTRA NO LAÇO, e antes só saía nas duas pontas.
       #
@@ -133,15 +162,13 @@ jobs:
       # que fique ligada.
       #
       # Doze minutos e não três: o `panorama` leva 36 segundos e faz perto de
-      # quinhentas requisições a APIs públicas gratuitas. A cada três minutos
+      # quinhentas requisições a APIs públicas gratuitas — 51 segundos desde
+      # que as 41 moedas em vista entraram (23/09, 113 moedas). A cada três minutos
       # isso multiplicaria por quatro a carga sobre DexScreener e sobre os nós
       # RPC, que é exatamente o abuso que este workflow evita desde o começo — e
       # bloqueio por abuso pararia o monitor de vez, muito pior do que decidir de
       # doze em doze minutos.
       - name: Vigiar por 5 horas, com retrato a cada 12 minutos
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -160,7 +187,9 @@ jobs:
           # de cobertura para um dia de 24 — sobra, e a sobra vira sobreposição,
           # que o grupo de concorrência enfileira em vez de colidir. O resultado
           # é vigilância contínua sem serviço externo, sem token e sem custo.
-          fim=$(( $(date +%s) + 300*60 ))
+          # Contado do início do job (gravado na abertura), para o que a
+          # abertura gastou sair daqui e não do fechamento.
+          fim=$(( ${INICIO_JOB:-$(date +%s)} + 300*60 ))
           n=0
           while [ "$(date +%s)" -lt "$fim" ]; do
             n=$((n+1))
@@ -180,15 +209,10 @@ jobs:
                 # parar.
                 git fetch --quiet origin main
                 git checkout --quiet -B main origin/main
+                bash scripts/dados.sh baixar
                 npm run panorama
                 npm run carteira || echo "carteira falhou, seguindo"
-                git add data/
-                if git diff --cached --quiet; then
-                  echo "nada mudou"
-                else
-                  git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
-                  git push --quiet origin HEAD:main || echo "corrida perdida, o próximo tenta"
-                fi
+                bash scripts/dados.sh gravar "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
               ) || echo "retrato intermediário falhou, seguindo"
             fi
 
@@ -223,6 +247,7 @@ jobs:
           for tentativa in 1 2 3; do
             git fetch --quiet origin main
             git checkout --quiet -B main origin/main
+            bash scripts/dados.sh baixar || { echo "sem os dados vivos, não roda"; exit 0; }
 
             npm run panorama || { echo "panorama falhou, seguindo"; exit 0; }
             npm run carteira || echo "carteira falhou, seguindo"
@@ -234,6 +259,21 @@ jobs:
             # peneirar de três em três minutos gastaria orçamento da Binance
             # para reencontrar a mesma lista.
             npm run garimpar || echo "garimpo falhou, seguindo"
+            # O PLACAR TAMBÉM, e ele não rodava em lugar nenhum. A tela lê o
+            # `placar.json` do `main` — o painel que diz "nenhum viés separou" —
+            # e ele ficou parado na medição de 03/09 por vinte dias, com a janela
+            # antiga ao lado parecendo carimbo de frescor. Quando alguém tentou
+            # rodar à mão, ele morria com a pilha estourada sobre 126 mil
+            # linhas. Leva dois segundos e não toca em rede: lê o histórico que o
+            # panorama acabou de gravar.
+            npm run placar || echo "placar falhou, seguindo"
+            # O FLUXO DA CARTEIRA QUENTE DA BINANCE, que só existe para frente.
+            # Varre desde o último bloco lido (teto de 12 h; além disso grava
+            # LACUNA), então no fechamento — uma vez por execução — ele cobre as
+            # cinco horas do laço em ~3 minutos no nó de arquivo. No laço de 12
+            # minutos seriam 25 commits por dia de um arquivo que só serve quando
+            # somado por dia.
+            npm run fluxo-binance || echo "fluxo da Binance falhou, seguindo"
 
             # A AUDITORIA RODA ANTES DO COMMIT e o resultado vai para o log.
             #
@@ -250,14 +290,8 @@ jobs:
             # vermelho na aba Actions sem impedir a gravação.
             npm run auditar-dados || echo "AUDITORIA REPROVOU — ver acima"
 
-            git add data/
-            if git diff --cached --quiet; then
-              echo "nada mudou"
-              exit 0
-            fi
-
-            git commit --quiet -m "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
-            if git push --quiet origin HEAD:main; then
+            # Grava na branch `dados`. "Nada mudou" também sai com zero.
+            if bash scripts/dados.sh gravar "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"; then
               echo "retrato gravado na tentativa $tentativa"
               exit 0
             fi

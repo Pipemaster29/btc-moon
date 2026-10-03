@@ -307,7 +307,8 @@ export async function getLiquidez(): Promise<Liquidez | null> {
   const pares: Par[] = [];
   liquidez.forEach((p, i) => {
     const btc = fechamentos[i];
-    if (btc === null || btc <= 0) return;
+    // `!(btc > 0)` e não `btc <= 0`: NaN passaria (armadilha nº 5).
+    if (btc === null || !(btc > 0)) return;
     pares.push({ data: p.data, liq: p.v, btc });
   });
   if (pares.length < JANELA_SEMANAS + LEAD_SEMANAS) return null;

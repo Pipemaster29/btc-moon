@@ -27,6 +27,8 @@ import { getOverview, getPanorama, type PanoramaRow } from "./overview";
 import { lerVies, type Vida } from "./lifecycle";
 import { lerEstudo } from "./estudo";
 import { vestingDe } from "./vesting";
+import { daLinha, getEmVista } from "./emvista";
+import { ATIVAS } from "./watchlist";
 
 /**
  * Quando o retrato deixa de ser "agora", e quando ele está de fato parado.
@@ -212,7 +214,13 @@ async function refrescar(base: Snapshot): Promise<Snapshot> {
   // O `catch` fica NA promessa, não na corrida: se o orçamento vencer primeiro
   // e o `getOverview` falhar depois, a corrida já terminou e a rejeição viraria
   // um unhandled rejection — que no Node derruba o processo.
-  const viva = getOverview().catch(() => null);
+  //
+  // As em vista vêm do PRÓPRIO retrato, e não do estado do fluxo: o conjunto
+  // certo é o que está na tela. Sem elas aqui, as 41 moedas que entraram pela
+  // carteira da Binance ficariam com o preço do retrato enquanto a lista curada
+  // andava — duas idades na mesma tabela sem nada dizendo qual é qual.
+  const emVista = base.moedas.filter((m) => m.origem).map(daLinha);
+  const viva = getOverview([...ATIVAS, ...emVista]).catch(() => null);
   const vivas = await Promise.race([
     viva,
     new Promise<null>((r) => setTimeout(() => r(null), ORCAMENTO_VIVO_MS)),
@@ -278,7 +286,7 @@ export async function getSnapshot(): Promise<Snapshot> {
   }
 
   // 3. na mão
-  const moedas = await getPanorama();
+  const moedas = await getPanorama([...ATIVAS, ...(await getEmVista().catch(() => []))]);
   return {
     moedas,
     geradoEm: Date.now(),

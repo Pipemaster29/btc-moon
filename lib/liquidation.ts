@@ -104,7 +104,7 @@ export function reconstructPositions(
       // Fechamentos são rateados: sem saber quais posições morreram, tirar
       // proporcionalmente é a única escolha que não inventa informação.
       const total = open.reduce((sum, p) => sum + p.notional, 0);
-      if (total <= 0) continue;
+      if (!Number.isFinite(total) || total <= 0) continue;
       const survival = Math.max(0, 1 + (delta * price) / total);
       for (const position of open) position.notional *= survival;
     }
@@ -128,7 +128,10 @@ export function liquidationMap(
   const low = currentPrice * (1 - range);
   const high = currentPrice * (1 + range);
   const width = (high - low) / bins;
-  if (width <= 0) return [];
+  // `Number.isFinite`, e não só `<= 0` (armadilha nº 5): o preço chega como
+  // valor em aberto ÷ contratos, e com contratos zerados é 0/0. NaN passava o
+  // guard e o mapa saía com faixas de preço `null` e o notional inteiro nelas.
+  if (!Number.isFinite(width) || width <= 0) return [];
 
   const buckets = new Map<string, LiquidationLevel>();
 

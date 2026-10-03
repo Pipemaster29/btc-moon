@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cotacoes, fundings } from "@/lib/binance";
 import { ATIVAS } from "@/lib/watchlist";
+import { getEmVista } from "@/lib/emvista";
+import { getCarteira } from "@/lib/carteira";
 
 /**
  * O preço de agora de todas as moedas vigiadas, para a página não precisar
@@ -41,17 +43,31 @@ import { ATIVAS } from "@/lib/watchlist";
  */
 export const dynamic = "force-dynamic";
 
-/** Sem sufixo do par: é assim que a carteira e o histórico chamam a moeda. */
-const VIGIADAS = ATIVAS.filter((t) => /USDT$/.test(t.symbol)).map((t) => ({
-  ticker: t.symbol.replace(/USDT$/, ""),
-  symbol: t.symbol,
-}));
+/**
+ * Sem sufixo do par: é assim que a carteira e o histórico chamam a moeda.
+ *
+ * A lista e as em vista (`lib/emvista.ts`). As em vista mudam sozinhas, então
+ * não cabem numa constante do módulo; o estado delas vem da mesma leitura
+ * guardada que o resto da página usa, com dez minutos de cache — elas entram e
+ * saem na escala de horas.
+ */
+async function vigiadas() {
+  const [emVista, carteira] = await Promise.all([getEmVista().catch(() => []), getCarteira().catch(() => null)]);
+  const simbolos = new Set(
+    [...ATIVAS, ...emVista].filter((t) => /USDT$/.test(t.symbol)).map((t) => t.symbol),
+  );
+  // Toda posição aberta, esteja a moeda onde estiver: a que saiu de vista e
+  // ficou no retrato só por causa da posição não estava em nenhuma das duas
+  // listas, e era justo a posição com dinheiro que ficava sem preço ao vivo.
+  for (const p of carteira?.abertas ?? []) simbolos.add(`${p.symbol}USDT`);
+  return [...simbolos].map((symbol) => ({ ticker: symbol.replace(/USDT$/, ""), symbol }));
+}
 
 export interface MoedaViva {
   preco: number;
   /** Fração, não porcento. */
   variacao24h: number;
-  /** Taxa por período de 8h, quando a Binance a publica para o símbolo. */
+  /** Taxa POR PERÍODO (de 4 h na maioria destas moedas), quando a Binance a publica. */
   funding: number | null;
 }
 
@@ -64,10 +80,10 @@ export interface RespostaViva {
 export async function GET() {
   // As duas em paralelo e cada uma com direito a falhar sozinha: sem preço a
   // camada viva não serve para nada, mas sem financiamento ela ainda serve.
-  const [precos, taxas] = await Promise.all([cotacoes(), fundings()]);
+  const [precos, taxas, lista] = await Promise.all([cotacoes(), fundings(), vigiadas()]);
 
   const moedas: Record<string, MoedaViva> = {};
-  for (const { ticker, symbol } of VIGIADAS) {
+  for (const { ticker, symbol } of lista) {
     const c = precos.get(symbol);
     if (!c) continue;
     const f = taxas.get(symbol);

@@ -92,7 +92,15 @@ if (leituraViva?.move) console.log(`movimento        ${leituraViva.move.kind} ·
 if (funding.length > 0) {
   const atual = funding[funding.length - 1].taxa;
   const media = funding.reduce((s, f) => s + f.taxa, 0) / funding.length;
-  console.log(`financiamento    ${(atual * 100).toFixed(4)}% agora · ${(atual * 3 * 365 * 100).toFixed(0)}% ao ano se ficar assim`);
+  // O período sai dos próprios eventos, e não de "três por dia": das moedas do
+  // painel, 110 de 113 cobram de 4 em 4 horas (`intervalosDeFunding`).
+  const passos = funding.slice(1).map((f, i) => (f.quando - funding[i].quando) / 3_600_000).sort((a, b) => a - b);
+  const periodo = passos.length ? passos[Math.floor(passos.length / 2)] : 8;
+  const porAno = (24 / (periodo > 0 ? periodo : 8)) * 365;
+  console.log(
+    `financiamento    ${(atual * 100).toFixed(4)}% a cada ${periodo.toFixed(0)} h · ` +
+      `${(atual * porAno * 100).toFixed(0)}% ao ano se ficar assim`,
+  );
   console.log(`  média ${funding.length} períodos ${(media * 100).toFixed(4)}% · últimos 8: ${funding.slice(-8).map((f) => (f.taxa * 100).toFixed(3)).join("  ")}`);
 }
 

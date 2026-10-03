@@ -23,15 +23,39 @@
  * não filtrar.
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { garimpar, REFERENCIA_7D } from "../lib/garimpo";
+import { medirAdiante, somarAdiante, type Adiante } from "../lib/emvista";
+import type { EstadoFluxo } from "../lib/fluxo";
+import type { Vela } from "../lib/binance";
 
 const QUANTAS = Number(process.argv[2] ?? 25);
 const TETO_MCAP = process.argv[3] ? Number(process.argv[3]) * 1e6 : null;
 
 const t0 = Date.now();
-const g = await garimpar();
+const series = new Map<string, Vela[]>();
+const g = await garimpar(series);
 const levou = (Date.now() - t0) / 1000;
+
+// A TESE DAS EM VISTA, conferida com as velas que a peneira acabou de baixar.
+// Sem o estado do fluxo (rodando local sem `npm run dados`), não há grupo: fica
+// sem o campo, e a tela não mostra número nenhum em vez de mostrar zero.
+//
+// O `garimpo.json` anterior entra porque a conta é acumulada por dia: as velas
+// daqui cobrem trinta dias, e os mais velhos só existem no arquivo.
+const lerJson = <T,>(f: string) => readFile(f, "utf8").then((t) => JSON.parse(t) as T).catch(() => null);
+const [estadoFluxo, garimpoAntes] = await Promise.all([
+  lerJson<EstadoFluxo>("data/fluxo-binance.json"),
+  lerJson<{ emVistaAdiante?: Adiante }>("data/garimpo.json"),
+]);
+if (estadoFluxo) {
+  g.emVistaAdiante = medirAdiante(series, estadoFluxo, Date.now(), undefined, garimpoAntes?.emVistaAdiante ?? null);
+} else if (garimpoAntes?.emVistaAdiante) {
+  // Sem o estado do fluxo não há como contar hoje — mas o acumulado não pode
+  // sumir: a rodada seguinte recomeçaria das trinta velas e "desde 24/09"
+  // viraria janela móvel, justo o que a conta por dia existe para evitar.
+  g.emVistaAdiante = garimpoAntes.emVistaAdiante;
+}
 
 const pct = (v: number | null) =>
   v == null ? "—" : `${v >= 0 ? "+" : "−"}${(Math.abs(v) * 100).toFixed(1)}%`;
@@ -97,6 +121,17 @@ console.log(
     `piora quanto mais fundo a queda — caiu ≥50% do pico dá mediana −1,1% com 213 de 395\n` +
     `moedas, e caiu ≥95% dá média −2,4% com 2 de 17. O que se acha aqui é candidato a ESTUDO.`,
 );
+
+if (g.emVistaAdiante) {
+  const a = somarAdiante(g.emVistaAdiante);
+  const taxa = (x: { altas: number; moedaDias: number }) =>
+    x.moedaDias ? `${((x.altas / x.moedaDias) * 1000).toFixed(1)} por mil` : "—";
+  console.log(
+    `\nem vista, adiante desde ${new Date(g.emVistaAdiante.desde).toISOString().slice(0, 10)} (${a.dias} dia(s) fechados): ` +
+      `${a.emVista.altas} dia(s) de alta ≥25% em ${a.emVista.moedaDias} moeda-dias (${taxa(a.emVista)}) · ` +
+      `resto ${a.resto.altas} em ${a.resto.moedaDias} (${taxa(a.resto)}) · medido antes: 16,7 contra 4,4`,
+  );
+}
 
 await mkdir("data", { recursive: true });
 await writeFile("data/garimpo.json", `${JSON.stringify(g, null, 2)}\n`);

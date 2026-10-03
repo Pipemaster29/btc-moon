@@ -39,9 +39,18 @@ function tom(v: number | null): string {
  */
 const TETO_MCAP = 500e6;
 
-export default function GarimpoPanel({ g }: { g: Garimpo }) {
-  const novos = g.achados
-    .filter((a) => !a.naLista && !a.aposentada)
+/**
+ * `naTela` são os símbolos que a tabela já mostra. O `naLista` do arquivo só
+ * conhece a lista escrita à mão; as em vista (`lib/emvista.ts`) entraram depois
+ * dele e já têm leitura completa lá em cima — repeti-las aqui como "fora da
+ * lista" seria dizer que ninguém olhou para elas.
+ */
+export default function GarimpoPanel({ g, naTela = [] }: { g: Garimpo; naTela?: string[] }) {
+  const tela = new Set(naTela);
+  const foraDaLista = g.achados.filter((a) => !a.naLista && !a.aposentada);
+  const jaEmVista = foraDaLista.filter((a) => tela.has(a.symbol)).length;
+  const novos = foraDaLista
+    .filter((a) => !tela.has(a.symbol))
     .filter((a) => a.marketCap == null || a.marketCap <= TETO_MCAP)
     .slice(0, 10);
 
@@ -72,6 +81,8 @@ export default function GarimpoPanel({ g }: { g: Garimpo }) {
         a lista deixar de depender de quem lembrou de olhar. Ordenado pela{" "}
         <strong>mediana medida</strong> da faixa em que cada moeda caiu, não por nota
         inventada.
+        {jaEmVista > 0 &&
+          ` ${jaEmVista} das achadas fora da lista já estão na tabela, em vista, e não se repetem aqui.`}
       </p>
 
       <p className="text-xs text-[#C42B3E] dark:text-[#F6465D] mt-2 border-l-2 border-[#F6465D]/40 pl-2">

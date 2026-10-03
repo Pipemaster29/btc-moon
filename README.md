@@ -45,6 +45,29 @@ em menos de um segundo. Clicar numa abre **`/radar/[moeda]`** com o retrato
 completo: estrutura do supply, carteira por carteira, transferências grandes,
 posicionamento, mapa de liquidação e o estágio do ciclo.
 
+Na ordem em que aparecem, e a ordem é o argumento: a **carteira fictícia** com a
+curva do patrimônio contra a das regras anteriores sobre as mesmas calls; o
+**placar** dizendo que nenhum viés separou; os **sinais clássicos medidos**, uma
+barra divergente por sinal, para a pergunta "e se eu usasse RSI?" ter a resposta
+na mesma tela; as candidatas e a tabela; o **fluxo da carteira quente da
+Binance**, por porta; e o garimpo.
+
+### Ao vivo, sem servidor
+
+Preço, 24h e a marcação da carteira andam de ~3 em ~3 segundos, e isso não custa
+nada ao Vercel nem ao GitHub: depois da primeira consulta, o navegador de quem
+olha abre um WebSocket público direto com a Binance. Medido com as 71 moedas
+numa conexão só: 4 KB por segundo. Quando ele cai — rede que bloqueia, região
+que a Binance recusa, ou a rota que abre e fica muda, que existe —, a consulta
+de 15 s assume na hora e a tela diz qual dos dois está valendo.
+
+O que continua no ritmo do workflow, e por quê: **as decisões**. Abrir e fechar
+posição exige o histórico inteiro e o caminho de velas; emitir viés exige o
+estágio de vida, que custa seis meses de dados por moeda. Isso roda de ~22 em ~22
+minutos no GitHub Actions, de graça. Decidir de segundo em segundo pediria um
+servidor ligado o tempo todo — e os sinais daqui foram medidos em horizontes de
+7 dias: nenhum deles mudaria de resposta em um minuto.
+
 ## A liquidez projetada
 
 Balanço do Fed menos a conta do Tesouro menos o reverse repo é o dinheiro que de
@@ -95,6 +118,26 @@ estado das moedas, não recomendação — e é assim que a página passa a apre
 O que separou mais do que o viés foi o ESTÁGIO: "caindo do topo" mede −1,82 p.p.
 abaixo da referência em 1.619 observações, e "nota 60+" mede −5,27 p.p. — só que
 em 45 observações e 2 de 5 moedas, que é pouco para afirmar.
+
+**Remedido em 23/09, com cinco vezes mais dado** — 120.407 emissões de 73
+moedas, de 20/08 a 23/09 —, e o veredito não mudou:
+
+| viés | separa da referência | moedas que concordam |
+| --- | --- | --- |
+| short | −0,14 p.p. | 55% |
+| long | +0,01 p.p. | 47% |
+| evitar | −0,12 p.p. | 43% |
+| observar | −0,04 p.p. | 52% |
+
+O short passou a apontar ligeiramente para o lado ERRADO, e em 72 horas isso
+fica nítido nos dois meses: depois de cada call de venda o preço subiu +0,44
+p.p. contra a referência em agosto e +2,29 p.p. em setembro. É isso que a
+carteira passou a cobrar do lado vendido — ver abaixo.
+
+O placar ficou vinte dias sem rodar, e ninguém viu: ele não estava no workflow,
+e rodado à mão morria com a pilha estourada — `Math.min(...pontos)` com 126 mil
+argumentos. A tela mostrava a medição de 03/09 com a janela antiga ao lado. Hoje
+ele roda no retrato de fechamento, e o `Math.min` virou laço.
 
 ## Concentração: a moeda tem dono ou tem público?
 
@@ -221,8 +264,10 @@ o unlock procura um SALTO de 5% em 21 dias, e emissão programada não salta, el
 pinga.
 
 **Limite conhecido:** na BNB Chain o único endpoint público que serve
-`eth_getLogs` em lote guarda desde 2025-11-10. Moeda nascida antes disso não tem
-emissão varrível ali, e a varredura grava esse limite em vez de devolver zero.
+`eth_getLogs` em lote guardava desde 2025-11-10 quando medido em 02/09 — e só
+~100 horas rolantes quando medido de novo em 23/09. Moeda nascida antes do
+horizonte não tem emissão varrível ali, e a varredura grava esse limite em vez
+de devolver zero.
 
 ## Mil dólares de mentira
 
@@ -247,17 +292,110 @@ fração fixa do patrimônio até o stop, e o tamanho sai dessa conta: força 3
 arrisca 3%, força 2 arrisca 2%, força 1 arrisca 1%. Parece pouco até
 lembrar que o painel emite treze calls de uma vez num dia normal, e que cripto
 tem dia em que a lista inteira cai 25% junta. Teto de 50% de margem exposta e de
-25% de risco agregado.
+25% de risco agregado. **A carteira não opera vendido desde 25/09** — arriscava
+um quarto até então, e ainda assim o lado vendido somava −US$ 28,51 em 60
+posições; sem ele a carteira foi de −1,0% para +2,0% com as duas metades
+melhores. O painel continua dando as vendas e o placar continua medindo cada
+uma. Abaixo de 10% do pico o orçamento inteiro encolhe até um quarto em −25%,
+da gestão de 23/09, logo abaixo.
 
-**Quando sai — cinco gatilhos, o primeiro que acontecer:**
+**Quando sai — seis gatilhos, o primeiro que acontecer:**
 
 | gatilho | por quê |
 |---|---|
 | **o painel mudou de ideia** | a saída principal. A carteira segue as calls, então sai quando a call sai — sem isso ela mediria as minhas regras de saída, não o painel |
-| **stop em −25% de preço** | perto de três desvios de UM DIA: o `npm run estudar` mede volatilidade diária de 7% a 10% nestas moedas |
+| **stop em −25% de preço** | fora do ruído de um dia: o `npm run estudar` mede desvio diário mediano de 11,2% nestas moedas, então 25% são ~2,2 desvios. Mais curto foi testado e não passou — ver abaixo |
+| **sem reação em 3 dias** | a posição que não andou a favor em três dias sai. Não é stop: é o tempo dizendo que a tese de reversão não se confirmou no prazo em que costuma se confirmar |
 | **alvo em +40% de preço** | o dobro da assimetria que sustenta a regra de compra: pequena e derretida sobe mais de 20% em 21,0% das semanas |
 | **prazo de 14 dias** | as duas regras direcionais foram medidas em janelas de 7 e 14 dias; depois disso segurar deixa de ser seguir a leitura |
 | **liquidação** | a corretora não espera a regra de saída. A 3x ela fica em −32,9% de preço, depois do stop — mas um salto pode pular o stop e cair direto aqui |
+
+E **toda saída queima a call**: a moeda só volta a valer quando o viés dela sair
+daquele lado. Antes só stop e liquidação queimavam, e a posição que saía por
+prazo reabria no mesmo lote, com o mesmo viés — a PRL fez isso em 22/09, pagando
+entrada e saída para continuar onde estava.
+
+### A gestão de 23/09: perder menos com as mesmas calls
+
+Em 23/09 a carteira estava em **−11,3%, com queda máxima de −17,2%**, em 93
+posições encerradas. O diagnóstico de onde o dinheiro saiu:
+
+- **As sete que estoparam nunca estiveram no lucro.** A maior excursão a favor
+  de qualquer uma foi +7,3%, quase sempre na primeira hora; depois, sangria lenta
+  até −25%.
+- **O tempo separou as metades.** Encerradas com menos de três dias: +US$ 66.
+  Com três dias ou mais: −US$ 151.
+- **O vendido pagou o squeeze.** As 13 vendidas fechadas porque a moeda disparou
+  somaram −US$ 112 — mais que a perda inteira do lado vendido.
+
+A regra nova ataca as três e **não mexe em nada do que o painel diz**. Medida
+sobre as mesmas emissões e o mesmo caminho de velas, e — a parte que importa —
+em cada METADE da janela separadamente, começando do zero:
+
+| | inteira | 1ª metade | 2ª metade | queda máx | sem a melhor moeda |
+|---|---|---|---|---|---|
+| anterior | −14,1% | −15,1% | +3,8% | −18,7% | −19,3% (sem HEI) |
+| **publicada** | **−2,1%** | **−6,2%** | **+8,1%** | **−11,0%** | **−3,9%** (sem BEAT) |
+
+**Esta tabela foi refeita em 24/09 ao meio-dia, e a de 23/09 estava errada.** Ela dava à
+publicada +14,8%, e a HEI respondia por US$ 191 disso com três saídas no alvo
+(+46%, +64% e +66% de preço). Os três alvos eram preço de outra coisa: a pool
+rasa da HEI devolvia de vez em quando 1,6 a 2 vezes o preço do perpétuo, o
+retrato alternava entre os dois, e o perpétuo nunca passou de US$ 0,155 em
+nenhuma das três janelas. O motor já recusava o CAMINHO de velas nesses
+retratos, por ser "outra moeda" — e em seguida fechava a posição no alvo com o
+mesmo preço. Hoje cada preço de retrato é conferido contra a vela de 1h do
+perpétuo daquela hora (`foraDoPerpetuo`, em `lib/carteira.ts`): saem 211
+linhas, todas da HEI, nenhuma de outra moeda.
+
+E um stop virava liquidação. Dentro da vela de 1h o motor testava a liquidação
+antes do stop, e a vela que seguia caindo depois do stop custava a margem
+inteira no lugar de 75% dela. Mas o preço que desce cruza primeiro o nível mais
+perto — o stop, em −25%, antes da liquidação, em −33% —, e a corretora só chega
+antes quando a vela ABRE além dela. Aconteceu uma vez, na HEI de 09/09 (US$ 26,86
+perdidos onde o stop perderia US$ 20,38); sobre os mesmos dados, −2,8% viraram
+−2,1%.
+
+O que sobrevive é a conclusão sobre a gestão: com as mesmas calls, a publicada
+perde −2,1% onde a anterior perde −14,1%, e desligar qualquer peça piora (a
+tabela do `npm run carteira`). **Lucro continua não demonstrado** — e agora nem
+o número da tela sugere o contrário.
+
+**O que foi testado e não passou**, e é metade da escolha:
+
+- **Stop mais curto**, fixo (10% a 20%) ou medido na volatilidade de cada moeda
+  (2σ de um dia). Com a saída por tempo no lugar, 20% dava +17,6% e 2σ dava
+  +21,6%, com a mesma queda máxima — e era quase tudo a HEI: stop curto é
+  posição maior, e a posição maior caiu na moeda que bateu o alvo três vezes.
+  Tirando as duas moedas que mais ganharam, os dois PERDEM para o stop de 25%.
+  Refeito em 24/09, sem os alvos falsos da HEI: stop de 20% em −3,1% contra
+  −2,1% do de 25%. A decisão se mantém.
+- **Stop móvel**, de 8/12% a 20/15%: as vencedoras andam pouco (+3,9% de
+  excursão mediana) e saem pelo painel antes; o rastro só as encurtava.
+- **Mais tamanho**, 1,5x e 2x o orçamento: a queda máxima dobra e o teto passa a
+  recusar call. Sem vantagem medida, tamanho multiplica a variância.
+- **Freio de queda contínuo desde o pico**: custou retorno e piorou o pior início.
+  O que ficou só começa em −10% — nunca encosta nesta amostra, e existe para o
+  cenário que ela não tem: dois dias seguidos de tudo estopar junto custariam
+  −44% sem ele e −30% com ele.
+- **Filtros de entrada (28/09)**, contra o publicado em +4,2%:
+  - *Não comprar com financiamento alto.* No histórico, "exausta" com funding
+    ≥ 0,015% por período mede −10,6 e −6,1 pontos em 7 dias, com 16 de 23
+    moedas abaixo. Na carteira piorou em todo limite testado (+1,2% a +4,0%),
+    porque as compras dessa faixa na segunda metade deram lucro saindo pelo
+    painel.
+  - *Não comprar com varejo lotado* (mais de 3,5 contas compradas por vendida).
+    Só o 3,5 melhorou; 3 e 5 pioraram. É pico, não platô.
+- **Confirmar a entrada (28/09)**: esperar o viés durar de 30 min a 12 h antes
+  de abrir piora em todos, até −4,1%. Nestas compras o valor está em entrar
+  logo.
+- **Teto de risco e tamanho da força 1 (28/09)**: subir o teto de 25% não muda
+  nada; baixar piora. Força 1 a 1,5% deu +4,6% com a segunda metade igual, e a
+  2% piorou.
+
+`npm run carteira` imprime esta comparação **a cada retrato** — o publicado, o
+anterior, e cada peça desligada uma de cada vez, com as duas metades e a coluna
+"sem a melhor moeda" —, para ela continuar sendo medida em vez de lembrada.
 
 **Stop, alvo e liquidação disparam DENTRO do intervalo entre dois retratos.** Era
 o maior otimismo desta conta, e não era custo nem execução: era o mapa de saída
@@ -277,49 +415,10 @@ a TUT, a 12,5% de preço, metade do stop —, então as duas leituras dão o mes
 patrimônio. É um freio que ainda não foi acionado, e o script imprime os dois
 números lado a lado para continuar sendo possível ver qual é qual.
 
-São **duas resoluções**, e a fina é a que importa. A vela que contém a entrada é
-descartada de propósito — ela carrega os minutos anteriores à posição existir, e
-herdar a mínima deles inventaria uma perda, que é pior do que uma perda não
-vista. Com vela de uma hora isso cega o motor por até sessenta minutos logo
-depois de abrir, que é justamente quando estas moedas mais andam: a call saiu
-porque alguma coisa acabou de acontecer. 1500 velas de quinze minutos cobrem
-15,6 dias e a carteira já tem 20, então vão as duas — quinze minutos onde
-alcançam, uma hora antes disso —, e a cegueira de entrada cai de 60 para 15
-minutos.
-
 As velas vêm do perpétuo e os preços da carteira vêm do retrato, que prefere a
 pool à vista onde ela existe. O caminho é **ancorado** pela razão entre os dois
 — medida entre 0,96 e 1,08 nessas 16 posições — e recusado inteiro fora da faixa
 de 0,8 a 1,25: uma razão de 1,4 não é base de mercado, é outra moeda.
-
-**E aí estava o bug mais caro que esta carteira teve.** A âncora recusava o
-CAMINHO e o motor caía no teste de ponta usando **o mesmo preço recusado** para
-marcar a posição, disparar stop e alvo, e abrir posição nova. O freio julgava o
-preço numa metade do código e a outra metade nem sabia que havia julgamento.
-
-A **HEI**, 13/09 às 00h20: o retrato gravou US$ 0,1933 com o perpétuo em
-US$ 0,11606 — razão de 1,67, uma impressão ruim de pool. A posição fechou no
-**alvo a +205,1% da margem**. O alvo é +40% de preço, que a 3x são +120%: ordem
-parada em +40% não executa em +68%, e o preço nem existiu na praça onde esta
-carteira opera. Era o maior ganho do livro inteiro e era inventado.
-
-Não era caso isolado: medidas as 43.156 linhas que têm vela para comparar, 225
-estão fora da faixa — e **211 delas são da HEI**, cuja pool descola do perpétuo
-em 15,6% dos retratos. Hoje a leitura desmentida é marcada pelo preço do
-perpétuo, convertido pela última âncora aceita daquela moeda, e **não abre
-posição nenhuma**: ela serve para não deixar uma posição de pé congelada no
-escuro, e não para começar uma. O número está no terminal e na tela.
-
-**E dentro da vela, quem está mais perto da entrada dispara primeiro.** O motor
-testava liquidação antes de stop, sob o argumento de que a vela diz onde o preço
-esteve e não em que ordem — supor o pior seria conservador. O argumento vale
-entre stop e alvo, que ficam em lados **opostos** da entrada. Não vale entre
-stop e liquidação, que ficam do mesmo lado, um atrás do outro: preço dentro de
-uma barra é contínuo, e para chegar à liquidação vindo de cima ele **cruzou o
-stop no caminho**. A **SIREN**, 09/09 às 22h, abriu a vela em 0,02805 — bem
-acima do stop em 0,021487 — e desceu até 0,01745. Fechava a −100%; hoje sai no
-stop, a −79%. Vinte e um pontos de margem na pior linha do livro. O salto de
-verdade — a vela que **abre** já além do nível — continua liquidando.
 
 **Ela começa hoje, não sobre o histórico.** Rodar o motor para trás sobre os dois
 meses gravados daria um número imediato e enganoso: as regras do painel foram
@@ -327,35 +426,11 @@ ajustadas ao longo desses dois meses — o freio de perfil, o de emissão, a tra
 de alta — e todas foram escritas depois de ver os dados. Um resultado
 retrospectivo mediria o quanto eu ajustei o painel olhando para o passado.
 
-**O que a conta não cobra, e empurra o número para cima:** a diferença entre o
-preço do retrato e o preço em que a ordem de ENTRADA sairia — a saída deixou de
-ter esse problema.
-
-**A profundidade saiu dessa lista, e o motivo é que o exemplo antigo media a
-praça errada.** Ele dizia "numa pool de dois mil dólares uma ordem de sessenta
-já move mais que 0,15%" — mas esta carteira é **perpétuo**, e quem serve a ordem
-dela é o livro da Binance, não a pool à vista. Medido no livro certo, o volume
-por hora nestas moedas tem mediana de US$ 270 mil e a ordem desta conta pesa
-0,006% dele no decil de cima. O custo agora carrega um termo de impacto —
-`σ × √(Q/V)`, a lei da raiz, com a amplitude da própria barra —, e ele cobra
-**0,033% na média contra os 0,15% fixos**, com máximo de 0,075%: cerca de um
-quinto, real e não dominante.
-
-O que esse termo acrescenta não é o tamanho de hoje. É o custo passar a **saber
-do tamanho**: fixo em 0,15%, uma carteira de mil e uma de um milhão pagariam o
-mesmo por ordem na mesma moeda, o que é falso e sempre para o lado que favorece
-o resultado. Com o termo, a conta que crescer encontra o freio sozinha, na moeda
-rala antes da grossa.
-
-**O financiamento também deixou de ser aproximação.** Ele era cobrado de forma
-contínua, pro rata das horas; a Binance liquida em três instantes por dia —
-00:00, 08:00 e 16:00 UTC — e cobra de quem está com a posição de pé naquele
-instante. Quem abre às 08h10 e fecha às 15h50 não paga nada; quem abre às 07h50
-e fecha às 08h10 paga um período inteiro. Medido nas 104 posições: no agregado
-os dois modelos empatam (722,95 períodos contra 723), e **cada linha** erra até
-0,89 de período, com 42 das 104 vivendo menos de oito horas. Não muda o
-patrimônio e muda cada posição — é a regra da corretora em vez de uma
-aproximação dela.
+**O que a conta não cobra, e cada um empurra o número para cima:** a diferença
+entre o preço do retrato e o preço em que a ordem de ENTRADA sairia — a saída
+deixou de ter esse problema —, e a profundidade real da pool, já que o custo é
+0,15% por lado, fixo, e numa pool de dois mil dólares uma ordem de sessenta já
+move mais que isso.
 
 ## O ciclo, em quatro estágios
 
@@ -431,6 +506,140 @@ Então o garimpo é uma **fila de investigação**, e a página diz isso em cima
 tabela. Nenhuma moeda entra na análise completa sozinha: o próximo passo é
 sempre `npm run descobrir`, porque identificar o token errado é o erro mais caro
 daqui e já foi cometido duas vezes.
+
+## RSI, suporte, OI, smart money: medidos
+
+A pergunta veio de fora — "dá para achar trade com RSI, resistência, modelo
+estatístico, open interest, smart money?" — e nada disso tinha sido medido aqui.
+`npm run medir-sinais` mede sobre os 528 perpétuos, até mil dias de cada: 319 mil
+moeda-dias. Cada sinal é comparado com a mediana de TODAS as moedas no mesmo dia
+(senão "comprar RSI baixo" mediria o mercado subindo), conta um evento por
+episódio, aparece nas duas metades ou não conta, e é simulado como trade com
+stop, custo e funding.
+
+| sinal | 7 dias contra o mercado | moedas a favor | como trade |
+| --- | --- | --- | --- |
+| RSI < 30, comprar | −0,03 p.p. | 253/471 | ~0 |
+| a menos de 3% do suporte, comprar | +0,02 | 257/519 | −0,7% |
+| tendência (EMA20 > EMA50), comprar | −0,15 | 205/497 | −0,6% |
+| **rompeu a máxima de 20 dias, comprar** | **−0,84** | 195/498 | −0,5% |
+| **volume 3x na alta, comprar** | **−2,22** | 152/512 | −0,9% |
+| **funding ≤ −0,1%/8h, comprar o squeeze** | **−4,94** | 16/63 | — |
+| RSI > 80, vender | +3,23 | 136/226 | +0,7% |
+| pump ≥ 25% no dia, vender | +8,51 | 236/334 | −0,3% |
+| smart money compra e varejo vende | +0,39 (p = 0,21) | 68/122 | — |
+
+**Nenhum sinal de compra clássico funciona nestas moedas, e três funcionam AO
+CONTRÁRIO.** Rompimento, volume na alta e funding negativo são anti-sinais: quem
+compra o rompimento perde para o mercado, e quem aposta no squeeze dos vendidos
+perde quase 5 pontos em uma semana — quem está vendido costuma ter razão. O que
+tem efeito é vender o exagero, e é o mesmo resultado do garimpo: a direção
+acerta, o trade não paga.
+
+Um recorte parecia a exceção: vender RSI > 80 em moeda de 30 a 100 milhões, com
++2,5% por trade e stop de 2σ, positivo nas duas metades. **Atacado, caiu.** A
+mediana por trade é −8%, o resultado ajustado ao risco é +0,04 R, a faixa de 20 a
+150 milhões dá negativo, a de 100 a 200 também, o trimestre de agora é negativo,
+e 69 de 136 moedas terminam no positivo. Era sobreajuste de faixa, e a seção 3
+do script imprime o ataque a cada rodada.
+
+OI e razões de posição só existem para 30 dias na Binance, e com isso nenhum
+sinal deles tem amostra para afirmar nada.
+
+### O fluxo da carteira quente da Binance — e as duas portas dele
+
+O que sobra de "smart money" é o on-chain: quem está MOVENDO moeda, e não quem
+está apostando. A carteira `0x73D8…46Db` é o contrato quente da Binance na BNB
+Chain, e ela guarda boa parte do que circula de várias moedas pequenas — 70% da
+LYN, 59% da TRADOOR, 53% da STAR, medido em 23/09.
+
+**A primeira leitura dela saiu invertida, e o motivo vale registrar.** No dia em
+que a TAKE subiu +221%, entraram US$ 8,75 mi dela na carteira em 24 horas. Lido
+como fluxo de corretora, era holder depositando para vender — distribuição. Só
+que 97% das transferências que entram e 93% das que saem têm uma única
+contraparte, o contrato `0x6aba…1b90`, em 194 tokens. Seguindo a TAKE, o padrão
+é sempre o mesmo, na mesma transação: a pool da PancakeSwap manda para ele, e
+ele repassa para a quente — 3.699 vezes em meia hora. É o **executor de swap**:
+o cliente compra pelo app, a Binance compra na pool, a moeda cai na custódia.
+Aquela entrada era, em grande parte, **cliente comprando no meio do pump**.
+
+Então o fluxo tem duas portas, e elas dizem coisas opostas:
+
+| porta | o que é | medido na TAKE, 1 hora de 23/09 |
+| --- | --- | --- |
+| executor de swap | varejo da Binance comprando/vendendo na DEX | +US$ 2,13 mi de compra líquida (3,0% do mcap) |
+| direta | depósito e saque — o fluxo clássico | +US$ 1,13 mi de depósito líquido (1,6%) |
+
+`npm run fluxo-binance` grava as duas separadas, por moeda com perpétuo, cortando
+as janelas na meia-noite UTC. Toda janela registra a contraparte dominante: se
+a Binance trocar de executor, o novo cairia calado na porta de depósito e o
+sinal mudaria de sentido sem nada quebrar — a auditoria reprova isso.
+
+**Só existe para frente, e agora pelo motivo certo.** O único nó gratuito que
+serve esse tipo de consulta na BNB Chain guarda uma janela rolante de ~100
+horas — medido em 23/09 por busca binária. O comentário do código dizia "desde
+2025-11-10", que era verdade em 02/09 e deixou de ser sem aviso. Foram
+semeadas as ~96 horas que o nó ainda tinha; daí em diante o gravador roda no
+retrato de fechamento, e buraco maior que quatro dias é dado perdido.
+
+A seção 4 do `medir-sinais` testa as duas portas com os lados escritos ANTES de
+haver dado: depósito líquido ≥ 1% do market cap → vender; compra líquida de
+varejo na DEX ≥ 1% → vender; os espelhos → comprar. Até ter 30 eventos em 10
+moedas, com 7 dias de preço à frente de cada, ela diz "amostra insuficiente".
+
+### As moedas em vista: a carteira da Binance aponta, o painel acompanha
+
+A lista tem as moedas que alguém apontou. A pergunta foi se passar por esta
+carteira bastava para uma moeda merecer o painel sem ninguém apontar — e foi
+medida antes de virar código, sobre 200 velas diárias dos 528 perpétuos,
+**cortadas em 17/09**, antes de a carteira começar a ser lida (19/09): os pumps
+contados aconteceram antes, não são a carteira pegando o pump em andamento.
+
+| dias de alta ≥25% por mil moeda-dias | todas | vol. pequeno | médio | grande |
+| --- | --- | --- | --- | --- |
+| passaram pela carteira, fora da lista (40) | 16,7 | 9,5 | 19,0 | 22,7 |
+| passaram pela carteira e estão na lista (29) | 43,2 | 15,6 | 34,5 | 56,4 |
+| na lista, sem passar pela carteira (41) | 25,6 | 15,6 | 23,3 | 28,0 |
+| resto da Binance (414) | 4,4 | 2,7 | 5,7 | 5,3 |
+
+Entre parênteses, as moedas com 30 dias de série ou mais. As de fora da lista
+bombam **3,8 vezes** mais que o resto, nos três terços de
+volume e nas duas metades da janela (20,3 contra 5,3; 12,7 contra 3,6). E caem
+junto: dia de −25% ou pior é 6,6 por mil contra 1,0. É a assinatura do objeto
+deste painel. Não é "a maioria das manipuladas" — as 70 são 13% da praça e têm
+40% dos dias de alta ≥25% —, é concentração, três vezes o peso delas.
+
+Então elas **entram sozinhas**: todo perpétuo que o gravador identifica e não
+está na lista vira linha do painel, com a leitura inteira, marcada "em vista", e
+sai depois de 30 dias sem passar pela carteira (higiene, não medido). A
+identificação parte do CONTRATO que a Binance custodia e exige o preço da pool
+batendo com o do perpétuo — a direção oposta da busca por nome que já errou duas
+vezes. Aposentada não volta por aqui. O Telegram avisa cada uma que entra.
+
+**O que isso não mede é vantagem.** Depois do pump elas caem como o resto do
+garimpo (mediana de −15,9% em 7 dias, 21 de 28 moedas), e vender isso perde
+dinheiro. A carteira fictícia opera as calls delas como as da lista, com a
+origem gravada em cada linha do histórico, e a tela separa o resultado das duas.
+É ela que vai dizer se as em vista se comportam diferente.
+
+**E a tese é conferida para frente.** A medição acima olha o passado de moedas
+escolhidas pelo fluxo de cinco dias; o que ela prevê é que elas continuem
+bombando mais DAQUI EM DIANTE. O `npm run garimpar` já baixa as velas diárias da
+praça inteira, e com elas conta, desde 24/09, os dias de alta ≥25% de toda moeda
+que esteve em vista — a partir do dia seguinte à primeira passagem, porque o
+dia da chegada costuma ser o pump que a trouxe — contra o resto da praça. A
+página mostra os dois números com a amostra ao lado; a comparação começa a
+valer perto de mil moeda-dias em vista (~25 dias com 41 moedas: a 16,7 contra
+4,4 por mil, ~17 dias de alta contra ~4).
+
+**E elas trouxeram à tona um defeito que estava em todas.** O endereço de um
+token no DexScreener devolve também as pools em que ele é a moeda de PAGAMENTO,
+e nelas o preço é o da outra moeda. A AIOT entrou lendo o preço da AIT — 0,01846
+contra 0,05025, 2,7 vezes fora, abaixo do freio de 100 vezes — e a carteira
+abriu posição nele; a marcação ao vivo, que usa o perpétuo, a mostrava
+multiplicada por seis. Das 78 moedas com contrato, 35 aparecem como pagamento em
+alguma pool e 2 tinham essa como a mais funda, as duas em vista. Hoje a
+profundidade só conta pool em que a moeda é a base.
 
 ## E se fosse BTC, as top 100, ou ouro?
 
@@ -587,6 +796,22 @@ saída de baleia carrega o próprio placar dentro da mensagem: em 6 episódios
 medidos, 3 caíram mais de 8% em 24 horas e 5 em 48 — o modo de errar dele é
 chegar cedo, não errar a direção.
 
+**A carteira fictícia também avisa.** Cada posição que ela abre ou fecha vira uma
+mensagem — lado, força, entrada, stop, liquidação e a leitura do painel na
+abertura; motivo, resultado em dólar e dias no fechamento —, com "carteira
+fictícia · não é recomendação" na segunda linha, porque o placar ainda mede que
+os vieses não têm vantagem. A carteira é recalculada inteira a cada retrato, e
+quando uma regra muda o passado inteiro muda junto; por isso só vira aviso o que
+aconteceu desde o retrato anterior e ainda não foi avisado, com a memória no
+próprio `carteira.json`. Aviso recusado pelo Telegram é tentado de novo por até
+6 horas. A primeira mensagem, quando o recurso liga, diz que ligou — é também o
+teste de que o bot fala com a conversa certa.
+
+**Quando parece que o bot parou**, o log do Actions diz se ele falou: em 23/09,
+entre 12:45 e 16:43 UTC, uma única execução mandou 18 alertas e o Telegram
+aceitou todos. Se não chegou, a conversa configurada em `TELEGRAM_CHAT_ID` não é
+a que está sendo olhada — `npm run telegram-setup` descobre o identificador certo.
+
 ## O retrato pré-calculado
 
 Montar o panorama leva vinte segundos — dez arquivos do Data Vision por moeda,
@@ -618,13 +843,19 @@ não tem resposta — os detectores funcionam? — porque a Gate só devolve cem
 de passado, e é com essas cem horas que o placar da saída de baleia foi medido.
 
 O `vercel.json` traz um `ignoreCommand` que pula o build quando só `data/` mudou.
-Sem ele, cada retrato dispararia um deploy novo.
+Sem ele, cada retrato dispararia um deploy novo. **E não bastava:** a Vercel conta
+o build pulado como deploy, o plano gratuito cria 100 por dia, e o robô fazia 74
+commits em 24 horas. Em 23/09 a cota estourou e o merge com a tela nova ficou de
+fora. Desde então **os dados do robô moram na branch `dados`**, que a Vercel não
+vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
+`npm run dados` traz os vivos para o disco local.
 
 ## Scripts
 
 | comando | o que faz |
 | --- | --- |
 | `npm run placar` | lê o histórico de emissões e mede se o painel acertou |
+| `npm run quarentena` | julga as linhas do histórico contra as velas de 1h do perpétuo e grava em `data/quarentena.json` as que não são o preço daquela hora, para o placar pular (à mão; o retrato já não grava linha assim) |
 | `npm run carteira` | mil dólares de mentira seguindo as calls, e o que sobrou |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
@@ -632,7 +863,11 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run garimpar` | peneira os 526 perpétuos da Binance atrás do padrão |
 | `npm run aferir-garimpo` | a medição que sustenta o garimpo, refeita do zero |
 | `npm run aferir-tamanho` | o sinal por faixa de market cap — por que BTC e ouro ficam fora |
+| `npm run medir-sinais` | RSI, suporte, rompimento, OI, funding e smart money sobre os 528 perpétuos, gravado em `data/sinais.json` (`-- --diario` sai se tiver menos de 20 h) |
+| `npm run dados` | traz para `data/` os arquivos vivos do robô, que moram na branch `dados` |
+| `npm run fluxo-binance` | grava o fluxo da carteira quente da Binance desde a última rodada, separando varejo na DEX de depósito/saque, e refaz o resumo que a tela lê (`-- --resumo` só o resumo) |
 | `npm run panorama` | calcula o retrato de todas e grava em `data/` |
+| `npm run estudar` | o estudo de cada moeda — memória, volatilidade, assimetria — em `data/estudos.json` (`-- --em-vista` só as em vista; as que chegam depois o próprio retrato estuda) |
 | `npm run estagio` | classifica cada moeda por onde está na própria vida |
 | `npm run radar` | o retrato on-chain de uma moeda, no terminal |
 | `npm run monitor` | um ciclo de vigilância, com envio ao Telegram |
@@ -646,6 +881,11 @@ Sem ele, cada retrato dispararia um deploy novo.
 | `npm run telegram-setup` | descobre o chat_id do bot |
 
 Nenhuma regra nova vai para o Telegram sem passar pelo `replay` antes.
+
+Dois portões, que saem com erro quando algum caso falha: `npm run
+testar-carteira` (casos-limite da carteira, sem rede) e `npm run testar-vivo`
+(o preço ao vivo de ponta a ponta — WebSocket, queda, religação, aba oculta —
+contra a aplicação rodando: `npm run testar-vivo -- http://localhost:3000`).
 
 ## Aviso
 

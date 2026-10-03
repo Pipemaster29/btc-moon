@@ -110,8 +110,9 @@ const JANELA_HORAS = 72;
  * FICA ESCRITO QUE ISTO É ORÇAMENTO E NÃO MEDIÇÃO — e o lote de 06/09 mostrou
  * que nem o orçamento resolve. Rodadas 16 moedas da BSC: em **15 delas as 41
  * faixas da janela FALHARAM** e nada foi lido; a 16ª (CYS) leu uma transferência
- * só. Não é lentidão, é ausência de fonte: o nó de log da BNB Chain guarda desde
- * 2025-11-10 e a gênese dessas moedas é anterior — a mesma falha de 41 de 41 que
+ * só. Não é lentidão, é ausência de fonte: o nó de log da BNB Chain guardava desde
+ * 2025-11-10 (em 23/09, só ~100 horas rolantes) e a gênese dessas moedas é
+ * anterior — a mesma falha de 41 de 41 que
  * o AGENTS.md já registrava na AKE, agora medida na lista inteira.
  *
  * Então a janela da BSC continua aqui porque ela vale para moeda nascida depois
@@ -301,7 +302,8 @@ async function mapear(token: WatchedToken): Promise<Detentores | null> {
   // `concentracao: 0` é a armadilha nº 2 escrita em disco. Medido no lote da BSC
   // de 06/09: 16 moedas varridas, e em 15 delas as 41 faixas da gênese falharam
   // — as mesmas 41 de 41 que o AGENTS.md já registrava na AKE. O nó de log da
-  // BNB Chain guarda desde 2025-11-10, e a gênese dessas moedas é anterior.
+  // BNB Chain guardava desde 2025-11-10 — em 23/09, só ~100 horas rolantes —, e
+  // a gênese dessas moedas é anterior.
   //
   // Nenhuma delas tinha o que dizer, e as 16 linhas de zero que iam para o
   // arquivo só serviriam para a moeda parecer medida.

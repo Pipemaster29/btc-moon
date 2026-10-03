@@ -23,7 +23,7 @@ import {
   CHAINS,
   type Chain,
 } from "./onchain";
-import { depthOn, pairsOfToken } from "./dexscreener";
+import { depthOn, pairsOfToken, precoArbitrado, unidadesDoContrato } from "./dexscreener";
 import { precoBinance } from "./binance";
 import { findToken, labelOf, type WalletRole, type WatchedToken } from "./watchlist";
 
@@ -126,8 +126,9 @@ const ROLE_META: Record<WalletRole, { label: string; note: string }> = {
  * Monta o retrato. Lança se a moeda não tiver contrato configurado — o chamador
  * decide o que mostrar nesse caso.
  */
-export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
-  const token = findToken(symbol);
+export async function getRadar(symbol: string, dado?: WatchedToken): Promise<RadarSnapshot | null> {
+  // `dado` é a moeda em vista, que não mora em `watchlist.ts` (`lib/emvista.ts`).
+  const token = dado ?? findToken(symbol);
   if (!token?.contract) return null;
 
   const config = CHAINS[token.chain];
@@ -158,12 +159,13 @@ export async function getRadar(symbol: string): Promise<RadarSnapshot | null> {
   //
   // O perpétuo cobre o caso: é onde essas moedas negociam. A pool continua
   // mandando quando existe, porque é o preço que a própria rede pratica.
-  const price = depth?.priceUsd || perpPrice || 0;
-  const priceSource: RadarSnapshot["priceSource"] = depth?.priceUsd
-    ? "pool"
-    : perpPrice
-      ? "perpétuo"
-      : "nenhum";
+  // E a pool só manda quando é a mesma moeda que o perpétuo (`precoArbitrado`):
+  // a pool rasa da HEI, a 1,6–2x dele, inflava o valor de cada carteira.
+  const { preco: price, fonte: priceSource } = precoArbitrado(
+    depth?.priceUsd,
+    perpPrice,
+    unidadesDoContrato(token.symbol),
+  );
   const supply = toUnits(info.totalSupply, info.decimals);
 
   // Contrato não paga o próprio gás — quem o chama paga. O sinal de paralisia

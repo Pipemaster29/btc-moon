@@ -211,10 +211,6 @@ for (const [symbol, dias] of Object.entries(bruto)) {
 
     // Definições mais frouxas, para ter amostra: a rígida deu 24 observações em
     // seis mil, e com isso não se mede nada.
-    const m20 = (n: number) => {
-      const t = velas.slice(Math.max(0, velas.length - n - 1), velas.length - 1);
-      return t.length ? t.reduce((s2, v) => s2 + v.close, 0) / t.length : NaN;
-    };
     const mediaHoje = velas.slice(-20).reduce((s2, v) => s2 + v.close, 0) / Math.min(20, velas.length);
     let diasAbaixo = 0;
     for (let k = velas.length - 2; k >= 20; k--) {

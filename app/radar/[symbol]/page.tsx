@@ -8,8 +8,21 @@ import { lerEstudo, type Estudo } from "@/lib/estudo";
 import { getPlacar, type Placar } from "@/lib/placar";
 import { textoVeredito, veredito, vestingDe, type Veredito, type Vesting } from "@/lib/vesting";
 import { getRadar, type AlertLevel, type RadarSnapshot } from "@/lib/radar";
-import { getPositioning, type PositioningSnapshotView } from "@/lib/positioning";
+import { getPositioning } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
+import { daLinha, getEmVista } from "@/lib/emvista";
+import { lerGuardado } from "@/lib/guardado";
+import type { PanoramaRow } from "@/lib/overview";
+
+async function doRetrato(casa: (t: { symbol: string }) => boolean) {
+  const g = await lerGuardado<{ moedas: PanoramaRow[] }>(
+    "panorama.json",
+    (d) => (Array.isArray((d as { moedas?: unknown })?.moedas) ? (d as { moedas: PanoramaRow[] }) : null),
+    120,
+  ).catch(() => null);
+  const linha = g?.dado.moedas.find((m) => m.origem && casa(m));
+  return linha ? daLinha(linha) : undefined;
+}
 
 /**
  * O painel é leitura ao vivo da cadeia, então revalida de cinco em cinco
@@ -641,14 +654,21 @@ export default async function Page({
   // tabela do painel com link e o link dava 404, que é o tipo de erro que
   // ninguém vê até clicar.
   const alvo = decodeURIComponent(symbol).toUpperCase();
-  const token = WATCHLIST.find(
-    (t) => t.symbol === alvo || t.symbol === `${alvo}USDT`,
-  );
+  const casa = (t: { symbol: string }) => t.symbol === alvo || t.symbol === `${alvo}USDT`;
+  // A lista primeiro; as em vista só quando ela não tem — a tabela linka as
+  // duas, e sem isto o link de uma moeda que entrou sozinha dava 404.
+  // E, por último, a linha do retrato: a moeda que saiu de vista com posição
+  // aberta continua na tabela (`presasPorPosicao`) sem estar em nenhuma das
+  // duas listas, e o link dela dava 404 (achado na revisão do PR #6).
+  const token =
+    WATCHLIST.find(casa) ??
+    (await getEmVista().catch(() => [])).find(casa) ??
+    (await doRetrato(casa));
   if (!token) notFound();
 
   const [snapshot, perp] = await Promise.all([
-    token.contract ? getRadar(token.symbol) : Promise.resolve(null),
-    getPositioning(token.symbol),
+    token.contract ? getRadar(token.symbol, token) : Promise.resolve(null),
+    getPositioning(token.symbol, token),
   ]);
 
   const preco = snapshot?.priceUsd ?? perp?.price ?? 0;

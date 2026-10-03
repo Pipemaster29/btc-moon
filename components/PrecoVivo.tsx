@@ -16,7 +16,7 @@
  * pode virar "não achei", e muito menos virar zero.
  */
 
-import { useMoedaViva } from "./vivo";
+import { useMoedaViva, useVivo } from "./vivo";
 
 function sinal(v: number): string {
   if (!Number.isFinite(v) || v === 0) return "—";
@@ -41,6 +41,30 @@ function Ponto() {
       className="inline-block ml-1 h-1 w-1 rounded-full bg-[#0a7d43] dark:bg-[#0ECB81] align-middle"
       title="preço lido ao vivo na Binance, não é o do retrato"
     />
+  );
+}
+
+/**
+ * Uma frase no cabeçalho dizendo por onde o preço está chegando.
+ *
+ * O pontinho de cada linha diz QUE o número é de agora; isto diz de QUANDO em
+ * quando ele anda. Direto da Binance são ~3 s por moeda; pela consulta são
+ * quinze. E quando nada responde, a frase existe para dizer isso — a tela
+ * voltando em silêncio para o preço do retrato é o modo de falha que o projeto
+ * inteiro existe para evitar.
+ */
+export function SinalVivo() {
+  const vivo = useVivo();
+  if (vivo.estado === "buscando") return null;
+  if (vivo.estado === "sem resposta") {
+    return <span className="text-[#8a5a00] dark:text-[#F0B90B]"> · ⚠ sem cotação ao vivo, preço do retrato</span>;
+  }
+  return (
+    <span className="text-[#0a7d43] dark:text-[#0ECB81]">
+      {vivo.canal === "websocket"
+        ? " · preço e 24h ao vivo, direto da Binance, de segundos em segundos"
+        : " · preço e 24h ao vivo, a cada 15 s"}
+    </span>
   );
 }
 

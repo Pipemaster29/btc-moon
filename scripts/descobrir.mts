@@ -41,7 +41,7 @@
  * filtragem. Buscar "chainbase" acha o token na primeira tentativa.
  */
 
-import { liveStats, gateContract } from "../lib/gate";
+import { liveStats } from "../lib/gate";
 import { circulante, precoBinance } from "../lib/binance";
 import { CARTEIRAS_CEX } from "../lib/lifecycle";
 import { tokenInfo, toUnits, balancesOf } from "../lib/onchain";

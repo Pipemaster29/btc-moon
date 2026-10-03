@@ -209,8 +209,16 @@ console.log("\n=== estabilidade: alta de 1 dia ≥25%, retorno 7 dias, por metad
     const parte = obs.filter(filtro);
     const ref = mediana(parte.map((o) => o.fwd));
     const g = parte.filter((o) => o.alta1 >= 0.25);
-    const de = new Date(Math.min(...parte.map((o) => o.t)) * 1000).toISOString().slice(0, 10);
-    const ate = new Date(Math.max(...parte.map((o) => o.t)) * 1000).toISOString().slice(0, 10);
+    // Laço e não `Math.min(...parte)`: com dezenas de milhares de observações o
+    // espalhamento estoura a pilha — foi o que derrubou o `placar` em 23/09.
+    let deT = Infinity;
+    let ateT = -Infinity;
+    for (const o of parte) {
+      if (o.t < deT) deT = o.t;
+      if (o.t > ateT) ateT = o.t;
+    }
+    const de = new Date(deT * 1000).toISOString().slice(0, 10);
+    const ate = new Date(ateT * 1000).toISOString().slice(0, 10);
     console.log(
       `${nome.padEnd(17)} ${de}→${ate}  n=${String(g.length).padStart(4)}  ` +
         `mediana ${pct(mediana(g.map((o) => o.fwd)))}  referência ${pct(ref)}  ` +

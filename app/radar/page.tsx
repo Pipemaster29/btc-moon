@@ -5,8 +5,16 @@ import { getPlacar } from "@/lib/placar";
 import { getCarteira, remarcar } from "@/lib/carteira";
 import CarteiraPanel from "@/components/CarteiraPanel";
 import GarimpoPanel from "@/components/GarimpoPanel";
+import SinaisPanel from "@/components/SinaisPanel";
+import FluxoPanel from "@/components/FluxoPanel";
 import { getGarimpo } from "@/lib/garimpo";
-import { PrecoVivo, VariacaoViva } from "@/components/PrecoVivo";
+import { mesmaMoeda } from "@/lib/faixa";
+import { lerDetentores } from "@/lib/detentores";
+import { lerVesting } from "@/lib/vesting";
+import { somarAdiante, type Adiante } from "@/lib/emvista";
+import { getSinais } from "@/lib/sinais";
+import { getFluxo } from "@/lib/fluxo";
+import { PrecoVivo, SinalVivo, VariacaoViva } from "@/components/PrecoVivo";
 import type { Estagio, Vies } from "@/lib/lifecycle";
 import type { MoveKind } from "@/lib/positioning";
 
@@ -99,6 +107,26 @@ function Score({ value }: { value: number }) {
 }
 
 /**
+ * A tese das em vista conferida para frente (`medirAdiante`). O número medido
+ * antes vai junto porque é contra ele que este se lê; e com pouca amostra a
+ * frase diz que é pouca, com a conta de quando deixa de ser.
+ */
+function textoAdiante(adiante: Adiante): string {
+  const desde = new Date(adiante.desde).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+  const a = somarAdiante(adiante);
+  if (a.emVista.moedaDias === 0) return `A conferência para frente conta a partir de ${desde}, dia fechado a dia fechado.`;
+  const taxa = (g: typeof a.emVista) => (g.moedaDias ? ((g.altas / g.moedaDias) * 1000).toFixed(1).replace(".", ",") : "—");
+  // Mil moeda-dias: a 16,7 contra 4,4 por mil, são ~17 dias de alta contra ~4
+  // esperados — a partir daí a diferença medida antes, se existir, aparece.
+  const pouca = a.emVista.moedaDias < 1000;
+  return (
+    `Conferido para frente, desde ${desde}: ${taxa(a.emVista)} por mil nas em vista contra ${taxa(a.resto)} no resto ` +
+    `(${a.emVista.moedaDias.toLocaleString("pt-BR")} e ${a.resto.moedaDias.toLocaleString("pt-BR")} moeda-dias)` +
+    (pouca ? " — amostra ainda pequena; a comparação começa a valer perto de mil moeda-dias em vista." : ".")
+  );
+}
+
+/**
  * `referencia` é o instante do retrato, não o de agora.
  *
  * Era `Date.now()` chamado dentro da linha, o que dava duas coisas erradas de
@@ -108,7 +136,25 @@ function Score({ value }: { value: number }) {
  * a própria linha mostra. A janela tem de ser medida a partir de quando os
  * `unlocks` foram lidos.
  */
-function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
+/**
+ * Quando "Dono" e "Solta" foram medidos. Os dois vêm de arquivos feitos à mão
+ * (`npm run genese`, `npm run vesting`), e em 24/09 as medições eram de 06/09 e
+ * de 02–03/09 — três semanas, sem nada na tela dizendo. É a armadilha nº 6:
+ * número ao lado do preço de agora carrega a própria data.
+ */
+interface Medidas {
+  dono: Record<string, number>;
+  solta: Record<string, number>;
+}
+
+function diaMes(t: number | undefined): string | null {
+  if (!t || !Number.isFinite(t)) return null;
+  return new Date(t).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+}
+
+function Row({ row, referencia, medidas }: { row: PanoramaRow; referencia: number; medidas: Medidas }) {
+  const donoEm = diaMes(medidas.dono[row.symbol]);
+  const soltaEm = diaMes(medidas.solta[row.symbol]);
   const unlockRecente = row.vida?.unlocks?.some(
     (u) => referencia - u.quando <= 21 * 86400_000 && u.variacao >= 0.05,
   );
@@ -122,6 +168,11 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
         <p className="text-xs text-black/35 dark:text-white/35">
           {row.contract ? row.chain : "só perpétuo"}
           {row.hasWallets && " · carteiras mapeadas"}
+          {row.origem && (
+            <span title="Entrou sozinha: passou pela carteira quente da Binance com o perpétuo conferido pelo preço. Ninguém mapeou as carteiras do projeto.">
+              {" · em vista"}
+            </span>
+          )}
         </p>
       </td>
       {/* Preço e 24h continuam andando depois que a página é servida: são os dois
@@ -158,9 +209,10 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
         ) : (
           <span
             className={`tabular-nums ${row.motor.concentracao >= 0.5 ? "text-[#C42B3E] dark:text-[#F6465D]" : ""}`}
-            title={`${(row.motor.concentracao * 100).toFixed(1)}% do supply ainda está com quem o recebeu na gênese`}
+            title={`${(row.motor.concentracao * 100).toFixed(1)}% do supply ainda está com quem o recebeu na gênese${donoEm ? ` — medido em ${donoEm}` : ""}`}
           >
             {(row.motor.concentracao * 100).toFixed(0)}%
+            {donoEm && <span className="block text-[10px] text-black/35 dark:text-white/35">{donoEm}</span>}
           </span>
         )}
       </td>
@@ -172,9 +224,10 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
         ) : (
           <span
             className={`tabular-nums ${row.motor.emissao >= 0.5 ? "text-[#C42B3E] dark:text-[#F6465D]" : ""}`}
-            title={`os contratos de alocação soltam ${row.motor.emissao.toFixed(2)} pp do supply por mês`}
+            title={`os contratos de alocação soltam ${row.motor.emissao.toFixed(2)} pp do supply por mês${soltaEm ? ` — medido em ${soltaEm}` : ""}`}
           >
             {row.motor.emissao < 0.01 ? "—" : `${row.motor.emissao.toFixed(1)}pp`}
+            {soltaEm && <span className="block text-[10px] text-black/35 dark:text-white/35">{soltaEm}</span>}
           </span>
         )}
       </td>
@@ -248,12 +301,20 @@ function Row({ row, referencia }: { row: PanoramaRow; referencia: number }) {
 }
 
 export default async function Radar() {
-  const [snapshot, placar, guardada, garimpo] = await Promise.all([
+  const [snapshot, placar, guardada, garimpo, sinais, fluxo, detentores, vesting] = await Promise.all([
     getSnapshot(),
     getPlacar(),
     getCarteira(),
     getGarimpo(),
+    getSinais(),
+    getFluxo(),
+    lerDetentores().catch(() => null),
+    lerVesting().catch(() => null),
   ]);
+  const medidas: Medidas = {
+    dono: Object.fromEntries(Object.entries(detentores?.moedas ?? {}).map(([s, d]) => [s, d.medidoEm])),
+    solta: Object.fromEntries(Object.entries(vesting?.moedas ?? {}).map(([s, v]) => [s, v.medidoEm])),
+  };
   const rows = snapshot.moedas;
 
   // A carteira é recalculada só quando o retrato roda, e o painel ao lado dela
@@ -264,6 +325,16 @@ export default async function Radar() {
     ? remarcar(guardada, new Map(rows.filter((r) => r.price > 0).map((r) => [r.ticker, r.price])))
     : null;
   const comCarteiras = rows.filter((r) => r.hasWallets).length;
+  // A base pool–perpétuo de cada moeda neste retrato, para a carteira remarcar
+  // ao vivo na escala em que as posições entraram. Fora de 0,8–1,25 não é
+  // base, é leitura quebrada: fica 1, e a marcação usa o perpétuo cru.
+  const bases: Record<string, number> = {};
+  for (const r of rows) {
+    const b = r.perpPrice > 0 && r.price > 0 ? r.price / r.perpPrice : NaN;
+    if (mesmaMoeda(b) && Math.abs(b - 1) > 1e-4) bases[r.ticker] = b;
+  }
+  const emVista = rows.filter((r) => r.origem).length;
+  const adiante = garimpo?.emVistaAdiante ?? null;
 
   const porVies = (v: Vies) =>
     rows
@@ -287,7 +358,7 @@ export default async function Radar() {
           <h1 className="text-3xl font-bold">Radar de moedas manipuladas</h1>
           <p className="text-black/60 dark:text-white/60 max-w-3xl">
             {rows.length} moedas vigiadas, {comCarteiras} com carteiras mapeadas na
-            blockchain. A ordem é por quanto cada uma merece atenção agora — não por
+            blockchain{emVista > 0 && `, ${emVista} em vista`}. A ordem é por quanto cada uma merece atenção agora — não por
             tamanho, que colocaria em cima justamente as que não estão fazendo nada.
             Clique numa moeda para o retrato completo.
           </p>
@@ -313,18 +384,38 @@ export default async function Radar() {
                 viva por cima: uma coisa é o preço estar fresco, outra é o
                 retrato ter parado de ser tirado. Esconder a segunda porque a
                 primeira foi resolvida deixaria o workflow quebrado em silêncio. */}
+            {/* Os tons claros aqui eram os do modo escuro nos dois modos, e no
+                fundo claro o âmbar dá 1,73:1 — o aviso de workflow parado era
+                justamente o texto que menos se lia. */}
             {snapshot.parado ? (
-              <span className="text-[#F6465D]"> · parado há horas, confira o workflow</span>
+              <span className="text-[#C42B3E] dark:text-[#F6465D]"> · parado há horas, confira o workflow</span>
             ) : snapshot.atrasado ? (
-              <span className="text-[#F0B90B]"> · atrasado</span>
+              <span className="text-[#8a5a00] dark:text-[#F0B90B]"> · atrasado</span>
             ) : null}
             {snapshot.vivoEm !== null && snapshot.fonte !== "cálculo" && (
-              <span className="text-[#0ECB81]">
+              <span className="text-[#0a7d43] dark:text-[#0ECB81]">
                 {" "}
-                · preço, open interest e posicionamento refeitos agora
+                · preço, open interest e posicionamento refeitos na montagem da página
               </span>
             )}
+            <SinalVivo />
           </p>
+          {/* O QUE É "EM VISTA", com o número que a sustenta e o que ele não
+              diz. Sem a segunda metade, "entrou sozinha no painel" seria lido
+              como "o robô achou uma oportunidade" — e o que foi medido é que
+              elas se MEXEM, não que dá para ganhar com elas. */}
+          {emVista > 0 && (
+            <p className="text-xs text-black/50 dark:text-white/50 max-w-3xl">
+              <span className="font-medium">Em vista</span> são as {emVista} que entraram
+              sozinhas: passaram pela carteira quente da Binance na BNB Chain com o perpétuo
+              conferido pelo preço, e saem depois de 30 dias sem passar. Medido em 23/09 sobre
+              200 dias da praça inteira: essas moedas tiveram dia de alta de 25% ou mais 3,8
+              vezes mais que o resto da Binance, no mesmo tamanho e nas duas metades da janela.
+              Isso diz que elas se mexem. Que dê para ganhar com isso não está medido — a
+              carteira fictícia opera as calls delas separadas por origem, e é ela que vai dizer.
+              {adiante && <> {textoAdiante(adiante)}</>}
+            </p>
+          )}
           {snapshot.novas.length > 0 && (
             <p className="text-xs text-black/40 dark:text-white/40">
               {snapshot.novas.join(", ")} {snapshot.novas.length === 1 ? "entrou" : "entraram"} na
@@ -337,7 +428,7 @@ export default async function Radar() {
         {/* O painel dizendo o que a própria régua já acertou. Vem ANTES das
             recomendações de propósito: quem lê "vender" precisa saber, na mesma
             tela, que o viés ainda não separou de nada. */}
-        {carteira && <CarteiraPanel c={carteira} />}
+        {carteira && <CarteiraPanel c={carteira} bases={bases} />}
 
         {placar && (
           <section className="rounded-xl border border-black/10 dark:border-white/10 p-4">
@@ -386,6 +477,11 @@ export default async function Radar() {
             )}
           </section>
         )}
+
+        {/* Logo depois do placar: a pergunta seguinte de quem lê "nenhum viés
+            separou" é "e se eu usasse RSI, suporte, funding?". A resposta
+            medida fica onde a pergunta aparece. */}
+        {sinais && <SinaisPanel s={sinais} />}
 
         <div className="grid gap-4 lg:grid-cols-2">
           {[
@@ -519,7 +615,7 @@ export default async function Radar() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <Row key={row.symbol} row={row} referencia={snapshot.geradoEm} />
+                <Row key={row.symbol} row={row} referencia={snapshot.geradoEm} medidas={medidas} />
               ))}
             </tbody>
           </table>
@@ -528,7 +624,11 @@ export default async function Radar() {
         {/* Depois da tabela de propósito: estas moedas não têm contrato
             conferido, nem leitura on-chain, nem histórico. Dar a elas o topo da
             página seria dar o mesmo peso visual de uma leitura completa. */}
-        {garimpo && <GarimpoPanel g={garimpo} />}
+        {/* Depois da tabela e antes do garimpo: é dado on-chain sobre moedas que
+            a lista nem sempre tem, e ainda é descrição sem medição de vantagem. */}
+        {fluxo && <FluxoPanel f={fluxo} s={sinais} />}
+
+        {garimpo && <GarimpoPanel g={garimpo} naTela={rows.map((r) => r.symbol)} />}
 
         <p className="text-xs text-black/40 dark:text-white/40 max-w-3xl">
           Perpétuo pela API pública da Gate, mercado à vista pelo DexScreener, blockchain
