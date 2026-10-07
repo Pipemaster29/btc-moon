@@ -402,6 +402,41 @@ if (gar) {
   } else console.log("  (ausente)");
 }
 
+// ---- os robôs (`lib/robos.ts`)
+//
+// O que já quebrou na carteira e não pode nascer aqui: patrimônio que não fecha
+// com caixa mais posições, perda além da margem, stop do lado errado da
+// entrada, e um número que vira `null` no JSON — um `-Infinity` gravado sai
+// como `null` e entra no motor como zero na rodada seguinte.
+{
+  const { valorDaPosicao } = await import("../lib/robos");
+  type R = import("../lib/robos").ArquivoRobos;
+  const r = await ler<R>("data/robos.json");
+  console.log("robos:");
+  if (r) {
+    for (const e of r.robos) {
+      checa(`${e.id}: caixa finito e não negativo`, Number.isFinite(e.caixa) && e.caixa >= -1e-6, `= ${e.caixa}`);
+      const soma = e.caixa + e.abertas.reduce((s, p) => s + valorDaPosicao(p, p.precoAtual), 0);
+      checa(`${e.id}: patrimônio fecha com caixa + posições`, Math.abs(soma - e.patrimonio) <= Math.max(0.01, e.patrimonio * 1e-6), `${e.patrimonio} contra ${soma}`);
+      checa(`${e.id}: queda máxima entre −100% e 0`, e.quedaMaxima <= 0 && e.quedaMaxima >= -1, `= ${e.quedaMaxima}`);
+      checa(`${e.id}: sem moeda duplicada nas abertas`, new Set(e.abertas.map((p) => p.symbol)).size === e.abertas.length);
+      for (const p of e.abertas) {
+        for (const campo of ["precoEntrada", "nocional", "margem", "stop", "liquidacao", "melhor", "prazoAte", "funding", "ultimaVela", "fundingAte", "precoAtual"] as const) {
+          checa(`${e.id}/${p.symbol}.${campo} finito`, typeof p[campo] === "number" && Number.isFinite(p[campo] as number), `= ${p[campo]}`);
+        }
+        const doLadoCerto = p.lado === "long" ? p.stop < p.precoEntrada && p.liquidacao < p.stop : p.stop > p.precoEntrada && p.liquidacao > p.stop;
+        checa(`${e.id}/${p.symbol}: stop do lado certo e antes da liquidação`, doLadoCerto, `entrada ${p.precoEntrada} stop ${p.stop} liq ${p.liquidacao}`);
+      }
+      for (const t of e.fechadas) {
+        checa(`${e.id}/${t.symbol}: perda não passa da margem`, Number.isFinite(t.resultado) && t.resultado >= -t.margem - 1e-9, `${t.resultado} com margem ${t.margem}`);
+      }
+      let ordenada = true;
+      for (let k = 1; k < e.curva.length; k++) if (e.curva[k].t < e.curva[k - 1].t) ordenada = false;
+      checa(`${e.id}: curva em ordem de tempo`, ordenada);
+    }
+  } else console.log("  (ausente)");
+}
+
 console.log(falhas === 0 ? "\nTUDO OK" : `\n${falhas} FALHAS`);
 
 // SAI COM CÓDIGO DE ERRO, e não saía.

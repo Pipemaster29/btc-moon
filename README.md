@@ -432,6 +432,114 @@ deixou de ter esse problema —, e a profundidade real da pool, já que o custo 
 0,15% por lado, fixo, e numa pool de dois mil dólares uma ordem de sessenta já
 move mais que isso.
 
+## Os robôs: qualquer moeda, uma regra medida
+
+A carteira acima segue as calls do painel e passou cinco semanas entre US$ 1.000
+e US$ 1.100. O pedido seguinte foi o óbvio — "arrisca mais, ou melhora a
+estratégia; o melhor robô possível, qualquer moeda, de olho nas manipuladas" — e
+as duas metades tinham resposta medida.
+
+**Mais tamanho nas mesmas calls piora.** A tabela de regimes que a carteira grava
+a cada retrato já media isso em 07/10: o publicado em +6,3%, a escala 1,5x em
++1,1% e a 2x em −7,1%. Sem vantagem nas calls, tamanho compra variância, e o teto
+de risco agregado passa a recusar entrada.
+
+**Então a estratégia tinha de ser outra, e ela foi escolhida medindo.** A bancada
+baixou as velas de 1 h e o financiamento real de **676 perpétuos USDT de 01/2024 a
+09/2026 — os 152 deslistados inclusive**, sem os quais o vendido pareceria pior e o
+comprado melhor —, com custo por liquidez, stop testado dentro da vela, dentro da
+amostra até 06/2025 e fora dela depois. Média por trade, sobre o nocional, líquida:
+
+| ideia | dentro | fora | |
+| --- | --- | --- | --- |
+| surfar a vela de +20% em 1 h, sair no rastro | −0,2% a −2% | +1% a +2,4% | não passa |
+| vender o pump depois do topo | −1% a −4% | −1% a −5% | perde nas duas |
+| comprar o tombo de −8% em 1 h | +0,2% a +1,4% | −0,6% a −1,6% | vira |
+| tendência nas 20/60 mais líquidas | −0,3% a −7% | ~0 (uma monstra) | não passa |
+| financiamento extremo, qualquer lado | ± | ± | não passa |
+| vender a listagem nova 72 h depois | +5,0% | +2,5% | fraco: Sharpe 0,5 fora |
+| **vender as que mais caíram em 14 dias** | **+1,5% a +3%** | **+1% a +2,5%** | passa nas duas |
+| **comprar as que mais subiram em 30 dias** | −1% a −2% | +2% a +8% | só fora |
+
+Duas coisas que este projeto já sabia aparecem de novo pelo outro lado. Vender o
+pump perde — é o garimpo. E **perdedora continua perdendo**: por decil do retorno
+de 14 dias, o que mais caiu rende +3,1% vendido dentro e +1,4% fora; o do meio,
++0,2% e +0,8%; o que mais subiu, +0,1% e −2,2% — esse é o squeeze. É "comprar a
+derretida piora quanto mais fundo a queda", visto do lado que ganha.
+
+**Nenhuma perna sozinha é boa carteira.** A vendida é quase toda beta — vender
+qualquer altcoin líquida com stop largo deu lucro em 2024–2026, porque elas
+sangraram — e cai 40% a 60% quando as alts sobem juntas. A comprada perde devagar e
+ganha de uma vez. **Juntas, se protegem**: quando o mercado de alts despenca a
+vendida paga, quando aparece uma MYX a comprada paga. É o livro de **momento dos
+dois lados**: todo dia, compra as 5 que mais subiram em 30 dias (stop de 25%,
+rastro de 30%, até 30 dias) e vende as 5 que mais caíram em 14 (stop de 45%, 14
+dias), entre os perpétuos com US$ 20 milhões de volume. Medido com o motor que roda
+ao vivo (`npm run medir-robos`), US$ 1.000 em 08/01/2024:
+
+| tamanho por posição | inteira | dentro | fora | queda máx | Sharpe |
+| --- | --- | --- | --- | --- | --- |
+| 2% do patrimônio | +190% | | | −18% | 1,54 |
+| **4% — Momento** | **+600%** | **+104%** | **+226%** | **−34%** | **1,56** |
+| **6% — Momento turbo** | **+1.312%** | +130% | +470% | −48% | 1,59 |
+| 8% | +657% | | | −68% | 1,24 |
+
+A 8% o caixa começa a recusar entrada e o resultado piora: "arriscar mais" tem
+teto, e ele está medido.
+
+**Atacado em 26 variações e positivo nas duas metades em todas**: custo 2x e 3x,
+entrada 1 h e 3 h atrasada, decisão às 11 h ou 17 h em vez da meia-noite, k de 3 e
+de 10, volume mínimo de 5 e de 50 milhões, rastro de 20% e 40%, stops, prazos e
+janelas. O pior foi o rastro de 20% — as monstras recuam 20% várias vezes no
+caminho, e o rastro curto as vende no primeiro tranco.
+
+**E a ressalva que manda, que a página mostra numa coluna própria: o lucro recente
+vem de poucas moedas.** Tiradas as cinco que mais deram — RAVE, TUT, LAB, BEAT e MYX,
+quase todas manipuladas —, a janela inteira cai de +600% para +67%, o dentro da
+amostra quase não muda (+104% → +103%) e o **fora vira −22%**. É o formato de todo
+seguidor de tendência, e a tese só continua de pé enquanto continuarem aparecendo
+monstras. Das US$ 5.968 que a perna comprada fez, US$ 3.755 vieram de moedas que
+hoje estão no painel: a intuição de que "as manipuladas têm mais potencial" está
+medida aqui — e é também onde o risco se concentra.
+
+### A informação mais recente manda
+
+A primeira versão do motor em TypeScript media +154% fora da amostra, contra +210%
+da bancada. Comparado trade a trade, a diferença inteira estava em moedas que, no
+mesmo dia, eram das que mais subiram em 30 dias **e** das que mais caíram em 14 — a
+manipulada no meio do despejo, com a subida velha ainda na janela longa. A COAI em
+29/10/2025: comprada, estopou em −25%; vendida, +80% em 14 dias. A BEAT em
+01/01/2026: −25% contra +76%. Hoje a perna de janela mais curta escolhe primeiro, e
+as duas medições batem (+600% contra +564%). O contraexemplo existe e fica escrito:
+a AIA em 19/10/2025 foi vendida e estopou, e comprada teria feito +158%. Somado, a
+regra melhora as duas metades.
+
+### A arena
+
+Três robôs com US$ 1.000 cada, ao lado da carteira do painel:
+
+- **Momento** — o livro acima, a 4% por posição.
+- **Momento turbo** — o mesmo livro a 6%: a resposta medida a "e se arriscasse
+  mais?", com a queda de −48% que vem junto.
+- **Caça-monstra** — só a perna comprada, as 3 que mais subiram em 30 dias,
+  aceitando moeda de US$ 5 milhões. É a tese das manipuladas pura: +225% fora da
+  amostra, **−0,3% dentro**, queda de −37%.
+
+`npm run robos` roda a cada retrato do workflow. Para cada posição aberta, percorre
+as velas de 1 h fechadas desde a última rodada — stop, rastro, prazo e liquidação
+disparam na hora em que aconteceram, mesmo que o workflow tenha ficado horas parado
+—, e cobra o financiamento de cada intervalo da moeda. No primeiro retrato de cada
+dia UTC, faz o ranking da praça inteira e abre a seleção **no preço de agora**: a
+bancada entrava na abertura da meia-noite, e três horas de atraso medidas custam de
++52,8% para +42,6%. Dia inteiro sem retrato vira dia perdido, e a seleção dele não
+é feita depois — escolher hoje o que valia ontem seria escolher sabendo o que veio
+depois. Um resumo por dia vai ao Telegram.
+
+**O que eles não cobram**: a escorregada real de uma ordem de verdade (a estimada é
+de 0,10% a 0,15% por lado nestas moedas, mais a taxa de 0,05%), e o fato de a
+Binance não deixar abrir alguns desses perpétuos em certas contas e regiões. Não é
+recomendação: é a medição continuando ao vivo.
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.
@@ -784,6 +892,8 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 | `npm run placar` | lê o histórico de emissões e mede se o painel acertou |
 | `npm run quarentena` | julga as linhas do histórico contra as velas de 1h do perpétuo e grava em `data/quarentena.json` as que não são o preço daquela hora, para o placar pular (à mão; o retrato já não grava linha assim) |
 | `npm run carteira` | mil dólares de mentira seguindo as calls, e o que sobrou |
+| `npm run robos` | os robôs ao vivo: percorre as velas das posições e, uma vez por dia UTC, faz a seleção (`data/robos.json`) |
+| `npm run medir-robos` | a medição dos robôs com o mesmo motor, sobre o Data Vision de 01/2024 em diante, deslistados inclusive (`data/robos-medicao.json`; ~430 MB na primeira vez, guardados em `.cache/robos/`) |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
@@ -808,8 +918,9 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 
 Nenhuma regra nova vai para o Telegram sem passar pelo `replay` antes.
 
-Dois portões, que saem com erro quando algum caso falha: `npm run
-testar-carteira` (casos-limite da carteira, sem rede) e `npm run testar-vivo`
+Três portões, que saem com erro quando algum caso falha: `npm run
+testar-carteira` (casos-limite da carteira, sem rede), `npm run testar-robos` (o
+motor dos robôs, sem rede) e `npm run testar-vivo`
 (o preço ao vivo de ponta a ponta — WebSocket, queda, religação, aba oculta —
 contra a aplicação rodando: `npm run testar-vivo -- http://localhost:3000`).
 

@@ -40,7 +40,10 @@
     "testar-vivo": "tsx scripts/testar-vivo.mts",
     "dados": "bash scripts/dados.sh baixar",
     "auditar-dados": "tsx scripts/auditar-dados.mts",
-    "quarentena": "tsx scripts/quarentena.mts"
+    "quarentena": "tsx scripts/quarentena.mts",
+    "robos": "tsx scripts/robos.mts",
+    "medir-robos": "tsx scripts/medir-robos.mts",
+    "testar-robos": "tsx scripts/testar-robos.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

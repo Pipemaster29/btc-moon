@@ -63,6 +63,14 @@ no código, com número:
   metades melhores. As liberadas entram com força 1, e a cauda das grandes
   exaustas continua contra — 19,8% das semanas caem 20%.
 
+- **O momento dos dois lados passou — e o lucro recente é de cinco moedas
+  (07/10).** Sobre velas de 1 h e o financiamento real de 676 perpétuos, os 152
+  deslistados inclusive, de 01/2024 a 09/2026: comprar as 5 que mais subiram em
+  30 dias e vender as 5 que mais caíram em 14 rende +104% dentro e +226% fora da
+  amostra a 4% por posição, positivo nas duas metades em 26 variações atacadas.
+  Sem RAVE, TUT, LAB, BEAT e MYX, o fora vira −22%. É o robô "Momento"
+  (`lib/robos.ts`), e a página mostra as duas coisas lado a lado.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -75,6 +83,8 @@ npm install
 npm run dev          # a aplicação
 npm run panorama     # o retrato de todas as moedas → data/panorama.json
 npm run carteira     # a carteira fictícia → data/carteira.json
+npm run robos        # os robôs ao vivo → data/robos.json
+npm run medir-robos  # a medição dos robôs, com o mesmo motor → data/robos-medicao.json
 npm run dados        # traz para data/ os dados vivos do robô (branch `dados`)
 ```
 
@@ -83,7 +93,7 @@ que o robô grava moram na branch `dados`, não no `main`** (armadilha nº 10). 
 disco local eles só aparecem depois de `npm run dados`.
 
 O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` +
-`garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
+`robos` + `garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
 commita o resultado **na branch `dados`** (`scripts/dados.sh`), que a Vercel não
 vigia. **O cron pede 48 execuções por dia e o GitHub entrega cerca
 de sete** — é limitação da plataforma, contornada pela DURAÇÃO de cada execução
@@ -241,6 +251,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/estudo.ts` | como CADA moeda se move — memória, volatilidade, assimetria |
 | `lib/placar.ts` | o painel acertou? Lê o histórico de emissões |
 | `lib/carteira.ts` | a carteira fictícia. **Não importa nada de `node:` no topo** — `remarcar` roda no navegador |
+| `lib/robos.ts` | os robôs: as regras (`ROBOS`), o motor puro (`percorrer`, `decidir`, `fechar`, `marcar`) e a leitura para a página. **O mesmo motor roda a medição e o ao vivo** — e também não importa nada de `node:` |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
 | `components/vivo.ts` | a assinatura única da página: WebSocket da Binance para preço, essa rota para financiamento e como reserva |
@@ -271,6 +282,8 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/quarentena.json` | as linhas do histórico que não são o preço do perpétuo daquela hora, julgadas contra as velas de 1h: **471 em 24/09, de HEI, CAP, SYN e JCT**. O placar não toca em rede e as pula por esta lista. Linha nova fora do perpétuo não nasce mais desde o árbitro de `lib/overview.ts` | `npm run quarentena`, à mão (fica no `main`) |
 | `data/carteira.json` | a carteira, com a tabela de regimes e a curva do regime anterior em `comparacao` — a tela desenha as duas | `npm run carteira` |
+| `data/robos.json` | **do robô, na branch `dados`**: o estado de cada robô — caixa, posições com o stop e o rastro de cada uma, encerradas, curva, último dia decidido. É estado incremental, não recálculo: perder o arquivo recomeça os robôs, e por isso o script **não grava** quando o arquivo existe e não se lê | `npm run robos` |
+| `data/robos-medicao.json` | a medição dos robôs de 01/2024 a 09/2026 — janelas, trimestres, sem a melhor e sem as 5 melhores, curva diária. Fica no `main`, gerado à mão | `npm run medir-robos` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
 | `data/fluxo-binance.json` | o último bloco lido, a identificação de cada token (perpétuo e preço conferidos, última passagem) e a memória das em vista já anunciadas. **É daqui que sai o conjunto em vista** | idem |
@@ -389,6 +402,41 @@ rede. **Cada um deles quebrou de verdade** — o pior fazia mil dólares virarem
 código diferente de zero quando algum caso falha, então serve de portão.
 
 `npm run auditar-dados` confere as invariantes de tudo que está em `data/`.
+
+---
+
+## Os robôs
+
+Três carteiras fictícias que **não seguem o painel** (`lib/robos.ts`): operam
+qualquer perpétuo USDT da Binance com US$ 20 milhões de volume (o Caça-monstra
+aceita US$ 5 milhões), escolhidos por momento. A medição está no topo do arquivo
+e no README; aqui fica o que não pode ser quebrado.
+
+- **Um motor só.** `npm run medir-robos` e `npm run robos` chamam as mesmas
+  funções. Não faça uma versão "rápida" da medição: a primeira bancada (fora do
+  repositório, em Python) e a primeira versão deste motor discordaram em +210%
+  contra +154% fora da amostra, e a diferença era uma regra de ordem.
+- **A perna de janela mais curta escolhe primeiro** (`decidir`). Moeda que está
+  entre as que mais subiram em 30 dias e as que mais caíram em 14 é a manipulada
+  despejando — vendida, não comprada. Trocar a ordem custa ~70 pontos fora da
+  amostra.
+- **Entrada só no presente.** O ao vivo abre no preço de quando o retrato roda; dia
+  sem retrato é `diasPerdidos`, e a seleção dele não é feita depois. As SAÍDAS,
+  essas, vêm do caminho de velas na hora em que aconteceram.
+- **A vela da entrada fica de fora** no ao vivo (`v.t < p.abertaEm`): ela tem os
+  minutos de antes da posição existir.
+- **O rastro de uma vela é o que estava parado quando ela abriu** — a máxima da
+  própria vela só vale da seguinte em diante, como na carteira.
+- **"Não consegui" não vira "não achei".** Sem lista de símbolos ou sem preço, a
+  rodada não grava; sem velas ou financiamento de uma moeda, as posições dela
+  esperam; com menos de 90% da praça no ranking, a seleção espera.
+- **Unidades**: `stop`, `rastro` e preços são de PREÇO; `nocional`, `margem`,
+  `funding` e `resultado` são DÓLARES; `tamanho` é fração do PATRIMÔNIO.
+- **Regra nova só com a medição refeita**, e as duas colunas que mais reprovam
+  aqui são "dentro da amostra" e "sem as 5 melhores". Um robô de momento que só
+  ganha fora da amostra está medindo as monstras de 2025–2026, não uma regra.
+
+`npm run testar-robos` trava os casos-limite do motor e sai com erro se algum falha.
 
 ---
 
