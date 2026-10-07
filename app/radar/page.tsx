@@ -4,6 +4,8 @@ import { getSnapshot } from "@/lib/snapshot";
 import { getPlacar } from "@/lib/placar";
 import { getCarteira, remarcar } from "@/lib/carteira";
 import CarteiraPanel from "@/components/CarteiraPanel";
+import RobosPanel from "@/components/RobosPanel";
+import { getMedicaoRobos, getRobos } from "@/lib/robos";
 import GarimpoPanel from "@/components/GarimpoPanel";
 import SinaisPanel from "@/components/SinaisPanel";
 import FluxoPanel from "@/components/FluxoPanel";
@@ -301,7 +303,7 @@ function Row({ row, referencia, medidas }: { row: PanoramaRow; referencia: numbe
 }
 
 export default async function Radar() {
-  const [snapshot, placar, guardada, garimpo, sinais, fluxo, detentores, vesting] = await Promise.all([
+  const [snapshot, placar, guardada, garimpo, sinais, fluxo, detentores, vesting, robos, medicaoRobos] = await Promise.all([
     getSnapshot(),
     getPlacar(),
     getCarteira(),
@@ -310,6 +312,8 @@ export default async function Radar() {
     getFluxo(),
     lerDetentores().catch(() => null),
     lerVesting().catch(() => null),
+    getRobos().catch(() => null),
+    getMedicaoRobos().catch(() => null),
   ]);
   const medidas: Medidas = {
     dono: Object.fromEntries(Object.entries(detentores?.moedas ?? {}).map(([s, d]) => [s, d.medidoEm])),
@@ -429,6 +433,11 @@ export default async function Radar() {
             recomendações de propósito: quem lê "vender" precisa saber, na mesma
             tela, que o viés ainda não separou de nada. */}
         {carteira && <CarteiraPanel c={carteira} bases={bases} />}
+
+        {/* OS ROBÔS logo depois da carteira, para a comparação ser imediata:
+            a carteira segue as calls do painel, os robôs seguem uma regra
+            medida e qualquer perpétuo. */}
+        {(robos || medicaoRobos) && <RobosPanel arquivo={robos} medicao={medicaoRobos} carteira={guardada?.curva} />}
 
         {placar && (
           <section className="rounded-xl border border-black/10 dark:border-white/10 p-4">

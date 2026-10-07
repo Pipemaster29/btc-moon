@@ -134,6 +134,10 @@ jobs:
           # vem depois dele e no mesmo commit. Falhar aqui não derruba o
           # retrato: ele é o dado, a carteira é a leitura em cima do dado.
           npm run carteira || echo "carteira falhou, seguindo"
+          # OS ROBÔS (`lib/robos.ts`): percorrem as velas de 1 h das posições
+          # abertas e, no primeiro retrato de cada dia UTC, fazem a seleção.
+          # Não dependem do panorama — só leem dele quais moedas são do painel.
+          npm run robos || echo "robôs falharam, seguindo"
           # OS SINAIS CLÁSSICOS, UMA VEZ POR DIA. `--diario` sai na hora se o
           # `sinais.json` tem menos de 20 horas; senão coleta os 528 perpétuos
           # em ritmo abaixo dos tetos da Binance (medido: ver o script) e grava.
@@ -212,6 +216,7 @@ jobs:
                 bash scripts/dados.sh baixar
                 npm run panorama
                 npm run carteira || echo "carteira falhou, seguindo"
+                npm run robos || echo "robôs falharam, seguindo"
                 bash scripts/dados.sh gravar "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
               ) || echo "retrato intermediário falhou, seguindo"
             fi
@@ -251,6 +256,7 @@ jobs:
 
             npm run panorama || { echo "panorama falhou, seguindo"; exit 0; }
             npm run carteira || echo "carteira falhou, seguindo"
+            npm run robos || echo "robôs falharam, seguindo"
             # O garimpo peneira os 526 perpétuos da Binance atrás de moeda que
             # se pareça com o objeto de estudo, para a lista deixar de ser só o
             # que alguém lembrou de apontar. Roda SÓ no retrato de fechamento e

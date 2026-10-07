@@ -3,6 +3,7 @@ import { cotacoes, fundings } from "@/lib/binance";
 import { ATIVAS } from "@/lib/watchlist";
 import { getEmVista } from "@/lib/emvista";
 import { getCarteira } from "@/lib/carteira";
+import { getRobos } from "@/lib/robos";
 
 /**
  * O preço de agora de todas as moedas vigiadas, para a página não precisar
@@ -52,7 +53,11 @@ export const dynamic = "force-dynamic";
  * saem na escala de horas.
  */
 async function vigiadas() {
-  const [emVista, carteira] = await Promise.all([getEmVista().catch(() => []), getCarteira().catch(() => null)]);
+  const [emVista, carteira, robos] = await Promise.all([
+    getEmVista().catch(() => []),
+    getCarteira().catch(() => null),
+    getRobos().catch(() => null),
+  ]);
   const simbolos = new Set(
     [...ATIVAS, ...emVista].filter((t) => /USDT$/.test(t.symbol)).map((t) => t.symbol),
   );
@@ -60,6 +65,9 @@ async function vigiadas() {
   // ficou no retrato só por causa da posição não estava em nenhuma das duas
   // listas, e era justo a posição com dinheiro que ficava sem preço ao vivo.
   for (const p of carteira?.abertas ?? []) simbolos.add(`${p.symbol}USDT`);
+  // E as dos robôs, que operam qualquer perpétuo: sem isto a posição deles numa
+  // moeda fora da lista ficaria marcada no preço do último retrato.
+  for (const r of robos?.robos ?? []) for (const p of r.abertas) simbolos.add(p.symbol);
   return [...simbolos].map((symbol) => ({ ticker: symbol.replace(/USDT$/, ""), symbol }));
 }
 
