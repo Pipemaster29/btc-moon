@@ -156,6 +156,14 @@ for (const e of robos) {
       desde: Math.min(atual?.desde ?? Infinity, proxima),
       fundingDesde: Math.min(atual?.fundingDesde ?? Infinity, p.fundingAte),
     });
+    // A metade de hedge anda nas mesmas horas: as velas e o financiamento dela vêm junto.
+    if (p.hedge) {
+      const h = precisam.get(p.hedge.symbol);
+      precisam.set(p.hedge.symbol, {
+        desde: Math.min(h?.desde ?? Infinity, proxima),
+        fundingDesde: Math.min(h?.fundingDesde ?? Infinity, p.hedge.fundingAte),
+      });
+    }
   }
 }
 
@@ -190,8 +198,10 @@ for (const e of robos) {
   const lista: TradeRobo[] = [];
   for (const p of [...e.abertas]) {
     const caminho = caminhos.get(p.symbol);
-    if (caminho) {
-      const s = percorrer(p, caminho.velas, caminho.cobrancas, e);
+    // Par sem as velas do hedge espera inteiro: andar só a metade vendida deixaria o hedge num preço velho.
+    const caminhoHedge = p.hedge ? caminhos.get(p.hedge.symbol) : undefined;
+    if (caminho && (!p.hedge || caminhoHedge)) {
+      const s = percorrer(p, caminho.velas, caminho.cobrancas, e, caminhoHedge);
       if (s) {
         lista.push(fechar(e, p, s));
         continue;
@@ -200,7 +210,8 @@ for (const e of robos) {
     // Moeda que saiu de negociação: as velas que houve já foram percorridas, e
     // a posição fecha no último preço. Sem isso ela prenderia margem para sempre.
     if (status.get(p.symbol) !== "TRADING") {
-      lista.push(fechar(e, p, { preco: precos.get(p.symbol) ?? p.precoAtual, quando: agora, motivo: "sumiu" }));
+      const precoHedge = p.hedge ? precos.get(p.hedge.symbol) : undefined;
+      lista.push(fechar(e, p, { preco: precos.get(p.symbol) ?? p.precoAtual, quando: agora, motivo: "sumiu" }, precoHedge));
     }
   }
   fechadasAgora.set(e.id, lista);
@@ -215,6 +226,7 @@ const abertasAgora = new Map<string, number>();
 
 if (decidem.length > 0) {
   const janelas = [...new Set(decidem.flatMap((e) => e.regras.pernas.map((p) => p.janelaDias)))];
+  const janelasFluxo = [...new Set(decidem.flatMap((e) => e.regras.pernas.filter((p) => p.criterio === "fluxo").map((p) => p.janelaDias)))];
   const maior = Math.max(...janelas);
   const linhas: LinhaRanking[] = [];
   let responderam = 0;
@@ -237,11 +249,33 @@ if (decidem.length > 0) {
         const a = antes ? Number(antes[4]) : NaN;
         retorno[d] = a > 0 ? c / a - 1 : null;
       }
+      // O fluxo: a fração do volume em dólar dos últimos d dias que foi compra a
+      // mercado (k[10], taker buy, sobre k[7]). Dia que falta anula a janela.
+      let fluxo: Record<number, number | null> | undefined;
+      if (janelasFluxo.length > 0) {
+        fluxo = {};
+        for (const d of janelasFluxo) {
+          let qv = 0;
+          let tb = 0;
+          let inteira = true;
+          for (let k = 1; k <= d; k++) {
+            const dia = porDia.get(hoje - k * DIA);
+            if (!dia) {
+              inteira = false;
+              break;
+            }
+            qv += Number(dia[7]);
+            tb += Number(dia[10]);
+          }
+          fluxo[d] = inteira && qv > 0 && Number.isFinite(tb) ? tb / qv : null;
+        }
+      }
       linhas.push({
         symbol: s.symbol,
         retorno,
         volume: Number(ontem[7]),
         idadeDias: s.onboardDate > 0 ? (hoje - HORA - s.onboardDate) / DIA : null,
+        ...(fluxo ? { fluxo } : {}),
       });
     }),
   );
@@ -343,6 +377,10 @@ for (const e of robos) {
     const preco = precos.get(p.symbol);
     // O mesmo freio de lixo da carteira: dez vezes de um retrato para o outro não é mercado.
     if (preco !== undefined && preco / p.precoAtual < 10 && p.precoAtual / preco < 10) p.precoAtual = preco;
+    if (p.hedge && p.hedge.liquidadaEm === undefined) {
+      const ph = precos.get(p.hedge.symbol);
+      if (ph !== undefined && ph / p.hedge.precoAtual < 10 && p.hedge.precoAtual / ph < 10) p.hedge.precoAtual = ph;
+    }
   }
   marcar(e, agora);
 }

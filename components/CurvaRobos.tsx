@@ -12,11 +12,13 @@
  * curva, a régua é linear.
  *
  * AS CORES saem da paleta de referência da skill `dataviz` e foram VALIDADAS
- * contra as duas superfícies do site: azul, laranja e verde-água na ordem fixa,
- * separação sob daltonismo ΔE 9,2 no claro e 9,4 no escuro (alvo 8), visão
- * normal 27,6 e 26,5 (piso 15), contra o `zinc-50` e o preto da página. O
- * verde-água fica a 2,7:1 do fundo claro — abaixo
- * dos 3:1 —, e por isso toda linha tem rótulo direto na ponta e legenda: a
+ * contra as duas superfícies do site: azul, laranja, verde-água e amarelo na
+ * ordem fixa da paleta, e cada robô com a SUA cor, não a da posição na lista.
+ * Com as quatro, validadas em 08/10 no par vizinho de linhas: separação sob
+ * daltonismo ΔE 9,1 no claro e 8,4 no escuro (alvo 8), visão normal 22,9 e
+ * 19,8 (piso 15), contra o `zinc-50` e o preto da página. O verde-água (2,7:1)
+ * e o amarelo (2,07:1) ficam abaixo dos 3:1 no fundo claro, e por isso toda
+ * linha tem rótulo direto na ponta e legenda, e a tabela vem embaixo: a
  * identidade nunca depende só da cor. A carteira do painel entra em cinza,
  * como contexto e não como série a identificar — o mesmo arranjo da
  * `CurvaCarteira`.
@@ -28,6 +30,7 @@ export const CORES_ROBOS = [
   "[--robo-1:#2a78d6] dark:[--robo-1:#3987e5]",
   "[--robo-2:#eb6834] dark:[--robo-2:#d95926]",
   "[--robo-3:#1baf7a] dark:[--robo-3:#199e70]",
+  "[--robo-4:#eda100] dark:[--robo-4:#c98500]",
   "[--robo-ctx:#898781] dark:[--robo-ctx:#8f8e88]",
 ].join(" ");
 

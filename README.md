@@ -603,9 +603,87 @@ as duas medições batem (+600% contra +564%). O contraexemplo existe e fica esc
 a AIA em 19/10/2025 foi vendida e estopou, e comprada teria feito +158%. Somado, a
 regra melhora as duas metades.
 
+### O Fluxo: um livro que não depende das monstras
+
+Depois do momento, uma rodada de livros **diferentes**, medidos do mesmo jeito — o
+modelo realista, dentro e fora da amostra, sem as 5 melhores, platô e ataque, a 3%
+por posição com o alvo de volatilidade do Momento. Quase tudo reprovou, e fica
+escrito:
+
+| ideia | o que deu |
+| --- | --- |
+| coletar o financiamento na hora da cobrança | ≈0% por evento fora da amostra: desde 07/2025 o preço cai o que a cobrança paga. O +0,4% a +1,2% de dentro era, em parte, olhar o futuro nas moedas de cobrança horária — corrigido, some |
+| carry: vender quem paga financiamento alto | −57% a −73% (é vender o momento) |
+| comprar quem recebe financiamento | +23% a −13%; sem as 5 melhores, negativo |
+| reversão de 1 e 3 dias, nos dois lados | −36% a −87% |
+| loteria: vender o maior dia dos últimos 30 | dentro +14%, fora −23% |
+| vender a listagem nova 1, 3 ou 7 dias depois | dentro +20% a +62%, fora negativo |
+| vender a divergência "preço sobe, fluxo vende" | −19% a −30% |
+| tamanho médio do negócio, volume que acorda | não passa em nenhuma direção |
+| comprar o fluxo comprador | fora +62% a +215%, dentro −6% a −36% |
+| fluxo e momento num score só | dilui o momento: +392% contra +611% |
+
+**Passou o fluxo vendedor.** O volume de cada vela da Binance diz quanto foi compra
+**a mercado** (o agressor comprador, *taker buy*). Nas moedas em que essa fração foi
+a menor dos últimos 7 dias — a venda a mercado dominou —, o preço continua indo pior
+que o resto. Sozinho o sinal é fraco (+73% a +107%, Sharpe 0,6 a 0,8) e escolhe moedas
+diferentes das da vendida do Momento (13% de sobreposição). O que o fez virar livro
+foi o **hedge**: cada venda vem com uma compra de ETH do mesmo tamanho, e a aposta
+deixa de ser "o mercado cai" para virar "esta moeda vai pior que o ETH":
+
+| fluxo vendedor, na bancada a 3%, sem o alvo | inteira | dentro | fora | sem as 5, fora | Sharpe |
+| --- | --- | --- | --- | --- | --- |
+| sem hedge | +107% | +54% | +34% | +12% | 0,78 |
+| + BTC | +281% | +186% | +31% | +11% | 1,24 |
+| **+ ETH** | **+271%** | **+90%** | **+93%** | **+64%** | **1,22** |
+| + cesta das 10 maiores altcoins | +242% | +92% | +63% | +8% | 1,11 |
+| vendida do Momento + ETH (controle) | +115% | +91% | +8% | −10% | 0,86 |
+
+O BTC sozinho fez +59% nas mesmas datas, dentro da amostra (ele foi de 43 mil a 107
+mil): o hedge de BTC infla 2024. O de ETH é o equilibrado. E o controle diz que o
+lucro é do **fluxo**, não do hedge — a vendida do Momento com o mesmo ETH faz +8% fora,
+e −10% sem as 5 melhores, contra +93% e +64% do fluxo. A bancada marca o hedge só na
+saída, então a queda e o Sharpe dela são os de um vendido sem hedge enquanto a posição
+está aberta; o motor marca as duas metades de hora em hora (abaixo).
+
+Cada peça mexida sozinha ficou positiva nas três janelas e no "sem as 5": janela de
+5, 10 e 14 dias (+99%, +176%, +143%); prazo de 7 e 21 (+114%, +252%); k de 3 e de 7
+(+172%, +236%); stop de 30% e 60% (+211%, +268%); volume de 10 e 50 milhões (+239%,
++147%); hedge de 0,5 a 1,25 do nocional (+195% a +298%). E atacado — custo de entrada
+4x +224%, escorregada dobrada +266%, entrada 1 h e 3 h atrasada +260% e +259%, custo
+do hedge a 0,3% por lado +209% — também.
+
+Medido com o motor que roda ao vivo, a **3% por posição**:
+
+| | inteira | dentro | fora | queda máx | Sharpe | sem as 5 melhores: inteira · fora |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Fluxo, 3%** | **+262%** | **+90%** | **+91%** | **−22%** | **1,60** | **+217% · +70%** |
+| com o alvo de volatilidade do Momento, 2% | +336% | +104% | +84% | −22% | 1,68 | +282% · +60% |
+
+1.573 pares, nenhum hedge liquidado (a 2x, o ETH precisaria cair 49,5% em 14 dias;
+em 2024–2026 o pior foi −42,6%). Ganha em 8 de 11 trimestres.
+
+**O alvo de volatilidade não passou nele**, do mesmo jeito que no Caça-monstra. Na
+mesma queda máxima ele melhora o dentro (+90% → +104%, com o Sharpe igual: 1,55 e
+1,56) e piora o fora (+91% → +84%, Sharpe 1,65 → 1,51). O Sharpe da janela inteira
+sobe por mudar a aposta de lugar entre as metades, não por melhorar nenhuma delas.
+
+**Por que 3% e não mais:** cada par prende margem nas duas metades, e acima disso o
+caixa começa a recusar entrada. O Sharpe fica em 1,60 de 2% a 3% (queda de −15% a
+−22%); a 3,5% são 52 recusas e 1,57, a 4% são 163 e 1,51. Daí para cima a tabela
+deixa de ser platô: 5% mede 1,47 com 606 recusas e 6% mede 1,70 com 1.061 — o robô
+vira o que sobrou do caixa, escolhido pela ordem de chegada.
+
+**O que ele é e o que não é.** Rende bem menos que o Momento. A virtude é outra, e
+está medida: o lucro dele não mora em cinco moedas — sem as 5 melhores sobram 83% do
+lucro, contra 15% no Momento — e ele anda por outro caminho: correlação diária de
+**0,16** com o Momento e **−0,22** com o Caça-monstra. Nos 123 dias em que o Momento
+caiu mais de 3% (−4,6% na média), o Fluxo fez −0,5%. Se as monstras pararem de
+aparecer, o Momento seca; o Fluxo não depende delas.
+
 ### A arena
 
-Três robôs com US$ 1.000 cada, ao lado da carteira do painel:
+Quatro robôs com US$ 1.000 cada, ao lado da carteira do painel:
 
 - **Momento** — o livro acima, a 4% por posição antes do alvo de volatilidade.
 - **Momento turbo** — o mesmo livro a 6%: a resposta medida a "e se arriscasse
@@ -616,6 +694,9 @@ Três robôs com US$ 1.000 cada, ao lado da carteira do painel:
   nele também e não entraram: o fora melhora (+188% → +554%), o dentro piora (−4%
   → −17%). A saída por posto e o alvo de volatilidade também não: na mesma queda,
   o alvo melhora o dentro (−4% → +3%) e piora o fora (+189% → +163%).
+- **Fluxo** — o livro acima: vende as 5 em que a venda a mercado mais dominou os
+  últimos 7 dias, cada uma em par com ETH, por 14 dias, a 3% por posição e sem o
+  alvo de volatilidade.
 
 Cada posição sai pela regra com que entrou — stop, rastro, prazo, pirâmide e saída
 por posto moram nela —, e a regra nova vale para as entradas. O alvo de volatilidade

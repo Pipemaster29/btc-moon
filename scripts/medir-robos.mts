@@ -33,6 +33,7 @@ import {
   decidir,
   fechar,
   marcar,
+  margemTotal,
   novoEstado,
   percorrer,
   valorDaPosicao,
@@ -132,9 +133,11 @@ function linhasCsv(zip: Uint8Array): string[][] {
 }
 
 /**
- * Um mês de uma moeda: velas [abertura, o, h, l, c, volume em dólar] e
- * financiamento [instante, taxa]. Guardado em JSON por mês, para o mês novo não
- * obrigar a rebaixar os velhos.
+ * Um mês de uma moeda: velas [abertura, o, h, l, c, volume em dólar, volume em
+ * dólar comprado A MERCADO (taker buy)] e financiamento [instante, taxa].
+ * Guardado em JSON por mês, para o mês novo não obrigar a rebaixar os velhos.
+ * O mês gravado antes de 08/10 não tem a sétima coluna e é baixado de novo:
+ * sem ela o robô Fluxo não tem ranking.
  */
 interface Mes {
   velas: number[][];
@@ -143,7 +146,10 @@ interface Mes {
 
 async function mesDe(symbol: string, mes: string, temVelas: boolean, temFunding: boolean): Promise<Mes | null> {
   const arq = `${CACHE}/${symbol}/${mes}.json`;
-  if (existsSync(arq)) return JSON.parse(await readFile(arq, "utf8")) as Mes;
+  if (existsSync(arq)) {
+    const m = JSON.parse(await readFile(arq, "utf8")) as Mes;
+    if (m.velas.length === 0 || m.velas[0].length >= 7) return m;
+  }
   const [zk, zf] = await Promise.all([
     temVelas ? baixar(`${DV}data/futures/um/monthly/klines/${symbol}/1h/${symbol}-1h-${mes}.zip`) : null,
     temFunding ? baixar(`${DV}data/futures/um/monthly/fundingRate/${symbol}/${symbol}-fundingRate-${mes}.zip`) : null,
@@ -151,7 +157,7 @@ async function mesDe(symbol: string, mes: string, temVelas: boolean, temFunding:
   // Falha de rede não vira mês vazio no cache: devolve nulo e a próxima rodada tenta de novo.
   if ((temVelas && !zk) || (temFunding && !zf)) return null;
   const m: Mes = {
-    velas: zk ? linhasCsv(zk).map((p) => [Number(p[0]), Number(p[1]), Number(p[2]), Number(p[3]), Number(p[4]), Number(p[7])]) : [],
+    velas: zk ? linhasCsv(zk).map((p) => [Number(p[0]), Number(p[1]), Number(p[2]), Number(p[3]), Number(p[4]), Number(p[7]), Number(p[10])]) : [],
     funding: zf ? linhasCsv(zf).map((p) => [Number(p[0]), Number(p[2])]) : [],
   };
   await mkdir(`${CACHE}/${symbol}`, { recursive: true });
@@ -185,6 +191,11 @@ interface Serie {
   l: Float64Array;
   c: Float64Array;
   qv: Float64Array;
+  /** Volume em dólar comprado a mercado (taker buy) em cada hora. */
+  tb: Float64Array;
+  /** Somas acumuladas de `qv` e `tb` (índice i = soma das horas 0..i−1), para a janela do fluxo sair em O(1). */
+  qvAc: Float64Array;
+  tbAc: Float64Array;
   /** Taxa do financiamento cobrado na abertura de cada hora; NaN sem cobrança. */
   fr: Float64Array;
   /** Índice da primeira vela; -1 sem nenhuma. */
@@ -210,6 +221,9 @@ await Promise.all(
       l: new Float64Array(T).fill(NaN),
       c: new Float64Array(T).fill(NaN),
       qv: new Float64Array(T),
+      tb: new Float64Array(T),
+      qvAc: new Float64Array(T + 1),
+      tbAc: new Float64Array(T + 1),
       fr: new Float64Array(T).fill(NaN),
       nasce: -1,
     };
@@ -224,6 +238,7 @@ await Promise.all(
         s.l[i] = v[3];
         s.c[i] = v[4];
         s.qv[i] = v[5];
+        s.tb[i] = Number.isFinite(v[6]) ? v[6] : 0;
       }
       // O instante do arquivo vem com milissegundos de atraso (…00001); a
       // cobrança é a da hora cheia, e é nela que a posição precisa estar.
@@ -233,6 +248,10 @@ await Promise.all(
       }
     }
     for (let i = 0; i < T; i++) if (s.c[i] > 0) { s.nasce = i; break; }
+    for (let i = 0; i < T; i++) {
+      s.qvAc[i + 1] = s.qvAc[i] + s.qv[i];
+      s.tbAc[i + 1] = s.tbAc[i] + s.tb[i];
+    }
     if (s.nasce < 0) return;
     series.push(s);
     feitas++;
@@ -262,8 +281,13 @@ function volume24(s: Serie, i: number): number {
   return v;
 }
 
-/** As linhas do ranking na decisão da hora `i` (meia-noite UTC): fechamento da vela anterior. */
-function ranking(i: number, janelas: number[]): LinhaRanking[] {
+/**
+ * As linhas do ranking na decisão da hora `i` (meia-noite UTC): fechamento da
+ * vela anterior. O fluxo de cada janela é a fração do volume em dólar das
+ * últimas 24·d horas que foi compra a mercado — a mesma conta que o ao vivo faz
+ * com as velas diárias —, e só existe quando a série cobre a janela inteira.
+ */
+function ranking(i: number, janelas: number[], janelasFluxo: number[] = []): LinhaRanking[] {
   const out: LinhaRanking[] = [];
   const j = i - 1;
   for (const s of series) {
@@ -274,9 +298,24 @@ function ranking(i: number, janelas: number[]): LinhaRanking[] {
       const a = s.c[j - 24 * d];
       retorno[d] = j - 24 * d >= 0 && a > 0 ? c / a - 1 : null;
     }
-    // Moeda cuja primeira vela é o começo dos dados já existia antes: idade desconhecida, e maior.
-    const idadeDias = s.nasce === 0 && s.c[0] > 0 ? null : (j - s.nasce) / 24;
-    out.push({ symbol: s.symbol, retorno, volume: volume24(s, j), idadeDias });
+    const linha: LinhaRanking = {
+      symbol: s.symbol,
+      retorno,
+      volume: volume24(s, j),
+      // Moeda cuja primeira vela é o começo dos dados já existia antes: idade desconhecida, e maior.
+      idadeDias: s.nasce === 0 && s.c[0] > 0 ? null : (j - s.nasce) / 24,
+    };
+    if (janelasFluxo.length > 0) {
+      const fluxo: Record<number, number | null> = {};
+      for (const d of janelasFluxo) {
+        const ini = j + 1 - 24 * d;
+        const qv = ini >= s.nasce && ini >= 0 ? s.qvAc[j + 1] - s.qvAc[ini] : NaN;
+        const tb = ini >= s.nasce && ini >= 0 ? s.tbAc[j + 1] - s.tbAc[ini] : NaN;
+        fluxo[d] = qv > 0 && Number.isFinite(tb) ? tb / qv : null;
+      }
+      linha.fluxo = fluxo;
+    }
+    out.push(linha);
   }
   return out;
 }
@@ -297,19 +336,24 @@ function simular(robo: Robo, de: number, ate: number, excluir?: Set<string>, tam
   const r: Robo = tamanho === undefined ? robo : { ...robo, regras: { ...robo.regras, tamanho } };
   const e = novoEstado(r, de);
   const janelas = [...new Set(r.regras.pernas.map((p) => p.janelaDias))];
+  const janelasFluxo = [...new Set(r.regras.pernas.filter((p) => p.criterio === "fluxo").map((p) => p.janelaDias))];
+  // O símbolo do hedge fica no ranking mesmo no "sem as 5": é dele que sai o preço do par.
+  const hedges = new Set(r.regras.pernas.flatMap((p) => (p.hedge ? [p.hedge.symbol] : [])));
   const i0 = Math.floor((de - INICIO_DADOS) / HORA);
   const i1 = Math.min(fim, Math.floor((ate - INICIO_DADOS) / HORA));
+  const vela = (s: Serie, i: number, t: number) => ({ t, o: s.o[i], h: s.h[i], l: s.l[i], c: s.c[i] });
+  const cobrancaDe = (s: Serie, i: number, t: number) => (Number.isNaN(s.fr[i]) ? [] : [{ t, taxa: s.fr[i] }]);
   for (let i = i0; i <= i1; i++) {
     const t = INICIO_DADOS + i * HORA;
     if (t % DIA === 0) {
-      const linhas = ranking(i, janelas).filter((l) => !excluir?.has(l.symbol));
+      const linhas = ranking(i, janelas, janelasFluxo).filter((l) => !excluir?.has(l.symbol) || hedges.has(l.symbol));
       decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, CUSTO_ATRASO);
     }
     for (const p of [...e.abertas]) {
       const s = porSimbolo.get(p.symbol)!;
-      const v = { t, o: s.o[i], h: s.h[i], l: s.l[i], c: s.c[i] };
-      const cobrancas = Number.isNaN(s.fr[i]) ? [] : [{ t, taxa: s.fr[i] }];
-      const saida = percorrer(p, [v], cobrancas, e);
+      const sh = p.hedge ? porSimbolo.get(p.hedge.symbol) : undefined;
+      const hedge = sh ? { velas: [vela(sh, i, t)], cobrancas: cobrancaDe(sh, i, t) } : undefined;
+      const saida = percorrer(p, [vela(s, i, t)], cobrancaDe(s, i, t), e, hedge);
       if (saida) fechar(e, p, saida);
     }
     marcar(e, t + HORA);
@@ -364,7 +408,7 @@ function trimestres(e: EstadoRobo): { trimestre: string; retorno: number }[] {
 function porMoeda(e: EstadoRobo): Map<string, number> {
   const m = new Map<string, number>();
   for (const t of e.fechadas) m.set(t.symbol, (m.get(t.symbol) ?? 0) + t.resultado);
-  for (const p of e.abertas) m.set(p.symbol, (m.get(p.symbol) ?? 0) + valorDaPosicao(p, p.precoAtual) - p.margem);
+  for (const p of e.abertas) m.set(p.symbol, (m.get(p.symbol) ?? 0) + valorDaPosicao(p, p.precoAtual) - margemTotal(p));
   return m;
 }
 
@@ -433,6 +477,13 @@ for (const robo of [...ROBOS, MOMENTO_ANTERIOR]) {
         `que fizeram US$ ${soma(com).toFixed(0)}; as outras ${sem.length}, US$ ${soma(sem).toFixed(0)}`,
     );
   }
+  if (robo.regras.pernas.some((p) => p.hedge)) {
+    const pares = e.fechadas.filter((t) => t.hedge);
+    const doHedge = pares.reduce((a, t) => a + (t.hedge?.resultado ?? 0), 0);
+    const total = pares.reduce((a, t) => a + t.resultado, 0);
+    const liquidados = pares.filter((t) => t.hedge?.liquidada).length;
+    console.log(`pares: ${pares.length}, que fizeram US$ ${total.toFixed(0)} — US$ ${(total - doHedge).toFixed(0)} na perna vendida e US$ ${doHedge.toFixed(0)} no hedge · ${liquidados} hedge(s) liquidado(s)`);
+  }
   // A curva da janela inteira, um ponto por dia, para a tela.
   const curva: { t: number; patrimonio: number }[] = [];
   let prox = 0;
@@ -454,6 +505,38 @@ console.log("\n== o tamanho, no livro do Momento (janela inteira)");
 for (const tam of [0.02, 0.03, 0.035, 0.04, 0.05, 0.06, 0.07, 0.08]) {
   const e = simular(ROBOS[0], INICIO, FIM, undefined, tam);
   console.log(`${(tam * 100).toFixed(1)}% por posição  ${pct(e.patrimonio / CAPITAL_ROBO - 1).padStart(9)}  queda máx ${pct(e.quedaMaxima)}  Sharpe ${sharpeDe(e.curva).toFixed(2)}${e.recusadas ? ` · ${e.recusadas} recusadas` : ""}`);
+}
+
+// E a do Fluxo, que é outro livro: o tamanho dele se escolhe pela própria queda.
+const fluxoRobo = ROBOS.find((r) => r.id === "fluxo");
+if (fluxoRobo) {
+  console.log("\n== o tamanho, no livro do Fluxo (janela inteira)");
+  for (const tam of [0.02, 0.025, 0.03, 0.035, 0.04, 0.05, 0.06]) {
+    const e = simular(fluxoRobo, INICIO, FIM, undefined, tam);
+    console.log(`${(tam * 100).toFixed(1)}% por posição  ${pct(e.patrimonio / CAPITAL_ROBO - 1).padStart(9)}  queda máx ${pct(e.quedaMaxima)}  Sharpe ${sharpeDe(e.curva).toFixed(2)}${e.recusadas ? ` · ${e.recusadas} recusadas` : ""}`);
+  }
+  // O alvo de volatilidade do Momento, medido aqui e reprovado. Ele aumenta a
+  // aposta quando o patrimônio está calmo, então a comparação justa é na MESMA
+  // queda máxima: 2% com ele chega aos −22% dos 3% sem. Cada metade com a
+  // própria queda e o próprio Sharpe, e sem as 5 melhores de cada versão.
+  console.log("\n== o alvo de volatilidade do Momento, no livro do Fluxo (na mesma queda máxima)");
+  const comAlvo: Robo = {
+    ...fluxoRobo,
+    regras: { ...fluxoRobo.regras, tamanho: 0.02, alvoVolatilidade: ROBOS.find((r) => r.id === "momento")?.regras.alvoVolatilidade },
+  };
+  for (const [nome, r] of [["publicado", fluxoRobo], ["com o alvo, 2%", comAlvo]] as const) {
+    const es = janelas.map(([, de, ate]) => simular(r, de, ate));
+    const top = new Set([...porMoeda(es[0]).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s));
+    const sem = janelas.map(([, de, ate]) => simular(r, de, ate, top).patrimonio / CAPITAL_ROBO - 1);
+    console.log(
+      `${nome.padEnd(15)} ` +
+        janelas
+          .map(([j], k) => `${j.split(" ")[0]} ${pct(es[k].patrimonio / CAPITAL_ROBO - 1)} (queda ${pct(es[k].quedaMaxima)}, Sharpe ${sharpeDe(es[k].curva).toFixed(2)})`)
+          .join(" · ") +
+        ` · sem as 5: ` +
+        janelas.map(([j], k) => `${j.split(" ")[0]} ${pct(sem[k])}`).join(" · "),
+    );
+  }
 }
 
 if (soSimbolos) {

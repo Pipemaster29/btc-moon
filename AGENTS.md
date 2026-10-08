@@ -90,6 +90,19 @@ no código, com número:
   saída por tempo, stop e volume diferentes. O lucro continua na cauda: sem as
   5 melhores, +707%.
 
+- **Um livro que não é momento passou — e só com hedge (08/10).** Coletar o
+  financiamento na cobrança (fora ≈0%: o preço cai o que ela paga; o que dava
+  dentro era olhar o futuro nas moedas de cobrança horária), carry, reversão,
+  loteria, listagem nova e divergência reprovaram. Passou o FLUXO VENDEDOR —
+  vender as moedas em que a venda a mercado dominou os últimos 7 dias —, fraco
+  sozinho (Sharpe 0,6–0,8) e robusto em par com ETH: +262% a 3%, +90% dentro,
+  +91% fora, Sharpe 1,60, 83% do lucro sem as 5 melhores e correlação de 0,16
+  com o Momento. É o robô "Fluxo". O controle mostra que o lucro é do sinal: na
+  bancada, a vendida do Momento com o mesmo hedge faz +8% fora contra +93% do
+  fluxo, e −10% sem as 5 melhores. O alvo de volatilidade do Momento foi medido
+  nele e reprovou como no Caça-monstra: na mesma queda, melhora o dentro e
+  piora o fora (Sharpe 1,65 → 1,51).
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -301,7 +314,7 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/quarentena.json` | as linhas do histórico que não são o preço do perpétuo daquela hora, julgadas contra as velas de 1h: **471 em 24/09, de HEI, CAP, SYN e JCT**. O placar não toca em rede e as pula por esta lista. Linha nova fora do perpétuo não nasce mais desde o árbitro de `lib/overview.ts` | `npm run quarentena`, à mão (fica no `main`) |
 | `data/carteira.json` | a carteira, com a tabela de regimes e a curva do regime anterior em `comparacao` — a tela desenha as duas | `npm run carteira` |
-| `data/robos.json` | **do robô, na branch `dados`**: o estado de cada robô — caixa, posições com o stop, o rastro e a saída por posto de cada uma (e o custo do livro de ofertas na entrada), encerradas, curva, último dia decidido. É estado incremental, não recálculo: perder o arquivo recomeça os robôs, e por isso o script **não grava** quando o arquivo existe e não se lê | `npm run robos` |
+| `data/robos.json` | **do robô, na branch `dados`**: o estado de cada robô — caixa, posições com o stop, o rastro e a saída por posto de cada uma, a metade de hedge dos pares do Fluxo (e o custo do livro de ofertas na entrada), encerradas, curva, último dia decidido. É estado incremental, não recálculo: perder o arquivo recomeça os robôs, e por isso o script **não grava** quando o arquivo existe e não se lê | `npm run robos` |
 | `data/robos-medicao.json` | a medição dos robôs de 01/2024 a 09/2026 — janelas, trimestres, sem a melhor e sem as 5 melhores, curva diária. Fica no `main`, gerado à mão | `npm run medir-robos` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
@@ -426,9 +439,10 @@ código diferente de zero quando algum caso falha, então serve de portão.
 
 ## Os robôs
 
-Três carteiras fictícias que **não seguem o painel** (`lib/robos.ts`): operam
+Quatro carteiras fictícias que **não seguem o painel** (`lib/robos.ts`): operam
 qualquer perpétuo USDT da Binance com US$ 20 milhões de volume (o Caça-monstra
-aceita US$ 5 milhões), escolhidos por momento. A medição está no topo do arquivo
+aceita US$ 5 milhões), três escolhidos por momento e uma — o Fluxo — pelo fluxo
+vendedor, em par com ETH. A medição está no topo do arquivo
 e no README; aqui fica o que não pode ser quebrado.
 
 - **Um motor só.** `npm run medir-robos` e `npm run robos` chamam as mesmas
@@ -464,6 +478,18 @@ e no README; aqui fica o que não pode ser quebrado.
   de mais de 3 h antes da virada) fica de fora em vez de virar retorno zero —
   que acalmaria a conta e aumentaria a aposta. Com menos dias de curva que a
   janela, o multiplicador é 1.
+- **O par é uma posição só, com duas metades** (`Perna.hedge`, `PernaHedge`):
+  as duas abrem no mesmo retrato com o mesmo nocional, cada uma com margem
+  isolada própria, e saem juntas — o hedge no fechamento da vela em que a
+  principal saiu. Par sem o preço do hedge NÃO abre pela metade, e par sem as
+  velas do hedge NÃO anda: percorrer só a metade principal deixaria o hedge
+  num preço velho. Hedge liquidado leva só a margem dele, e o par segue.
+- **O critério "fluxo" é fração do volume, não preço** (`Perna.criterio`): a
+  parte do volume em dólar da janela que foi compra a mercado (taker buy). O
+  ao vivo soma as velas diárias da Binance (`k[10]` sobre `k[7]`); a medição,
+  as horárias do Data Vision (coluna 10, guardada desde 08/10 — mês de cache
+  sem ela é baixado de novo). Dia que falta anula a janela. O símbolo do
+  hedge nunca entra no ranking da própria perna.
 - **O livro de ofertas na entrada é leitura, não conta** (`livro`, só no ao
   vivo): fica ao lado de `custoLado` para conferir a régua, que cobrou de 3 a 7
   vezes o livro numa tarde de 08/10. A régua só muda com amostra na hora da
@@ -479,7 +505,9 @@ e no README; aqui fica o que não pode ser quebrado.
   `funding`, `custoExtra` e `resultado` são DÓLARES; `tamanho` é fração do
   PATRIMÔNIO (o base, antes do alvo de volatilidade); `CUSTO_ATRASO`,
   `custoLado` e `livro` são fração do NOCIONAL por lado; `ESCORREGADA_STOP`, do
-  resto da vela além do nível; `AlvoVolatilidade.anual`, volatilidade ANUAL.
+  resto da vela além do nível; `AlvoVolatilidade.anual`, volatilidade ANUAL;
+  `fluxo`, fração do VOLUME da janela. No par, `margem` e `resultado` do trade
+  somam as duas metades; o `hedge` do trade guarda a parte do hedge.
 - **Tamanho escolhe o risco, não a vantagem — e tem teto.** Na regra de hoje o
   Sharpe fica em 2,40–2,42 de 2% a 4% e cai depois, porque o caixa começa a
   recusar entrada: a 7% o robô rende menos que a 6%. Pedido de "mais lucro" por
