@@ -20,6 +20,8 @@
 import {
   CAPITAL_ROBO,
   DIA,
+  TAXA,
+  escalaDoTamanho,
   valorDaPosicao,
   type ArquivoRobos,
   type EstadoRobo,
@@ -66,6 +68,7 @@ const MOTIVO: Record<string, string> = {
   prazo: "prazo",
   liquidada: "liquidada",
   sumiu: "saiu da praça",
+  posto: "caiu no ranking",
 };
 
 /** A posição marcada no preço vivo, quando há; senão no do retrato. */
@@ -227,7 +230,7 @@ export default function RobosPanel({
   }
 
   const medidos = medicao?.robos ?? [];
-  // A regra do Momento até 08/10, medida no MESMO modelo realista: é contra ela
+  // A regra anterior do Momento, medida no MESMO modelo realista: é contra ela
   // que a melhora se lê, e ela entra em cinza, como contexto.
   const anterior = medicao?.referencias?.find((m) => m.id === "momento-anterior");
   const seriesMedidas: SerieRobo[] = medidos.map((m, k) => {
@@ -237,7 +240,7 @@ export default function RobosPanel({
   if (anterior) {
     seriesMedidas.push({
       id: anterior.id,
-      rotulo: "Momento até 08/10 (30 dias, sem pirâmide, 4%)",
+      rotulo: "Momento anterior (sem saída por posto nem alvo de volatilidade, 3%)",
       curto: "Antes",
       cor: "var(--robo-ctx)",
       contexto: true,
@@ -247,6 +250,12 @@ export default function RobosPanel({
   const corte = medidos[0]?.linhas.find((l) => l.janela.startsWith("fora"))?.de;
   const momento = medidos.find((m) => m.id === "momento");
   const real = medicao?.realismo;
+  // O livro de ofertas lido em cada entrada ao vivo (`scripts/robos.mts`), contra a régua do motor.
+  const lidas = robos.flatMap((e) => [
+    ...e.abertas.filter((p) => p.livro !== undefined).map((p) => ({ livro: p.livro as number, regua: p.custoLado - TAXA })),
+    ...e.fechadas.filter((t) => t.livro !== undefined && t.custoLado !== undefined).map((t) => ({ livro: t.livro as number, regua: (t.custoLado as number) - TAXA })),
+  ]);
+  const mediana = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
   return (
     <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
@@ -268,8 +277,8 @@ export default function RobosPanel({
         perpétuo da Binance com uma regra só, escolhida depois de medir dezenas de ideias sobre 676 perpétuos —
         os 152 deslistados inclusive — de 01/2024 a 09/2026. A que passou: <strong>momento dos dois lados</strong>.
         Perdedora continua perdendo nestas moedas, e a que sobe há mês e meio às vezes vira monstra — e quando ela
-        anda +40%, o robô dobra a aposta. Juntas, as duas pernas se protegem. Não é recomendação: é a medição
-        continuando ao vivo.
+        anda +40%, o robô dobra a aposta; quando ela deixa as 10 que mais sobem, ele sai. Juntas, as duas pernas se
+        protegem. Não é recomendação: é a medição continuando ao vivo.
       </p>
 
       {robos.length === 0 ? (
@@ -294,6 +303,14 @@ export default function RobosPanel({
                   {e.abertas.length - compradas} vendida{e.abertas.length - compradas === 1 ? "" : "s"}
                   {manip > 0 && <> · {manip} em manipulada{manip === 1 ? "" : "s"}</>}
                 </p>
+                {e.regras.alvoVolatilidade && (
+                  <p className="text-xs text-black/50 dark:text-white/50 tabular-nums" title="O tamanho base vezes o multiplicador do alvo de volatilidade, que lê os últimos dias do patrimônio">
+                    aposta de hoje: {fracao(e.regras.tamanho * escalaDoTamanho(e, e.atualizadoEm))} por posição
+                    {e.atualizadoEm - e.comecouEm < e.regras.alvoVolatilidade.janelaDias * DIA && (
+                      <> · o alvo de volatilidade liga com {e.regras.alvoVolatilidade.janelaDias} dias de curva</>
+                    )}
+                  </p>
+                )}
                 <p className="text-xs text-black/50 dark:text-white/50 tabular-nums">
                   {e.fechadas.length} encerrada{e.fechadas.length === 1 ? "" : "s"}
                   {e.fechadas.length > 0 && <> · {acertos} no positivo</>}
@@ -340,39 +357,40 @@ export default function RobosPanel({
                 {medidos.map((m) => (
                   <LinhaMedicao key={m.id} m={m} nome={robos.find((e) => e.id === m.id)?.nome ?? m.id} />
                 ))}
-                {anterior && <LinhaMedicao m={anterior} nome="Momento até 08/10" referencia />}
+                {anterior && <LinhaMedicao m={anterior} nome="Momento anterior" referencia />}
               </tbody>
             </table>
           </div>
           {momento && anterior && (
             <p className="text-xs text-black/50 dark:text-white/50 mt-2">
-              <strong>O que mudou em 08/10, e o que isso não prova.</strong> A compra passou a olhar 45 dias em vez
-              de 30 — de 35 a 55 dias, toda janela ganha da de 30 fora da amostra — e a posição que anda +40% ganha
-              uma segunda parcela do mesmo tamanho.
+              <strong>O que mudou, e o que isso não prova.</strong> A compra agora SAI no dia em que a moeda deixa as
+              10 que mais subiram em 45 dias — de 5 a 40, toda régua ganha de não sair —, e o tamanho de cada entrada
+              segue a agitação do próprio patrimônio nos últimos 40 dias: menor na agitação, até 2x na calmaria. No
+              mesmo modelo e na mesma queda máxima (4% por posição contra os 3% de antes), a janela inteira vai de{" "}
+              {pct(anterior.linhas[0].retorno, 0)} para <strong>{pct(momento.linhas[0].retorno, 0)}</strong>, o dentro
+              da amostra de {pct(anterior.linhas[1].retorno, 0)} para {pct(momento.linhas[1].retorno, 0)} e o fora de{" "}
+              {pct(anterior.linhas[2].retorno, 0)} para {pct(momento.linhas[2].retorno, 0)}
+              {anterior.semAs5 && momento.semAs5 && (
+                <>
+                  ; sem as cinco melhores moedas, o fora vai de {pct(anterior.semAs5.retornos[2], 0)} para{" "}
+                  {pct(momento.semAs5.retornos[2], 0)}
+                </>
+              )}
+              . Atacada com custo de entrada 4x, escorregada do stop dobrada e entrada 1 h atrasada, continua acima da
+              anterior nas três janelas. <strong>O que não muda</strong>: o lucro mora na cauda.
               {momento.piramide && (
                 <>
                   {" "}
-                  Ela entrou em {momento.piramide.comParcela.toLocaleString("pt-BR")} de{" "}
-                  {momento.piramide.compras.toLocaleString("pt-BR")} compras, e foram essas que
-                  fizeram o lucro da perna: {usd(momento.piramide.resultadoCom, 0)}, enquanto as outras{" "}
+                  A segunda parcela entrou em {momento.piramide.comParcela.toLocaleString("pt-BR")} de{" "}
+                  {momento.piramide.compras.toLocaleString("pt-BR")} compras, e foram essas que fizeram o lucro da
+                  perna: {usd(momento.piramide.resultadoCom, 0)}, enquanto as outras{" "}
                   {(momento.piramide.compras - momento.piramide.comParcela).toLocaleString("pt-BR")}{" "}
                   {momento.piramide.resultadoSem < 0
                     ? `perderam ${usd(-momento.piramide.resultadoSem, 0)}`
                     : `fizeram ${usd(momento.piramide.resultadoSem, 0)}`}
                   .
                 </>
-              )}{" "}
-              No mesmo modelo e na mesma queda máxima (3% por posição contra os 4% de antes), a janela inteira vai de{" "}
-              {pct(anterior.linhas[0].retorno, 0)} para <strong>{pct(momento.linhas[0].retorno, 0)}</strong>
-              {anterior.semAs5 && momento.semAs5 && (
-                <>
-                  , e sem as cinco melhores moedas o fora da amostra vai de {pct(anterior.semAs5.retornos[2], 0)} para{" "}
-                  {pct(momento.semAs5.retornos[2], 0)}
-                </>
               )}
-              . <strong>Mas dentro da amostra, no mesmo risco, a regra nova rende menos</strong>:{" "}
-              {pct(momento.linhas[1].retorno, 0)} contra {pct(anterior.linhas[1].retorno, 0)}. A melhora é quase toda
-              de 07/2025 em diante, quando as altas destas moedas passaram a durar meses.
             </p>
           )}
           {real && (
@@ -385,6 +403,21 @@ export default function RobosPanel({
               parcela sai acima do gatilho pela mesma escorregada, e o stop sobe para dentro da nova liquidação — sem
               isso a corretora fecharia a posição inteira antes dele. Taxa, escorregada pela liquidez, financiamento
               real e as moedas deslistadas já estavam na conta.
+              {lidas.length > 0 ? (
+                <>
+                  {" "}
+                  E o custo é conferido ao vivo: nas {lidas.length} entrada{lidas.length === 1 ? "" : "s"} em que o robô
+                  leu o livro de ofertas, uma ordem a mercado do tamanho dela custaria{" "}
+                  {fracao(mediana(lidas.map((x) => x.livro)))} por lado (mediana), contra{" "}
+                  {fracao(mediana(lidas.map((x) => x.regua)))} que a régua cobra — sem a taxa nos dois.
+                </>
+              ) : (
+                <>
+                  {" "}
+                  Num retrato do livro de ofertas de 08/10, a régua cobrava de 3 a 7 vezes o que uma ordem destas custaria;
+                  ela só muda com amostra na hora da entrada, que cada entrada ao vivo passa a ler.
+                </>
+              )}
             </p>
           )}
           <p className="text-xs text-black/50 dark:text-white/50 mt-2">
@@ -396,8 +429,9 @@ export default function RobosPanel({
                 o Momento vai de {pct(momento.linhas[0].retorno, 0)} para {pct(momento.semAs5.retornos[0], 0)}
               </>
             )}
-            . O Caça-monstra é a tese pura, e perdeu o primeiro ano e meio inteiro. Mais tamanho rende mais e cai
-            mais: a partir de 4,5% por posição o caixa começa a recusar entrada e a queda máxima passa de 50%.{" "}
+            . O Caça-monstra é a tese pura, e perdeu o primeiro ano e meio inteiro — nem a saída por posto nem o alvo
+            de volatilidade passaram nele. Mais tamanho rende mais e cai mais, até o caixa acabar: acima dos 6% do
+            turbo ele recusa entrada e o resultado piora.{" "}
             {medicao && (
               <>
                 Medição de {new Date(medicao.geradoEm).toISOString().slice(0, 10)}, {medicao.universo.moedas} moedas:{" "}

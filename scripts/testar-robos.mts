@@ -24,6 +24,7 @@ import {
   cobrar,
   custoPorLado,
   decidir,
+  escalaDoTamanho,
   fechar,
   marcar,
   novoEstado,
@@ -306,6 +307,98 @@ const COMPRA_P: Perna = { ...COMPRA, prazoH: 1000, piramide: { niveis: [0.4], ta
   confere("perna sem pirâmide não acrescenta", p.piramide === undefined && (p.parcelas ?? 1) === 1, `parcelas ${p.parcelas ?? 1}`);
 }
 
+// ------------------------------------------------------------------ a saída por posto
+console.log("\na saída por posto");
+const COMPRA_POSTO: Perna = { ...COMPRA, saidaPosto: 3 };
+const ROBO_POSTO: Robo = { ...ROBO, regras: { ...ROBO.regras, pernas: [COMPRA_POSTO] } };
+/** 30 moedas no ranking de 30 dias: M29 é a que mais subiu. `fora` vai para o fim da fila. */
+function ranking30(fora?: string): LinhaRanking[] {
+  const ls = Array.from({ length: 30 }, (_, n) => linha(`M${n}USDT`, n / 10, 0));
+  if (fora) ls.push(linha(fora, -1, 0));
+  return ls;
+}
+{
+  const e = novoEstado(ROBO_POSTO, T0);
+  const p = abrir(e, COMPRA_POSTO, "AUSDT", 100, T0, 100e6, false)!;
+  confere("a posição guarda a saída com que entrou", p.posto?.janelaDias === 30 && p.posto.n === 3, `${JSON.stringify(p.posto)}`);
+  // Caixa de US$ 10: sem a saída ANTES, o patrimônio (~US$ 43) dá nocional de
+  // US$ 4,3, abaixo do mínimo da Binance, e a entrada do dia seria recusada.
+  e.caixa = 10;
+  decidir(e, ranking30("AUSDT"), (s) => (s === "AUSDT" ? 120 : 1), T0 + DIA);
+  const t = e.fechadas.find((x) => x.symbol === "AUSDT");
+  confere("sai no dia em que deixou as N primeiras, no preço da decisão", t?.motivo === "posto" && t.precoSaida === 120, `${t?.motivo} ${t?.precoSaida}`);
+  confere("e sai ANTES das entradas: o caixa dela já serve ao dia", e.abertas.some((x) => x.symbol === "M29USDT"), `${e.abertas.map((x) => x.symbol).join() || "nenhuma"}`);
+}
+{
+  const e = novoEstado(ROBO_POSTO, T0);
+  abrir(e, COMPRA_POSTO, "M29USDT", 100, T0, 100e6, false);
+  decidir(e, ranking30(), () => 100, T0 + DIA);
+  confere("dentro das N primeiras: fica", e.abertas.some((p) => p.symbol === "M29USDT") && e.fechadas.length === 0, `${e.fechadas.length} saídas`);
+}
+{
+  // A Binance não respondeu pela moeda: ela some do ranking. "Não consegui ler" não é "caiu".
+  const e = novoEstado(ROBO_POSTO, T0);
+  abrir(e, COMPRA_POSTO, "AUSDT", 100, T0, 100e6, false);
+  decidir(e, ranking30(), () => 100, T0 + DIA);
+  confere("fora do ranking (sem leitura): fica", e.abertas.some((p) => p.symbol === "AUSDT"), `${e.fechadas.map((x) => x.motivo).join() || "nenhuma saída"}`);
+  const e2 = novoEstado(ROBO_POSTO, T0);
+  abrir(e2, COMPRA_POSTO, "AUSDT", 100, T0, 100e6, false);
+  decidir(e2, ranking30("AUSDT").slice(-15), () => 100, T0 + DIA);
+  confere(`ranking com menos de 20 moedas: ninguém sai`, e2.abertas.some((p) => p.symbol === "AUSDT"), `${e2.fechadas.length} saídas`);
+}
+{
+  // A posição aberta ANTES da regra não sai por ela: a regra mora na posição.
+  const e = novoEstado(ROBO_POSTO, T0);
+  abrir(e, COMPRA, "AUSDT", 100, T0, 100e6, false);
+  decidir(e, ranking30("AUSDT"), () => 100, T0 + DIA);
+  confere("posição sem a regra (entrou antes) não sai por posto", e.abertas.some((p) => p.symbol === "AUSDT"), `${e.fechadas.length} saídas`);
+}
+{
+  const e = novoEstado(ROBO_POSTO, T0);
+  abrir(e, COMPRA_POSTO, "AUSDT", 100, T0, 100e6, false);
+  decidir(e, ranking30("AUSDT"), () => 100, T0 + DIA, undefined, CUSTO_ATRASO);
+  const t = e.fechadas[0];
+  confere("na medição a saída paga o atraso, como a entrada", t !== undefined && perto(t.resultado, -2 * t.nocional * custoPorLado(100e6) - CUSTO_ATRASO * t.nocional, 1e-9), `${t?.resultado.toFixed(4)}`);
+}
+
+// ------------------------------------------------------------------ o alvo de volatilidade
+console.log("\no alvo de volatilidade");
+{
+  const ALVO = { anual: 0.6, janelaDias: 10, minimo: 0.25, maximo: 2 };
+  const R: Robo = { ...ROBO, regras: { ...ROBO.regras, alvoVolatilidade: ALVO } };
+  // Patrimônio alternando ±d por dia, um ponto por virada de dia, terminando HOJE.
+  const comCurva = (d: number, dias: number): EstadoRobo => {
+    const e = novoEstado(R, T0);
+    e.curva = Array.from({ length: dias + 1 }, (_, k) => ({ t: T0 + (10 - dias + k) * DIA, patrimonio: 1000 * ((dias - k) % 2 === 0 ? 1 : 1 + d) }));
+    return e;
+  };
+  const quando = T0 + 10 * DIA + 5 * HORA;
+  confere("sem alvo: 1", escalaDoTamanho(estado(), quando) === 1, `${escalaDoTamanho(estado(), quando)}`);
+  confere("robô mais novo que a janela: 1", escalaDoTamanho(comCurva(0.05, 5), quando) === 1, `${escalaDoTamanho(comCurva(0.05, 5), quando)}`);
+  // Dias sem retrato não viram retorno zero: com só 4 dias lidos na janela de 10, 1.
+  const buracos = comCurva(0.05, 10);
+  buracos.curva = buracos.curva.filter((_, k) => k % 3 === 0);
+  confere("dias sem retrato ficam de fora (poucos retornos: 1)", escalaDoTamanho(buracos, quando) === 1, `${escalaDoTamanho(buracos, quando)}`);
+  // Retornos +d e −d/(1+d) alternados; o desvio populacional sai da conta direta.
+  const d = 0.05;
+  const rs = Array.from({ length: 10 }, (_, k) => (k % 2 === 0 ? -d / (1 + d) : d));
+  const m = rs.reduce((a, b) => a + b, 0) / rs.length;
+  const sd = Math.sqrt(rs.reduce((a, b) => a + b * b, 0) / rs.length - m * m);
+  const esperado = Math.min(2, Math.max(0.25, 0.6 / Math.sqrt(365) / sd));
+  const obtido = escalaDoTamanho(comCurva(d, 10), quando);
+  confere("alvo ÷ desvio dos retornos diários", perto(obtido, esperado, 1e-9), `${obtido.toFixed(4)} ≈ ${esperado.toFixed(4)}`);
+  confere("patrimônio agitado: encolhe até o piso", escalaDoTamanho(comCurva(0.5, 10), quando) === 0.25, `${escalaDoTamanho(comCurva(0.5, 10), quando)}`);
+  confere("patrimônio calmo: cresce até o teto", escalaDoTamanho(comCurva(0.001, 10), quando) === 2, `${escalaDoTamanho(comCurva(0.001, 10), quando)}`);
+  // Um ponto da curva DEPOIS da virada do dia não entra: só o que se sabia na decisão.
+  const e = comCurva(d, 10);
+  e.curva.push({ t: T0 + 10 * DIA + HORA, patrimonio: 5000 });
+  confere("o que veio depois da virada do dia não entra", perto(escalaDoTamanho(e, quando), esperado, 1e-9), `${escalaDoTamanho(e, quando).toFixed(4)}`);
+  const ea = comCurva(0.001, 10);
+  const pat = patrimonioA(ea);
+  const p = abrir(ea, COMPRA, "AUSDT", 100, quando, 100e6, false)!;
+  confere("a entrada sai com o tamanho multiplicado (calmo: 2x)", perto(p.nocional, 0.1 * pat * 2), `noc ${p.nocional.toFixed(2)}`);
+}
+
 // ------------------------------------------------------------------ o realismo da medição
 console.log("\no realismo da medição");
 {
@@ -343,6 +436,9 @@ for (const r of ROBOS) {
   const m = ROBOS.find((r) => r.id === "momento")!;
   const compra = m.regras.pernas.find((p) => p.lado === "long")!;
   confere("Momento: compra em 45 dias com pirâmide em +40%", compra.janelaDias === 45 && compra.piramide?.niveis[0] === 0.4, `${compra.janelaDias} d`);
+  confere("Momento: a comprada sai fora do top 10; a vendida não tem saída por posto", compra.saidaPosto === 10 && !m.regras.pernas.find((p) => p.lado === "short")!.saidaPosto, `top ${compra.saidaPosto}`);
+  const alvo = m.regras.alvoVolatilidade;
+  confere("Momento: alvo de 60% ao ano em 40 dias, tamanho entre ¼ e 2x", alvo?.anual === 0.6 && alvo.janelaDias === 40 && alvo.minimo === 0.25 && alvo.maximo === 2, JSON.stringify(alvo));
   const caca = ROBOS.find((r) => r.id === "caca-monstra")!.regras.pernas[0];
   confere("Caça-monstra: 30 dias e sem pirâmide (não passou nele)", caca.janelaDias === 30 && !caca.piramide, `${caca.janelaDias} d`);
 }

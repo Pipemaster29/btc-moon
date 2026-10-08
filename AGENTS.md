@@ -80,6 +80,16 @@ no código, com número:
   para +71%. **Mas o dentro, no mesmo risco, vai de +89% para +73%**: a
   melhora é das altas de 2025–2026, e a página mostra a regra anterior ao lado.
 
+- **Sair na hora e apostar conforme a agitação (tarde de 08/10).** Sobre a regra
+  da manhã, com o custo dentro: sair da compra no dia em que a moeda deixa as 10
+  que mais sobem em 45 dias (platô de top 5 a top 40) e multiplicar o tamanho
+  por 60% ao ano ÷ a volatilidade do próprio patrimônio em 40 dias (Sharpe 2,22
+  → 2,24–2,42 de 30 a 60 dias). Na mesma queda máxima, +1.254% → +4.863%, e o
+  dentro, que tinha piorado, vai de +73% a +199%. Reprovadas na mesma rodada:
+  perto da máxima, retorno ÷ volatilidade, regime do BTC, pirâmide na vendida,
+  saída por tempo, stop e volume diferentes. O lucro continua na cauda: sem as
+  5 melhores, +707%.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -291,7 +301,7 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/placar.json` | o painel acertou? | `npm run placar` |
 | `data/quarentena.json` | as linhas do histórico que não são o preço do perpétuo daquela hora, julgadas contra as velas de 1h: **471 em 24/09, de HEI, CAP, SYN e JCT**. O placar não toca em rede e as pula por esta lista. Linha nova fora do perpétuo não nasce mais desde o árbitro de `lib/overview.ts` | `npm run quarentena`, à mão (fica no `main`) |
 | `data/carteira.json` | a carteira, com a tabela de regimes e a curva do regime anterior em `comparacao` — a tela desenha as duas | `npm run carteira` |
-| `data/robos.json` | **do robô, na branch `dados`**: o estado de cada robô — caixa, posições com o stop e o rastro de cada uma, encerradas, curva, último dia decidido. É estado incremental, não recálculo: perder o arquivo recomeça os robôs, e por isso o script **não grava** quando o arquivo existe e não se lê | `npm run robos` |
+| `data/robos.json` | **do robô, na branch `dados`**: o estado de cada robô — caixa, posições com o stop, o rastro e a saída por posto de cada uma (e o custo do livro de ofertas na entrada), encerradas, curva, último dia decidido. É estado incremental, não recálculo: perder o arquivo recomeça os robôs, e por isso o script **não grava** quando o arquivo existe e não se lê | `npm run robos` |
 | `data/robos-medicao.json` | a medição dos robôs de 01/2024 a 09/2026 — janelas, trimestres, sem a melhor e sem as 5 melhores, curva diária. Fica no `main`, gerado à mão | `npm run medir-robos` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
@@ -441,8 +451,23 @@ e no README; aqui fica o que não pode ser quebrado.
   antes dele. A auditoria reprova posição com o stop além da liquidação.
 - **O custo da vida real vale onde ele é simulado.** A escorregada do stop
   (`ESCORREGADA_STOP`) vale na medição e no ao vivo — os dois saem pelas velas
-  de 1 h. O custo do atraso (`CUSTO_ATRASO`) é só da medição: no ao vivo o
-  atraso é de verdade, e cobrá-lo de novo seria cobrar duas vezes.
+  de 1 h. O custo do atraso (`CUSTO_ATRASO`) é só da medição, na entrada e na
+  saída por posto: no ao vivo o atraso é de verdade, e cobrá-lo de novo seria
+  cobrar duas vezes.
+- **A saída por posto mora na posição** (`posto`), como o stop: a que entrou
+  antes da regra não sai por ela. Ela roda dentro de `decidir`, ANTES das
+  entradas, com o mesmo ranking; moeda fora do ranking (sem série, volume
+  baixo, a Binance não respondeu) FICA, e ranking com menos de 20 moedas não
+  tira ninguém — "não consegui ler" não é "caiu".
+- **O alvo de volatilidade só lê o passado** (`escalaDoTamanho`): o patrimônio
+  de cada virada de dia até hoje, uma mudança por dia, e dia sem retrato (ponto
+  de mais de 3 h antes da virada) fica de fora em vez de virar retorno zero —
+  que acalmaria a conta e aumentaria a aposta. Com menos dias de curva que a
+  janela, o multiplicador é 1.
+- **O livro de ofertas na entrada é leitura, não conta** (`livro`, só no ao
+  vivo): fica ao lado de `custoLado` para conferir a régua, que cobrou de 3 a 7
+  vezes o livro numa tarde de 08/10. A régua só muda com amostra na hora da
+  entrada, que é o que esse campo junta.
 - **A vela da entrada fica de fora** no ao vivo (`v.t < p.abertaEm`): ela tem os
   minutos de antes da posição existir.
 - **O rastro de uma vela é o que estava parado quando ela abriu** — a máxima da
@@ -452,12 +477,13 @@ e no README; aqui fica o que não pode ser quebrado.
   esperam; com menos de 90% da praça no ranking, a seleção espera.
 - **Unidades**: `stop`, `rastro` e preços são de PREÇO; `nocional`, `margem`,
   `funding`, `custoExtra` e `resultado` são DÓLARES; `tamanho` é fração do
-  PATRIMÔNIO; `CUSTO_ATRASO` é fração do NOCIONAL e `ESCORREGADA_STOP`, do
-  resto da vela além do nível.
-- **Tamanho escolhe o risco, não a vantagem.** De 2% a 6% por posição o Sharpe
-  medido fica em 2,09–2,10; o que muda é a queda máxima. Pedido de "mais lucro"
-  por tamanho é pedido de mais queda, e a tabela de `npm run medir-robos` diz
-  quanto.
+  PATRIMÔNIO (o base, antes do alvo de volatilidade); `CUSTO_ATRASO`,
+  `custoLado` e `livro` são fração do NOCIONAL por lado; `ESCORREGADA_STOP`, do
+  resto da vela além do nível; `AlvoVolatilidade.anual`, volatilidade ANUAL.
+- **Tamanho escolhe o risco, não a vantagem — e tem teto.** Na regra de hoje o
+  Sharpe fica em 2,40–2,42 de 2% a 4% e cai depois, porque o caixa começa a
+  recusar entrada: a 7% o robô rende menos que a 6%. Pedido de "mais lucro" por
+  tamanho é pedido de mais queda, e a tabela de `npm run medir-robos` diz quanto.
 - **Regra nova só com a medição refeita**, e as duas colunas que mais reprovam
   aqui são "dentro da amostra" e "sem as 5 melhores". Um robô de momento que só
   ganha fora da amostra está medindo as monstras de 2025–2026, não uma regra.

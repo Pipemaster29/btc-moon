@@ -43,39 +43,48 @@
  * para +416% na janela inteira (dentro +104% → +89%, fora +226% → +160%): é o
  * que a medição antiga dava de presente.
  *
- * E COM O CUSTO DENTRO, a compra passou a olhar 45 dias e a dobrar a aposta
- * na que anda +40% (`COMPRA_MOMENTO`, com a medição ao lado). Medido no livro
- * inteiro com ESTE motor (`npm run medir-robos`), US$ 1.000 em 08/01/2024 e o
- * patrimônio em 30/09/2026:
+ * COM O CUSTO DENTRO, a regra foi melhorada duas vezes no mesmo dia, cada peça
+ * com a medição ao lado da constante que a liga:
  *
- *   tamanho por posição    inteira    dentro    fora     queda máx   Sharpe
- *   2% do patrimônio        +524%       —        —        −26%       2,09
- *   3%  ← "Momento"       +1.254%     +73%     +638%     −37%       2,09
- *   4%                    +2.606%       —        —        −46%       2,09
- *   4,5% ← "Momento turbo" +3.675%    +115%   +1.510%    −51%       2,09
- *   6%                    +8.109%       —        —        −65%       2,10
- *   a regra de 07/10, 4%    +416%      +89%     +160%     −36%       1,36
+ *   manhã de 08/10: a compra olha 45 dias e dobra a aposta na que anda +40%
+ *                   (`COMPRA_45`);
+ *   tarde de 08/10: a compra SAI no dia em que a moeda deixa as 10 que mais
+ *                   sobem (`COMPRA_MOMENTO`), e o tamanho segue a agitação do
+ *                   próprio patrimônio (`ALVO_MOMENTO`).
  *
- * O Sharpe não muda com o tamanho: tamanho escolhe o RISCO, não a vantagem. O
- * Momento e o turbo ficaram perto da queda máxima que tinham antes (−37% contra
- * −36%; −51% contra −48%), e a 4,5% o caixa já recusa 10 entradas (198 a 6%).
+ * Medido no livro inteiro com ESTE motor (`npm run medir-robos`), US$ 1.000 em
+ * 08/01/2024 e o patrimônio em 30/09/2026:
  *
- * NA MESMA QUEDA MÁXIMA, a regra nova faz +1.254% contra +416%, e sem as cinco
- * melhores moedas o fora da amostra vai de −38% para +71%. MAS O DENTRO DA
- * AMOSTRA VAI DE +89% PARA +73%: no mesmo risco, antes de 07/2025 a regra nova
- * rende menos. A melhora é das altas que passaram a durar meses — se elas
- * voltarem a durar semanas, a de 30 dias volta a ser a melhor das duas.
+ *   regra                        inteira    dentro    fora     queda máx   Sharpe
+ *   07/10, 30 dias, 4%             +416%      +89%     +160%     −36%       1,36
+ *   manhã de 08/10, 3%           +1.254%      +73%     +638%     −37%       2,09
+ *   hoje, 4% ← "Momento"         +4.863%     +199%   +1.424%     −36%       2,42
+ *   hoje, 6% ← "Momento turbo"   +8.472%     +233%   +2.301%     −46%       2,35
+ *
+ * E o tamanho, na regra de hoje: 2% +1.631% (−25%), 3% +3.012% (−31%), 4%
+ * +4.863% (−36%), 5% +6.095% (−42%), 6% +8.472% (−46%), 7% +7.868% (−51%), 8%
+ * +9.946% (−56%). O Sharpe fica em 2,40–2,42 até 4% e cai depois: a 6% o caixa
+ * já recusa 25 entradas, a 7% recusa 62 e rende MENOS que a 6%. Tamanho escolhe
+ * o risco, não a vantagem — e tem teto, onde a margem acaba. O Momento ficou
+ * na queda máxima da manhã (−36% contra −37%); o turbo, no tamanho em que o caixa ainda
+ * acompanha, com menos queda que o de antes (−46% contra −51%).
+ *
+ * NA MESMA QUEDA MÁXIMA, a regra de hoje faz +4.863% contra +1.254%, e o que a
+ * manhã tinha de ruim virou: o dentro da amostra, que ia de +89% para +73%,
+ * vai a +199%. Por trimestre ela ganha em 8 de 11; perde 2024T1 (−24% contra
+ * −22%), 2024T4 (+4% contra +7%) e 2025T4 (+13% contra +23%).
  *
  * O QUE ISSO NÃO É, e é a ressalva que manda: o lucro vem de POUCAS MOEDAS.
- * Tirando as cinco que mais deram ao Momento (RAVE, TUT, BEAT, LAB, LSK), a
- * janela inteira cai de +1.254% para +242% e o fora, de +638% para +71%. A
- * pirâmide entrou em 344 de 1.066 compras, e foram essas que fizeram o lucro da
- * perna: US$ 36 mil, contra US$ 23 mil perdidos nas outras 722. É o formato de
- * qualquer seguidor de tendência — perde pouco quase sempre e ganha muito de
- * vez em quando —, e a tese só continua de pé enquanto continuarem aparecendo
- * monstras. Dos US$ 13.516 que a perna comprada fez, US$ 8.053 vieram de moedas
- * que hoje estão no painel de manipuladas: é a intuição de que "as manipuladas
- * têm mais potencial", medida — e é também o risco concentrado.
+ * Tirando as cinco que mais deram ao Momento (TUT, BEAT, RAVE, LAB, LSK), a
+ * janela inteira cai de +4.863% para +707% e o fora, de +1.424% para +111%;
+ * o dentro quase não muda (+199% → +207%). A pirâmide entrou em 312 de 1.090
+ * compras, e foram essas que fizeram o lucro da perna: US$ 126 mil, contra US$
+ * 70 mil perdidos nas outras 778. É o formato de qualquer seguidor de
+ * tendência — perde pouco quase sempre e ganha muito de vez em quando —, e a
+ * tese só continua de pé enquanto continuarem aparecendo monstras. Dos US$
+ * 56.026 que a perna comprada fez, US$ 37.957 vieram de moedas que hoje estão
+ * no painel de manipuladas: é a intuição de que "as manipuladas têm mais
+ * potencial", medida — e é também o risco concentrado.
  *
  * O "Caça-monstra" é essa intuição sozinha: só a perna comprada, mais
  * concentrada e aceitando moeda menor. Fora da amostra, +189%; dentro, −3%,
@@ -86,7 +95,8 @@
  * Os números citados na perna vendida e no universo, abaixo, são da PRIMEIRA
  * bancada, com posições de 0,7% do patrimônio e sem o custo da vida real: o
  * que conta neles é a ordem entre as variações, não o nível. Os da perna
- * comprada são da bancada realista, a 4%.
+ * comprada e do alvo de volatilidade são da bancada realista, a 3% e a 4%; os
+ * da tabela acima, deste motor.
  *
  * ESTE ARQUIVO NÃO IMPORTA NADA DE `node:` — a página o importa para desenhar
  * e remarcar, como `lib/carteira.ts`.
@@ -96,7 +106,7 @@
 
 export type LadoRobo = "long" | "short";
 
-export type MotivoRobo = "stop" | "rastro" | "prazo" | "liquidada" | "sumiu";
+export type MotivoRobo = "stop" | "rastro" | "prazo" | "liquidada" | "sumiu" | "posto";
 
 /** Uma perna do robô: de que lado, como escolhe e como sai. */
 export interface Perna {
@@ -132,6 +142,26 @@ export interface Perna {
    * Ausente: sem pirâmide.
    */
   piramide?: { niveis: number[]; tamanho: number };
+  /**
+   * A SAÍDA POR POSTO: na decisão do dia, a posição sai quando a moeda deixou
+   * as `saidaPosto` primeiras do ranking da perna — parou de ser das que mais
+   * sobem (ou caem). Ausente: só stop, rastro e prazo.
+   */
+  saidaPosto?: number;
+}
+
+/**
+ * O ALVO DE VOLATILIDADE: o tamanho de cada entrada nova é multiplicado por
+ * alvo ÷ desvio dos retornos diários do PATRIMÔNIO do robô nos últimos
+ * `janelaDias` dias, entre `minimo` e `maximo`. Patrimônio agitado, posição
+ * menor; calmo, maior. Com menos dias de curva do que a janela, 1.
+ */
+export interface AlvoVolatilidade {
+  /** Volatilidade ANUAL perseguida, em fração (0,6 = 60% ao ano). */
+  anual: number;
+  janelaDias: number;
+  minimo: number;
+  maximo: number;
 }
 
 export interface RegrasRobo {
@@ -139,6 +169,7 @@ export interface RegrasRobo {
    * O NOCIONAL de cada posição, em fração do patrimônio na hora da entrada.
    * Fração do patrimônio e não da margem: a 4%, uma conta de US$ 1.000 abre
    * posições de US$ 40, com US$ 13 a US$ 20 de margem conforme a perna.
+   * Com alvo de volatilidade, é o tamanho BASE, antes do multiplicador.
    */
   tamanho: number;
   /** Volume mínimo do perpétuo no dia anterior, em dólar. */
@@ -146,6 +177,7 @@ export interface RegrasRobo {
   /** Quantos dias de perpétuo a moeda precisa ter para entrar no ranking. */
   idadeMinimaDias: number;
   pernas: Perna[];
+  alvoVolatilidade?: AlvoVolatilidade;
 }
 
 export interface Robo {
@@ -206,15 +238,15 @@ export const CUSTO_ATRASO = 0.001;
 export const NOCIONAL_MINIMO = 5;
 
 /**
- * A perna comprada ATÉ 08/10: as 5 que mais subiram em 30 dias, sem pirâmide.
- * Fica exportada para a medição imprimir o antes ao lado do depois.
+ * A perna comprada de 07/10: as 5 que mais subiram em 30 dias, sem pirâmide.
+ * É a do Caça-monstra (com k 3), onde nada do que veio depois passou.
  *
  * TRINTA DIAS E NÃO SETE: com 7 dias o livro caía de Sharpe 1,59 para
  * 0,68–0,71 na bancada. RASTRO DE 30%: com 20% o livro inteiro caía para +17%
  * (Sharpe 0,68), porque as monstras recuam 20% várias vezes no caminho e o
  * rastro curto as vende no primeiro tranco.
  */
-const COMPRA_ANTERIOR: Perna = {
+const COMPRA_30: Perna = {
   lado: "long",
   janelaDias: 30,
   k: 5,
@@ -225,8 +257,8 @@ const COMPRA_ANTERIOR: Perna = {
 };
 
 /**
- * A perna comprada desde 08/10: as 5 que mais subiram em 45 DIAS, com UMA
- * parcela a mais quando a posição anda +40%.
+ * A perna comprada da manhã de 08/10: as 5 que mais subiram em 45 DIAS, com
+ * UMA parcela a mais quando a posição anda +40%. É a base da de agora.
  *
  * Medido na bancada com o modelo REALISTA (stop escorregando, entrada com o
  * custo do atraso), a 4% por posição, janela inteira · dentro · fora, e "sem as
@@ -266,11 +298,44 @@ const COMPRA_ANTERIOR: Perna = {
  * que na janela de 30 dias não melhoram o dentro sobre uma só (+107% e +109%
  * contra +110%) e aumentam a queda máxima (−45% e −49% contra −42%).
  */
-const COMPRA_MOMENTO: Perna = {
-  ...COMPRA_ANTERIOR,
+const COMPRA_45: Perna = {
+  ...COMPRA_30,
   janelaDias: 45,
   piramide: { niveis: [0.4], tamanho: 1 },
 };
+
+/**
+ * A perna comprada desde a tarde de 08/10: a de 45 dias com SAÍDA POR POSTO —
+ * a posição sai no dia em que a moeda deixa as 10 que mais subiram em 45 dias.
+ * A monstra que parou de ser monstra devolvia o ganho até o rastro de 30% a
+ * pegar, ou ficava parada até o prazo, prendendo margem.
+ *
+ * Medido na bancada realista, a 3% por posição e sem o alvo de volatilidade:
+ *
+ *                       inteira   dentro    fora    sem as 5, fora   queda máx   Sharpe
+ *   sem saída por posto  +1.256%    +72%     +639%       +108%          −37%      2,08
+ *   top 5                +1.742%   +117%     +735%       +138%          −31%      2,27
+ *   top 7                +1.980%   +129%     +789%       +147%          −28%      2,36
+ *   top 10 ← esta        +1.555%   +109%     +675%       +117%          −28%      2,22
+ *   top 15               +1.336%    +86%     +660%       +114%          −32%      2,12
+ *   top 20               +1.307%    +83%     +656%       +114%          −34%      2,11
+ *   top 40               +1.265%    +84%     +639%       +109%          −34%      2,09
+ *
+ * PLATÔ, NÃO PICO: de 5 a 40 tudo ganha da regra sem saída em todas as
+ * colunas, e a queda máxima cai junto. O 7 mediu melhor e é o pico; o 10 fica
+ * no meio do platô, com vizinho bom dos dois lados.
+ *
+ * O que foi medido junto e NÃO entrou: a mesma saída na vendida (fora das 10,
+ * 20 ou 40 que mais caíram: piora as três janelas, +1.090% a +1.127%); sair
+ * em 3, 5, 7 ou 10 dias sem lucro (melhora o dentro e a queda, e o fora fica
+ * igual ou pior — não passa sozinha); comprar só perto da máxima da janela
+ * (−50% a −90% do resultado: nestas moedas a que já corrigiu continua); ranking
+ * por retorno ÷ volatilidade (+642%); comprar só com o BTC acima da média de 50
+ * ou 100 dias (+640% e +291%); vender só com ele abaixo (o dentro vira −15%);
+ * pirâmide na vendida em −20% ou −30% (o dentro cai para +44% a +61% e a queda
+ * vai a −52%); stop de 20% ou 30%; volume mínimo de 10 ou 50 milhões.
+ */
+const COMPRA_MOMENTO: Perna = { ...COMPRA_45, saidaPosto: 10 };
 
 /**
  * A perna vendida: as 5 que mais caíram em 14 dias, por 14 dias.
@@ -296,6 +361,40 @@ const VENDA_MOMENTO: Perna = {
 };
 
 /**
+ * O ALVO DE VOLATILIDADE do Momento: 60% ao ano, medido nos últimos 40 dias do
+ * patrimônio, com o tamanho entre ¼ e 2x o base.
+ *
+ * Medir a agitação do PRÓPRIO patrimônio e encolher a aposta nela — e crescer
+ * na calmaria — é a correção conhecida do momento (Barroso e Santa-Clara,
+ * 2015). Aqui ela foi medida, sobre a perna comprada com saída por posto, a 3%:
+ *
+ *                            inteira   dentro    fora    sem as 5, fora   queda máx   Sharpe
+ *   sem alvo                  +1.555%   +109%     +675%       +117%          −28%      2,22
+ *   60%, 40 dias ← este       +3.063%   +160%   +1.007%       +147%          −31%      2,42
+ *   60%, 30 dias              +2.442%   +158%     +888%       +161%          −32%      2,29
+ *   60%, 60 dias              +2.079%   +142%     +758%       +136%          −30%      2,24
+ *   50% e 80%, 40 dias        Sharpe 2,41 nos dois: o alvo só muda o tamanho médio
+ *
+ * O SHARPE é o número que importa aqui, porque o alvo também aumenta o tamanho
+ * médio, e tamanho sozinho não muda o Sharpe (2,08 a 2,11 de 2% a 6%). Ele
+ * sobe de 2,22 para 2,24–2,42 em todas as janelas de 30 a 60 dias, dentro
+ * (1,35 → 1,42–1,48) e fora (3,02 → 3,07–3,35). O teto de 2x e o piso de ¼
+ * quase não mordem: 1,5x mede 2,35, 3x mede 2,42, piso de ½ é igual ao de ¼.
+ *
+ * Os dois juntos, ATACADOS, a 3%:
+ *
+ *                            inteira   dentro    fora    sem as 5, fora
+ *   entrada a 0,4% (4x)       +2.411%   +132%     +888%       +120%
+ *   escorregada dobrada       +2.454%   +150%     +831%       +112%
+ *   entrada 1 h atrasada      +2.577%   +154%     +860%       +132%
+ *   entrada 3 h atrasada      +1.906%   +122%     +744%        +49%
+ *
+ * No Caça-monstra o alvo NÃO passou: na mesma queda máxima ele melhora o
+ * dentro (−4% → +3%) e piora o fora (+189% → +163%).
+ */
+const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.25, maximo: 2 };
+
+/**
  * Volume mínimo de US$ 20 milhões no dia: é onde o custo por lado fica entre
  * 0,10% e 0,15% e a posição de dezenas de dólares não move o livro. Com 5
  * milhões o livro rende MAIS (+64,5% contra +52,8%) e com 50 milhões, menos
@@ -309,14 +408,14 @@ export const ROBOS: Robo[] = [
     id: "momento",
     nome: "Momento",
     descricao:
-      "Compra as 5 que mais subiram em 45 dias (e dobra a aposta nas que sobem +40%) e vende as 5 que mais caíram em 14, todo dia, em qualquer perpétuo com US$ 20 mi de volume.",
-    regras: { tamanho: 0.03, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO] },
+      "Compra as 5 que mais subiram em 45 dias (dobra a aposta nas que sobem +40% e sai das que deixam o top 10) e vende as 5 que mais caíram em 14, todo dia, em qualquer perpétuo com US$ 20 mi de volume. A aposta encolhe quando o patrimônio fica agitado.",
+    regras: { tamanho: 0.04, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO], alvoVolatilidade: ALVO_MOMENTO },
   },
   {
     id: "turbo",
     nome: "Momento turbo",
     descricao: "O mesmo livro com 1,5x o tamanho — a resposta medida para \"e se arriscasse mais?\".",
-    regras: { tamanho: 0.045, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO] },
+    regras: { tamanho: 0.06, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO], alvoVolatilidade: ALVO_MOMENTO },
   },
   {
     id: "caca-monstra",
@@ -330,17 +429,21 @@ export const ROBOS: Robo[] = [
       tamanho: 0.04,
       volumeMinimo: 5e6,
       idadeMinimaDias: 14,
-      pernas: [{ ...COMPRA_ANTERIOR, k: 3 }],
+      pernas: [{ ...COMPRA_30, k: 3 }],
     },
   },
 ];
 
-/** O Momento como foi publicado até 08/10, para a medição ler o antes ao lado do depois. */
+/**
+ * O Momento como foi publicado na manhã de 08/10 — 45 dias e pirâmide, sem
+ * saída por posto nem alvo de volatilidade, a 3% —, para a medição ler o antes
+ * ao lado do depois.
+ */
 export const MOMENTO_ANTERIOR: Robo = {
   id: "momento-anterior",
-  nome: "Momento até 08/10",
-  descricao: "30 dias, sem pirâmide, 4% por posição.",
-  regras: { tamanho: 0.04, ...UNIVERSO, pernas: [COMPRA_ANTERIOR, VENDA_MOMENTO] },
+  nome: "Momento anterior",
+  descricao: "45 dias e pirâmide, sem saída por posto nem alvo de volatilidade, 3% por posição.",
+  regras: { tamanho: 0.03, ...UNIVERSO, pernas: [COMPRA_45, VENDA_MOMENTO] },
 };
 
 // ------------------------------------------------------------------ o estado
@@ -398,6 +501,19 @@ export interface PosicaoRobo {
    * do atraso (`CUSTO_ATRASO`); no ao vivo, zero.
    */
   custoExtra?: number;
+  /**
+   * A saída por posto com que a posição entrou: o ranking de `janelaDias` e as
+   * `n` primeiras. Mora na posição como o stop e o rastro — a que entrou antes
+   * da regra não sai por ela. Ausente: sem saída por posto.
+   */
+  posto?: { janelaDias: number; n: number };
+  /**
+   * SÓ NO AO VIVO: quanto o livro de ofertas da Binance cobraria na hora da
+   * entrada, por lado, em fração do nocional — meio spread mais o impacto de
+   * uma ordem a mercado deste tamanho. Não entra na conta: fica ao lado do
+   * custo do modelo (`custoLado` menos a `TAXA`) para conferir a régua.
+   */
+  livro?: number;
 }
 
 export interface TradeRobo {
@@ -417,6 +533,10 @@ export interface TradeRobo {
   manipulada?: boolean;
   /** Quantas parcelas a posição chegou a ter, quando foi mais de uma. */
   parcelas?: number;
+  /** O custo do livro na entrada (`PosicaoRobo.livro`), quando foi medido. */
+  livro?: number;
+  /** O custo por lado que o modelo cobrou (`PosicaoRobo.custoLado`). */
+  custoLado?: number;
 }
 
 export interface EstadoRobo {
@@ -652,7 +772,7 @@ function acrescentar(e: EstadoRobo, p: PosicaoRobo, v: VelaRobo, gatilho: number
   const base = comprado ? Math.max(v.o, gatilho) : Math.min(v.o, gatilho);
   const preco = comprado ? base + ESCORREGADA_STOP * (v.h - base) : base - ESCORREGADA_STOP * (base - v.l);
   const alavancagem = p.nocional / p.margem;
-  const nocional = e.regras.tamanho * patrimonioA(e) * (p.piramide?.tamanho ?? 1);
+  const nocional = e.regras.tamanho * patrimonioA(e) * (p.piramide?.tamanho ?? 1) * escalaDoTamanho(e, v.t);
   const margem = nocional / alavancagem;
   if (!(nocional >= NOCIONAL_MINIMO) || !(margem <= e.caixa) || !(preco > 0)) {
     e.recusadas++;
@@ -694,6 +814,7 @@ export function fechar(e: EstadoRobo, p: PosicaoRobo, s: Saida): TradeRobo {
     motivo: s.motivo,
     ...(p.manipulada ? { manipulada: true } : {}),
     ...(p.parcelas && p.parcelas > 1 ? { parcelas: p.parcelas } : {}),
+    ...(p.livro !== undefined ? { livro: p.livro, custoLado: p.custoLado } : {}),
   };
   e.fechadas.unshift(t);
   return t;
@@ -726,13 +847,56 @@ export function marcar(e: EstadoRobo, quando: number, precos?: ReadonlyMap<strin
 }
 
 /**
- * As k moedas da perna num dia: as que mais subiram (comprado) ou mais caíram
- * (vendido) na janela, entre as que passam no volume e na idade.
+ * O multiplicador do tamanho pelo alvo de volatilidade (`AlvoVolatilidade`).
  *
- * Com menos de 4k moedas elegíveis o dia não seleciona nada — ranking de
- * poucas é sorteio, e a pesquisa nunca operou assim.
+ * O patrimônio de cada virada de dia (00:00 UTC) é o último ponto da curva até
+ * ela; o desvio é o dos `janelaDias` retornos diários até HOJE — só o que se
+ * sabia na hora da decisão. Muda uma vez por dia, como na pesquisa, e vale para
+ * as entradas e para as parcelas da pirâmide.
  */
-export function selecionar(regras: RegrasRobo, perna: Perna, linhas: readonly LinhaRanking[]): LinhaRanking[] {
+export function escalaDoTamanho(e: EstadoRobo, quando: number): number {
+  const a = e.regras.alvoVolatilidade;
+  if (!a) return 1;
+  const hoje = Math.floor(quando / DIA) * DIA;
+  const marcas: (number | null)[] = [];
+  let k = e.curva.length - 1;
+  for (let d = 0; d <= a.janelaDias; d++) {
+    const limite = hoje - d * DIA;
+    while (k >= 0 && e.curva[k].t > limite) k--;
+    if (k < 0) break;
+    // Ponto de mais de 3 h antes da virada é dia em que o robô não rodou: fica
+    // de fora, em vez de repetir o patrimônio e virar um retorno zero que
+    // acalma a conta e aumenta a aposta.
+    marcas.push(limite - e.curva[k].t <= 3 * HORA ? e.curva[k].patrimonio : null);
+  }
+  if (marcas.length < a.janelaDias + 1) return 1;
+  let soma = 0;
+  let soma2 = 0;
+  let n = 0;
+  for (let d = 0; d < a.janelaDias; d++) {
+    const x = marcas[d];
+    const y = marcas[d + 1];
+    if (x === null || y === null) continue;
+    const r = x / y - 1;
+    if (!Number.isFinite(r)) continue;
+    soma += r;
+    soma2 += r * r;
+    n++;
+  }
+  if (n <= 5) return 1;
+  const media = soma / n;
+  const variancia = soma2 / n - media * media;
+  const desvio = variancia > 0 ? Math.sqrt(variancia) : 0;
+  const escala = desvio > 0 ? a.anual / Math.sqrt(365) / desvio : a.maximo;
+  return Math.min(a.maximo, Math.max(a.minimo, escala));
+}
+
+/**
+ * O ranking da perna num dia, da melhor para a pior — as que mais subiram
+ * primeiro no comprado, as que mais caíram primeiro no vendido —, entre as que
+ * passam no volume e na idade e têm série que cubra a janela.
+ */
+export function ordenar(regras: RegrasRobo, perna: Pick<Perna, "lado" | "janelaDias">, linhas: readonly LinhaRanking[]): LinhaRanking[] {
   const elegiveis = linhas.filter((l) => {
     const r = l.retorno[perna.janelaDias];
     return (
@@ -744,11 +908,59 @@ export function selecionar(regras: RegrasRobo, perna: Perna, linhas: readonly Li
       (l.idadeDias === null || l.idadeDias >= regras.idadeMinimaDias)
     );
   });
-  if (elegiveis.length < 4 * perna.k) return [];
-  const ordem = [...elegiveis].sort(
-    (a, b) => (a.retorno[perna.janelaDias] as number) - (b.retorno[perna.janelaDias] as number),
-  );
-  return perna.lado === "long" ? ordem.slice(-perna.k).reverse() : ordem.slice(0, perna.k);
+  const ordem = elegiveis.sort((a, b) => (a.retorno[perna.janelaDias] as number) - (b.retorno[perna.janelaDias] as number));
+  return perna.lado === "long" ? ordem.reverse() : ordem;
+}
+
+/**
+ * As k moedas da perna num dia: as primeiras do ranking (`ordenar`).
+ *
+ * Com menos de 4k moedas elegíveis o dia não seleciona nada — ranking de
+ * poucas é sorteio, e a pesquisa nunca operou assim.
+ */
+export function selecionar(regras: RegrasRobo, perna: Perna, linhas: readonly LinhaRanking[]): LinhaRanking[] {
+  const ordem = ordenar(regras, perna, linhas);
+  if (ordem.length < 4 * perna.k) return [];
+  return ordem.slice(0, perna.k);
+}
+
+/** Menos moedas do que isto no ranking e a saída por posto espera: é a régua da pesquisa. */
+const MINIMO_NO_RANKING = 20;
+
+/**
+ * As saídas por posto do dia, ANTES das entradas — o dinheiro delas volta ao
+ * caixa a tempo da seleção. Sai a posição cuja moeda está no ranking da janela
+ * com que entrou e caiu para além das `n` primeiras. A que não está no ranking
+ * (sem série, volume abaixo do mínimo, a Binance não respondeu) FICA: "não
+ * consegui ler" não é "caiu".
+ */
+export function sairPorPosto(
+  e: EstadoRobo,
+  linhas: readonly LinhaRanking[],
+  precoDe: (symbol: string) => number | undefined,
+  quando: number,
+  /** Ver `abrir`: o custo do atraso, só na medição — a saída também espera o primeiro retrato. */
+  custoExtra = 0,
+): TradeRobo[] {
+  const saidas: TradeRobo[] = [];
+  const postos = new Map<string, Map<string, number>>();
+  for (const p of [...e.abertas]) {
+    if (!p.posto) continue;
+    const chave = `${p.lado}:${p.posto.janelaDias}`;
+    let posto = postos.get(chave);
+    if (!posto) {
+      const ordem = ordenar(e.regras, { lado: p.lado, janelaDias: p.posto.janelaDias }, linhas);
+      posto = new Map(ordem.length >= MINIMO_NO_RANKING ? ordem.map((l, k) => [l.symbol, k]) : []);
+      postos.set(chave, posto);
+    }
+    const k = posto.get(p.symbol);
+    if (k === undefined || k < p.posto.n) continue;
+    const preco = precoDe(p.symbol);
+    if (preco === undefined || !(preco > 0) || !Number.isFinite(preco)) continue;
+    if (custoExtra > 0) p.custoExtra = (p.custoExtra ?? 0) + custoExtra * p.nocional;
+    saidas.push(fechar(e, p, { preco, quando, motivo: "posto" }));
+  }
+  return saidas;
 }
 
 /**
@@ -774,7 +986,7 @@ export function abrir(
     return null;
   }
   const pat = patrimonioA(e);
-  const nocional = e.regras.tamanho * pat;
+  const nocional = e.regras.tamanho * pat * escalaDoTamanho(e, quando);
   const margem = nocional / perna.alavancagem;
   if (!(nocional >= NOCIONAL_MINIMO) || margem > e.caixa) {
     e.recusadas++;
@@ -809,6 +1021,7 @@ export function abrir(
         }
       : {}),
     ...(custoExtra > 0 ? { custoExtra: custoExtra * nocional } : {}),
+    ...(perna.saidaPosto ? { posto: { janelaDias: perna.janelaDias, n: perna.saidaPosto } } : {}),
   };
   e.caixa -= margem;
   e.abertas.push(p);
@@ -827,6 +1040,9 @@ export function abrir(
  * deixava a comprada escolher primeiro e media +154% fora da amostra, contra
  * +210% da pesquisa, que fazia o contrário; a diferença inteira estava nessas
  * moedas. A informação mais recente manda.
+ *
+ * Antes de escolher, saem as que deixaram o posto (`sairPorPosto`): é a mesma
+ * decisão, com o mesmo ranking, e o caixa delas já serve às entradas do dia.
  */
 export function decidir(
   e: EstadoRobo,
@@ -837,6 +1053,7 @@ export function decidir(
   /** Ver `abrir`: o custo do atraso, só na medição. */
   custoExtra = 0,
 ): PosicaoRobo[] {
+  sairPorPosto(e, linhas, precoDe, quando, custoExtra);
   const abertas: PosicaoRobo[] = [];
   const pernas = [...e.regras.pernas].sort((a, b) => a.janelaDias - b.janelaDias);
   for (const perna of pernas) {
