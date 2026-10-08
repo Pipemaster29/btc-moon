@@ -13,9 +13,12 @@
  */
 import {
   CAPITAL_ROBO,
+  CUSTO_ATRASO,
   DIA,
+  ESCORREGADA_STOP,
   HORA,
   MANUTENCAO,
+  NOCIONAL_MINIMO,
   ROBOS,
   abrir,
   cobrar,
@@ -67,14 +70,16 @@ console.log("\nsaídas dentro da vela");
   confere("abre com nocional = tamanho × patrimônio", perto(p.nocional, 100) && perto(p.margem, 100 / 3), `noc ${p.nocional.toFixed(2)} mg ${p.margem.toFixed(2)}`);
   confere("stop e liquidação no lugar (3x: −25% e −32,8%)", perto(p.stop, 75) && perto(p.liquidacao, 100 * (1 - (1 / 3 - MANUTENCAO))), `${p.stop} · ${p.liquidacao.toFixed(3)}`);
   const s = percorrer(p, [v(0, 100, 101, 99, 100), v(1, 100, 100, 70, 72)], []);
-  confere("stop preenchido NO NÍVEL, não na mínima", s?.motivo === "stop" && perto(s.preco, 75), `${s?.motivo} ${s?.preco}`);
+  // No nível, e não na mínima — menos a escorregada medida no minuto do disparo.
+  const esperado = 75 - ESCORREGADA_STOP * (75 - 70);
+  confere("stop no NÍVEL menos a escorregada, não na mínima", s?.motivo === "stop" && perto(s.preco, esperado), `${s?.motivo} ${s?.preco.toFixed(3)}`);
 }
 {
   const e = estado();
   const p = abrir(e, COMPRA, "AUSDT", 100, T0, 100e6, false)!;
   const s = percorrer(p, [v(0, 100, 101, 99, 100), v(1, 70, 71, 60, 65)], []);
   // Abriu em 70: abaixo do stop (75) e acima da liquidação (67,2). Ninguém foi servido em 75.
-  confere("vela que salta o stop preenche na ABERTURA", s?.motivo === "stop" && perto(s.preco, 70), `${s?.motivo} ${s?.preco}`);
+  confere("vela que salta o stop preenche na ABERTURA (e escorrega)", s?.motivo === "stop" && perto(s.preco, 70 - ESCORREGADA_STOP * (70 - 60)), `${s?.motivo} ${s?.preco.toFixed(3)}`);
 }
 {
   const e = estado();
@@ -90,7 +95,7 @@ console.log("\nsaídas dentro da vela");
   const p = abrir(e, COMPRA, "AUSDT", 100, T0, 100e6, false)!;
   // Sobe a 200, depois recua: o rastro de 30% da máxima ANTERIOR é 140.
   const s = percorrer(p, [v(0, 100, 120, 99, 120), v(1, 120, 200, 119, 190), v(2, 190, 191, 130, 135)], []);
-  confere("rastro de 30% da máxima anterior", s?.motivo === "rastro" && perto(s.preco, 140), `${s?.motivo} ${s?.preco}`);
+  confere("rastro de 30% da máxima anterior", s?.motivo === "rastro" && perto(s.preco, 140 - ESCORREGADA_STOP * (140 - 130)), `${s?.motivo} ${s?.preco.toFixed(3)}`);
 }
 {
   const e = estado();
@@ -113,7 +118,7 @@ console.log("\nsaídas dentro da vela");
   confere("vendida a 2x: stop +45%, liquidação +49,5%", perto(p.stop, 145) && perto(p.liquidacao, 149.5), `${p.stop} · ${p.liquidacao}`);
   const s = percorrer(p, [v(0, 100, 150, 99, 140)], []);
   // Saindo de 100, o preço cruza 145 antes de 149,5.
-  confere("vendida: o stop vem antes da liquidação na mesma vela", s?.motivo === "stop" && perto(s.preco, 145), `${s?.motivo} ${s?.preco}`);
+  confere("vendida: o stop vem antes da liquidação na mesma vela", s?.motivo === "stop" && perto(s.preco, 145 + ESCORREGADA_STOP * (150 - 145)), `${s?.motivo} ${s?.preco.toFixed(3)}`);
 }
 {
   const e = estado();
@@ -246,6 +251,80 @@ console.log("\na conta");
   confere("o estado sobrevive ao JSON (sem Infinity/NaN virando null)", finitos && volta.abertas[0].ultimaVela === 0, `ultimaVela ${volta.abertas[0].ultimaVela}`);
 }
 
+
+// ------------------------------------------------------------------ a pirâmide
+console.log("\na pirâmide");
+const COMPRA_P: Perna = { ...COMPRA, prazoH: 1000, piramide: { niveis: [0.4], tamanho: 1 } };
+{
+  const e = estado();
+  const p = abrir(e, COMPRA_P, "AUSDT", 100, T0, 100e6, false)!;
+  confere("gatilho da parcela em +40% da entrada", p.piramide?.precos[0] === 140, `${p.piramide?.precos.join()}`);
+  const caixaAntes = e.caixa;
+  const s = percorrer(p, [v(0, 100, 101, 99, 100), v(1, 120, 150, 118, 145)], [], e);
+  const fill = 140 + ESCORREGADA_STOP * (150 - 140);
+  const noc2 = p.nocional - 100;
+  const medio = (100 + noc2) / (100 / 100 + noc2 / fill);
+  confere("a parcela entra no gatilho com a escorregada da alta", s === null && p.parcelas === 2 && perto(p.precoEntrada, medio), `médio ${p.precoEntrada.toFixed(4)} parcelas ${p.parcelas}`);
+  confere("margem da parcela sai do caixa, na mesma alavancagem", perto(caixaAntes - e.caixa, noc2 / 3) && perto(p.nocional / p.margem, 3), `${(caixaAntes - e.caixa).toFixed(3)}`);
+  confere("liquidação refeita sobre o preço médio", perto(p.liquidacao, medio * (1 - (1 / 3 - MANUTENCAO))), `${p.liquidacao.toFixed(3)}`);
+  // A liquidação nova (~78) passou o stop fixo de 75: ele sobe junto.
+  confere("o stop sobe para dentro da nova liquidação", perto(p.stop, p.liquidacao * 1.01) && p.liquidacao < p.stop && p.stop < p.precoEntrada, `stop ${p.stop.toFixed(3)} liq ${p.liquidacao.toFixed(3)}`);
+  confere("o gatilho é consumido: não entra de novo", p.piramide?.precos.length === 0, `${p.piramide?.precos.length}`);
+  // O resultado da posição unificada é EXATAMENTE o das duas parcelas separadas.
+  const t = fechar(e, p, { preco: 160, quando: T0 + 3 * HORA, motivo: "prazo" });
+  const separadas = 100 * (160 / 100 - 1) + noc2 * (160 / fill - 1) - 2 * (100 + noc2) * p.custoLado;
+  confere("posição unificada = soma das parcelas separadas", perto(t.resultado, separadas, 1e-9), `${t.resultado.toFixed(4)} ≈ ${separadas.toFixed(4)}`);
+  confere("o trade guarda quantas parcelas teve", t.parcelas === 2, `${t.parcelas}`);
+}
+{
+  // Na mesma vela a alta dispara a parcela e a queda dispara o stop: a vela não
+  // diz a ordem, e o pior caso é a parcela ter entrado antes. Com o stop de 75
+  // parado, a liquidação nova (~78) viria primeiro e levaria a margem inteira.
+  const e = estado();
+  const p = abrir(e, COMPRA_P, "AUSDT", 100, T0, 100e6, false)!;
+  const s = percorrer(p, [v(0, 100, 101, 99, 100), v(1, 100, 145, 70, 72)], [], e);
+  confere("parcela e stop na mesma vela: entra antes, sai junto", s?.motivo === "stop" && p.parcelas === 2, `${s?.motivo} parcelas ${p.parcelas}`);
+  confere("e sai no stop movido, não na liquidação", s !== null && perto(s.preco, p.stop - ESCORREGADA_STOP * (p.stop - 70)) && s.preco > 75, `${s?.preco.toFixed(3)}`);
+}
+{
+  const e = estado();
+  const p = abrir(e, COMPRA_P, "AUSDT", 100, T0, 100e6, false)!;
+  const s = percorrer(p, [v(0, 100, 101, 99, 100), v(1, 120, 150, 118, 145)], []);
+  confere("sem o robô (a margem), a parcela não entra", s === null && (p.parcelas ?? 1) === 1, `parcelas ${p.parcelas ?? 1}`);
+}
+{
+  const e = estado();
+  const p = abrir(e, COMPRA_P, "AUSDT", 100, T0, 100e6, false)!;
+  e.caixa = 0;
+  percorrer(p, [v(0, 100, 101, 99, 100), v(1, 120, 150, 118, 145)], [], e);
+  confere("sem caixa: parcela recusada, contada e consumida", (p.parcelas ?? 1) === 1 && e.recusadas === 1 && p.piramide?.precos.length === 0, `recusadas ${e.recusadas}`);
+}
+{
+  const e = estado();
+  const p = abrir(e, COMPRA, "AUSDT", 100, T0, 100e6, false)!;
+  percorrer(p, [v(0, 100, 101, 99, 100), v(1, 120, 150, 118, 145)], [], e);
+  confere("perna sem pirâmide não acrescenta", p.piramide === undefined && (p.parcelas ?? 1) === 1, `parcelas ${p.parcelas ?? 1}`);
+}
+
+// ------------------------------------------------------------------ o realismo da medição
+console.log("\no realismo da medição");
+{
+  const e = estado();
+  const p = abrir(e, COMPRA, "AUSDT", 100, T0, 100e6, false, CUSTO_ATRASO)!;
+  confere("o atraso medido vira custo de entrada em dólares", perto(p.custoExtra ?? 0, CUSTO_ATRASO * p.nocional), `${p.custoExtra}`);
+  confere("e entra na marcação", perto(valorDaPosicao(p, 100), p.margem - p.nocional * p.custoLado - CUSTO_ATRASO * p.nocional), `${valorDaPosicao(p, 100).toFixed(4)}`);
+  const t = fechar(e, p, { preco: 110, quando: T0 + HORA, motivo: "prazo" });
+  confere("e no resultado", perto(t.resultado, p.nocional * 0.1 - 2 * p.nocional * p.custoLado - CUSTO_ATRASO * p.nocional), `${t.resultado.toFixed(4)}`);
+  const q = abrir(e, COMPRA, "BUSDT", 100, T0, 100e6, false)!;
+  confere("o ao vivo não paga atraso (é de verdade lá)", q.custoExtra === undefined, `${q.custoExtra}`);
+}
+{
+  const e = estado();
+  e.caixa = 40; // patrimônio de US$ 40 → nocional de US$ 4 a 10%
+  const p = abrir(e, COMPRA, "AUSDT", 100, T0, 100e6, false);
+  confere(`abaixo do nocional mínimo da Binance (US$ ${NOCIONAL_MINIMO}) não abre`, p === null && e.recusadas === 1, `recusadas ${e.recusadas}`);
+}
+
 // ------------------------------------------------------------------ os robôs publicados
 console.log("\nos robôs publicados");
 for (const r of ROBOS) {
@@ -258,6 +337,14 @@ for (const r of ROBOS) {
   // e as recusas estão dentro do resultado dela.
   const margemMedia = r.regras.pernas.reduce((s, p) => s + (25 / r.regras.pernas.length) * (r.regras.tamanho / p.alavancagem), 0);
   confere(`${r.nome}: 25 posições cabem no caixa`, margemMedia < 0.8, `${(margemMedia * 100).toFixed(0)}% em margem`);
+}
+
+{
+  const m = ROBOS.find((r) => r.id === "momento")!;
+  const compra = m.regras.pernas.find((p) => p.lado === "long")!;
+  confere("Momento: compra em 45 dias com pirâmide em +40%", compra.janelaDias === 45 && compra.piramide?.niveis[0] === 0.4, `${compra.janelaDias} d`);
+  const caca = ROBOS.find((r) => r.id === "caca-monstra")!.regras.pernas[0];
+  confere("Caça-monstra: 30 dias e sem pirâmide (não passou nele)", caca.janelaDias === 30 && !caca.piramide, `${caca.janelaDias} d`);
 }
 
 console.log(falhas === 0 ? "\ntodos os casos passaram" : `\n${falhas} caso(s) FALHARAM`);

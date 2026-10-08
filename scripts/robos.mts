@@ -188,7 +188,7 @@ for (const e of robos) {
   for (const p of [...e.abertas]) {
     const caminho = caminhos.get(p.symbol);
     if (caminho) {
-      const s = percorrer(p, caminho.velas, caminho.cobrancas);
+      const s = percorrer(p, caminho.velas, caminho.cobrancas, e);
       if (s) {
         lista.push(fechar(e, p, s));
         continue;

@@ -424,8 +424,20 @@ if (gar) {
         for (const campo of ["precoEntrada", "nocional", "margem", "stop", "liquidacao", "melhor", "prazoAte", "funding", "ultimaVela", "fundingAte", "precoAtual"] as const) {
           checa(`${e.id}/${p.symbol}.${campo} finito`, typeof p[campo] === "number" && Number.isFinite(p[campo] as number), `= ${p[campo]}`);
         }
+        // Depois de uma parcela da pirâmide a liquidação SOBE com o preço médio;
+        // é este teste que pega um `acrescentar` que esqueceu de subir o stop junto.
         const doLadoCerto = p.lado === "long" ? p.stop < p.precoEntrada && p.liquidacao < p.stop : p.stop > p.precoEntrada && p.liquidacao > p.stop;
         checa(`${e.id}/${p.symbol}: stop do lado certo e antes da liquidação`, doLadoCerto, `entrada ${p.precoEntrada} stop ${p.stop} liq ${p.liquidacao}`);
+        if (p.parcelas !== undefined) {
+          checa(`${e.id}/${p.symbol}: parcelas é inteiro ≥ 2`, Number.isInteger(p.parcelas) && p.parcelas >= 2, `= ${p.parcelas}`);
+        }
+        if (p.piramide) {
+          const aFavor = p.piramide.precos.every((x) => Number.isFinite(x) && (p.lado === "long" ? x > p.precoEntrada : x < p.precoEntrada));
+          checa(`${e.id}/${p.symbol}: gatilhos da pirâmide finitos e a favor da posição`, aFavor, `${p.piramide.precos.join(", ")} com entrada ${p.precoEntrada}`);
+        }
+        if (p.custoExtra !== undefined) {
+          checa(`${e.id}/${p.symbol}.custoExtra finito e não negativo`, Number.isFinite(p.custoExtra) && p.custoExtra >= 0, `= ${p.custoExtra}`);
+        }
       }
       for (const t of e.fechadas) {
         checa(`${e.id}/${t.symbol}: perda não passa da margem`, Number.isFinite(t.resultado) && t.resultado >= -t.margem - 1e-9, `${t.resultado} com margem ${t.margem}`);

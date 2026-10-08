@@ -30,44 +30,63 @@
  * sangraram; as perdedoras somam um a dois pontos por cima disso — e cai 40% a
  * 60% quando as alts sobem juntas. A comprada perde devagar e ganha de uma vez,
  * nas monstras. JUNTAS elas se protegem: quando o mercado de alts despenca, a
- * vendida paga; quando aparece uma MYX, a comprada paga. Medido no livro
+ * vendida paga; quando aparece uma MYX, a comprada paga. A regra de 07/10
+ * (compra em 30 dias) foi positiva nas duas metades em todas as 26 variações
+ * atacadas na primeira bancada — custo 2x e 3x, entrada 1 h e 3 h atrasada,
+ * decisão às 11 h ou 17 h, k de 3 e de 10, volume de 5 e de 50 milhões,
+ * rastro de 20% e 40%, stops, prazos e janelas.
+ *
+ * O CUSTO DA VIDA REAL, medido em 08/10 e cobrado desde então: o stop
+ * escorrega como no minuto do disparo (`ESCORREGADA_STOP`), a entrada paga o
+ * atraso até o primeiro retrato (`CUSTO_ATRASO`), ordem abaixo de US$ 5 não
+ * existe (`NOCIONAL_MINIMO`). Só isso levou a regra de 07/10, a 4%, de +600%
+ * para +416% na janela inteira (dentro +104% → +89%, fora +226% → +160%): é o
+ * que a medição antiga dava de presente.
+ *
+ * E COM O CUSTO DENTRO, a compra passou a olhar 45 dias e a dobrar a aposta
+ * na que anda +40% (`COMPRA_MOMENTO`, com a medição ao lado). Medido no livro
  * inteiro com ESTE motor (`npm run medir-robos`), US$ 1.000 em 08/01/2024 e o
  * patrimônio em 30/09/2026:
  *
- *   tamanho por posição   inteira    dentro    fora     queda máx   Sharpe
- *   2% do patrimônio       +190%       —        —        −18%       1,54
- *   4%  ← "Momento"        +600%     +104%     +226%     −34%       1,56
- *   6%  ← "Momento turbo" +1.312%    +130%     +470%     −48%       1,59
- *   8%                     +657%       —        —        −68%       1,24
+ *   tamanho por posição    inteira    dentro    fora     queda máx   Sharpe
+ *   2% do patrimônio        +524%       —        —        −26%       2,09
+ *   3%  ← "Momento"       +1.254%     +73%     +638%     −37%       2,09
+ *   4%                    +2.606%       —        —        −46%       2,09
+ *   4,5% ← "Momento turbo" +3.675%    +115%   +1.510%    −51%       2,09
+ *   6%                    +8.109%       —        —        −65%       2,10
+ *   a regra de 07/10, 4%    +416%      +89%     +160%     −36%       1,36
  *
- * A 8% o caixa começa a recusar entrada e o resultado PIORA: mais tamanho só
- * compra mais retorno até o ponto em que a margem acaba.
+ * O Sharpe não muda com o tamanho: tamanho escolhe o RISCO, não a vantagem. O
+ * Momento e o turbo ficaram perto da queda máxima que tinham antes (−37% contra
+ * −36%; −51% contra −48%), e a 4,5% o caixa já recusa 10 entradas (198 a 6%).
  *
- * E positivo nas duas metades em TODAS as 26 variações atacadas na bancada da
- * pesquisa: custo 2x e 3x, entrada atrasada 1 h e 3 h, decisão às 11 h ou 17 h
- * em vez da meia-noite, k de 3 e de 10, volume mínimo de 5 e de 50 milhões,
- * rastro de 20% e 40%, stops, prazos e janelas. O pior foi o rastro de 20%:
- * +17% na janela inteira, a 2% por posição.
+ * NA MESMA QUEDA MÁXIMA, a regra nova faz +1.254% contra +416%, e sem as cinco
+ * melhores moedas o fora da amostra vai de −38% para +71%. MAS O DENTRO DA
+ * AMOSTRA VAI DE +89% PARA +73%: no mesmo risco, antes de 07/2025 a regra nova
+ * rende menos. A melhora é das altas que passaram a durar meses — se elas
+ * voltarem a durar semanas, a de 30 dias volta a ser a melhor das duas.
  *
- * O QUE ISSO NÃO É, e é a ressalva que manda: o lucro recente vem de POUCAS
- * MOEDAS. Tirando as cinco que mais deram ao Momento (RAVE, TUT, LAB, BEAT,
- * MYX), a janela inteira cai de +600% para +67%, o dentro da amostra quase não
- * muda (+104% → +103%) e o FORA vira −22%. É o formato de qualquer seguidor de
- * tendência — perde pouco quase sempre e ganha muito de vez em quando —, e a
- * tese só continua de pé enquanto continuarem aparecendo monstras. Das US$ 5.968
- * que a perna comprada fez, US$ 3.755 vieram de moedas que hoje estão no painel
- * de manipuladas: é a intuição de que "as manipuladas têm mais potencial",
- * medida — e é também o risco concentrado.
+ * O QUE ISSO NÃO É, e é a ressalva que manda: o lucro vem de POUCAS MOEDAS.
+ * Tirando as cinco que mais deram ao Momento (RAVE, TUT, BEAT, LAB, LSK), a
+ * janela inteira cai de +1.254% para +242% e o fora, de +638% para +71%. A
+ * pirâmide entrou em 344 de 1.066 compras, e foram essas que fizeram o lucro da
+ * perna: US$ 36 mil, contra US$ 23 mil perdidos nas outras 722. É o formato de
+ * qualquer seguidor de tendência — perde pouco quase sempre e ganha muito de
+ * vez em quando —, e a tese só continua de pé enquanto continuarem aparecendo
+ * monstras. Dos US$ 13.516 que a perna comprada fez, US$ 8.053 vieram de moedas
+ * que hoje estão no painel de manipuladas: é a intuição de que "as manipuladas
+ * têm mais potencial", medida — e é também o risco concentrado.
  *
  * O "Caça-monstra" é essa intuição sozinha: só a perna comprada, mais
- * concentrada e aceitando moeda menor. Fora da amostra, +225%; dentro, −0,3%,
- * com queda de −37%; sem as suas cinco melhores, +18% fora e −1% dentro. Ele
+ * concentrada e aceitando moeda menor. Fora da amostra, +189%; dentro, −3%,
+ * com queda de −37%; sem as suas cinco melhores, +11% fora e −23% dentro. Ele
  * existe na arena para a pergunta "e se eu só comprasse as manipuladas que
  * disparam?" ter resposta na tela, ao vivo.
  *
- * Os números citados em cada perna abaixo são da BANCADA da pesquisa, com
- * posições de 0,7% do patrimônio — a escala em que as 26 variações foram
- * atacadas. O que conta neles é a ordem entre as variações, não o nível.
+ * Os números citados na perna vendida e no universo, abaixo, são da PRIMEIRA
+ * bancada, com posições de 0,7% do patrimônio e sem o custo da vida real: o
+ * que conta neles é a ordem entre as variações, não o nível. Os da perna
+ * comprada são da bancada realista, a 4%.
  *
  * ESTE ARQUIVO NÃO IMPORTA NADA DE `node:` — a página o importa para desenhar
  * e remarcar, como `lib/carteira.ts`.
@@ -105,6 +124,14 @@ export interface Perna {
    * −32,8% de preço (stop de 25%); a 2x, a +49,5% (stop de 45%).
    */
   alavancagem: number;
+  /**
+   * A PIRÂMIDE: quando o preço anda `niveis[i]` a favor desde a entrada, a
+   * posição ganha uma parcela de `tamanho` × o tamanho normal, no mesmo lado.
+   * A parcela vira parte da MESMA posição — preço médio, margem e liquidação
+   * refeitos, como numa conta de verdade —, e sai junto, pelo mesmo stop.
+   * Ausente: sem pirâmide.
+   */
+  piramide?: { niveis: number[]; tamanho: number };
 }
 
 export interface RegrasRobo {
@@ -142,21 +169,52 @@ export const TAXA = 0.0005;
 export const MANUTENCAO = 0.005;
 
 /**
- * A perna comprada: as 5 que mais subiram em 30 dias.
+ * QUANTO O STOP ESCORREGA, em fração do resto da vela de 1 h além do nível.
  *
- * TRINTA DIAS E NÃO SETE, e foi a janela que mais pesou: com 7 dias o livro
- * cai de Sharpe 1,59 para 0,68–0,71; com 21, 1,28; com 45, 2,22. A alta de
- * uma semana é ruído e pump que já está devolvendo; a de um mês é a moeda que
- * está DE FATO numa perna longa — e é o que a MYX, a RAVE e a AKE pareciam.
+ * Medido em VELAS DE 1 MINUTO do Data Vision, sobre 500 saídas sorteadas que
+ * a vela de 1 h dava "no nível": em NENHUMA o preço pulou o nível de um minuto
+ * para o outro — o "no nível" está certo nisso. O que a vela de 1 h não vê é o
+ * minuto do disparo: dentro dele o preço passa do nível em média 1,13%
+ * (mediana 0,52%, p90 2,6%, p99 9,3%), e uma ordem a mercado sai em algum
+ * ponto desse caminho. Cobrar um quarto dele dá ~0,28% por saída, e o resto
+ * médio da vela de 1 h além do nível era 4,53%: um quarto de 1,13 dividido
+ * por 4,53 é 0,06. Proporcional à vela de propósito — a escorregada de uma
+ * queda de 40% numa hora não é a de uma vela que encostou no stop.
  *
- * RASTRO DE 30%, e este é o parâmetro que separa ganhar de não ganhar: com 20%
- * o livro inteiro cai para +17% (Sharpe 0,68), porque as monstras recuam 20%
- * várias vezes no caminho e o rastro curto as vende no primeiro tranco; 40% dá
- * o mesmo que 30% (+59,9%). Stop inicial de 25% e prazo de 30 dias ficam no
- * meio dos seus platôs (15% a 35%, 14 a 60 dias: todos positivos nas duas
- * metades).
+ * Vale também para a parcela da pirâmide, do outro lado: ordem de compra
+ * disparada numa alta também sai acima do gatilho.
  */
-const COMPRA_MOMENTO: Perna = {
+export const ESCORREGADA_STOP = 0.06;
+
+/**
+ * O custo do ATRASO DA ENTRADA, em fração do nocional — só na MEDIÇÃO.
+ *
+ * A medição entra na abertura da meia-noite; o ao vivo, no primeiro retrato
+ * depois dela. Medido em velas de 1 minuto sobre 500 entradas do livro: entrar
+ * 1 a 5 minutos depois custa +0,06%; 15 minutos, +0,12%; 30, +0,03% (mediana
+ * +0,18%). E pareado trade a trade, entrar 1 h depois NÃO piora em média
+ * (+0,14%). Os 0,1% cobrados aqui são o medido aos 15 minutos. No ao vivo não
+ * se cobra: lá o atraso é de verdade, e o preço já é o de quando o retrato roda.
+ */
+export const CUSTO_ATRASO = 0.001;
+
+/**
+ * O menor nocional que a Binance aceita numa ordem de perpétuo USDT, em
+ * dólares (US$ 5 na maioria; BTC e ETH pedem mais, e nunca são escolhidos com
+ * esta régua de momento). Abaixo dele a ordem é recusada — aqui também.
+ */
+export const NOCIONAL_MINIMO = 5;
+
+/**
+ * A perna comprada ATÉ 08/10: as 5 que mais subiram em 30 dias, sem pirâmide.
+ * Fica exportada para a medição imprimir o antes ao lado do depois.
+ *
+ * TRINTA DIAS E NÃO SETE: com 7 dias o livro caía de Sharpe 1,59 para
+ * 0,68–0,71 na bancada. RASTRO DE 30%: com 20% o livro inteiro caía para +17%
+ * (Sharpe 0,68), porque as monstras recuam 20% várias vezes no caminho e o
+ * rastro curto as vende no primeiro tranco.
+ */
+const COMPRA_ANTERIOR: Perna = {
   lado: "long",
   janelaDias: 30,
   k: 5,
@@ -164,6 +222,54 @@ const COMPRA_MOMENTO: Perna = {
   rastro: 0.3,
   prazoH: 30 * 24,
   alavancagem: 3,
+};
+
+/**
+ * A perna comprada desde 08/10: as 5 que mais subiram em 45 DIAS, com UMA
+ * parcela a mais quando a posição anda +40%.
+ *
+ * Medido na bancada com o modelo REALISTA (stop escorregando, entrada com o
+ * custo do atraso), a 4% por posição, janela inteira · dentro · fora, e "sem as
+ * 5 melhores" de fora — o número que reprovava o livro antigo:
+ *
+ *                                inteira    dentro     fora    sem as 5, fora
+ *   30 d, sem pirâmide (antiga)   +415%      +87%      +160%       −35%
+ *   45 d                         +1.128%     +84%      +511%      +102%
+ *   45 d + pirâmide em +40%      +2.692%    +105%    +1.147%      +139%
+ *
+ * A JANELA É PLATÔ, NÃO PICO: de 35 a 55 dias tudo ganha de 30 fora da amostra
+ * (+249% a +511%) e o "sem as 5, fora" fica positivo em todas (+21% a +102%);
+ * 25 dias perde fora (+61%) e ganha dentro (+163%). A leitura honesta: dentro
+ * da amostra 45 dias EMPATA com 30; a melhora é toda de 07/2025 em diante,
+ * onde as altas destas moedas passaram a durar meses (a MYX, a RAVE).
+ *
+ * A PIRÂMIDE TAMBÉM: parcela em +30%, +40% ou +50% dá dentro +104%, +105% e
+ * +102% e fora +1.466%, +1.147% e +1.043%; meia parcela, +92% e +787%. É o
+ * dinheiro indo para onde a tendência está provada — e é ela, não a janela,
+ * que melhora o dentro da amostra. O custo é a queda máxima: −37% → −47% no
+ * mesmo tamanho, e é por isso que o Momento passou de 4% para 3% (abaixo).
+ *
+ * ATACADA com mais custo do que o medido, e positiva nas três janelas e no
+ * "sem as 5, fora" em todos:
+ *
+ *                                inteira    dentro     fora    sem as 5, fora
+ *   entrada a 0,4% (4x o medido) +1.949%     +80%      +945%      +102%
+ *   escorregada do stop dobrada  +1.997%     +96%      +883%       +96%
+ *   entrada 1 h atrasada         +2.046%     +97%      +916%      +112%
+ *
+ * O que foi medido junto e NÃO entrou: rastro de 40% em cima disto (fora
+ * melhora, dentro piora: +105% → +69%); o stop pela marcação em vez do último
+ * negócio (fora dobra, dentro piora: +105% → +95% — e o stop da Binance é pelo
+ * último negócio, salvo pedido); financiamento negativo como filtro de compra
+ * (perde nas duas: −0,6% dentro); postos de 30 e 60 dias somados; prazo de 60
+ * ou 90 dias (dentro piora); duas ou três parcelas (+30/+60%, +30/+60/+100%),
+ * que na janela de 30 dias não melhoram o dentro sobre uma só (+107% e +109%
+ * contra +110%) e aumentam a queda máxima (−45% e −49% contra −42%).
+ */
+const COMPRA_MOMENTO: Perna = {
+  ...COMPRA_ANTERIOR,
+  janelaDias: 45,
+  piramide: { niveis: [0.4], tamanho: 1 },
 };
 
 /**
@@ -203,28 +309,39 @@ export const ROBOS: Robo[] = [
     id: "momento",
     nome: "Momento",
     descricao:
-      "Compra as 5 que mais subiram em 30 dias e vende as 5 que mais caíram em 14, todo dia, em qualquer perpétuo com US$ 20 mi de volume.",
-    regras: { tamanho: 0.04, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO] },
+      "Compra as 5 que mais subiram em 45 dias (e dobra a aposta nas que sobem +40%) e vende as 5 que mais caíram em 14, todo dia, em qualquer perpétuo com US$ 20 mi de volume.",
+    regras: { tamanho: 0.03, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO] },
   },
   {
     id: "turbo",
     nome: "Momento turbo",
     descricao: "O mesmo livro com 1,5x o tamanho — a resposta medida para \"e se arriscasse mais?\".",
-    regras: { tamanho: 0.06, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO] },
+    regras: { tamanho: 0.045, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO] },
   },
   {
     id: "caca-monstra",
     nome: "Caça-monstra",
     descricao:
       "Só compra: as 3 que mais subiram em 30 dias, aceitando moeda de US$ 5 mi de volume, e deixa correr no rastro de 30%.",
+    // A janela de 45 dias e a pirâmide foram medidas aqui também e NÃO
+    // entraram: fora da amostra melhoram (+188% → +554%), dentro pioram
+    // (−4% → −17%). O Caça-monstra é a tese pura, e ela continua sendo isso.
     regras: {
       tamanho: 0.04,
       volumeMinimo: 5e6,
       idadeMinimaDias: 14,
-      pernas: [{ ...COMPRA_MOMENTO, k: 3 }],
+      pernas: [{ ...COMPRA_ANTERIOR, k: 3 }],
     },
   },
 ];
+
+/** O Momento como foi publicado até 08/10, para a medição ler o antes ao lado do depois. */
+export const MOMENTO_ANTERIOR: Robo = {
+  id: "momento-anterior",
+  nome: "Momento até 08/10",
+  descricao: "30 dias, sem pirâmide, 4% por posição.",
+  regras: { tamanho: 0.04, ...UNIVERSO, pernas: [COMPRA_ANTERIOR, VENDA_MOMENTO] },
+};
 
 // ------------------------------------------------------------------ o estado
 
@@ -240,7 +357,10 @@ export interface PosicaoRobo {
   margem: number;
   /** Custo por lado, em fração do nocional, fixado na entrada pela liquidez de então. */
   custoLado: number;
-  /** Preço do stop inicial. */
+  /**
+   * Preço do stop fixo: o inicial, ou o que a parcela da pirâmide subiu para
+   * dentro da liquidação nova (`acrescentar`). O rastro anda por cima dele.
+   */
   stop: number;
   /** Distância do rastro, em variação de preço; nulo sem rastro. */
   rastro: number | null;
@@ -265,6 +385,19 @@ export interface PosicaoRobo {
   precoAtual: number;
   /** A moeda está no painel de manipuladas (lista ou em vista) na hora da entrada. */
   manipulada?: boolean;
+  /**
+   * As parcelas da pirâmide que ainda podem entrar: o preço que dispara cada uma
+   * e o tamanho dela em múltiplos do tamanho normal. Ausente: sem pirâmide (e
+   * toda posição aberta antes de 08/10).
+   */
+  piramide?: { precos: number[]; tamanho: number };
+  /** Quantas parcelas a posição tem; ausente é uma. */
+  parcelas?: number;
+  /**
+   * Custo de entrada além da taxa e da escorregada, em DÓLARES. Na medição é o
+   * do atraso (`CUSTO_ATRASO`); no ao vivo, zero.
+   */
+  custoExtra?: number;
 }
 
 export interface TradeRobo {
@@ -282,6 +415,8 @@ export interface TradeRobo {
   funding: number;
   motivo: MotivoRobo;
   manipulada?: boolean;
+  /** Quantas parcelas a posição chegou a ter, quando foi mais de uma. */
+  parcelas?: number;
 }
 
 export interface EstadoRobo {
@@ -372,7 +507,7 @@ function aFavor(p: { lado: LadoRobo; precoEntrada: number }, preco: number): num
  * dívida que a corretora não cobra.
  */
 export function valorDaPosicao(p: PosicaoRobo, preco: number): number {
-  const v = p.margem + p.nocional * aFavor(p, preco) - p.nocional * p.custoLado - p.funding;
+  const v = p.margem + p.nocional * aFavor(p, preco) - p.nocional * p.custoLado - p.funding - (p.custoExtra ?? 0);
   return Number.isFinite(v) ? Math.max(0, v) : 0;
 }
 
@@ -425,7 +560,13 @@ export function cobrar(p: PosicaoRobo, cobrancas: readonly Cobranca[], ate: numb
  * posição não viveu. Vela sem preço (moeda que parou de negociar) fecha a
  * posição no último preço visto, como "sumiu".
  */
-export function percorrer(p: PosicaoRobo, velas: readonly VelaRobo[], cobrancas: readonly Cobranca[]): Saida | null {
+export function percorrer(
+  p: PosicaoRobo,
+  velas: readonly VelaRobo[],
+  cobrancas: readonly Cobranca[],
+  /** O robô dono da posição: sem ele a pirâmide não tem de onde tirar a margem, e não entra. */
+  e?: EstadoRobo,
+): Saida | null {
   const comprado = p.lado === "long";
   for (const v of velas) {
     if (v.t < p.abertaEm || v.t <= p.ultimaVela) continue;
@@ -435,6 +576,18 @@ export function percorrer(p: PosicaoRobo, velas: readonly VelaRobo[], cobrancas:
     // 1. O financiamento da abertura desta vela é devido por quem estava
     //    posicionado nela — inclusive se for a vela da saída.
     cobrar(p, cobrancas, v.t);
+
+    // 1b. A PIRÂMIDE, ANTES DO STOP. A vela não diz se a alta que dispara a
+    //     parcela veio antes ou depois da queda que estopa; supor que veio
+    //     antes é o pior caso — a parcela entra no alto e sai no stop.
+    if (e && p.piramide) {
+      while (p.piramide.precos.length > 0) {
+        const gatilho = p.piramide.precos[0];
+        if (comprado ? v.h < gatilho : v.l > gatilho) break;
+        p.piramide.precos.shift();
+        acrescentar(e, p, v, gatilho);
+      }
+    }
 
     const ns = nivelDoStop(p);
     const liq = p.liquidacao;
@@ -451,7 +604,10 @@ export function percorrer(p: PosicaoRobo, velas: readonly VelaRobo[], cobrancas:
     // 3. O stop, no nível ou na abertura se a vela saltou por cima.
     const tocaStop = comprado ? v.l <= ns : v.h >= ns;
     if (tocaStop) {
-      const preco = comprado ? Math.min(v.o, ns) : Math.max(v.o, ns);
+      // No nível, ou na abertura se a vela saltou por cima dele — e então a
+      // escorregada medida no minuto do disparo (`ESCORREGADA_STOP`).
+      const nivel = comprado ? Math.min(v.o, ns) : Math.max(v.o, ns);
+      const preco = comprado ? nivel - ESCORREGADA_STOP * (nivel - v.l) : nivel + ESCORREGADA_STOP * (v.h - nivel);
       const doRastro = comprado ? ns > p.stop : ns < p.stop;
       p.ultimaVela = v.t;
       return { preco, quando: v.t + HORA, motivo: doRastro ? "rastro" : "stop" };
@@ -469,13 +625,58 @@ export function percorrer(p: PosicaoRobo, velas: readonly VelaRobo[], cobrancas:
 }
 
 /**
+ * A parcela da pirâmide entra na MESMA posição, como numa conta de verdade: o
+ * preço de entrada vira o médio PONDERADO PELA QUANTIDADE (é ele que faz
+ * nocional × variação dar o resultado exato das duas parcelas), a margem
+ * soma, e a liquidação é refeita sobre o preço médio. O stop, o rastro e o
+ * prazo continuam os da primeira parcela: as duas saem juntas.
+ *
+ * O preço é o do gatilho, ou a abertura se a vela já abriu além dele, mais a
+ * mesma escorregada do stop — ordem a mercado disparada numa alta sai acima.
+ * Sem caixa para a margem, ou abaixo do nocional mínimo, a parcela é recusada
+ * e contada, e não volta: o gatilho foi consumido.
+ *
+ * A liquidação refeita SOBE com o preço médio, e passa o stop fixo: entrada em
+ * 100 e parcela em 140 dão médio ~117 e liquidação ~78, acima do stop de 75.
+ * Da vela seguinte em diante o rastro já está em 98 (30% abaixo da máxima que
+ * disparou a parcela) e protege; o buraco é a própria vela da parcela, quando
+ * ela salta o gatilho e despenca na mesma hora — a corretora liquidaria a
+ * posição inteira antes do stop. Quem acrescenta numa conta de verdade move o
+ * stop junto, e o motor faz o mesmo: ele sobe para 1% dentro da nova
+ * liquidação. Perder ~97% da margem no lugar de 100% é quase a mesma coisa; o
+ * que importa é o stop guardado nunca estar além da liquidação, que é o que a
+ * auditoria confere em toda posição aberta.
+ */
+function acrescentar(e: EstadoRobo, p: PosicaoRobo, v: VelaRobo, gatilho: number): void {
+  const comprado = p.lado === "long";
+  const base = comprado ? Math.max(v.o, gatilho) : Math.min(v.o, gatilho);
+  const preco = comprado ? base + ESCORREGADA_STOP * (v.h - base) : base - ESCORREGADA_STOP * (base - v.l);
+  const alavancagem = p.nocional / p.margem;
+  const nocional = e.regras.tamanho * patrimonioA(e) * (p.piramide?.tamanho ?? 1);
+  const margem = nocional / alavancagem;
+  if (!(nocional >= NOCIONAL_MINIMO) || !(margem <= e.caixa) || !(preco > 0)) {
+    e.recusadas++;
+    return;
+  }
+  e.caixa -= margem;
+  const quantidade = p.nocional / p.precoEntrada + nocional / preco;
+  p.nocional += nocional;
+  p.margem += margem;
+  p.precoEntrada = p.nocional / quantidade;
+  const distLiq = 1 / alavancagem - MANUTENCAO;
+  p.liquidacao = comprado ? p.precoEntrada * (1 - distLiq) : p.precoEntrada * (1 + distLiq);
+  p.stop = comprado ? Math.max(p.stop, p.liquidacao * 1.01) : Math.min(p.stop, p.liquidacao * 0.99);
+  p.parcelas = (p.parcelas ?? 1) + 1;
+}
+
+/**
  * Fecha a posição e devolve o trade. Liquidada perde a margem inteira, e só
  * ela; nas outras saídas o resultado é a variação de preço sobre o nocional,
  * menos o custo dos dois lados e o financiamento — e também nunca passa da
  * margem, que é o teto da perda em margem isolada.
  */
 export function fechar(e: EstadoRobo, p: PosicaoRobo, s: Saida): TradeRobo {
-  const bruto = p.nocional * aFavor(p, s.preco) - 2 * p.nocional * p.custoLado - p.funding;
+  const bruto = p.nocional * aFavor(p, s.preco) - 2 * p.nocional * p.custoLado - p.funding - (p.custoExtra ?? 0);
   const resultado = s.motivo === "liquidada" ? -p.margem : Math.max(-p.margem, bruto);
   e.caixa += p.margem + resultado;
   e.abertas = e.abertas.filter((x) => x !== p);
@@ -492,6 +693,7 @@ export function fechar(e: EstadoRobo, p: PosicaoRobo, s: Saida): TradeRobo {
     funding: p.funding,
     motivo: s.motivo,
     ...(p.manipulada ? { manipulada: true } : {}),
+    ...(p.parcelas && p.parcelas > 1 ? { parcelas: p.parcelas } : {}),
   };
   e.fechadas.unshift(t);
   return t;
@@ -563,6 +765,8 @@ export function abrir(
   quando: number,
   volume: number,
   manipulada: boolean,
+  /** Custo de entrada a mais, em fração do nocional: `CUSTO_ATRASO` na medição, zero no ao vivo. */
+  custoExtra = 0,
 ): PosicaoRobo | null {
   if (e.abertas.some((p) => p.symbol === symbol)) return null;
   if (!(preco > 0) || !Number.isFinite(preco)) {
@@ -572,7 +776,7 @@ export function abrir(
   const pat = patrimonioA(e);
   const nocional = e.regras.tamanho * pat;
   const margem = nocional / perna.alavancagem;
-  if (!(margem >= 1) || margem > e.caixa) {
+  if (!(nocional >= NOCIONAL_MINIMO) || margem > e.caixa) {
     e.recusadas++;
     return null;
   }
@@ -596,6 +800,15 @@ export function abrir(
     fundingAte: quando,
     precoAtual: preco,
     ...(manipulada ? { manipulada: true } : {}),
+    ...(perna.piramide
+      ? {
+          piramide: {
+            precos: perna.piramide.niveis.map((n) => (comprado ? preco * (1 + n) : preco * (1 - n))),
+            tamanho: perna.piramide.tamanho,
+          },
+        }
+      : {}),
+    ...(custoExtra > 0 ? { custoExtra: custoExtra * nocional } : {}),
   };
   e.caixa -= margem;
   e.abertas.push(p);
@@ -621,12 +834,14 @@ export function decidir(
   precoDe: (symbol: string) => number | undefined,
   quando: number,
   manipuladas?: ReadonlySet<string>,
+  /** Ver `abrir`: o custo do atraso, só na medição. */
+  custoExtra = 0,
 ): PosicaoRobo[] {
   const abertas: PosicaoRobo[] = [];
   const pernas = [...e.regras.pernas].sort((a, b) => a.janelaDias - b.janelaDias);
   for (const perna of pernas) {
     for (const l of selecionar(e.regras, perna, linhas)) {
-      const p = abrir(e, perna, l.symbol, precoDe(l.symbol) ?? NaN, quando, l.volume, manipuladas?.has(l.symbol) ?? false);
+      const p = abrir(e, perna, l.symbol, precoDe(l.symbol) ?? NaN, quando, l.volume, manipuladas?.has(l.symbol) ?? false, custoExtra);
       if (p) abertas.push(p);
     }
   }
@@ -679,6 +894,11 @@ export interface MedicaoRobo {
   semAs5?: { symbols: string[]; retornos: number[] };
   /** Quanto da perna comprada veio de moedas do painel de manipuladas, em dólares, e o total. */
   daManipuladas?: { manipuladas: number; total: number };
+  /**
+   * Em quantas compras encerradas a pirâmide entrou, e o resultado em DÓLARES
+   * das que ganharam a parcela e das que não ganharam. Só em robô com pirâmide.
+   */
+  piramide?: { compras: number; comParcela: number; resultadoCom: number; resultadoSem: number };
   /** A curva da janela inteira, um ponto por dia. */
   curva: { t: number; patrimonio: number }[];
 }
@@ -687,6 +907,13 @@ export interface Medicao {
   geradoEm: number;
   universo: { moedas: number; deslistadas: number; de: number; ate: number };
   robos: MedicaoRobo[];
+  /**
+   * As regras anteriores medidas no MESMO modelo realista, para a tela ler o
+   * antes ao lado do depois. Opcional porque a medição de 07/10 não tem.
+   */
+  referencias?: MedicaoRobo[];
+  /** O que o modelo realista cobra, para a tela dizer. */
+  realismo?: { escorregadaStop: number; custoAtraso: number; nocionalMinimo: number };
 }
 
 export interface ArquivoRobos {

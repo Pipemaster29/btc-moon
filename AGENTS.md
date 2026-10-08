@@ -71,6 +71,15 @@ no código, com número:
   Sem RAVE, TUT, LAB, BEAT e MYX, o fora vira −22%. É o robô "Momento"
   (`lib/robos.ts`), e a página mostra as duas coisas lado a lado.
 
+- **A vida real custava um terço, e a pirâmide pagou de volta — fora da
+  amostra (08/10).** Em velas de 1 minuto, o stop sai além do nível dentro do
+  minuto do disparo (1,13% em média) e entrar uma hora depois não custa nada em
+  média; cobrados, a regra de 07/10 cai de +600% para +416%. Com o custo
+  dentro, comprar em 45 dias e dobrar a posição que anda +40% faz +1.254% a 3%
+  por posição, na mesma queda máxima, e sem as 5 melhores o fora vai de −38%
+  para +71%. **Mas o dentro, no mesmo risco, vai de +89% para +73%**: a
+  melhora é das altas de 2025–2026, e a página mostra a regra anterior ao lado.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -422,7 +431,18 @@ e no README; aqui fica o que não pode ser quebrado.
   amostra.
 - **Entrada só no presente.** O ao vivo abre no preço de quando o retrato roda; dia
   sem retrato é `diasPerdidos`, e a seleção dele não é feita depois. As SAÍDAS,
-  essas, vêm do caminho de velas na hora em que aconteceram.
+  essas, vêm do caminho de velas na hora em que aconteceram — e a segunda
+  parcela da pirâmide também, porque ela é ordem parada como o stop: o gatilho
+  foi decidido na entrada.
+- **Na vela que dispara a parcela e o stop, a parcela entra primeiro** — é o
+  pior caso, e a vela não diz a ordem. E a parcela **sobe o stop para dentro da
+  liquidação nova** (`acrescentar`): com preço médio mais alto, a liquidação da
+  posição unificada passa o stop fixo, e sem isso a corretora fecharia tudo
+  antes dele. A auditoria reprova posição com o stop além da liquidação.
+- **O custo da vida real vale onde ele é simulado.** A escorregada do stop
+  (`ESCORREGADA_STOP`) vale na medição e no ao vivo — os dois saem pelas velas
+  de 1 h. O custo do atraso (`CUSTO_ATRASO`) é só da medição: no ao vivo o
+  atraso é de verdade, e cobrá-lo de novo seria cobrar duas vezes.
 - **A vela da entrada fica de fora** no ao vivo (`v.t < p.abertaEm`): ela tem os
   minutos de antes da posição existir.
 - **O rastro de uma vela é o que estava parado quando ela abriu** — a máxima da
@@ -431,7 +451,13 @@ e no README; aqui fica o que não pode ser quebrado.
   rodada não grava; sem velas ou financiamento de uma moeda, as posições dela
   esperam; com menos de 90% da praça no ranking, a seleção espera.
 - **Unidades**: `stop`, `rastro` e preços são de PREÇO; `nocional`, `margem`,
-  `funding` e `resultado` são DÓLARES; `tamanho` é fração do PATRIMÔNIO.
+  `funding`, `custoExtra` e `resultado` são DÓLARES; `tamanho` é fração do
+  PATRIMÔNIO; `CUSTO_ATRASO` é fração do NOCIONAL e `ESCORREGADA_STOP`, do
+  resto da vela além do nível.
+- **Tamanho escolhe o risco, não a vantagem.** De 2% a 6% por posição o Sharpe
+  medido fica em 2,09–2,10; o que muda é a queda máxima. Pedido de "mais lucro"
+  por tamanho é pedido de mais queda, e a tabela de `npm run medir-robos` diz
+  quanto.
 - **Regra nova só com a medição refeita**, e as duas colunas que mais reprovam
   aqui são "dentro da amostra" e "sem as 5 melhores". Um robô de momento que só
   ganha fora da amostra está medindo as monstras de 2025–2026, não uma regra.
