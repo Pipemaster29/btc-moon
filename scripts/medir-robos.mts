@@ -393,6 +393,9 @@ for (const robo of [...ROBOS, MOMENTO_ANTERIOR]) {
     );
   }
   const e = inteira!;
+  const motivos = new Map<string, number>();
+  for (const t of e.fechadas) motivos.set(t.motivo, (motivos.get(t.motivo) ?? 0) + 1);
+  console.log("saídas: " + [...motivos.entries()].sort((a, b) => b[1] - a[1]).map(([m, n]) => `${m} ${n}`).join(" · "));
   const q = trimestres(e);
   console.log("por trimestre: " + q.map((x) => `${x.trimestre} ${pct(x.retorno)}`).join(" · "));
   const moedas = [...porMoeda(e).entries()].sort((a, b) => b[1] - a[1]);
@@ -448,7 +451,7 @@ for (const robo of [...ROBOS, MOMENTO_ANTERIOR]) {
 
 // A escala do tamanho, medida sobre o mesmo livro: é a resposta a "e se arriscasse mais?".
 console.log("\n== o tamanho, no livro do Momento (janela inteira)");
-for (const tam of [0.02, 0.03, 0.04, 0.045, 0.05, 0.06]) {
+for (const tam of [0.02, 0.03, 0.035, 0.04, 0.05, 0.06, 0.07, 0.08]) {
   const e = simular(ROBOS[0], INICIO, FIM, undefined, tam);
   console.log(`${(tam * 100).toFixed(1)}% por posição  ${pct(e.patrimonio / CAPITAL_ROBO - 1).padStart(9)}  queda máx ${pct(e.quedaMaxima)}  Sharpe ${sharpeDe(e.curva).toFixed(2)}${e.recusadas ? ` · ${e.recusadas} recusadas` : ""}`);
 }

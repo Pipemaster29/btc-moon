@@ -51,7 +51,7 @@ export interface SerieRobo {
  * os rótulos comiam um terço do gráfico (visto a 390 px). No largo, 132 é o
  * que cabe "US$ 13.541 Momento" — com 118 o nome saía cortado.
  */
-const G_LARGO = { esq: 62, dir: 132, topo: 14, base: 26 };
+const G_LARGO = { esq: 74, dir: 132, topo: 14, base: 26 };
 const G_ESTREITO = { esq: 44, dir: 66, topo: 14, base: 26 };
 
 function usd(v: number, casas = 0): string {
@@ -242,7 +242,8 @@ export default function CurvaRobos({
             <g key={v}>
               <line x1={G.esq} x2={W - G.dir} y1={py(v)} y2={py(v)} className="stroke-black/10 dark:stroke-white/10" strokeWidth="1" vectorEffect="non-scaling-stroke" />
               <text x={G.esq - 8} y={py(v) + 3.5} textAnchor="end" className="fill-black/40 dark:fill-white/40 tabular-nums" fontSize="10">
-                {estreito && v >= 1000 ? `${(v / 1000).toLocaleString("pt-BR")} mil` : usd(v)}
+                {/* No estreito, sem "US$": "US$ 990" não cabe nos 44 px e saía "S$ 990". */}
+                {estreito ? (v >= 1000 ? `${(v / 1000).toLocaleString("pt-BR")} mil` : v.toLocaleString("pt-BR")) : usd(v)}
               </text>
             </g>
           ))}

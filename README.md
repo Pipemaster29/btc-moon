@@ -504,7 +504,7 @@ Só isso levou a regra de 07/10, a 4% por posição, de +600% para **+416%** na 
 inteira (dentro +104% → +89%, fora +226% → +160%). É o que a medição antiga dava
 de presente.
 
-### O que mudou com o custo dentro
+### A manhã de 08/10: 45 dias e pirâmide
 
 Com o custo cobrado, duas mudanças na perna comprada passaram, juntas, no critério
 escrito antes de olhar — melhorar a janela inteira, a de dentro e a de fora, sem
@@ -519,44 +519,77 @@ piorar o "sem as 5 melhores" de fora, e com vizinho bom (platô, não pico):
   refeitos, e o stop movido para dentro da liquidação nova — senão a corretora
   fecharia a posição inteira antes dele.
 
-Medido com o motor que roda ao vivo (`npm run medir-robos`), US$ 1.000 em 08/01/2024:
+A 3% por posição, na mesma queda máxima da regra de 07/10 a 4%, a janela inteira foi
+de +416% para +1.254% e o fora de +160% para +638%. **E o dentro da amostra foi de
++89% para +73%**: no mesmo risco, antes de 07/2025, aquela regra rendia menos. É o
+que a tarde consertou.
 
-| | inteira | dentro | fora | queda máx | Sharpe | sem as 5 melhores, fora |
+### A tarde de 08/10: sair na hora e apostar conforme a agitação
+
+Uma rodada nova de ideias, todas sobre a regra da manhã e com o custo da vida real
+dentro, pelo mesmo critério. **Reprovadas**: comprar só perto da máxima da janela
+(−50% a −90% do resultado — nestas moedas a que já corrigiu continua), ranking por
+retorno ÷ volatilidade, comprar só com o BTC acima da média de 50 ou 100 dias,
+vender só com ele abaixo, pirâmide na vendida (o dentro cai e a queda vai a −52%),
+sair em N dias sem lucro (melhora o dentro e o fora fica igual ou pior), a mesma
+saída por posto na vendida, stop de 20% ou 30%, volume mínimo de 10 ou 50 milhões,
+e as duas ideias no Caça-monstra.
+
+**Passaram duas**, e as duas são platô:
+
+- **Sair quando a moeda deixa as 10 que mais sobem em 45 dias.** A monstra que parou
+  de ser monstra devolvia o ganho até o rastro de 30% a pegar, ou ficava parada até
+  o prazo prendendo margem. De top 5 a top 40, toda régua ganha de não sair, nas
+  três janelas e no "sem as 5"; o 7 mediu melhor e é o pico, o 10 fica no meio.
+- **O alvo de volatilidade**: o tamanho de cada entrada é multiplicado por 60% ao
+  ano ÷ a volatilidade do próprio patrimônio nos últimos 40 dias, entre ¼ e 2x —
+  menor na agitação, maior na calmaria. É a correção conhecida do momento (Barroso
+  e Santa-Clara, 2015). O número que importa aqui é o Sharpe, porque tamanho sozinho
+  não o muda (2,08 a 2,11 de 2% a 6%): com o alvo ele vai de 2,22 a 2,24–2,42 em
+  toda janela de 30 a 60 dias, dentro e fora.
+
+Medido com o motor que roda ao vivo, US$ 1.000 em 08/01/2024:
+
+| | inteira | dentro | fora | queda máx | Sharpe | sem as 5 melhores: inteira · fora |
 | --- | --- | --- | --- | --- | --- | --- |
-| regra de 07/10, 4% | +416% | +89% | +160% | −36% | 1,36 | −38% |
-| **3% — Momento** | **+1.254%** | **+73%** | **+638%** | **−37%** | **2,09** | **+71%** |
-| **4,5% — Momento turbo** | **+3.675%** | +115% | +1.510% | −51% | 2,09 | +91% |
+| regra de 07/10, 4% | +416% | +89% | +160% | −36% | 1,36 | +24% · −38% |
+| manhã de 08/10, 3% | +1.254% | +73% | +638% | −37% | 2,09 | +242% · +71% |
+| **hoje, 4% — Momento** | **+4.863%** | **+199%** | **+1.424%** | **−36%** | **2,42** | **+707% · +111%** |
+| **hoje, 6% — Momento turbo** | **+8.472%** | +233% | +2.301% | −46% | 2,35 | +906% · +142% |
 
-Atacada com mais custo do que o medido — entrada a 0,4%, escorregada do stop
-dobrada, entrada 1 h atrasada —, ficou positiva nas três janelas e no "sem as 5" em
-todas. E o tamanho:
+Na mesma queda máxima da manhã, a janela inteira quase quadruplica, e o dentro da
+amostra — o ponto fraco de antes — vai de +73% a +199%. Por trimestre a regra de
+hoje ganha em 8 de 11; perde 2024T1 (−24% contra −22%), 2024T4 (+4% contra +7%) e
+2025T4 (+13% contra +23%). **Atacada** na bancada a 3%: custo de entrada 4x
+(+2.411%), escorregada do stop dobrada (+2.454%), entrada 1 h atrasada (+2.577%) e
+3 h atrasada (+1.906%) — todas acima da manhã nas três janelas.
 
-| tamanho por posição | inteira | queda máx | Sharpe |
-| --- | --- | --- | --- |
-| 2% | +524% | −26% | 2,09 |
-| **3% — Momento** | **+1.254%** | **−37%** | **2,09** |
-| 4% | +2.606% | −46% | 2,09 |
-| **4,5% — Momento turbo** | **+3.675%** | **−51%** | **2,09** |
-| 6% | +8.109% | −65% | 2,10 |
+E o tamanho, na regra de hoje:
 
-O Sharpe não se mexe: **tamanho escolhe o risco, não a vantagem**. "Arriscar mais"
-rende mais e cai mais na mesma proporção, e a 4,5% o caixa já recusa entrada. O
-Momento e o turbo ficaram perto da queda máxima que tinham antes.
+| tamanho por posição | inteira | queda máx | Sharpe | recusadas por caixa |
+| --- | --- | --- | --- | --- |
+| 2% | +1.631% | −25% | 2,40 | 0 |
+| 3% | +3.012% | −31% | 2,41 | 0 |
+| **4% — Momento** | **+4.863%** | **−36%** | **2,42** | 2 |
+| 5% | +6.095% | −42% | 2,35 | 8 |
+| **6% — Momento turbo** | **+8.472%** | **−46%** | **2,35** | 25 |
+| 7% | +7.868% | −51% | 2,22 | 62 |
+| 8% | +9.946% | −56% | 2,22 | 136 |
 
-**E o que isso não prova.** Na mesma queda máxima, o dentro da amostra vai de +89%
-para **+73%**: antes de 07/2025, no mesmo risco, a regra nova rende menos. A melhora
-é toda das altas que passaram a durar meses (a MYX, a RAVE); se elas voltarem a
-durar semanas, a de 30 dias volta a ser a melhor das duas.
+**Tamanho escolhe o risco, não a vantagem — e tem teto.** Até 4% o Sharpe não se
+mexe; dali para cima o caixa começa a recusar entrada, e a 7% o robô rende MENOS que
+a 6% com mais queda. O turbo fica no último tamanho em que o caixa acompanha.
 
 **E a ressalva que manda, que a página mostra numa coluna própria: o lucro vem de
-poucas moedas.** Tiradas as cinco que mais deram — RAVE, TUT, BEAT, LAB e LSK —, a
-janela inteira cai de +1.254% para +242% e o fora, de +638% para +71%. A segunda
-parcela entrou em 344 de 1.066 compras, e foram essas que fizeram o lucro da perna:
-US$ 36 mil, contra US$ 23 mil perdidos nas outras 722. É o formato de todo seguidor
-de tendência, e a tese só continua de pé enquanto continuarem aparecendo monstras.
-Dos US$ 13.516 que a perna comprada fez, US$ 8.053 vieram de moedas que hoje estão
-no painel: a intuição de que "as manipuladas têm mais potencial" está medida aqui
-— e é também onde o risco se concentra.
+poucas moedas.** Tiradas as cinco que mais deram — TUT, BEAT, RAVE, LAB e LSK —, a
+janela inteira cai de +4.863% para +707% e o fora, de +1.424% para +111%; o dentro
+quase não muda (+199% → +207%). A segunda parcela entrou em 312 de 1.090 compras, e
+foram essas que fizeram o lucro da perna: US$ 126 mil, contra US$ 70 mil perdidos
+nas outras 778. É o formato de todo seguidor de tendência, e a tese só continua de
+pé enquanto continuarem aparecendo monstras. Dos US$ 56.026 que a perna comprada
+fez, US$ 37.957 vieram de moedas que hoje estão no painel: a intuição de que "as
+manipuladas têm mais potencial" está medida aqui — e é também onde o risco se
+concentra.
 
 ### A informação mais recente manda
 
@@ -574,33 +607,46 @@ regra melhora as duas metades.
 
 Três robôs com US$ 1.000 cada, ao lado da carteira do painel:
 
-- **Momento** — o livro acima, a 3% por posição.
-- **Momento turbo** — o mesmo livro a 4,5%: a resposta medida a "e se arriscasse
-  mais?", com a queda de −51% que vem junto.
+- **Momento** — o livro acima, a 4% por posição antes do alvo de volatilidade.
+- **Momento turbo** — o mesmo livro a 6%: a resposta medida a "e se arriscasse
+  mais?", com a queda de −46% que vem junto.
 - **Caça-monstra** — só a perna comprada, as 3 que mais subiram em 30 dias,
   aceitando moeda de US$ 5 milhões. É a tese das manipuladas pura: +189% fora da
   amostra, **−3% dentro**, queda de −37%. Os 45 dias e a pirâmide foram medidos
   nele também e não entraram: o fora melhora (+188% → +554%), o dentro piora (−4%
-  → −17%).
+  → −17%). A saída por posto e o alvo de volatilidade também não: na mesma queda,
+  o alvo melhora o dentro (−4% → +3%) e piora o fora (+189% → +163%).
 
-As posições abertas antes de 08/10 saem pela regra com que entraram; a regra nova
-vale para as entradas.
+Cada posição sai pela regra com que entrou — stop, rastro, prazo, pirâmide e saída
+por posto moram nela —, e a regra nova vale para as entradas. O alvo de volatilidade
+só liga com 40 dias de curva: até lá, o tamanho é o base.
 
 `npm run robos` roda a cada retrato do workflow. Para cada posição aberta, percorre
 as velas de 1 h fechadas desde a última rodada — stop, rastro, prazo, liquidação e
 a segunda parcela disparam na hora em que aconteceram, mesmo que o workflow tenha
 ficado horas parado, porque são ordens paradas na corretora —, e cobra o
 financiamento de cada intervalo da moeda. No primeiro retrato de cada dia UTC, faz o
-ranking da praça inteira e abre a seleção **no preço de agora**: a medição entra na
-abertura da meia-noite pagando o atraso medido. Dia inteiro sem retrato vira dia
+ranking da praça inteira, fecha as que deixaram o top 10 e abre a seleção **no preço
+de agora**: a medição entra e sai na abertura da meia-noite pagando o atraso medido. Dia inteiro sem retrato vira dia
 perdido, e a seleção dele não é feita depois — escolher hoje o que valia ontem seria
 escolher sabendo o que veio depois. Um resumo por dia vai ao Telegram.
 
-**O que eles não cobram**: a escorregada de entrada além da estimada pela liquidez
-(0,05% a 0,4% por lado conforme o volume, mais a taxa de 0,05%) — a do stop e a do
-atraso estão dentro —, e o fato de a Binance não deixar abrir alguns desses
-perpétuos em certas contas e regiões. Não é recomendação: é a medição continuando
-ao vivo.
+**A régua de custo é mais cara que o livro, e isso agora é conferido.** O motor cobra
+a taxa de 0,05% mais uma escorregada por faixa de volume — 0,05% acima de US$ 50
+milhões por dia, 0,10% de 10 a 50, 0,20% de 3 a 10. Lido o livro de ofertas dos 271
+perpétuos com US$ 3 milhões ou mais na tarde de 08/10, uma ordem a mercado de US$ 30
+a US$ 1.000 custava, por lado e sem a taxa, 0,007% a 0,015% na faixa de cima, 0,013%
+a 0,031% na do meio e 0,021% a 0,051% na de baixo (medianas; p90 até 0,08%) — a régua
+cobra de 3 a 7 vezes isso. Ela não mudou: a foto foi de uma tarde, e o robô entra
+logo depois da meia-noite UTC. Cobrar o livro daquela tarde renderia +1.296% na regra
+da manhã, contra +1.255% — 3% a mais, não uma regra nova. Desde agora **cada entrada
+ao vivo lê o livro** da moeda e guarda o custo dele ao lado do da régua, e a página
+mostra a comparação: a régua só muda com essa amostra na mão.
+
+**O que eles não cobram**: o fato de a Binance não deixar abrir alguns desses
+perpétuos em certas contas e regiões, e o tempo entre a decisão e a ordem quando o
+retrato atrasa mais que o medido. Não é recomendação: é a medição continuando ao
+vivo.
 
 ## O ciclo, em quatro estágios
 

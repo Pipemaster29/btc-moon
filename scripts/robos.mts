@@ -8,10 +8,11 @@
  *     liquidação disparam DENTRO do caminho, na hora em que aconteceram, mesmo
  *     que o workflow tenha ficado horas sem rodar — ordem parada não pisca.
  *   - DIA NOVO (UTC): o ranking da praça inteira (uma vela diária por moeda,
- *     ~530 requisições de peso 1) e a seleção de cada robô, aberta no preço DE
- *     AGORA. A pesquisa entrava na abertura da meia-noite; o ao vivo entra
- *     quando o retrato roda, e três horas de atraso custaram de +52,8% para
- *     +42,6% na medição — está no preço.
+ *     ~530 requisições de peso 1), as saídas por posto e a seleção de cada
+ *     robô, abertas e fechadas no preço DE AGORA. A medição entra na abertura
+ *     da meia-noite pagando o atraso medido (`CUSTO_ATRASO`); aqui o atraso é
+ *     de verdade. E cada entrada nova lê o LIVRO DE OFERTAS da moeda, para o
+ *     custo que o modelo cobra ficar ao lado do que a Binance cobraria.
  *
  * O que NÃO acontece: abrir no passado. Um dia inteiro sem retrato vira "dia
  * perdido" e a seleção dele não é feita depois — escolher hoje o que valia
@@ -32,6 +33,7 @@ import {
   DIA,
   HORA,
   ROBOS,
+  TAXA,
   decidir,
   fechar,
   marcar,
@@ -41,6 +43,7 @@ import {
   type Cobranca,
   type EstadoRobo,
   type LinhaRanking,
+  type PosicaoRobo,
   type TradeRobo,
   type VelaRobo,
 } from "../lib/robos";
@@ -246,13 +249,91 @@ if (decidem.length > 0) {
     console.log(`robôs: só ${responderam} de ${universo.length} moedas responderam ao ranking — a seleção do dia espera a próxima rodada`);
   } else {
     linhas.sort((a, b) => a.symbol.localeCompare(b.symbol));
+    const novas: PosicaoRobo[] = [];
     for (const e of decidem) {
       if (e.ultimaDecisao !== null) e.diasPerdidos += Math.max(0, Math.round((hoje - e.ultimaDecisao) / DIA) - 1);
-      const novas = decidir(e, linhas, (s) => precos.get(s), agora, manipuladas);
-      abertasAgora.set(e.id, novas.length);
+      const abertas = decidir(e, linhas, (s) => precos.get(s), agora, manipuladas);
+      abertasAgora.set(e.id, abertas.length);
+      novas.push(...abertas);
     }
     decidiu = true;
+    await medirLivro(novas);
   }
+}
+
+/**
+ * O LIVRO DE OFERTAS na hora da entrada. A régua de custo do motor
+ * (`custoPorLado`) é uma estimativa por faixa de volume; medida em 08/10 à
+ * tarde nos 271 perpétuos com US$ 3 mi+ por dia, uma ordem a mercado de US$ 30
+ * a US$ 1.000 custava, por lado, sem a taxa:
+ *
+ *   faixa de volume   régua    livro (mediana · p90)
+ *   ≥ US$ 50 mi       0,05%    0,007–0,015% · 0,02–0,04%
+ *   US$ 10–50 mi      0,10%    0,013–0,031% · 0,03–0,06%
+ *   US$ 3–10 mi       0,20%    0,021–0,051% · 0,04–0,08%
+ *
+ * A régua cobra de 3 a 7 vezes o livro daquela tarde. Ela fica como está até
+ * haver amostra na hora em que o robô de fato entra, logo depois da meia-noite
+ * UTC — e é isto que junta essa amostra: a posição nova guarda o custo do
+ * livro para o tamanho dela (`PosicaoRobo.livro`), sem mexer na conta. Livro
+ * que não respondeu ou não cobre a ordem fica sem leitura, e não vira zero.
+ */
+async function medirLivro(novas: PosicaoRobo[]): Promise<void> {
+  type Livro = { bids: [string, string][]; asks: [string, string][] };
+  const livros = new Map<string, Livro | null>();
+  await Promise.all(
+    [...new Set(novas.map((p) => p.symbol))].map(async (s) => {
+      livros.set(s, await pegar<Livro>(`/fapi/v1/depth?symbol=${encodeURIComponent(s)}&limit=50`));
+    }),
+  );
+  for (const p of novas) {
+    const custo = custoNoLivro(livros.get(p.symbol) ?? null, p.lado === "long", p.nocional);
+    if (custo !== null) p.livro = custo;
+  }
+  const lidas = novas.filter((p) => p.livro !== undefined);
+  if (lidas.length > 0) {
+    const mediana = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+    console.log(
+      `livro de ofertas: ${lidas.length} de ${novas.length} entrada(s) lidas · custo por lado mediano ` +
+        `${(mediana(lidas.map((p) => p.livro as number)) * 100).toFixed(3)}%, contra ` +
+        `${(mediana(lidas.map((p) => p.custoLado - TAXA)) * 100).toFixed(3)}% da régua (sem a taxa)`,
+    );
+  }
+}
+
+/** Meio spread mais o impacto de uma ordem a mercado de `nocional` dólares, em fração do meio do spread; nulo sem leitura. */
+function custoNoLivro(
+  livro: { bids: [string, string][]; asks: [string, string][] } | null,
+  compra: boolean,
+  nocional: number,
+): number | null {
+  if (!livro?.bids?.length || !livro.asks?.length || !(nocional > 0)) return null;
+  const bid = Number(livro.bids[0][0]);
+  const ask = Number(livro.asks[0][0]);
+  if (!(bid > 0) || !(ask >= bid)) return null;
+  const meio = (bid + ask) / 2;
+  let resta = nocional;
+  let quantidade = 0;
+  let gasto = 0;
+  for (const [p, q] of compra ? livro.asks : livro.bids) {
+    const preco = Number(p);
+    const quant = Number(q);
+    if (!(preco > 0) || !(quant > 0)) continue;
+    const valor = preco * quant;
+    if (valor >= resta) {
+      quantidade += resta / preco;
+      gasto += resta;
+      resta = 0;
+      break;
+    }
+    quantidade += quant;
+    gasto += valor;
+    resta -= valor;
+  }
+  if (resta > 0 || !(quantidade > 0)) return null;
+  const medio = gasto / quantidade;
+  const custo = compra ? medio / meio - 1 : 1 - medio / meio;
+  return Number.isFinite(custo) ? custo : null;
 }
 
 // ------------------------------------------------------------------ a marcação
@@ -273,7 +354,7 @@ const pct = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`;
 console.log(`\nrobôs · ${new Date(agora).toISOString().slice(0, 16).replace("T", " ")} UTC`);
 if (semCaminho > 0) console.log(`${semCaminho} moeda(s) sem velas ou financiamento nesta rodada — as posições delas esperam a próxima`);
 for (const e of robos) {
-  const f = fechadasAgora.get(e.id) ?? [];
+  const f = [...(fechadasAgora.get(e.id) ?? []), ...e.fechadas.filter((t) => t.motivo === "posto" && t.fechadaEm === agora)];
   const compradas = e.abertas.filter((p) => p.lado === "long").length;
   console.log(
     `${e.nome.padEnd(15)} ${usd(e.patrimonio).padStart(12)} (${pct(e.patrimonio / CAPITAL_ROBO - 1)}) · ` +

@@ -438,6 +438,15 @@ if (gar) {
         if (p.custoExtra !== undefined) {
           checa(`${e.id}/${p.symbol}.custoExtra finito e não negativo`, Number.isFinite(p.custoExtra) && p.custoExtra >= 0, `= ${p.custoExtra}`);
         }
+        if (p.posto !== undefined) {
+          const ok = Number.isInteger(p.posto.janelaDias) && p.posto.janelaDias > 0 && Number.isInteger(p.posto.n) && p.posto.n > 0;
+          checa(`${e.id}/${p.symbol}: saída por posto com janela e N inteiros`, ok, JSON.stringify(p.posto));
+        }
+        // O livro na entrada é meio spread mais impacto: não negativo, e acima de
+        // 5% por lado não é uma ordem de dezenas de dólares num perpétuo de US$ 20 mi.
+        if (p.livro !== undefined) {
+          checa(`${e.id}/${p.symbol}.livro entre 0 e 5%`, Number.isFinite(p.livro) && p.livro >= -1e-9 && p.livro < 0.05, `= ${p.livro}`);
+        }
       }
       for (const t of e.fechadas) {
         checa(`${e.id}/${t.symbol}: perda não passa da margem`, Number.isFinite(t.resultado) && t.resultado >= -t.margem - 1e-9, `${t.resultado} com margem ${t.margem}`);
