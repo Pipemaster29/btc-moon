@@ -48,9 +48,10 @@ export interface SerieRobo {
 /**
  * Margens em pixels REAIS, medidas na largura de verdade. À direita mora o
  * rótulo da ponta de cada linha; no celular ele vira só o nome curto, senão
- * os rótulos comiam um terço do gráfico (visto a 390 px).
+ * os rótulos comiam um terço do gráfico (visto a 390 px). No largo, 132 é o
+ * que cabe "US$ 13.541 Momento" — com 118 o nome saía cortado.
  */
-const G_LARGO = { esq: 62, dir: 118, topo: 14, base: 26 };
+const G_LARGO = { esq: 62, dir: 132, topo: 14, base: 26 };
 const G_ESTREITO = { esq: 44, dir: 66, topo: 14, base: 26 };
 
 function usd(v: number, casas = 0): string {

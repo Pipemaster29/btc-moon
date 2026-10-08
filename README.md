@@ -472,35 +472,91 @@ qualquer altcoin líquida com stop largo deu lucro em 2024–2026, porque elas
 sangraram — e cai 40% a 60% quando as alts sobem juntas. A comprada perde devagar e
 ganha de uma vez. **Juntas, se protegem**: quando o mercado de alts despenca a
 vendida paga, quando aparece uma MYX a comprada paga. É o livro de **momento dos
-dois lados**: todo dia, compra as 5 que mais subiram em 30 dias (stop de 25%,
-rastro de 30%, até 30 dias) e vende as 5 que mais caíram em 14 (stop de 45%, 14
-dias), entre os perpétuos com US$ 20 milhões de volume. Medido com o motor que roda
-ao vivo (`npm run medir-robos`), US$ 1.000 em 08/01/2024:
+dois lados**: todo dia, compra as 5 que mais subiram (stop de 25%, rastro de 30%,
+até 30 dias) e vende as 5 que mais caíram em 14 (stop de 45%, 14 dias), entre os
+perpétuos com US$ 20 milhões de volume. Na primeira versão, de 07/10, a compra
+olhava 30 dias, e foi **atacada em 26 variações e positiva nas duas metades em
+todas**: custo 2x e 3x, entrada 1 h e 3 h atrasada, decisão às 11 h ou 17 h em vez
+da meia-noite, k de 3 e de 10, volume mínimo de 5 e de 50 milhões, rastro de 20% e
+40%, stops, prazos e janelas. O pior foi o rastro de 20% — as monstras recuam 20%
+várias vezes no caminho, e o rastro curto as vende no primeiro tranco.
 
-| tamanho por posição | inteira | dentro | fora | queda máx | Sharpe |
-| --- | --- | --- | --- | --- | --- |
-| 2% do patrimônio | +190% | | | −18% | 1,54 |
-| **4% — Momento** | **+600%** | **+104%** | **+226%** | **−34%** | **1,56** |
-| **6% — Momento turbo** | **+1.312%** | +130% | +470% | −48% | 1,59 |
-| 8% | +657% | | | −68% | 1,24 |
+### O custo da vida real (08/10)
 
-A 8% o caixa começa a recusar entrada e o resultado piora: "arriscar mais" tem
-teto, e ele está medido.
+A primeira medição entrava na abertura exata da meia-noite e saía no nível exato
+do stop. As duas coisas foram medidas em **velas de 1 minuto** do Data Vision,
+sobre as entradas e saídas que o livro de fato fez:
 
-**Atacado em 26 variações e positivo nas duas metades em todas**: custo 2x e 3x,
-entrada 1 h e 3 h atrasada, decisão às 11 h ou 17 h em vez da meia-noite, k de 3 e
-de 10, volume mínimo de 5 e de 50 milhões, rastro de 20% e 40%, stops, prazos e
-janelas. O pior foi o rastro de 20% — as monstras recuam 20% várias vezes no
-caminho, e o rastro curto as vende no primeiro tranco.
+- **O stop.** Em 500 saídas sorteadas, em nenhuma o preço pulou o nível de um
+  minuto para o outro — o "no nível" está certo nisso. Mas dentro do minuto do
+  disparo o preço passa do nível 1,13% em média (mediana 0,52%, p99 9,3%), e uma
+  ordem a mercado sai em algum ponto desse caminho. A medição passou a cobrar 6% do
+  resto da vela de 1 h além do nível: ~0,28% por saída, proporcional ao tombo.
+- **A entrada.** O robô ao vivo entra no primeiro retrato depois da meia-noite.
+  Entrar 15 minutos depois custa +0,12%; pareado trade a trade, uma hora depois
+  não custa nada em média. A medição cobra 0,1% por entrada.
+- **A ordem mínima** da Binance, US$ 5 de nocional: abaixo disso não abre.
+- **O stop pela marcação** em vez do último negócio foi medido e **não entrou**:
+  o fora da amostra dobra, o dentro piora, e o stop da Binance é pelo último
+  negócio salvo pedido.
 
-**E a ressalva que manda, que a página mostra numa coluna própria: o lucro recente
-vem de poucas moedas.** Tiradas as cinco que mais deram — RAVE, TUT, LAB, BEAT e MYX,
-quase todas manipuladas —, a janela inteira cai de +600% para +67%, o dentro da
-amostra quase não muda (+104% → +103%) e o **fora vira −22%**. É o formato de todo
-seguidor de tendência, e a tese só continua de pé enquanto continuarem aparecendo
-monstras. Das US$ 5.968 que a perna comprada fez, US$ 3.755 vieram de moedas que
-hoje estão no painel: a intuição de que "as manipuladas têm mais potencial" está
-medida aqui — e é também onde o risco se concentra.
+Só isso levou a regra de 07/10, a 4% por posição, de +600% para **+416%** na janela
+inteira (dentro +104% → +89%, fora +226% → +160%). É o que a medição antiga dava
+de presente.
+
+### O que mudou com o custo dentro
+
+Com o custo cobrado, duas mudanças na perna comprada passaram, juntas, no critério
+escrito antes de olhar — melhorar a janela inteira, a de dentro e a de fora, sem
+piorar o "sem as 5 melhores" de fora, e com vizinho bom (platô, não pico):
+
+- **janela de 45 dias** em vez de 30 — de 35 a 55 dias, toda janela ganha da de 30
+  fora da amostra. Sozinha ela EMPATA dentro (+84% contra +87%): a melhora dela é
+  toda de 07/2025 em diante;
+- **uma segunda parcela do mesmo tamanho quando a posição anda +40%** (+30% e +50%
+  também passam), que é quem melhora o dentro: +84% → +105%, a 4%. Ela entra na
+  mesma posição, como numa conta de verdade: preço médio, margem e liquidação
+  refeitos, e o stop movido para dentro da liquidação nova — senão a corretora
+  fecharia a posição inteira antes dele.
+
+Medido com o motor que roda ao vivo (`npm run medir-robos`), US$ 1.000 em 08/01/2024:
+
+| | inteira | dentro | fora | queda máx | Sharpe | sem as 5 melhores, fora |
+| --- | --- | --- | --- | --- | --- | --- |
+| regra de 07/10, 4% | +416% | +89% | +160% | −36% | 1,36 | −38% |
+| **3% — Momento** | **+1.254%** | **+73%** | **+638%** | **−37%** | **2,09** | **+71%** |
+| **4,5% — Momento turbo** | **+3.675%** | +115% | +1.510% | −51% | 2,09 | +91% |
+
+Atacada com mais custo do que o medido — entrada a 0,4%, escorregada do stop
+dobrada, entrada 1 h atrasada —, ficou positiva nas três janelas e no "sem as 5" em
+todas. E o tamanho:
+
+| tamanho por posição | inteira | queda máx | Sharpe |
+| --- | --- | --- | --- |
+| 2% | +524% | −26% | 2,09 |
+| **3% — Momento** | **+1.254%** | **−37%** | **2,09** |
+| 4% | +2.606% | −46% | 2,09 |
+| **4,5% — Momento turbo** | **+3.675%** | **−51%** | **2,09** |
+| 6% | +8.109% | −65% | 2,10 |
+
+O Sharpe não se mexe: **tamanho escolhe o risco, não a vantagem**. "Arriscar mais"
+rende mais e cai mais na mesma proporção, e a 4,5% o caixa já recusa entrada. O
+Momento e o turbo ficaram perto da queda máxima que tinham antes.
+
+**E o que isso não prova.** Na mesma queda máxima, o dentro da amostra vai de +89%
+para **+73%**: antes de 07/2025, no mesmo risco, a regra nova rende menos. A melhora
+é toda das altas que passaram a durar meses (a MYX, a RAVE); se elas voltarem a
+durar semanas, a de 30 dias volta a ser a melhor das duas.
+
+**E a ressalva que manda, que a página mostra numa coluna própria: o lucro vem de
+poucas moedas.** Tiradas as cinco que mais deram — RAVE, TUT, BEAT, LAB e LSK —, a
+janela inteira cai de +1.254% para +242% e o fora, de +638% para +71%. A segunda
+parcela entrou em 344 de 1.066 compras, e foram essas que fizeram o lucro da perna:
+US$ 36 mil, contra US$ 23 mil perdidos nas outras 722. É o formato de todo seguidor
+de tendência, e a tese só continua de pé enquanto continuarem aparecendo monstras.
+Dos US$ 13.516 que a perna comprada fez, US$ 8.053 vieram de moedas que hoje estão
+no painel: a intuição de que "as manipuladas têm mais potencial" está medida aqui
+— e é também onde o risco se concentra.
 
 ### A informação mais recente manda
 
@@ -518,27 +574,33 @@ regra melhora as duas metades.
 
 Três robôs com US$ 1.000 cada, ao lado da carteira do painel:
 
-- **Momento** — o livro acima, a 4% por posição.
-- **Momento turbo** — o mesmo livro a 6%: a resposta medida a "e se arriscasse
-  mais?", com a queda de −48% que vem junto.
+- **Momento** — o livro acima, a 3% por posição.
+- **Momento turbo** — o mesmo livro a 4,5%: a resposta medida a "e se arriscasse
+  mais?", com a queda de −51% que vem junto.
 - **Caça-monstra** — só a perna comprada, as 3 que mais subiram em 30 dias,
-  aceitando moeda de US$ 5 milhões. É a tese das manipuladas pura: +225% fora da
-  amostra, **−0,3% dentro**, queda de −37%.
+  aceitando moeda de US$ 5 milhões. É a tese das manipuladas pura: +189% fora da
+  amostra, **−3% dentro**, queda de −37%. Os 45 dias e a pirâmide foram medidos
+  nele também e não entraram: o fora melhora (+188% → +554%), o dentro piora (−4%
+  → −17%).
+
+As posições abertas antes de 08/10 saem pela regra com que entraram; a regra nova
+vale para as entradas.
 
 `npm run robos` roda a cada retrato do workflow. Para cada posição aberta, percorre
-as velas de 1 h fechadas desde a última rodada — stop, rastro, prazo e liquidação
-disparam na hora em que aconteceram, mesmo que o workflow tenha ficado horas parado
-—, e cobra o financiamento de cada intervalo da moeda. No primeiro retrato de cada
-dia UTC, faz o ranking da praça inteira e abre a seleção **no preço de agora**: a
-bancada entrava na abertura da meia-noite, e três horas de atraso medidas custam de
-+52,8% para +42,6%. Dia inteiro sem retrato vira dia perdido, e a seleção dele não
-é feita depois — escolher hoje o que valia ontem seria escolher sabendo o que veio
-depois. Um resumo por dia vai ao Telegram.
+as velas de 1 h fechadas desde a última rodada — stop, rastro, prazo, liquidação e
+a segunda parcela disparam na hora em que aconteceram, mesmo que o workflow tenha
+ficado horas parado, porque são ordens paradas na corretora —, e cobra o
+financiamento de cada intervalo da moeda. No primeiro retrato de cada dia UTC, faz o
+ranking da praça inteira e abre a seleção **no preço de agora**: a medição entra na
+abertura da meia-noite pagando o atraso medido. Dia inteiro sem retrato vira dia
+perdido, e a seleção dele não é feita depois — escolher hoje o que valia ontem seria
+escolher sabendo o que veio depois. Um resumo por dia vai ao Telegram.
 
-**O que eles não cobram**: a escorregada real de uma ordem de verdade (a estimada é
-de 0,10% a 0,15% por lado nestas moedas, mais a taxa de 0,05%), e o fato de a
-Binance não deixar abrir alguns desses perpétuos em certas contas e regiões. Não é
-recomendação: é a medição continuando ao vivo.
+**O que eles não cobram**: a escorregada de entrada além da estimada pela liquidez
+(0,05% a 0,4% por lado conforme o volume, mais a taxa de 0,05%) — a do stop e a do
+atraso estão dentro —, e o fato de a Binance não deixar abrir alguns desses
+perpétuos em certas contas e regiões. Não é recomendação: é a medição continuando
+ao vivo.
 
 ## O ciclo, em quatro estágios
 

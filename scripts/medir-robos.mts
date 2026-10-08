@@ -23,8 +23,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { unzipSync, strFromU8 } from "fflate";
 import {
   CAPITAL_ROBO,
+  CUSTO_ATRASO,
   DIA,
+  ESCORREGADA_STOP,
   HORA,
+  MOMENTO_ANTERIOR,
+  NOCIONAL_MINIMO,
   ROBOS,
   decidir,
   fechar,
@@ -38,6 +42,7 @@ import {
   type Medicao,
   type MedicaoRobo,
   type Robo,
+  type TradeRobo,
 } from "../lib/robos";
 
 const INICIO_DADOS = Date.parse("2024-01-01T00:00:00Z");
@@ -283,8 +288,10 @@ const porSimbolo = new Map(series.map((s) => [s.symbol, s]));
 /**
  * Roda um robô de `de` a `ate` (milissegundos), do zero. A decisão é na
  * abertura da vela da meia-noite, com o fechamento da anterior; a entrada é na
- * abertura dela — o ao vivo entra no preço de quando roda, e a pesquisa mediu
- * que três horas de atraso custam pouco (+52,8% → +42,6%).
+ * abertura dela, PAGANDO o custo medido do atraso (`CUSTO_ATRASO`), porque o
+ * ao vivo entra no primeiro retrato depois da meia-noite e não nela. O stop
+ * escorrega como medido no minuto do disparo (`ESCORREGADA_STOP`), dentro de
+ * `percorrer`.
  */
 function simular(robo: Robo, de: number, ate: number, excluir?: Set<string>, tamanho?: number): EstadoRobo {
   const r: Robo = tamanho === undefined ? robo : { ...robo, regras: { ...robo.regras, tamanho } };
@@ -296,13 +303,13 @@ function simular(robo: Robo, de: number, ate: number, excluir?: Set<string>, tam
     const t = INICIO_DADOS + i * HORA;
     if (t % DIA === 0) {
       const linhas = ranking(i, janelas).filter((l) => !excluir?.has(l.symbol));
-      decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined);
+      decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, CUSTO_ATRASO);
     }
     for (const p of [...e.abertas]) {
       const s = porSimbolo.get(p.symbol)!;
       const v = { t, o: s.o[i], h: s.h[i], l: s.l[i], c: s.c[i] };
       const cobrancas = Number.isNaN(s.fr[i]) ? [] : [{ t, taxa: s.fr[i] }];
-      const saida = percorrer(p, [v], cobrancas);
+      const saida = percorrer(p, [v], cobrancas, e);
       if (saida) fechar(e, p, saida);
     }
     marcar(e, t + HORA);
@@ -370,7 +377,8 @@ const janelas: [string, number, number][] = [
 ];
 
 const medidos: MedicaoRobo[] = [];
-for (const robo of ROBOS) {
+const referencias: MedicaoRobo[] = [];
+for (const robo of [...ROBOS, MOMENTO_ANTERIOR]) {
   console.log(`\n== ${robo.nome} — ${robo.descricao}`);
   const linhas: LinhaMedida[] = [];
   let inteira: EstadoRobo | null = null;
@@ -408,26 +416,41 @@ for (const robo of ROBOS) {
     daManipuladas = { manipuladas: manip, total };
     console.log(`perna comprada: US$ ${total.toFixed(0)}, dos quais US$ ${manip.toFixed(0)} em moedas do painel de manipuladas`);
   }
+  // Em quantas compras a pirâmide de fato entrou, e quanto elas fizeram: o
+  // lucro dela mora em poucas posições, como o do resto do livro.
+  let piramide: MedicaoRobo["piramide"];
+  if (robo.regras.pernas.some((p) => p.piramide)) {
+    const compras = e.fechadas.filter((t) => t.lado === "long");
+    const soma = (ts: TradeRobo[]) => ts.reduce((a, t) => a + t.resultado, 0);
+    const com = compras.filter((t) => (t.parcelas ?? 1) > 1);
+    const sem = compras.filter((t) => (t.parcelas ?? 1) === 1);
+    piramide = { compras: compras.length, comParcela: com.length, resultadoCom: soma(com), resultadoSem: soma(sem) };
+    console.log(
+      `pirâmide: entrou em ${com.length} de ${compras.length} compras (${pct(com.length / Math.max(1, compras.length))}), ` +
+        `que fizeram US$ ${soma(com).toFixed(0)}; as outras ${sem.length}, US$ ${soma(sem).toFixed(0)}`,
+    );
+  }
   // A curva da janela inteira, um ponto por dia, para a tela.
   const curva: { t: number; patrimonio: number }[] = [];
   let prox = 0;
   for (const p of e.curva) if (p.t >= prox) { curva.push({ t: p.t, patrimonio: Math.round(p.patrimonio * 100) / 100 }); prox = p.t + DIA; }
-  medidos.push({
+  (robo === MOMENTO_ANTERIOR ? referencias : medidos).push({
     id: robo.id,
     linhas,
     trimestres: q,
     semAMelhor: { symbol: melhor, retorno: sem1.patrimonio / CAPITAL_ROBO - 1 },
     semAs5: { symbols: [...top5], retornos: sem5 },
     ...(daManipuladas ? { daManipuladas } : {}),
+    ...(piramide ? { piramide } : {}),
     curva,
   });
 }
 
 // A escala do tamanho, medida sobre o mesmo livro: é a resposta a "e se arriscasse mais?".
 console.log("\n== o tamanho, no livro do Momento (janela inteira)");
-for (const tam of [0.02, 0.04, 0.06, 0.08]) {
+for (const tam of [0.02, 0.03, 0.04, 0.045, 0.05, 0.06]) {
   const e = simular(ROBOS[0], INICIO, FIM, undefined, tam);
-  console.log(`${(tam * 100).toFixed(0)}% por posição  ${pct(e.patrimonio / CAPITAL_ROBO - 1).padStart(9)}  queda máx ${pct(e.quedaMaxima)}  Sharpe ${sharpeDe(e.curva).toFixed(2)}`);
+  console.log(`${(tam * 100).toFixed(1)}% por posição  ${pct(e.patrimonio / CAPITAL_ROBO - 1).padStart(9)}  queda máx ${pct(e.quedaMaxima)}  Sharpe ${sharpeDe(e.curva).toFixed(2)}${e.recusadas ? ` · ${e.recusadas} recusadas` : ""}`);
 }
 
 if (soSimbolos) {
@@ -437,6 +460,8 @@ if (soSimbolos) {
     geradoEm: Date.now(),
     universo: { moedas: series.length, deslistadas, de: INICIO, ate: FIM },
     robos: medidos,
+    referencias,
+    realismo: { escorregadaStop: ESCORREGADA_STOP, custoAtraso: CUSTO_ATRASO, nocionalMinimo: NOCIONAL_MINIMO },
   };
   await writeFile("data/robos-medicao.json", `${JSON.stringify(m)}\n`);
   console.log("\ndata/robos-medicao.json gravado");
