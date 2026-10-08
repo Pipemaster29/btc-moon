@@ -20,8 +20,10 @@
 import {
   CAPITAL_ROBO,
   DIA,
+  ROBOS,
   TAXA,
   escalaDoTamanho,
+  margemTotal,
   valorDaPosicao,
   type ArquivoRobos,
   type EstadoRobo,
@@ -32,8 +34,19 @@ import {
 import CurvaRobos, { type Ponto, type SerieRobo } from "./CurvaRobos";
 import { useVivo } from "./vivo";
 
-const CORES = ["var(--robo-1)", "var(--robo-2)", "var(--robo-3)"];
-const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça" };
+// A cor é do robô, não da posição na lista: robô novo não repinta os antigos.
+const COR: Record<string, string> = {
+  momento: "var(--robo-1)",
+  turbo: "var(--robo-2)",
+  "caca-monstra": "var(--robo-3)",
+  fluxo: "var(--robo-4)",
+};
+const corDe = (id: string) => COR[id] ?? "var(--robo-ctx)";
+const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo" };
+// O nome vem do estado ao vivo; robô medido que ainda não rodou (o primeiro
+// retrato depois do deploy é que o cria) cai no nome das regras.
+const nomeDe = (id: string, robos: readonly EstadoRobo[]) =>
+  robos.find((e) => e.id === id)?.nome ?? ROBOS.find((r) => r.id === id)?.nome ?? id;
 
 function usd(v: number, casas = 2): string {
   return `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas })}`;
@@ -73,17 +86,23 @@ const MOTIVO: Record<string, string> = {
 
 /** A posição marcada no preço vivo, quando há; senão no do retrato. */
 function marcada(p: PosicaoRobo, vivo: Record<string, { preco: number }>): { preco: number; valor: number; vivo: boolean } {
-  const m = vivo[p.symbol.replace(/USDT$/, "")];
   // O mesmo freio de lixo do motor: dez vezes não é mercado.
-  const ok = m && m.preco > 0 && m.preco / p.precoAtual < 10 && p.precoAtual / m.preco < 10;
-  const preco = ok ? m.preco : p.precoAtual;
-  return { preco, valor: valorDaPosicao(p, preco), vivo: !!ok };
+  const viva = (symbol: string, ultimo: number) => {
+    const m = vivo[symbol.replace(/USDT$/, "")];
+    return m && m.preco > 0 && m.preco / ultimo < 10 && ultimo / m.preco < 10 ? m.preco : null;
+  };
+  const precoVivo = viva(p.symbol, p.precoAtual);
+  const preco = precoVivo ?? p.precoAtual;
+  // A metade de hedge do par é marcada no preço vivo dela, quando há.
+  const precoHedge = p.hedge ? (viva(p.hedge.symbol, p.hedge.precoAtual) ?? undefined) : undefined;
+  return { preco, valor: valorDaPosicao(p, preco, precoHedge), vivo: precoVivo !== null };
 }
 
 function Posicoes({ e, vivo }: { e: EstadoRobo; vivo: Record<string, { preco: number }> }) {
   const linhas = e.abertas
     .map((p) => ({ p, ...marcada(p, vivo) }))
-    .map((x) => ({ ...x, resultado: x.valor - x.p.margem }))
+    // No par, o valor soma as duas metades: o resultado desconta as duas margens.
+    .map((x) => ({ ...x, resultado: x.valor - margemTotal(x.p) }))
     .sort((a, b) => b.resultado - a.resultado);
   if (linhas.length === 0) return <p className="text-xs text-black/45 dark:text-white/45">Nenhuma posição aberta.</p>;
   // A coluna só aparece no robô que tem pirâmide em alguma posição: no
@@ -118,11 +137,22 @@ function Posicoes({ e, vivo }: { e: EstadoRobo; vivo: Record<string, { preco: nu
                     </span>
                   )}
                 </td>
-                <td className="py-1 pr-3">{p.lado === "long" ? "comprado" : "vendido"}</td>
+                <td className="py-1 pr-3">
+                  {p.lado === "long" ? "comprado" : "vendido"}
+                  {p.hedge && (
+                    <span
+                      className="text-black/45 dark:text-white/45"
+                      title={`Par: ${p.hedge.lado === "long" ? "comprado" : "vendido"} em ${p.hedge.symbol.replace(/USDT$/, "")} do mesmo nocional, desde ${p.hedge.precoEntrada.toPrecision(5)}${p.hedge.liquidadaEm !== undefined ? " — o hedge foi liquidado" : ""}`}
+                    >
+                      {" "}+ {p.hedge.symbol.replace(/USDT$/, "")}
+                      {p.hedge.liquidadaEm !== undefined && " (liquidado)"}
+                    </span>
+                  )}
+                </td>
                 <td className="py-1 pr-3 text-right">{p.precoEntrada.toPrecision(5)}</td>
                 <td className="py-1 pr-3 text-right">{preco.toPrecision(5)}</td>
                 <td className={`py-1 pr-3 text-right ${tom(resultado)}`}>
-                  {usd(resultado)} <span className="text-black/40 dark:text-white/40">({pct(resultado / p.margem, 0)} da margem)</span>
+                  {usd(resultado)} <span className="text-black/40 dark:text-white/40">({pct(resultado / margemTotal(p), 0)} da margem)</span>
                 </td>
                 <td className="py-1 pr-3 text-right text-black/50 dark:text-white/50">
                   {nivel.toPrecision(4)}
@@ -206,11 +236,11 @@ export default function RobosPanel({
     return { e, patrimonio: vivo.em === null ? e.patrimonio : pat, algumVivo };
   });
 
-  const seriesVivo: SerieRobo[] = marcados.map(({ e, patrimonio }, k) => ({
+  const seriesVivo: SerieRobo[] = marcados.map(({ e, patrimonio }) => ({
     id: e.id,
     rotulo: e.nome,
     curto: CURTO[e.id] ?? e.nome,
-    cor: CORES[k % CORES.length],
+    cor: corDe(e.id),
     pontos: vivo.em === null ? e.curva : [...e.curva, { t: Math.max(vivo.em, e.atualizadoEm), patrimonio }],
   }));
   if (carteira && inicio !== null) {
@@ -233,9 +263,9 @@ export default function RobosPanel({
   // A regra anterior do Momento, medida no MESMO modelo realista: é contra ela
   // que a melhora se lê, e ela entra em cinza, como contexto.
   const anterior = medicao?.referencias?.find((m) => m.id === "momento-anterior");
-  const seriesMedidas: SerieRobo[] = medidos.map((m, k) => {
-    const nome = robos.find((e) => e.id === m.id)?.nome ?? m.id;
-    return { id: m.id, rotulo: nome, curto: CURTO[m.id] ?? nome, cor: CORES[k % CORES.length], pontos: m.curva };
+  const seriesMedidas: SerieRobo[] = medidos.map((m) => {
+    const nome = nomeDe(m.id, robos);
+    return { id: m.id, rotulo: nome, curto: CURTO[m.id] ?? nome, cor: corDe(m.id), pontos: m.curva };
   });
   if (anterior) {
     seriesMedidas.push({
@@ -249,6 +279,9 @@ export default function RobosPanel({
   }
   const corte = medidos[0]?.linhas.find((l) => l.janela.startsWith("fora"))?.de;
   const momento = medidos.find((m) => m.id === "momento");
+  const fluxo = medidos.find((m) => m.id === "fluxo");
+  // Quanto do resultado sobra sem as cinco moedas que mais deram: é a medida de concentração.
+  const sobra = (m: MedicaoRobo | undefined) => (m?.semAs5 && m.linhas[0].retorno > 0 ? m.semAs5.retornos[0] / m.linhas[0].retorno : null);
   const real = medicao?.realismo;
   // O livro de ofertas lido em cada entrada ao vivo (`scripts/robos.mts`), contra a régua do motor.
   const lidas = robos.flatMap((e) => [
@@ -278,7 +311,8 @@ export default function RobosPanel({
         os 152 deslistados inclusive — de 01/2024 a 09/2026. A que passou: <strong>momento dos dois lados</strong>.
         Perdedora continua perdendo nestas moedas, e a que sobe há mês e meio às vezes vira monstra — e quando ela
         anda +40%, o robô dobra a aposta; quando ela deixa as 10 que mais sobem, ele sai. Juntas, as duas pernas se
-        protegem. Não é recomendação: é a medição continuando ao vivo.
+        protegem. O <strong>Fluxo</strong> é outro livro: lê quem está vendendo a mercado e vende essas moedas contra
+        ETH. Não é recomendação: é a medição continuando ao vivo.
       </p>
 
       {robos.length === 0 ? (
@@ -286,7 +320,7 @@ export default function RobosPanel({
           Os robôs ainda não rodaram — o primeiro retrato do workflow depois do deploy abre as primeiras posições.
         </p>
       ) : (
-        <div className="grid gap-3 mt-4 sm:grid-cols-3">
+        <div className="grid gap-3 mt-4 sm:grid-cols-2 lg:grid-cols-4">
           {marcados.map(({ e, patrimonio }) => {
             const ret = patrimonio / CAPITAL_ROBO - 1;
             const compradas = e.abertas.filter((p) => p.lado === "long").length;
@@ -355,7 +389,7 @@ export default function RobosPanel({
               </thead>
               <tbody>
                 {medidos.map((m) => (
-                  <LinhaMedicao key={m.id} m={m} nome={robos.find((e) => e.id === m.id)?.nome ?? m.id} />
+                  <LinhaMedicao key={m.id} m={m} nome={nomeDe(m.id, robos)} />
                 ))}
                 {anterior && <LinhaMedicao m={anterior} nome="Momento anterior" referencia />}
               </tbody>
@@ -391,6 +425,27 @@ export default function RobosPanel({
                   .
                 </>
               )}
+            </p>
+          )}
+          {fluxo && momento && (
+            <p className="text-xs text-black/50 dark:text-white/50 mt-2">
+              <strong>O Fluxo, e por que ele está aqui.</strong> Saiu de uma rodada de livros diferentes do momento,
+              medidos do mesmo jeito — e quase todos reprovaram: coletar o financiamento na hora da cobrança (desde
+              07/2025 o preço cai o que a cobrança paga), carry, reversão curta, loteria, vender listagem nova. O que
+              passou foi o FLUXO: a moeda em que a venda a mercado dominou os últimos 7 dias continua indo pior que o
+              resto. Vendida contra uma compra de ETH do mesmo tamanho, a aposta deixa de ser no mercado e passa a ser
+              nela: {pct(fluxo.linhas[0].retorno, 0)} na janela inteira, {pct(fluxo.linhas[1].retorno, 0)} dentro e{" "}
+              {pct(fluxo.linhas[2].retorno, 0)} fora, Sharpe {fluxo.linhas[0].sharpe.toFixed(2)} contra{" "}
+              {momento.linhas[0].sharpe.toFixed(2)} do Momento. <strong>Rende menos, e o lucro dele não mora em cinco moedas</strong>:
+              {sobra(fluxo) !== null && sobra(momento) !== null && (
+                <>
+                  {" "}
+                  sem as cinco que mais deram, sobram {pct(sobra(fluxo) as number, 0).replace("+", "")} do lucro dele,
+                  contra {pct(sobra(momento) as number, 0).replace("+", "")} no Momento
+                </>
+              )}
+              . Se as monstras pararem de aparecer, o Momento seca; este não depende delas. Atacado com custo 4x,
+              escorregada dobrada e entrada atrasada, e com cada peça mexida sozinha, ficou positivo em tudo.
             </p>
           )}
           {real && (
@@ -456,7 +511,8 @@ export default function RobosPanel({
                   <ul className="mt-3 text-xs tabular-nums text-black/60 dark:text-white/60">
                     {e.fechadas.slice(0, 10).map((t) => (
                       <li key={`${t.symbol}-${t.abertaEm}`} className="py-0.5">
-                        {dataHora(t.fechadaEm)} · {t.symbol.replace(/USDT$/, "")} {t.lado === "long" ? "comprado" : "vendido"} ·{" "}
+                        {dataHora(t.fechadaEm)} · {t.symbol.replace(/USDT$/, "")} {t.lado === "long" ? "comprado" : "vendido"}
+                        {t.hedge && <> + {t.hedge.symbol.replace(/USDT$/, "")} ({usd(t.hedge.resultado)} no hedge{t.hedge.liquidada ? ", liquidado" : ""})</>} ·{" "}
                         {MOTIVO[t.motivo] ?? t.motivo} · <span className={tom(t.resultado)}>{usd(t.resultado)}</span>
                         {t.funding !== 0 && <> · financiamento {usd(-t.funding)}</>} · {((t.fechadaEm - t.abertaEm) / DIA).toFixed(1)} d
                         {(t.parcelas ?? 1) > 1 && <> · {t.parcelas} parcelas</>}

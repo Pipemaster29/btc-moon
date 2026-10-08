@@ -67,7 +67,13 @@ async function vigiadas() {
   for (const p of carteira?.abertas ?? []) simbolos.add(`${p.symbol}USDT`);
   // E as dos robôs, que operam qualquer perpétuo: sem isto a posição deles numa
   // moeda fora da lista ficaria marcada no preço do último retrato.
-  for (const r of robos?.robos ?? []) for (const p of r.abertas) simbolos.add(p.symbol);
+  for (const r of robos?.robos ?? []) {
+    for (const p of r.abertas) {
+      simbolos.add(p.symbol);
+      // A metade de hedge dos pares (o ETH do Fluxo) também é marcada ao vivo.
+      if (p.hedge) simbolos.add(p.hedge.symbol);
+    }
+  }
   return [...simbolos].map((symbol) => ({ ticker: symbol.replace(/USDT$/, ""), symbol }));
 }
 

@@ -399,6 +399,78 @@ console.log("\no alvo de volatilidade");
   confere("a entrada sai com o tamanho multiplicado (calmo: 2x)", perto(p.nocional, 0.1 * pat * 2), `noc ${p.nocional.toFixed(2)}`);
 }
 
+// ------------------------------------------------------------------ o fluxo e o par com hedge
+console.log("\no fluxo e o par com hedge");
+const VENDA_PAR: Perna = {
+  lado: "short",
+  janelaDias: 7,
+  k: 2,
+  stop: 0.45,
+  rastro: null,
+  prazoH: 48,
+  alavancagem: 2,
+  criterio: "fluxo",
+  hedge: { symbol: "ETHUSDT", alavancagem: 2 },
+};
+const ROBO_PAR: Robo = { ...ROBO, regras: { ...ROBO.regras, pernas: [VENDA_PAR] } };
+/** 30 moedas com fluxo de 0,30 a 0,59 (M0 é a que mais foi vendida a mercado) e o ETH, o mais vendido de todos. */
+function rankingFluxo(): LinhaRanking[] {
+  const ls: LinhaRanking[] = Array.from({ length: 30 }, (_, n) => ({ symbol: `M${n}USDT`, retorno: {}, volume: 50e6, idadeDias: 100, fluxo: { 7: 0.3 + n / 100 } }));
+  ls.push({ symbol: "ETHUSDT", retorno: {}, volume: 2e9, idadeDias: null, fluxo: { 7: 0.1 } });
+  return ls;
+}
+{
+  const sel = selecionar(ROBO_PAR.regras, VENDA_PAR, rankingFluxo()).map((l) => l.symbol);
+  confere("fluxo: vende as de MENOR fração comprada a mercado", sel.join() === "M0USDT,M1USDT", sel.join());
+  confere("e o símbolo do hedge nunca entra na própria perna", !sel.includes("ETHUSDT"), sel.join());
+}
+{
+  const e = novoEstado(ROBO_PAR, T0);
+  const p = abrir(e, VENDA_PAR, "AUSDT", 10, T0, 50e6, false, 0, { preco: 2000, volume: 2e9 })!;
+  confere("o par abre as duas metades com o mesmo nocional", p.hedge !== undefined && p.hedge.lado === "long" && perto(p.hedge.nocional, p.nocional), `${p.hedge?.lado} ${p.hedge?.nocional}`);
+  confere("e as duas margens saem do caixa", perto(CAPITAL_ROBO - e.caixa, p.margem + (p.hedge?.margem ?? 0)) && perto(p.hedge?.margem ?? 0, p.nocional / 2), `${(CAPITAL_ROBO - e.caixa).toFixed(2)}`);
+  confere("liquidação do hedge comprado a 2x: −49,5%", perto(p.hedge?.liquidacao ?? 0, 2000 * (1 - (0.5 - MANUTENCAO))), `${p.hedge?.liquidacao}`);
+  const custoEntrada = p.nocional * p.custoLado + p.nocional * (p.hedge?.custoLado ?? 0);
+  confere("o par vale margens menos o custo de entrada das duas", perto(valorDaPosicao(p, 10), p.margem + (p.hedge?.margem ?? 0) - custoEntrada), `${valorDaPosicao(p, 10).toFixed(4)}`);
+  confere("sem preço do hedge: não abre pela metade", abrir(e, VENDA_PAR, "BUSDT", 10, T0, 50e6, false) === null && e.recusadas === 1, `recusadas ${e.recusadas}`);
+}
+{
+  // A vendida cai 20% e o ETH sobe 10%: o par ganha nas duas metades.
+  const e = novoEstado(ROBO_PAR, T0);
+  const p = abrir(e, VENDA_PAR, "AUSDT", 10, T0, 50e6, false, 0, { preco: 2000, volume: 2e9 })!;
+  const hv = (n: number, o: number, h: number, l: number, c: number): VelaRobo => ({ t: T0 + n * HORA, o, h, l, c });
+  const semHedge = percorrer(p, [v(0, 10, 10, 9, 9)], []);
+  confere("sem as velas do hedge, o par não anda", semHedge === null && p.ultimaVela === 0, `ultimaVela ${p.ultimaVela}`);
+  const cobrancasEth: Cobranca[] = [{ t: T0 + HORA, taxa: 0.001 }];
+  const s = percorrer(p, [v(0, 10, 10, 9, 9), v(1, 9, 9, 8, 8)], [], e, { velas: [hv(0, 2000, 2100, 1990, 2100), hv(1, 2100, 2200, 2090, 2200)], cobrancas: cobrancasEth });
+  confere("o hedge anda junto: preço e financiamento do comprado", s === null && p.hedge?.precoAtual === 2200 && perto(p.hedge.funding, p.hedge.nocional * 0.001), `${p.hedge?.precoAtual} fin ${p.hedge?.funding.toFixed(4)}`);
+  const caixaAntes = e.caixa;
+  const t = fechar(e, p, { preco: 8, quando: T0 + 2 * HORA, motivo: "prazo" });
+  const ganhoVendido = p.nocional * 0.2 - 2 * p.nocional * p.custoLado;
+  const ganhoHedge = p.nocional * 0.1 - 2 * p.nocional * (p.hedge?.custoLado ?? 0) - (p.hedge?.funding ?? 0);
+  confere("o trade soma as duas metades", t.hedge !== undefined && perto(t.resultado, ganhoVendido + ganhoHedge) && perto(t.hedge.resultado, ganhoHedge), `${t.resultado.toFixed(4)} = ${ganhoVendido.toFixed(4)} + ${ganhoHedge.toFixed(4)}`);
+  confere("e o caixa recebe as duas margens e o resultado", perto(e.caixa - caixaAntes, p.margem + (p.hedge?.margem ?? 0) + t.resultado), `${(e.caixa - caixaAntes).toFixed(4)}`);
+}
+{
+  // O ETH despenca 55% numa hora: a corretora liquida o hedge, e o vendido segue.
+  const e = novoEstado(ROBO_PAR, T0);
+  const p = abrir(e, VENDA_PAR, "AUSDT", 10, T0, 50e6, false, 0, { preco: 2000, volume: 2e9 })!;
+  const hv = (n: number, o: number, h: number, l: number, c: number): VelaRobo => ({ t: T0 + n * HORA, o, h, l, c });
+  const s = percorrer(p, [v(0, 10, 10, 9.5, 9.5)], [], e, { velas: [hv(0, 2000, 2000, 900, 950)], cobrancas: [] });
+  confere("hedge liquidado: a margem dele vai, o par segue aberto", s === null && p.hedge?.liquidadaEm !== undefined, `${s?.motivo ?? "aberto"} liquidado ${p.hedge?.liquidadaEm !== undefined}`);
+  const t = fechar(e, p, { preco: 9.5, quando: T0 + HORA, motivo: "prazo" });
+  confere("e no fechamento ele conta −margem, nunca mais que isso", t.hedge?.liquidada === true && perto(t.hedge.resultado, -(p.hedge?.margem ?? 0)), `${t.hedge?.resultado.toFixed(4)}`);
+}
+{
+  const e = novoEstado(ROBO_PAR, T0);
+  const linhas = rankingFluxo();
+  const abertas = decidir(e, linhas, (s) => (s === "ETHUSDT" ? 2000 : 10), T0 + DIA);
+  confere("a decisão abre os pares com o preço do hedge no mesmo retrato", abertas.length === 2 && abertas.every((p) => p.hedge?.precoEntrada === 2000), `${abertas.length} pares`);
+  const e2 = novoEstado(ROBO_PAR, T0);
+  const semEth = decidir(e2, linhas.filter((l) => l.symbol !== "ETHUSDT"), () => 10, T0 + DIA);
+  confere("sem a linha do hedge no ranking, nenhum par abre", semEth.length === 0 && e2.recusadas === 2, `recusadas ${e2.recusadas}`);
+}
+
 // ------------------------------------------------------------------ o realismo da medição
 console.log("\no realismo da medição");
 {
@@ -428,7 +500,11 @@ for (const r of ROBOS) {
   // A medição tem em média 25 posições abertas (máximo 38): a média precisa
   // caber no caixa com folga. No pico o turbo recusa algumas — a medição conta
   // e as recusas estão dentro do resultado dela.
-  const margemMedia = r.regras.pernas.reduce((s, p) => s + (25 / r.regras.pernas.length) * (r.regras.tamanho / p.alavancagem), 0);
+  // No par, as duas metades prendem margem.
+  const margemMedia = r.regras.pernas.reduce(
+    (s, p) => s + (25 / r.regras.pernas.length) * (r.regras.tamanho / p.alavancagem + (p.hedge ? r.regras.tamanho / p.hedge.alavancagem : 0)),
+    0,
+  );
   confere(`${r.nome}: 25 posições cabem no caixa`, margemMedia < 0.8, `${(margemMedia * 100).toFixed(0)}% em margem`);
 }
 
@@ -441,6 +517,13 @@ for (const r of ROBOS) {
   confere("Momento: alvo de 60% ao ano em 40 dias, tamanho entre ¼ e 2x", alvo?.anual === 0.6 && alvo.janelaDias === 40 && alvo.minimo === 0.25 && alvo.maximo === 2, JSON.stringify(alvo));
   const caca = ROBOS.find((r) => r.id === "caca-monstra")!.regras.pernas[0];
   confere("Caça-monstra: 30 dias e sem pirâmide (não passou nele)", caca.janelaDias === 30 && !caca.piramide, `${caca.janelaDias} d`);
+  const fluxo = ROBOS.find((r) => r.id === "fluxo")!;
+  const vendaFluxo = fluxo.regras.pernas[0];
+  confere(
+    "Fluxo: 3%, par com ETH a 2x e sem alvo de volatilidade (não passou nele)",
+    fluxo.regras.tamanho === 0.03 && !fluxo.regras.alvoVolatilidade && vendaFluxo.hedge?.symbol === "ETHUSDT" && vendaFluxo.hedge.alavancagem === 2,
+    `${fluxo.regras.tamanho * 100}% · ${vendaFluxo.hedge?.symbol}`,
+  );
 }
 
 console.log(falhas === 0 ? "\ntodos os casos passaram" : `\n${falhas} caso(s) FALHARAM`);

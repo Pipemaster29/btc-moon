@@ -447,6 +447,17 @@ if (gar) {
         if (p.livro !== undefined) {
           checa(`${e.id}/${p.symbol}.livro entre 0 e 5%`, Number.isFinite(p.livro) && p.livro >= -1e-9 && p.livro < 0.05, `= ${p.livro}`);
         }
+        // O par: a outra metade do lado contrário, em outro símbolo, com a
+        // liquidação do lado certo — e números que não viram null no JSON.
+        if (p.hedge) {
+          const h = p.hedge;
+          for (const campo of ["precoEntrada", "nocional", "margem", "custoLado", "liquidacao", "funding", "fundingAte", "precoAtual"] as const) {
+            checa(`${e.id}/${p.symbol}.hedge.${campo} finito`, typeof h[campo] === "number" && Number.isFinite(h[campo]), `= ${h[campo]}`);
+          }
+          checa(`${e.id}/${p.symbol}: hedge do lado contrário, em outro símbolo`, h.lado !== p.lado && h.symbol !== p.symbol, `${h.lado} ${h.symbol}`);
+          const liqCerta = h.lado === "long" ? h.liquidacao < h.precoEntrada : h.liquidacao > h.precoEntrada;
+          checa(`${e.id}/${p.symbol}: liquidação do hedge do lado certo`, liqCerta, `entrada ${h.precoEntrada} liq ${h.liquidacao}`);
+        }
       }
       for (const t of e.fechadas) {
         checa(`${e.id}/${t.symbol}: perda não passa da margem`, Number.isFinite(t.resultado) && t.resultado >= -t.margem - 1e-9, `${t.resultado} com margem ${t.margem}`);

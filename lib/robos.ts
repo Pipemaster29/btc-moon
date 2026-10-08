@@ -86,6 +86,10 @@
  * no painel de manipuladas: é a intuição de que "as manipuladas têm mais
  * potencial", medida — e é também o risco concentrado.
  *
+ * O "Fluxo" é OUTRO LIVRO (`VENDA_FLUXO`, com a medição ao lado): vende as
+ * moedas em que a venda a mercado dominou a semana, em par com ETH. Rende
+ * menos que o Momento e quase não anda junto com ele (correlação 0,16).
+ *
  * O "Caça-monstra" é essa intuição sozinha: só a perna comprada, mais
  * concentrada e aceitando moeda menor. Fora da amostra, +189%; dentro, −3%,
  * com queda de −37%; sem as suas cinco melhores, +11% fora e −23% dentro. Ele
@@ -148,6 +152,20 @@ export interface Perna {
    * sobem (ou caem). Ausente: só stop, rastro e prazo.
    */
   saidaPosto?: number;
+  /**
+   * O CRITÉRIO do ranking. "retorno" (o padrão) é o momento: as que mais
+   * subiram ou caíram na janela. "fluxo" é a fração do volume da janela que foi
+   * COMPRA A MERCADO (taker buy): no vendido, as de menor fração — onde quem
+   * vendeu a mercado mais dominou.
+   */
+  criterio?: "retorno" | "fluxo";
+  /**
+   * O HEDGE: cada posição da perna abre junto uma do OUTRO lado em `symbol`, do
+   * mesmo nocional, com margem isolada própria nesta alavancagem, e as duas
+   * saem juntas. O par aposta que a moeda vai PIOR que o hedge, não que o
+   * mercado cai. Não combina com pirâmide.
+   */
+  hedge?: { symbol: string; alavancagem: number };
 }
 
 /**
@@ -390,9 +408,99 @@ const VENDA_MOMENTO: Perna = {
  *   entrada 3 h atrasada      +1.906%   +122%     +744%        +49%
  *
  * No Caça-monstra o alvo NÃO passou: na mesma queda máxima ele melhora o
- * dentro (−4% → +3%) e piora o fora (+189% → +163%).
+ * dentro (−4% → +3%) e piora o fora (+189% → +163%). No Fluxo também não, do
+ * mesmo jeito: na mesma queda (−22%: 2% com ele, 3% sem), dentro +90% → +104%
+ * com o Sharpe igual (1,55 e 1,56), fora +91% → +84% com o Sharpe caindo de
+ * 1,65 para 1,51. O Sharpe da janela inteira subia (1,60 → 1,68) por mudar a
+ * aposta de lugar entre as metades, não por melhorar nenhuma delas.
  */
 const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.25, maximo: 2 };
+
+/**
+ * A PERNA DO FLUXO: vende as 5 moedas em que a VENDA A MERCADO mais dominou o
+ * volume dos últimos 7 dias (a menor fração de compra agressora, `criterio:
+ * "fluxo"`), cada uma em PAR com uma compra de ETH do mesmo nocional, por 14
+ * dias, stop de 45%. A aposta é que elas vão pior que o ETH — não que o mercado
+ * cai.
+ *
+ * Saiu de uma rodada de livros DIFERENTES do momento (08/10), na bancada
+ * realista (os números deste comentário são dela; os deste motor estão no
+ * fim). As famílias que NÃO passaram foram medidas como toda a rodada, a 3%
+ * com o alvo de volatilidade do Momento ligado; o fluxo, daqui para baixo, a
+ * 3% e sem o alvo, como o robô publicado:
+ *
+ *   coletar o financiamento na hora da cobrança   desde 07/2025 o preço cai o que a
+ *                                                 cobrança paga: ≈0% por evento fora
+ *                                                 (e +0,4% a +1,2% dentro era olhar o
+ *                                                 futuro nas moedas de cobrança horária)
+ *   carry: vender quem paga financiamento alto    −57% a −73% (é vender o momento)
+ *   comprar quem recebe financiamento             +23% a −13%; sem as 5, negativo
+ *   reversão de 1 e 3 dias, nos dois lados        −36% a −87%
+ *   loteria (vender o maior dia de 30 dias)       dentro +14%, fora −23%
+ *   vender a listagem nova 1, 3 ou 7 dias depois  dentro +20% a +62%, fora negativo
+ *   vender a divergência preço sobe e fluxo vende −19% a −30%
+ *   tamanho médio do negócio, volume que acorda   não passa em nenhuma direção
+ *   comprar o fluxo comprador                     fora +62% a +215%, dentro −6% a −36%
+ *   fluxo somado ao momento num score só          dilui o momento: +392% contra +611%
+ *
+ * O fluxo vendedor SOZINHO passa — +73% a +107%, positivo dentro, fora e sem as
+ * 5 melhores — mas com Sharpe de 0,6 a 0,8. E ele escolhe moedas diferentes das
+ * da vendida do Momento: 13% de sobreposição. O que o fez virar livro foi o
+ * HEDGE, que tira o mercado da conta:
+ *
+ *                                     inteira   dentro     fora   sem as 5, fora   Sharpe
+ *   fluxo vendedor, sem hedge          +107%      +54%      +34%        +12%          0,78
+ *   + compra de BTC                    +281%     +186%      +31%        +11%          1,24
+ *   + compra de ETH  ← este            +271%      +90%      +93%        +64%          1,22
+ *   + cesta das 10 maiores altcoins    +242%      +92%      +63%         +8%          1,11
+ *   vendida do Momento + ETH (controle) +115%     +91%       +8%        −10%          0,86
+ *
+ * O BTC sozinho, nas mesmas datas, fez +59% dentro (ele foi de 43 mil a 107 mil):
+ * o hedge de BTC infla 2024. O de ETH é o equilibrado. E o controle diz que o
+ * lucro é do FLUXO, não do hedge: a vendida do Momento com o mesmo ETH faz +8%
+ * fora, e −10% sem as 5 melhores. (A bancada marca o hedge só na saída: a
+ * queda e o Sharpe dela são os de um vendido SEM hedge enquanto a posição está
+ * aberta. Este motor marca as duas metades de hora em hora, e é daí que vêm a
+ * queda de −22% e o Sharpe de 1,60 do fim, contra −35% e 1,22 aqui.)
+ *
+ * PLATÔ — cada peça mexida sozinha, todas positivas nas três janelas e no "sem
+ * as 5": janela de 5, 10 e 14 dias (+99%, +176%, +143%); prazo de 7 e 21 dias
+ * (+114%, +252%); k 3 e 7 (+172%, +236%); stop de 30% e 60% (+211%, +268%);
+ * volume de 10 e 50 milhões (+239%, +147%); hedge de 0,5, 0,75 e 1,25 do
+ * nocional (+195%, +236%, +298%). ATAQUE: custo de entrada 4x +224%, escorregada
+ * dobrada +266%, entrada 1 h e 3 h atrasada +260% e +259%, custo do hedge a 0,3%
+ * por lado +209%. Ganha em 8 de 11 trimestres; perde 2024T1 (−9%), 2024T3 (−12%)
+ * e 2026T2 (−2%).
+ *
+ * MEDIDO COM ESTE MOTOR, a 3% por posição e sem o alvo de volatilidade (que
+ * aqui não passou — ver `ALVO_MOMENTO`): +262% na janela inteira (queda máxima
+ * −22%, Sharpe 1,60), +90% dentro e +91% fora; sem as 5 melhores, +217%
+ * inteira, +87% dentro e +70% fora. Ganha em 8 de 11 trimestres. 1.573 pares,
+ * nenhum hedge liquidado; dos US$ 2.603 que fizeram, US$ 1.751 vieram da perna
+ * vendida e US$ 852 do ETH.
+ *
+ * O QUE ELE É E O QUE NÃO É: rende bem menos que o Momento (Sharpe 1,60 contra
+ * 2,42). A virtude é outra, e está medida. O lucro dele não mora em cinco
+ * moedas: sem as 5 melhores sobram 83% do lucro, no Momento 15%. E ele anda
+ * por outro caminho: correlação diária de 0,16 com o Momento e −0,22 com o
+ * Caça-monstra; nos 123 dias em que o Momento caiu mais de 3% (−4,6% na
+ * média), o Fluxo fez −0,5%. Se as monstras pararem de aparecer, o Momento
+ * seca e este não depende delas.
+ */
+const VENDA_FLUXO: Perna = {
+  lado: "short",
+  janelaDias: 7,
+  k: 5,
+  stop: 0.45,
+  rastro: null,
+  prazoH: 14 * 24,
+  alavancagem: 2,
+  criterio: "fluxo",
+  // A 2x, a liquidação do ETH fica a −49,5%. Em 34 das 990 janelas de 14 dias
+  // de 2024–2026 ele caiu mais que os −32,8% da de 3x (a pior, −42,6% a partir
+  // de 28/01/2026); nenhuma chegou aos −49,5%.
+  hedge: { symbol: "ETHUSDT", alavancagem: 2 },
+};
 
 /**
  * Volume mínimo de US$ 20 milhões no dia: é onde o custo por lado fica entre
@@ -432,6 +540,18 @@ export const ROBOS: Robo[] = [
       pernas: [{ ...COMPRA_30, k: 3 }],
     },
   },
+  {
+    id: "fluxo",
+    nome: "Fluxo",
+    descricao:
+      "Vende as 5 moedas em que a venda a mercado mais dominou nos últimos 7 dias e compra ETH do mesmo tamanho para cada uma: aposta que elas vão pior que o ETH, não que o mercado cai. 14 dias, stop de 45%.",
+    // 3% e não mais: cada par prende margem nas DUAS metades, e acima disso o
+    // caixa começa a recusar entrada. O Sharpe fica em 1,60 de 2% a 3% (queda
+    // de −15% a −22%), e a 3,5% são 52 recusas e 1,57; a 4%, 163 e 1,51.
+    // Sem o alvo de volatilidade do Momento, que aqui NÃO passou (ver
+    // `ALVO_MOMENTO`).
+    regras: { tamanho: 0.03, ...UNIVERSO, pernas: [VENDA_FLUXO] },
+  },
 ];
 
 /**
@@ -447,6 +567,29 @@ export const MOMENTO_ANTERIOR: Robo = {
 };
 
 // ------------------------------------------------------------------ o estado
+
+/** A perna de hedge de um par (`Perna.hedge`): a outra metade da posição, com margem isolada própria. */
+export interface PernaHedge {
+  symbol: string;
+  lado: LadoRobo;
+  precoEntrada: number;
+  /** Dólares — o mesmo nocional da perna principal na entrada. */
+  nocional: number;
+  /** Dólares que saíram do caixa por esta perna. */
+  margem: number;
+  /** Custo por lado, em fração do nocional. */
+  custoLado: number;
+  liquidacao: number;
+  /** Financiamento acumulado em DÓLARES; positivo é custo. */
+  funding: number;
+  fundingAte: number;
+  precoAtual: number;
+  /**
+   * Quando a corretora liquidou o hedge: ele leva a margem dele, e o par segue
+   * só com a perna principal até ela sair.
+   */
+  liquidadaEm?: number;
+}
 
 export interface PosicaoRobo {
   symbol: string;
@@ -506,7 +649,7 @@ export interface PosicaoRobo {
    * `n` primeiras. Mora na posição como o stop e o rastro — a que entrou antes
    * da regra não sai por ela. Ausente: sem saída por posto.
    */
-  posto?: { janelaDias: number; n: number };
+  posto?: { janelaDias: number; n: number; criterio?: "retorno" | "fluxo" };
   /**
    * SÓ NO AO VIVO: quanto o livro de ofertas da Binance cobraria na hora da
    * entrada, por lado, em fração do nocional — meio spread mais o impacto de
@@ -514,6 +657,8 @@ export interface PosicaoRobo {
    * custo do modelo (`custoLado` menos a `TAXA`) para conferir a régua.
    */
   livro?: number;
+  /** A outra metade do par, quando a perna tem hedge. */
+  hedge?: PernaHedge;
 }
 
 export interface TradeRobo {
@@ -537,6 +682,11 @@ export interface TradeRobo {
   livro?: number;
   /** O custo por lado que o modelo cobrou (`PosicaoRobo.custoLado`). */
   custoLado?: number;
+  /**
+   * A metade de hedge do par, quando houve. O `resultado` e a `margem` acima já
+   * somam as duas metades; aqui fica a parte do hedge, para a tela separar.
+   */
+  hedge?: { symbol: string; precoEntrada: number; precoSaida: number; resultado: number; funding: number; liquidada?: boolean };
 }
 
 export interface EstadoRobo {
@@ -597,6 +747,12 @@ export interface LinhaRanking {
   volume: number;
   /** Dias de perpétuo até a decisão; nulo é "mais velha que a série". */
   idadeDias: number | null;
+  /**
+   * A fração do volume em dólar de cada janela (dias → fração) que foi compra a
+   * mercado (taker buy); nulo sem série que cubra a janela. Só os robôs com
+   * perna de critério "fluxo" precisam dela.
+   */
+  fluxo?: Record<number, number | null>;
 }
 
 export const HORA = 3_600_000;
@@ -626,8 +782,22 @@ function aFavor(p: { lado: LadoRobo; precoEntrada: number }, preco: number): num
  * zero — a margem isolada é o teto da perda, e marcar negativo inventaria uma
  * dívida que a corretora não cobra.
  */
-export function valorDaPosicao(p: PosicaoRobo, preco: number): number {
+export function valorDaPosicao(p: PosicaoRobo, preco: number, precoHedge?: number): number {
   const v = p.margem + p.nocional * aFavor(p, preco) - p.nocional * p.custoLado - p.funding - (p.custoExtra ?? 0);
+  // As duas metades de um par têm margens isoladas: cada uma tem o próprio piso.
+  const h = p.hedge ? valorDoHedge(p.hedge, precoHedge !== undefined && precoHedge > 0 ? precoHedge : p.hedge.precoAtual) : 0;
+  return (Number.isFinite(v) ? Math.max(0, v) : 0) + h;
+}
+
+/** A margem que a posição prende no caixa: as duas metades, quando é um par. */
+export function margemTotal(p: PosicaoRobo): number {
+  return p.margem + (p.hedge?.margem ?? 0);
+}
+
+/** O valor da metade de hedge a este preço, com o mesmo piso de zero; liquidada, zero. */
+export function valorDoHedge(h: PernaHedge, preco: number): number {
+  if (h.liquidadaEm !== undefined) return 0;
+  const v = h.margem + h.nocional * aFavor(h, preco) - h.nocional * h.custoLado - h.funding;
   return Number.isFinite(v) ? Math.max(0, v) : 0;
 }
 
@@ -654,7 +824,7 @@ export interface Saida {
  * 2024 a 2026, 6.906 foram de −0,5% ou menos por período e 127 de +0,5% ou mais.
  * A LAB de 05 a 07/2026 pagou 132% do nocional a quem estava comprado.
  */
-export function cobrar(p: PosicaoRobo, cobrancas: readonly Cobranca[], ate: number): void {
+export function cobrar(p: PosicaoRobo | PernaHedge, cobrancas: readonly Cobranca[], ate: number): void {
   for (const c of cobrancas) {
     if (c.t <= p.fundingAte || c.t > ate) continue;
     if (!Number.isFinite(c.taxa)) continue;
@@ -686,13 +856,24 @@ export function percorrer(
   cobrancas: readonly Cobranca[],
   /** O robô dono da posição: sem ele a pirâmide não tem de onde tirar a margem, e não entra. */
   e?: EstadoRobo,
+  /**
+   * As velas e cobranças do símbolo do hedge, quando a posição é um par. Sem
+   * elas o par NÃO anda: percorrer só a metade principal deixaria o hedge
+   * parado num preço velho, e a saída o fecharia nesse preço.
+   */
+  hedge?: { velas: readonly VelaRobo[]; cobrancas: readonly Cobranca[] },
 ): Saida | null {
   const comprado = p.lado === "long";
+  if (p.hedge && !hedge) return null;
+  const velasHedge = new Map((hedge?.velas ?? []).map((v) => [v.t, v]));
   for (const v of velas) {
     if (v.t < p.abertaEm || v.t <= p.ultimaVela) continue;
     if (!(v.o > 0 && v.h > 0 && v.l > 0 && v.c > 0)) {
       return { preco: p.precoAtual, quando: v.t, motivo: "sumiu" };
     }
+    // 0. A metade de hedge anda na mesma hora, ANTES: se a principal sair nesta
+    //    vela, o hedge fecha no fechamento dela.
+    if (p.hedge && hedge) andarHedge(p.hedge, velasHedge.get(v.t), hedge.cobrancas, v.t);
     // 1. O financiamento da abertura desta vela é devido por quem estava
     //    posicionado nela — inclusive se for a vela da saída.
     cobrar(p, cobrancas, v.t);
@@ -742,6 +923,25 @@ export function percorrer(
     p.melhor = comprado ? Math.max(p.melhor, v.h) : Math.min(p.melhor, v.l);
   }
   return null;
+}
+
+/**
+ * A metade de hedge numa vela: o financiamento até a abertura, a liquidação
+ * dela (a corretora fecha SÓ o hedge, que leva a própria margem, e o par segue
+ * com a metade principal) e o preço de fechamento. Vela do hedge que falta é
+ * hora sem negócio registrado: o preço fica o último visto.
+ */
+function andarHedge(h: PernaHedge, v: VelaRobo | undefined, cobrancas: readonly Cobranca[], t: number): void {
+  if (h.liquidadaEm !== undefined) return;
+  cobrar(h, cobrancas, t);
+  if (!v || !(v.o > 0 && v.h > 0 && v.l > 0 && v.c > 0)) return;
+  const tocaLiq = h.lado === "long" ? v.l <= h.liquidacao : v.h >= h.liquidacao;
+  if (tocaLiq) {
+    h.liquidadaEm = t + HORA;
+    h.precoAtual = h.liquidacao;
+    return;
+  }
+  h.precoAtual = v.c;
 }
 
 /**
@@ -795,10 +995,37 @@ function acrescentar(e: EstadoRobo, p: PosicaoRobo, v: VelaRobo, gatilho: number
  * menos o custo dos dois lados e o financiamento — e também nunca passa da
  * margem, que é o teto da perda em margem isolada.
  */
-export function fechar(e: EstadoRobo, p: PosicaoRobo, s: Saida): TradeRobo {
+export function fechar(
+  e: EstadoRobo,
+  p: PosicaoRobo,
+  s: Saida,
+  /** O preço do hedge na saída; sem ele, o último visto. */
+  precoHedge?: number,
+): TradeRobo {
   const bruto = p.nocional * aFavor(p, s.preco) - 2 * p.nocional * p.custoLado - p.funding - (p.custoExtra ?? 0);
-  const resultado = s.motivo === "liquidada" ? -p.margem : Math.max(-p.margem, bruto);
-  e.caixa += p.margem + resultado;
+  const principal = s.motivo === "liquidada" ? -p.margem : Math.max(-p.margem, bruto);
+  // A metade de hedge sai junto, no mesmo instante — com o mesmo teto de perda.
+  let hedge: TradeRobo["hedge"];
+  let margemHedge = 0;
+  if (p.hedge) {
+    const h = p.hedge;
+    const saida = h.liquidadaEm !== undefined ? h.liquidacao : precoHedge !== undefined && precoHedge > 0 ? precoHedge : h.precoAtual;
+    const r =
+      h.liquidadaEm !== undefined
+        ? -h.margem
+        : Math.max(-h.margem, h.nocional * aFavor(h, saida) - 2 * h.nocional * h.custoLado - h.funding);
+    margemHedge = h.margem;
+    hedge = {
+      symbol: h.symbol,
+      precoEntrada: h.precoEntrada,
+      precoSaida: saida,
+      resultado: r,
+      funding: h.funding,
+      ...(h.liquidadaEm !== undefined ? { liquidada: true } : {}),
+    };
+  }
+  const resultado = principal + (hedge?.resultado ?? 0);
+  e.caixa += p.margem + margemHedge + resultado;
   e.abertas = e.abertas.filter((x) => x !== p);
   const t: TradeRobo = {
     symbol: p.symbol,
@@ -808,13 +1035,14 @@ export function fechar(e: EstadoRobo, p: PosicaoRobo, s: Saida): TradeRobo {
     precoEntrada: p.precoEntrada,
     precoSaida: s.preco,
     nocional: p.nocional,
-    margem: p.margem,
+    margem: p.margem + margemHedge,
     resultado,
     funding: p.funding,
     motivo: s.motivo,
     ...(p.manipulada ? { manipulada: true } : {}),
     ...(p.parcelas && p.parcelas > 1 ? { parcelas: p.parcelas } : {}),
     ...(p.livro !== undefined ? { livro: p.livro, custoLado: p.custoLado } : {}),
+    ...(hedge ? { hedge } : {}),
   };
   e.fechadas.unshift(t);
   return t;
@@ -825,7 +1053,8 @@ export function patrimonioA(e: EstadoRobo, precos?: ReadonlyMap<string, number>)
   let v = e.caixa;
   for (const p of e.abertas) {
     const preco = precos?.get(p.symbol);
-    v += valorDaPosicao(p, preco !== undefined && preco > 0 ? preco : p.precoAtual);
+    const precoHedge = p.hedge ? precos?.get(p.hedge.symbol) : undefined;
+    v += valorDaPosicao(p, preco !== undefined && preco > 0 ? preco : p.precoAtual, precoHedge);
   }
   return v;
 }
@@ -891,14 +1120,25 @@ export function escalaDoTamanho(e: EstadoRobo, quando: number): number {
   return Math.min(a.maximo, Math.max(a.minimo, escala));
 }
 
+/** O número que ordena a perna: o retorno da janela, ou a fração comprada a mercado (`Perna.criterio`). */
+function criterioDe(perna: Pick<Perna, "janelaDias" | "criterio">, l: LinhaRanking): number | null | undefined {
+  return perna.criterio === "fluxo" ? l.fluxo?.[perna.janelaDias] : l.retorno[perna.janelaDias];
+}
+
 /**
  * O ranking da perna num dia, da melhor para a pior — as que mais subiram
- * primeiro no comprado, as que mais caíram primeiro no vendido —, entre as que
- * passam no volume e na idade e têm série que cubra a janela.
+ * primeiro no comprado, as que mais caíram primeiro no vendido (ou, no
+ * critério "fluxo", as de menor fração comprada a mercado primeiro no
+ * vendido) —, entre as que passam no volume e na idade e têm série que cubra a
+ * janela.
  */
-export function ordenar(regras: RegrasRobo, perna: Pick<Perna, "lado" | "janelaDias">, linhas: readonly LinhaRanking[]): LinhaRanking[] {
+export function ordenar(
+  regras: RegrasRobo,
+  perna: Pick<Perna, "lado" | "janelaDias" | "criterio">,
+  linhas: readonly LinhaRanking[],
+): LinhaRanking[] {
   const elegiveis = linhas.filter((l) => {
-    const r = l.retorno[perna.janelaDias];
+    const r = criterioDe(perna, l);
     return (
       r !== null &&
       r !== undefined &&
@@ -908,7 +1148,7 @@ export function ordenar(regras: RegrasRobo, perna: Pick<Perna, "lado" | "janelaD
       (l.idadeDias === null || l.idadeDias >= regras.idadeMinimaDias)
     );
   });
-  const ordem = elegiveis.sort((a, b) => (a.retorno[perna.janelaDias] as number) - (b.retorno[perna.janelaDias] as number));
+  const ordem = elegiveis.sort((a, b) => (criterioDe(perna, a) as number) - (criterioDe(perna, b) as number));
   return perna.lado === "long" ? ordem.reverse() : ordem;
 }
 
@@ -919,7 +1159,8 @@ export function ordenar(regras: RegrasRobo, perna: Pick<Perna, "lado" | "janelaD
  * poucas é sorteio, e a pesquisa nunca operou assim.
  */
 export function selecionar(regras: RegrasRobo, perna: Perna, linhas: readonly LinhaRanking[]): LinhaRanking[] {
-  const ordem = ordenar(regras, perna, linhas);
+  // O símbolo do hedge não entra na própria perna: vender ETH contra ETH é zero.
+  const ordem = ordenar(regras, perna, linhas).filter((l) => l.symbol !== perna.hedge?.symbol);
   if (ordem.length < 4 * perna.k) return [];
   return ordem.slice(0, perna.k);
 }
@@ -949,7 +1190,7 @@ export function sairPorPosto(
     const chave = `${p.lado}:${p.posto.janelaDias}`;
     let posto = postos.get(chave);
     if (!posto) {
-      const ordem = ordenar(e.regras, { lado: p.lado, janelaDias: p.posto.janelaDias }, linhas);
+      const ordem = ordenar(e.regras, { lado: p.lado, janelaDias: p.posto.janelaDias, criterio: p.posto.criterio }, linhas);
       posto = new Map(ordem.length >= MINIMO_NO_RANKING ? ordem.map((l, k) => [l.symbol, k]) : []);
       postos.set(chave, posto);
     }
@@ -957,8 +1198,8 @@ export function sairPorPosto(
     if (k === undefined || k < p.posto.n) continue;
     const preco = precoDe(p.symbol);
     if (preco === undefined || !(preco > 0) || !Number.isFinite(preco)) continue;
-    if (custoExtra > 0) p.custoExtra = (p.custoExtra ?? 0) + custoExtra * p.nocional;
-    saidas.push(fechar(e, p, { preco, quando, motivo: "posto" }));
+    if (custoExtra > 0) p.custoExtra = (p.custoExtra ?? 0) + custoExtra * p.nocional * (p.hedge ? 2 : 1);
+    saidas.push(fechar(e, p, { preco, quando, motivo: "posto" }, p.hedge ? precoDe(p.hedge.symbol) : undefined));
   }
   return saidas;
 }
@@ -979,16 +1220,24 @@ export function abrir(
   manipulada: boolean,
   /** Custo de entrada a mais, em fração do nocional: `CUSTO_ATRASO` na medição, zero no ao vivo. */
   custoExtra = 0,
+  /** O preço e o volume do símbolo do hedge, quando a perna tem hedge. */
+  hedge?: { preco: number; volume: number },
 ): PosicaoRobo | null {
   if (e.abertas.some((p) => p.symbol === symbol)) return null;
   if (!(preco > 0) || !Number.isFinite(preco)) {
     e.recusadas++;
     return null;
   }
+  // Par sem o preço do hedge não abre pela metade: vendido sozinho é outra aposta.
+  if (perna.hedge && !(hedge && hedge.preco > 0 && Number.isFinite(hedge.preco) && Number.isFinite(hedge.volume))) {
+    e.recusadas++;
+    return null;
+  }
   const pat = patrimonioA(e);
   const nocional = e.regras.tamanho * pat * escalaDoTamanho(e, quando);
   const margem = nocional / perna.alavancagem;
-  if (!(nocional >= NOCIONAL_MINIMO) || margem > e.caixa) {
+  const margemHedge = perna.hedge ? nocional / perna.hedge.alavancagem : 0;
+  if (!(nocional >= NOCIONAL_MINIMO) || margem + margemHedge > e.caixa) {
     e.recusadas++;
     return null;
   }
@@ -1012,7 +1261,7 @@ export function abrir(
     fundingAte: quando,
     precoAtual: preco,
     ...(manipulada ? { manipulada: true } : {}),
-    ...(perna.piramide
+    ...(perna.piramide && !perna.hedge
       ? {
           piramide: {
             precos: perna.piramide.niveis.map((n) => (comprado ? preco * (1 + n) : preco * (1 - n))),
@@ -1020,10 +1269,29 @@ export function abrir(
           },
         }
       : {}),
-    ...(custoExtra > 0 ? { custoExtra: custoExtra * nocional } : {}),
-    ...(perna.saidaPosto ? { posto: { janelaDias: perna.janelaDias, n: perna.saidaPosto } } : {}),
+    // O atraso da medição vale para as duas metades do par: as duas ordens esperam o retrato.
+    ...(custoExtra > 0 ? { custoExtra: custoExtra * nocional * (perna.hedge ? 2 : 1) } : {}),
+    ...(perna.saidaPosto
+      ? { posto: { janelaDias: perna.janelaDias, n: perna.saidaPosto, ...(perna.criterio ? { criterio: perna.criterio } : {}) } }
+      : {}),
   };
-  e.caixa -= margem;
+  if (perna.hedge && hedge) {
+    const ladoH: LadoRobo = comprado ? "short" : "long";
+    const distH = 1 / perna.hedge.alavancagem - MANUTENCAO;
+    p.hedge = {
+      symbol: perna.hedge.symbol,
+      lado: ladoH,
+      precoEntrada: hedge.preco,
+      nocional,
+      margem: margemHedge,
+      custoLado: custoPorLado(hedge.volume),
+      liquidacao: ladoH === "long" ? hedge.preco * (1 - distH) : hedge.preco * (1 + distH),
+      funding: 0,
+      fundingAte: quando,
+      precoAtual: hedge.preco,
+    };
+  }
+  e.caixa -= margem + margemHedge;
   e.abertas.push(p);
   return p;
 }
@@ -1057,8 +1325,11 @@ export function decidir(
   const abertas: PosicaoRobo[] = [];
   const pernas = [...e.regras.pernas].sort((a, b) => a.janelaDias - b.janelaDias);
   for (const perna of pernas) {
+    // O preço e o volume do hedge saem do mesmo retrato; sem a linha dele, o par não abre.
+    const linhaHedge = perna.hedge ? linhas.find((l) => l.symbol === perna.hedge?.symbol) : undefined;
+    const hedge = perna.hedge ? { preco: precoDe(perna.hedge.symbol) ?? NaN, volume: linhaHedge?.volume ?? NaN } : undefined;
     for (const l of selecionar(e.regras, perna, linhas)) {
-      const p = abrir(e, perna, l.symbol, precoDe(l.symbol) ?? NaN, quando, l.volume, manipuladas?.has(l.symbol) ?? false, custoExtra);
+      const p = abrir(e, perna, l.symbol, precoDe(l.symbol) ?? NaN, quando, l.volume, manipuladas?.has(l.symbol) ?? false, custoExtra, hedge);
       if (p) abertas.push(p);
     }
   }
