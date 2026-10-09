@@ -554,40 +554,83 @@ Medido com o motor que roda ao vivo, US$ 1.000 em 08/01/2024:
 | --- | --- | --- | --- | --- | --- | --- |
 | regra de 07/10, 4% | +416% | +89% | +160% | −36% | 1,36 | +24% · −38% |
 | manhã de 08/10, 3% | +1.254% | +73% | +638% | −37% | 2,09 | +242% · +71% |
-| **hoje, 4% — Momento** | **+4.863%** | **+199%** | **+1.424%** | **−36%** | **2,42** | **+707% · +111%** |
-| **hoje, 6% — Momento turbo** | **+8.472%** | +233% | +2.301% | −46% | 2,35 | +906% · +142% |
+| tarde de 08/10, 4% | +4.863% | +199% | +1.424% | −36% | 2,42 | +707% · +111% |
+| **hoje, 4,25% — Momento** | **+5.969%** | **+216%** | **+1.602%** | **−36%** | **2,54** | **+828% · +120%** |
+| **hoje, 6,375% — Momento turbo** | **+10.537%** | +245% | +2.706% | −46% | 2,46 | +981% · +144% |
 
-Na mesma queda máxima da manhã, a janela inteira quase quadruplica, e o dentro da
-amostra — o ponto fraco de antes — vai de +73% a +199%. Por trimestre a regra de
-hoje ganha em 8 de 11; perde 2024T1 (−24% contra −22%), 2024T4 (+4% contra +7%) e
-2025T4 (+13% contra +23%). **Atacada** na bancada a 3%: custo de entrada 4x
+Na mesma queda máxima da manhã, a regra da tarde de 08/10 quase quadruplicou a janela
+inteira, e o dentro da amostra — o ponto fraco de antes — foi de +73% a +199%. Por
+trimestre ela ganhava em 8 de 11; perdia 2024T1 (−24% contra −22%), 2024T4 (+4% contra
++7%) e 2025T4 (+13% contra +23%). **Atacada** na bancada a 3%: custo de entrada 4x
 (+2.411%), escorregada do stop dobrada (+2.454%), entrada 1 h atrasada (+2.577%) e
 3 h atrasada (+1.906%) — todas acima da manhã nas três janelas.
+
+### A vendida pela volatilidade da moeda (09/10)
+
+A vendida do Momento perde dinheiro na soma (US$ 8 mil em 2024–2026) e mesmo assim é
+indispensável: sem ela, o dentro da amostra cai de +199% para +17% com queda de −51% —
+é ela que segura 2024. Reduzir o tamanho dela inteira (½ ou ¾) também derruba o dentro
+(+118% e +161%). O que passou foi **repartir o risco entre as vendidas**: cada uma
+entra com o tamanho multiplicado pela mediana do desvio diário de 45 dias das moedas
+elegíveis ÷ o desvio da própria moeda, entre ¼ e 2x. A moeda duas vezes mais agitada
+que a do meio é vendida com metade do tamanho.
+
+| na mesma queda máxima (−36%) | inteira | dentro | fora | sem as 5 melhores: inteira · dentro · fora |
+| --- | --- | --- | --- | --- |
+| sem (08/10, 4%) | +4.863% | +199% (Sharpe 1,48) | +1.424% (3,31) | +707% · +207% · +111% |
+| **com (4,25%)** | **+5.969%** | **+216% (1,55)** | **+1.602% (3,41)** | **+828% · +222% · +120%** |
+
+No mesmo tamanho (4%), +5.342% com queda de −35%: mais lucro e menos queda juntos.
+**Platô**: com o desvio de 30, 45 e 60 dias o Sharpe sobe nas duas metades ou empata
+(dentro 1,53 · 1,55 · 1,48; fora 3,35 · 3,41 · 3,40); com 14 e 21 dias o desvio é
+ruído e o dentro piora (1,43 e 1,39). Os limites ½–2x, ¼–1,5x e ¼–3x passam todos.
+**Atacada**, contra a regra anterior no mesmo ataque: custo de entrada 4x, +4.443%
+contra +3.466%; escorregada do stop dobrada, +4.618% contra +3.686% — o Sharpe maior
+nas duas metades nos dois.
+
+**O que ela não é.** Não é "moeda agitada é venda ruim": por quartil do desvio na
+entrada, as vendidas mais agitadas tiveram o melhor resultado médio por margem (+8,7%)
+— e o maior número de stops. A regra reparte o risco em vez de concentrá-lo nas que
+mais pulam. E **não melhora todo trimestre**: contra a regra anterior, ganha em 5 de
+11. A vendida perde muito menos em 2026T2 (−18% do patrimônio → −6%) e em 2024T1
+(−28% → −24%), e mais em 2025T3 (−15% → −23%) e 2026T1 (+29% → +20%).
+
+**Reprovado na mesma rodada**, sobre a regra anterior a 4% (os números estão em
+`VENDA_MOMENTO`): o mesmo tamanho pela volatilidade na **comprada** (+1.848% — as
+monstras são as moedas mais agitadas, e o lucro mora nelas); trocar a vendida pelo par
+do Fluxo (o fora sobe, o dentro cai para +91% a +138%); pôr o par do Fluxo como
+terceira perna na mesma conta (+1.568% a +5.022%: o caixa não comporta os dois livros);
+o fluxo como filtro da comprada ou da vendida (+2.237% a +4.515%); não comprar depois
+de um dia de alta de 15% a 40% (+1.724% a +2.614% — é nesse dia que a monstra começa);
+k de 3 a 7 nas duas pernas e janela da vendida de 7 a 30 dias (nenhuma passa; vender 4
+em vez de 5 empata).
 
 E o tamanho, na regra de hoje:
 
 | tamanho por posição | inteira | queda máx | Sharpe | recusadas por caixa |
 | --- | --- | --- | --- | --- |
-| 2% | +1.631% | −25% | 2,40 | 0 |
-| 3% | +3.012% | −31% | 2,41 | 0 |
-| **4% — Momento** | **+4.863%** | **−36%** | **2,42** | 2 |
-| 5% | +6.095% | −42% | 2,35 | 8 |
-| **6% — Momento turbo** | **+8.472%** | **−46%** | **2,35** | 25 |
-| 7% | +7.868% | −51% | 2,22 | 62 |
-| 8% | +9.946% | −56% | 2,22 | 136 |
+| 2% | +1.612% | −22% | 2,48 | 0 |
+| 3% | +3.273% | −29% | 2,54 | 0 |
+| 4% | +5.342% | −35% | 2,54 | 0 |
+| **4,25% — Momento** | **+5.969%** | **−36%** | **2,54** | 1 |
+| 5% | +7.392% | −40% | 2,50 | 7 |
+| 6% | +9.249% | −44% | 2,45 | 15 |
+| **6,375% — Momento turbo** | **+10.537%** | **−46%** | **2,46** | 18 |
+| 7% | +11.763% | −49% | 2,43 | 29 |
+| 8% | +16.326% | −53% | 2,45 | 67 |
 
-**Tamanho escolhe o risco, não a vantagem — e tem teto.** Até 4% o Sharpe não se
-mexe; dali para cima o caixa começa a recusar entrada, e a 7% o robô rende MENOS que
-a 6% com mais queda. O turbo fica no último tamanho em que o caixa acompanha.
+**Tamanho escolhe o risco, não a vantagem — e tem teto.** De 3% a 4,25% o Sharpe não
+se mexe; dali para cima o caixa começa a recusar entrada e o Sharpe cai. O Momento
+fica na queda máxima da regra anterior, e o turbo é 1,5x ele.
 
 **E a ressalva que manda, que a página mostra numa coluna própria: o lucro vem de
-poucas moedas.** Tiradas as cinco que mais deram — TUT, BEAT, RAVE, LAB e LSK —, a
-janela inteira cai de +4.863% para +707% e o fora, de +1.424% para +111%; o dentro
-quase não muda (+199% → +207%). A segunda parcela entrou em 312 de 1.090 compras, e
-foram essas que fizeram o lucro da perna: US$ 126 mil, contra US$ 70 mil perdidos
-nas outras 778. É o formato de todo seguidor de tendência, e a tese só continua de
-pé enquanto continuarem aparecendo monstras. Dos US$ 56.026 que a perna comprada
-fez, US$ 37.957 vieram de moedas que hoje estão no painel: a intuição de que "as
+poucas moedas.** Tiradas as cinco que mais deram — TUT, BEAT, LAB, RAVE e LSK —, a
+janela inteira cai de +5.969% para +828% e o fora, de +1.602% para +120%; o dentro
+quase não muda (+216% → +222%). A segunda parcela entrou em 313 de 1.090 compras, e
+foram essas que fizeram o lucro da perna: US$ 158 mil, contra US$ 88 mil perdidos
+nas outras 777. É o formato de todo seguidor de tendência, e a tese só continua de
+pé enquanto continuarem aparecendo monstras. Dos US$ 70.195 que a perna comprada
+fez, US$ 49.704 vieram de moedas que hoje estão no painel: a intuição de que "as
 manipuladas têm mais potencial" está medida aqui — e é também onde o risco se
 concentra.
 
@@ -676,17 +719,17 @@ vira o que sobrou do caixa, escolhido pela ordem de chegada.
 
 **O que ele é e o que não é.** Rende bem menos que o Momento. A virtude é outra, e
 está medida: o lucro dele não mora em cinco moedas — sem as 5 melhores sobram 83% do
-lucro, contra 15% no Momento — e ele anda por outro caminho: correlação diária de
-**0,16** com o Momento e **−0,22** com o Caça-monstra. Nos 123 dias em que o Momento
-caiu mais de 3% (−4,6% na média), o Fluxo fez −0,5%. Se as monstras pararem de
+lucro, contra 14% no Momento — e ele anda por outro caminho: correlação diária de
+**0,10** com o Momento e **−0,22** com o Caça-monstra. Nos 101 dias em que o Momento
+caiu mais de 3% (−4,5% na média), o Fluxo fez −0,6%. Se as monstras pararem de
 aparecer, o Momento seca; o Fluxo não depende delas.
 
 ### A arena
 
 Quatro robôs com US$ 1.000 cada, ao lado da carteira do painel:
 
-- **Momento** — o livro acima, a 4% por posição antes do alvo de volatilidade.
-- **Momento turbo** — o mesmo livro a 6%: a resposta medida a "e se arriscasse
+- **Momento** — o livro acima, a 4,25% por posição antes do alvo de volatilidade.
+- **Momento turbo** — o mesmo livro a 6,375% (1,5x): a resposta medida a "e se arriscasse
   mais?", com a queda de −46% que vem junto.
 - **Caça-monstra** — só a perna comprada, as 3 que mais subiram em 30 dias,
   aceitando moeda de US$ 5 milhões. É a tese das manipuladas pura: +189% fora da

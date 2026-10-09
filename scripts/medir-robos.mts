@@ -27,10 +27,12 @@ import {
   DIA,
   ESCORREGADA_STOP,
   HORA,
+  JANELA_VOLATILIDADE_DIAS,
   MOMENTO_ANTERIOR,
   NOCIONAL_MINIMO,
   ROBOS,
   decidir,
+  desvioDiario,
   fechar,
   marcar,
   margemTotal,
@@ -287,7 +289,7 @@ function volume24(s: Serie, i: number): number {
  * últimas 24·d horas que foi compra a mercado — a mesma conta que o ao vivo faz
  * com as velas diárias —, e só existe quando a série cobre a janela inteira.
  */
-function ranking(i: number, janelas: number[], janelasFluxo: number[] = []): LinhaRanking[] {
+function ranking(i: number, janelas: number[], janelasFluxo: number[] = [], janelaVol = 0): LinhaRanking[] {
   const out: LinhaRanking[] = [];
   const j = i - 1;
   for (const s of series) {
@@ -315,6 +317,16 @@ function ranking(i: number, janelas: number[], janelasFluxo: number[] = []): Lin
       }
       linha.fluxo = fluxo;
     }
+    // O desvio diário da `Perna.porVolatilidade`: os fechamentos de 24 em 24 h
+    // até a véspera, a mesma conta que o ao vivo faz com as velas diárias.
+    if (janelaVol > 0) {
+      const fechamentos: number[] = [];
+      for (let k = janelaVol; k >= 0; k--) {
+        const h = j - 24 * k;
+        fechamentos.push(h >= 0 && h >= s.nasce ? s.c[h] : NaN);
+      }
+      linha.vol = desvioDiario(fechamentos);
+    }
     out.push(linha);
   }
   return out;
@@ -332,11 +344,20 @@ const porSimbolo = new Map(series.map((s) => [s.symbol, s]));
  * escorrega como medido no minuto do disparo (`ESCORREGADA_STOP`), dentro de
  * `percorrer`.
  */
-function simular(robo: Robo, de: number, ate: number, excluir?: Set<string>, tamanho?: number): EstadoRobo {
+function simular(
+  robo: Robo,
+  de: number,
+  ate: number,
+  excluir?: Set<string>,
+  tamanho?: number,
+  /** A janela do desvio de `Perna.porVolatilidade`, em dias — só para medir o platô dela. */
+  janelaVol = JANELA_VOLATILIDADE_DIAS,
+): EstadoRobo {
   const r: Robo = tamanho === undefined ? robo : { ...robo, regras: { ...robo.regras, tamanho } };
   const e = novoEstado(r, de);
   const janelas = [...new Set(r.regras.pernas.map((p) => p.janelaDias))];
   const janelasFluxo = [...new Set(r.regras.pernas.filter((p) => p.criterio === "fluxo").map((p) => p.janelaDias))];
+  const comVol = r.regras.pernas.some((p) => p.porVolatilidade) ? janelaVol : 0;
   // O símbolo do hedge fica no ranking mesmo no "sem as 5": é dele que sai o preço do par.
   const hedges = new Set(r.regras.pernas.flatMap((p) => (p.hedge ? [p.hedge.symbol] : [])));
   const i0 = Math.floor((de - INICIO_DADOS) / HORA);
@@ -346,7 +367,7 @@ function simular(robo: Robo, de: number, ate: number, excluir?: Set<string>, tam
   for (let i = i0; i <= i1; i++) {
     const t = INICIO_DADOS + i * HORA;
     if (t % DIA === 0) {
-      const linhas = ranking(i, janelas, janelasFluxo).filter((l) => !excluir?.has(l.symbol) || hedges.has(l.symbol));
+      const linhas = ranking(i, janelas, janelasFluxo, comVol).filter((l) => !excluir?.has(l.symbol) || hedges.has(l.symbol));
       decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, CUSTO_ATRASO);
     }
     for (const p of [...e.abertas]) {
@@ -502,9 +523,28 @@ for (const robo of [...ROBOS, MOMENTO_ANTERIOR]) {
 
 // A escala do tamanho, medida sobre o mesmo livro: é a resposta a "e se arriscasse mais?".
 console.log("\n== o tamanho, no livro do Momento (janela inteira)");
-for (const tam of [0.02, 0.03, 0.035, 0.04, 0.05, 0.06, 0.07, 0.08]) {
+for (const tam of [0.02, 0.03, 0.035, 0.04, 0.0425, 0.05, 0.06, 0.06375, 0.07, 0.08]) {
   const e = simular(ROBOS[0], INICIO, FIM, undefined, tam);
-  console.log(`${(tam * 100).toFixed(1)}% por posição  ${pct(e.patrimonio / CAPITAL_ROBO - 1).padStart(9)}  queda máx ${pct(e.quedaMaxima)}  Sharpe ${sharpeDe(e.curva).toFixed(2)}${e.recusadas ? ` · ${e.recusadas} recusadas` : ""}`);
+  console.log(`${String(+(tam * 100).toFixed(3)).padStart(5)}% por posição  ${pct(e.patrimonio / CAPITAL_ROBO - 1).padStart(9)}  queda máx ${pct(e.quedaMaxima)}  Sharpe ${sharpeDe(e.curva).toFixed(2)}${e.recusadas ? ` · ${e.recusadas} recusadas` : ""}`);
+}
+
+// A vendida pela volatilidade da moeda (`VENDA_MOMENTO`): o platô da janela do
+// desvio e dos limites, cada metade com o próprio Sharpe. A regra anterior, na
+// mesma queda máxima, está no bloco "Momento anterior" acima.
+console.log("\n== a vendida pela volatilidade da moeda, no Momento");
+const linhaVol = (nome: string, robo: Robo, janelaVol?: number) => {
+  const es = janelas.map(([, de, ate]) => simular(robo, de, ate, undefined, undefined, janelaVol));
+  console.log(
+    `${nome.padEnd(20)} ` +
+      janelas.map(([j], k) => `${j.split(" ")[0]} ${pct(es[k].patrimonio / CAPITAL_ROBO - 1)} (Sharpe ${sharpeDe(es[k].curva).toFixed(2)})`).join(" · ") +
+      `  queda máx ${pct(es[0].quedaMaxima)}`,
+  );
+};
+for (const dias of [14, 21, 30, 45, 60]) linhaVol(`desvio de ${dias} dias`, ROBOS[0], dias);
+for (const [minimo, maximo] of [[0.5, 2], [0.25, 1.5], [0.25, 3]] as const) {
+  const m = ROBOS[0];
+  const pernas = m.regras.pernas.map((p) => (p.porVolatilidade ? { ...p, porVolatilidade: { minimo, maximo } } : p));
+  linhaVol(`limites ${minimo} a ${maximo}`, { ...m, regras: { ...m.regras, pernas } });
 }
 
 // E a do Fluxo, que é outro livro: o tamanho dele se escolhe pela própria queda.

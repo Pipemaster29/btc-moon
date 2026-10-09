@@ -32,9 +32,11 @@ import {
   CAPITAL_ROBO,
   DIA,
   HORA,
+  JANELA_VOLATILIDADE_DIAS,
   ROBOS,
   TAXA,
   decidir,
+  desvioDiario,
   fechar,
   marcar,
   novoEstado,
@@ -227,7 +229,8 @@ const abertasAgora = new Map<string, number>();
 if (decidem.length > 0) {
   const janelas = [...new Set(decidem.flatMap((e) => e.regras.pernas.map((p) => p.janelaDias)))];
   const janelasFluxo = [...new Set(decidem.flatMap((e) => e.regras.pernas.filter((p) => p.criterio === "fluxo").map((p) => p.janelaDias)))];
-  const maior = Math.max(...janelas);
+  const comVol = decidem.some((e) => e.regras.pernas.some((p) => p.porVolatilidade));
+  const maior = Math.max(...janelas, comVol ? JANELA_VOLATILIDADE_DIAS + 1 : 0);
   const linhas: LinhaRanking[] = [];
   let responderam = 0;
   await Promise.all(
@@ -270,12 +273,24 @@ if (decidem.length > 0) {
           fluxo[d] = inteira && qv > 0 && Number.isFinite(tb) ? tb / qv : null;
         }
       }
+      // O desvio da `Perna.porVolatilidade`: os fechamentos diários até ontem, os
+      // mesmos que a medição lê de 24 em 24 h. Dia que falta entra como NaN.
+      let vol: number | null | undefined;
+      if (comVol) {
+        const fechamentos: number[] = [];
+        for (let k = JANELA_VOLATILIDADE_DIAS + 1; k >= 1; k--) {
+          const dia = porDia.get(hoje - k * DIA);
+          fechamentos.push(dia ? Number(dia[4]) : NaN);
+        }
+        vol = desvioDiario(fechamentos);
+      }
       linhas.push({
         symbol: s.symbol,
         retorno,
         volume: Number(ontem[7]),
         idadeDias: s.onboardDate > 0 ? (hoje - HORA - s.onboardDate) / DIA : null,
         ...(fluxo ? { fluxo } : {}),
+        ...(vol !== undefined ? { vol } : {}),
       });
     }),
   );

@@ -17,6 +17,7 @@ import {
   DIA,
   ESCORREGADA_STOP,
   HORA,
+  JANELA_VOLATILIDADE_DIAS,
   MANUTENCAO,
   NOCIONAL_MINIMO,
   ROBOS,
@@ -24,9 +25,11 @@ import {
   cobrar,
   custoPorLado,
   decidir,
+  desvioDiario,
   escalaDoTamanho,
   fechar,
   marcar,
+  multiplicadorPelaVolatilidade,
   novoEstado,
   patrimonioA,
   percorrer,
@@ -471,6 +474,63 @@ function rankingFluxo(): LinhaRanking[] {
   confere("sem a linha do hedge no ranking, nenhum par abre", semEth.length === 0 && e2.recusadas === 2, `recusadas ${e2.recusadas}`);
 }
 
+// ------------------------------------------------------------------ o tamanho pela volatilidade
+console.log("\no tamanho pela volatilidade da moeda");
+{
+  // +10%, −10%, +10%: média 3,33%, desvio amostral 11,55%.
+  const d = desvioDiario([100, 110, 99, 108.9]);
+  confere("o desvio é o dos retornos diários (amostral)", d !== null && perto(d, 0.11547005383792516, 1e-6), `${d}`);
+  const furado = Array.from({ length: 46 }, (_, k) => (k % 2 === 0 ? NaN : 100 + k));
+  confere("com menos de 2/3 dos retornos: nulo, não um desvio de poucos dias", desvioDiario(furado) === null, `${desvioDiario(furado)}`);
+  const comBuraco = Array.from({ length: 46 }, (_, k) => (k === 20 ? NaN : 100 * 1.01 ** k));
+  confere("um dia sem fechamento tira só os dois retornos dele", perto(desvioDiario(comBuraco) ?? NaN, 0, 1e-9), `${desvioDiario(comBuraco)}`);
+}
+const VENDA_VOL: Perna = { ...VENDA, porVolatilidade: { minimo: 0.25, maximo: 2 } };
+const ROBO_VOL: Robo = { ...ROBO, regras: { ...ROBO.regras, pernas: [COMPRA, VENDA_VOL] } };
+/** 30 moedas com desvio de 5% a 34% ao dia (M15, o do meio, 20%): M0 é a que mais caiu, M29 a que mais subiu. */
+function rankingVol(): LinhaRanking[] {
+  return Array.from({ length: 30 }, (_, n) => ({
+    symbol: `M${n}USDT`,
+    retorno: { 30: n / 30, 14: -1 + n / 30 },
+    volume: 50e6,
+    idadeDias: 100,
+    vol: 0.05 + n / 100,
+  }));
+}
+{
+  const linhas = rankingVol();
+  const de = multiplicadorPelaVolatilidade(ROBO_VOL.regras, VENDA_VOL, linhas);
+  const l = (vol: number | null): LinhaRanking => ({ symbol: "X", retorno: {}, volume: 50e6, idadeDias: 100, vol });
+  confere("o dobro do desvio do meio entra com metade do tamanho", perto(de(l(0.4)), 0.5), `${de(l(0.4))}`);
+  confere("a mais calma não passa do teto (2x)", de(l(0.05)) === 2, `${de(l(0.05))}`);
+  confere("a mais agitada não passa do piso (¼)", de(l(2)) === 0.25, `${de(l(2))}`);
+  confere("sem o desvio lido: o tamanho normal", de(l(null)) === 1 && de({ symbol: "Y", retorno: {}, volume: 50e6, idadeDias: 100 }) === 1, `${de(l(null))}`);
+  const semRegra = multiplicadorPelaVolatilidade(ROBO_VOL.regras, COMPRA, linhas);
+  confere("perna sem a regra: 1 para todas", semRegra(l(0.4)) === 1, `${semRegra(l(0.4))}`);
+  const semNenhum = multiplicadorPelaVolatilidade(ROBO_VOL.regras, VENDA_VOL, linhas.map((x) => ({ ...x, vol: null })));
+  confere("dia sem nenhum desvio lido: 1", semNenhum(l(0.4)) === 1, `${semNenhum(l(0.4))}`);
+}
+{
+  const e = novoEstado(ROBO_VOL, T0);
+  decidir(e, rankingVol(), () => 10, T0 + DIA);
+  const vend = e.abertas.filter((p) => p.lado === "short");
+  const comp = e.abertas.filter((p) => p.lado === "long");
+  // A vendida (M0 e M1, desvio de 5% e 6%) escolhe primeiro e abre no teto de
+  // 2x; a comprada (M29 e M28, desvio de 34% e 33%) não tem a regra e abre com
+  // o tamanho normal — com ela, entraria com 0,6x.
+  const base = ROBO_VOL.regras.tamanho * CAPITAL_ROBO;
+  const m0 = vend.find((p) => p.symbol === "M0USDT");
+  confere("a vendida entra com o tamanho × mediana ÷ desvio", m0 !== undefined && perto(m0.nocional, base * 2), `${m0?.nocional.toFixed(2)} (desvio 5%: teto 2x)`);
+  confere(
+    "e a comprada, sem a regra, com o tamanho normal",
+    comp.length === 2 && comp.every((p) => Math.abs(p.nocional / base - 1) < 0.01),
+    comp.map((p) => `${p.symbol.replace(/USDT$/, "")} ${p.nocional.toFixed(2)}`).join(" "),
+  );
+  const e2 = novoEstado(ROBO_VOL, T0);
+  const p = abrir(e2, VENDA_VOL, "AUSDT", 10, T0, 50e6, false, 0, undefined, NaN);
+  confere("multiplicador que não é número vira 1", p !== null && perto(p.nocional, base), `${p?.nocional}`);
+}
+
 // ------------------------------------------------------------------ o realismo da medição
 console.log("\no realismo da medição");
 {
@@ -515,6 +575,14 @@ for (const r of ROBOS) {
   confere("Momento: a comprada sai fora do top 10; a vendida não tem saída por posto", compra.saidaPosto === 10 && !m.regras.pernas.find((p) => p.lado === "short")!.saidaPosto, `top ${compra.saidaPosto}`);
   const alvo = m.regras.alvoVolatilidade;
   confere("Momento: alvo de 60% ao ano em 40 dias, tamanho entre ¼ e 2x", alvo?.anual === 0.6 && alvo.janelaDias === 40 && alvo.minimo === 0.25 && alvo.maximo === 2, JSON.stringify(alvo));
+  const vendaM = m.regras.pernas.find((p) => p.lado === "short")!;
+  confere(
+    "Momento: só a vendida pela volatilidade, ¼ a 2x, desvio de 45 dias",
+    vendaM.porVolatilidade?.minimo === 0.25 && vendaM.porVolatilidade.maximo === 2 && !compra.porVolatilidade && JANELA_VOLATILIDADE_DIAS === 45,
+    JSON.stringify(vendaM.porVolatilidade),
+  );
+  const turbo = ROBOS.find((r) => r.id === "turbo")!;
+  confere("Turbo: o mesmo livro com 1,5x o tamanho", perto(turbo.regras.tamanho, 1.5 * m.regras.tamanho), `${turbo.regras.tamanho} = 1,5 × ${m.regras.tamanho}`);
   const caca = ROBOS.find((r) => r.id === "caca-monstra")!.regras.pernas[0];
   confere("Caça-monstra: 30 dias e sem pirâmide (não passou nele)", caca.janelaDias === 30 && !caca.piramide, `${caca.janelaDias} d`);
   const fluxo = ROBOS.find((r) => r.id === "fluxo")!;
