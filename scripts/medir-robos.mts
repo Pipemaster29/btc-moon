@@ -45,6 +45,7 @@ import {
   type Robo,
   type TradeRobo,
 } from "../lib/robos";
+import { estudos } from "./estudos-robos.mjs";
 
 const INICIO_DADOS = Date.parse("2024-01-01T00:00:00Z");
 /** Uma semana depois do começo dos dados: o ranking de 30 dias só fica completo depois. */
@@ -420,6 +421,13 @@ const janelas: [string, number, number][] = [
   ["fora (07/2025 em diante)", CORTE, FIM],
 ];
 
+// As perguntas de `scripts/estudos-robos.mts`, sobre a mesma matriz. Com
+// `--estudos`, só elas, e nada é gravado.
+if (args.includes("--estudos")) {
+  estudos({ simular, porMoeda, INICIO, CORTE, FIM });
+  process.exit(0);
+}
+
 const medidos: MedicaoRobo[] = [];
 const referencias: MedicaoRobo[] = [];
 for (const robo of [...ROBOS, MOMENTO_ANTERIOR]) {
@@ -539,6 +547,8 @@ if (fluxoRobo) {
   }
 }
 
+const estudados = estudos({ simular, porMoeda, INICIO, CORTE, FIM });
+
 if (soSimbolos) {
   console.log("\n--simbolos: medição parcial, data/robos-medicao.json NÃO gravado");
 } else {
@@ -548,6 +558,7 @@ if (soSimbolos) {
     robos: medidos,
     referencias,
     realismo: { escorregadaStop: ESCORREGADA_STOP, custoAtraso: CUSTO_ATRASO, nocionalMinimo: NOCIONAL_MINIMO },
+    estudos: estudados,
   };
   await writeFile("data/robos-medicao.json", `${JSON.stringify(m)}\n`);
   console.log("\ndata/robos-medicao.json gravado");

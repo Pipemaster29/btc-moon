@@ -90,6 +90,26 @@
  * moedas em que a venda a mercado dominou a semana, em par com ETH. Rende
  * menos que o Momento e quase não anda junto com ele (correlação 0,16).
  *
+ * O WALK-FORWARD (09/10, `npm run medir-robos -- --estudos`) diz quanto do
+ * "fora" acima é futuro. As peças do Momento foram escolhidas olhando as duas
+ * metades; entre 32 combinações delas (janela 20/30/45/60 × pirâmide × saída
+ * por posto × alvo), a correlação de postos entre o Sharpe dentro e o Sharpe
+ * fora é −0,41, e o publicado é o 9º dentro e o 1º fora. Escolhendo a cada
+ * trimestre a de melhor Sharpe SÓ com o passado (20 dias até 2025T3, 45 dias
+ * daí em diante; saída por posto e alvo sempre), de 07/2025 em diante dá
+ * +1.153% (Sharpe 3,03) contra +1.587% (3,38) do publicado nos mesmos dias —
+ * esse é o fora honesto, ainda muito acima de zero. A mediana diária das 32
+ * faz +575% (2,76): a família passa; a escolha fina dentro dela tem futuro.
+ *
+ * E A CONTA CONJUNTA (mesmo estudo): metade em Momento, metade em Fluxo,
+ * rebalanceada todo mês, em pontos diários — Sharpe 2,71 · 1,80 · 3,64
+ * (inteira · dentro · fora) contra 2,42 · 1,48 · 3,31 do Momento, queda −21%
+ * contra −32%, e sem as 5 melhores de cada um o fora vai de +111% a +122%.
+ * De 70/30 a 30/70 toda divisão ganha dos dois sozinhos no Sharpe das três
+ * janelas. Sem rebalancear (duas contas de US$ 500 largadas) o ganho é
+ * menor: 2,59 · 1,73 · 3,27. A tela desenha a conjunta como conta no papel
+ * sobre os dois robôs, não como um quinto (`juntarCurvas`).
+ *
  * O "Caça-monstra" é essa intuição sozinha: só a perna comprada, mais
  * concentrada e aceitando moeda menor. Fora da amostra, +189%; dentro, −3%,
  * com queda de −37%; sem as suas cinco melhores, +11% fora e −23% dentro. Ele
@@ -367,6 +387,18 @@ const COMPRA_MOMENTO: Perna = { ...COMPRA_45, saidaPosto: 10 };
  * SEM RASTRO: com rastro de 25% o livro piora (+42,6% contra +52,8%). Stop de
  * 45% e não 50% porque a 2x a liquidação fica em +49,5%, e o stop precisa vir
  * antes dela; 30% a 50% são todos positivos nas duas metades.
+ *
+ * NO MOMENTO ELA PERDE DINHEIRO E PAGA A CONTA MESMO ASSIM (09/10, com este
+ * motor). Nas posições fechadas da janela inteira, −US$ 8.110 em 1.298 contra
+ * +US$ 56.026 da comprada; dentro +US$ 1.154, fora −US$ 2.813. Tirá-la deixa o
+ * fora igual (+1.417% contra +1.424%) e derruba o dentro de +194% para +17%,
+ * com a queda de −32% a −49% (Sharpe 2,42 → 2,01): é o seguro de 2024. Trocá-la
+ * pela venda do Fluxo, em par com ETH, NÃO passou: Sharpe 2,73 e fora +1.997%,
+ * mas o dentro cai de +194% para +132% (Sharpe 1,48 → 1,33) e, sem as 5
+ * melhores, de +201% para +123% — as duas colunas que mais reprovam aqui. As
+ * duas vendas juntas na mesma conta, pior ainda (Sharpe 2,03): o alvo de
+ * volatilidade e o caixa são um só, e os pares prendem margem. O Fluxo fica
+ * melhor na conta dele, ao lado (a conjunta, no topo do arquivo).
  */
 const VENDA_MOMENTO: Perna = {
   lado: "short",
@@ -1402,6 +1434,79 @@ export interface Medicao {
   referencias?: MedicaoRobo[];
   /** O que o modelo realista cobra, para a tela dizer. */
   realismo?: { escorregadaStop: number; custoAtraso: number; nocionalMinimo: number };
+  /** As perguntas de `scripts/estudos-robos.mts`. Opcional: a medição de antes de 09/10 não tem. */
+  estudos?: EstudosRobos;
+}
+
+/**
+ * O que `scripts/estudos-robos.mts` grava, medido sobre pontos DIÁRIOS do
+ * patrimônio (a queda máxima sai um pouco menor que a de hora em hora).
+ */
+export interface EstudosRobos {
+  /**
+   * Os dois robôs dividindo UMA conta, `peso` no primeiro, rebalanceada na
+   * virada de cada mês. `semAs5` é cada janela (na ordem de `linhas`) com as
+   * cinco melhores de CADA robô fora dele.
+   */
+  conjunta: {
+    ids: [string, string];
+    peso: number;
+    /** Correlação dos retornos diários dos dois na janela inteira. */
+    correlacao: number;
+    linhas: LinhaMedida[];
+    semAs5: number[];
+    curva: { t: number; patrimonio: number }[];
+  };
+  /**
+   * O Momento escolhido trimestre a trimestre SÓ com o passado, entre
+   * `variantes` combinações das peças de 07–08/10, contra o publicado, de
+   * `foraDe` em diante. `retorno` em fração; `escolhas`, "2025T3 20d pir…".
+   */
+  walkForward: {
+    variantes: number;
+    /** Correlação de postos entre o Sharpe dentro e o Sharpe fora das variantes. */
+    correlacaoPostos: number;
+    foraDe: number;
+    escolhido: { retorno: number; sharpe: number };
+    publicado: { retorno: number; sharpe: number };
+    mediana: { retorno: number; sharpe: number };
+    escolhas: string[];
+  };
+}
+
+/**
+ * Duas curvas de patrimônio numa conta só, `peso` na primeira, rebalanceada na
+ * virada de cada mês UTC — a mesma conta da medição (`estudos-robos.mts`), para
+ * o ao vivo da conjunta se ler contra ela. Começa quando as duas existem, em
+ * `CAPITAL_ROBO`, e anda nos instantes da primeira, com o último ponto da
+ * segunda até ali.
+ */
+export function juntarCurvas(
+  a: readonly { t: number; patrimonio: number }[],
+  b: readonly { t: number; patrimonio: number }[],
+  peso: number,
+): { t: number; patrimonio: number }[] {
+  if (a.length === 0 || b.length === 0) return [];
+  const inicio = Math.max(a[0].t, b[0].t);
+  const out: { t: number; patrimonio: number }[] = [];
+  let k = 0;
+  let pb = NaN;
+  let ha = 0;
+  let hb = 0;
+  let mes = -1;
+  for (const p of a) {
+    while (k < b.length && b[k].t <= p.t) pb = b[k++].patrimonio;
+    if (p.t < inicio || !(p.patrimonio > 0) || !(pb > 0)) continue;
+    const m = new Date(p.t).getUTCMonth();
+    const v = out.length === 0 ? CAPITAL_ROBO : ha * p.patrimonio + hb * pb;
+    if (m !== mes) {
+      ha = (peso * v) / p.patrimonio;
+      hb = ((1 - peso) * v) / pb;
+      mes = m;
+    }
+    out.push({ t: p.t, patrimonio: v });
+  }
+  return out;
 }
 
 export interface ArquivoRobos {

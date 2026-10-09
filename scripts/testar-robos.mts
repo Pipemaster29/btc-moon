@@ -26,6 +26,7 @@ import {
   decidir,
   escalaDoTamanho,
   fechar,
+  juntarCurvas,
   marcar,
   novoEstado,
   patrimonioA,
@@ -524,6 +525,20 @@ for (const r of ROBOS) {
     fluxo.regras.tamanho === 0.03 && !fluxo.regras.alvoVolatilidade && vendaFluxo.hedge?.symbol === "ETHUSDT" && vendaFluxo.hedge.alavancagem === 2,
     `${fluxo.regras.tamanho * 100}% · ${vendaFluxo.hedge?.symbol}`,
   );
+}
+
+{
+  // A conjunta ao vivo: começa quando as duas curvas existem, em US$ 1.000, e
+  // rebalanceia na virada do mês — não antes, senão vira a média dos retornos.
+  const t0 = Date.UTC(2026, 8, 29);
+  const a = [0, 1, 2, 3].map((k) => ({ t: t0 + k * DIA, patrimonio: 1000 * 2 ** k }));
+  const b = [1, 2, 3].map((k) => ({ t: t0 + k * DIA, patrimonio: 1000 }));
+  const j = juntarCurvas(a, b, 0.5);
+  confere("conjunta: começa quando as duas existem, em US$ 1.000", j.length === 3 && j[0].t === t0 + DIA && j[0].patrimonio === CAPITAL_ROBO, JSON.stringify(j[0]));
+  // De 30/09 a 01/10 a primeira dobra sem rebalancear (500·2 + 500 = 1.500); na
+  // virada de outubro vira metade de 1.500 em cada, e ela dobra de novo: 750·2 + 750 = 2.250.
+  confere("conjunta: rebalanceia só na virada do mês", Math.abs(j[1].patrimonio - 1500) < 1e-9 && Math.abs(j[2].patrimonio - 2250) < 1e-9, j.map((p) => p.patrimonio).join(" → "));
+  confere("conjunta: curva vazia não vira conta", juntarCurvas(a, [], 0.5).length === 0, "");
 }
 
 console.log(falhas === 0 ? "\ntodos os casos passaram" : `\n${falhas} caso(s) FALHARAM`);

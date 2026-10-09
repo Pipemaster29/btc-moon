@@ -103,6 +103,15 @@ no código, com número:
   nele e reprovou como no Caça-monstra: na mesma queda, melhora o dentro e
   piora o fora (Sharpe 1,65 → 1,51).
 
+- **O fora da amostra do Momento tinha futuro dentro, e os dois livros juntos
+  passam (09/10).** Entre 32 combinações das peças do Momento, o Sharpe dentro
+  prevê o de fora ao contrário (postos, −0,41). Escolhendo a cada trimestre só
+  pelo passado, o fora é +1.153% (Sharpe 3,03), não os +1.587% (3,38) do
+  publicado nos mesmos dias. Metade em Momento e metade em Fluxo, rebalanceada
+  todo mês: Sharpe 2,71 · 1,80 · 3,64 (inteira · dentro · fora) contra 2,42 ·
+  1,48 · 3,31, queda −21% contra −32%. Trocar a vendida do Momento pela do
+  Fluxo reprovou no dentro. `npm run medir-robos -- --estudos`.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -117,6 +126,7 @@ npm run panorama     # o retrato de todas as moedas → data/panorama.json
 npm run carteira     # a carteira fictícia → data/carteira.json
 npm run robos        # os robôs ao vivo → data/robos.json
 npm run medir-robos  # a medição dos robôs, com o mesmo motor → data/robos-medicao.json
+                     # (-- --estudos: só walk-forward, conta conjunta e perna vendida, sem gravar)
 npm run dados        # traz para data/ os dados vivos do robô (branch `dados`)
 ```
 

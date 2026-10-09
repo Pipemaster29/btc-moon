@@ -16,7 +16,10 @@
  * ordem fixa da paleta, e cada robô com a SUA cor, não a da posição na lista.
  * Com as quatro, validadas em 08/10 no par vizinho de linhas: separação sob
  * daltonismo ΔE 9,1 no claro e 8,4 no escuro (alvo 8), visão normal 22,9 e
- * 19,8 (piso 15), contra o `zinc-50` e o preto da página. O verde-água (2,7:1)
+ * 19,8 (piso 15), contra o `zinc-50` e o preto da página. A quinta, magenta,
+ * é a conta conjunta Momento + Fluxo (09/10): com ela o par vizinho mais
+ * fraco continua o mesmo (ΔE 9,1 e 8,4), e o magenta fica a 19,6 e 19,3 do
+ * amarelo em visão normal. O verde-água (2,7:1), o magenta (2,6:1)
  * e o amarelo (2,07:1) ficam abaixo dos 3:1 no fundo claro, e por isso toda
  * linha tem rótulo direto na ponta e legenda, e a tabela vem embaixo: a
  * identidade nunca depende só da cor. A carteira do painel entra em cinza,
@@ -31,6 +34,7 @@ export const CORES_ROBOS = [
   "[--robo-2:#eb6834] dark:[--robo-2:#d95926]",
   "[--robo-3:#1baf7a] dark:[--robo-3:#199e70]",
   "[--robo-4:#eda100] dark:[--robo-4:#c98500]",
+  "[--robo-5:#e87ba4] dark:[--robo-5:#d55181]",
   "[--robo-ctx:#898781] dark:[--robo-ctx:#8f8e88]",
 ].join(" ");
 

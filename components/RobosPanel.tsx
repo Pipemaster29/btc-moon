@@ -23,6 +23,7 @@ import {
   ROBOS,
   TAXA,
   escalaDoTamanho,
+  juntarCurvas,
   margemTotal,
   valorDaPosicao,
   type ArquivoRobos,
@@ -40,9 +41,10 @@ const COR: Record<string, string> = {
   turbo: "var(--robo-2)",
   "caca-monstra": "var(--robo-3)",
   fluxo: "var(--robo-4)",
+  conjunta: "var(--robo-5)",
 };
 const corDe = (id: string) => COR[id] ?? "var(--robo-ctx)";
-const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo" };
+const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo", conjunta: "Conjunta" };
 // O nome vem do estado ao vivo; robô medido que ainda não rodou (o primeiro
 // retrato depois do deploy é que o cria) cai no nome das regras.
 const nomeDe = (id: string, robos: readonly EstadoRobo[]) =>
@@ -211,6 +213,32 @@ function LinhaMedicao({ m, nome, referencia }: { m: MedicaoRobo; nome: string; r
   );
 }
 
+/**
+ * A linha da conta conjunta: medida em pontos diários, sem "sem a melhor
+ * moeda" (cada metade tem a sua) — o "sem as 5" tira as cinco de cada robô.
+ */
+function LinhaConjunta({ c }: { c: NonNullable<Medicao["estudos"]>["conjunta"] }) {
+  const [tudo, dentro, fora] = c.linhas;
+  return (
+    <tr className="border-t border-black/5 dark:border-white/5">
+      <td className="py-1 pr-3">
+        Conjunta<span className="ml-1.5 text-[10px] text-black/45 dark:text-white/45">(Momento + Fluxo, metade cada)</span>
+      </td>
+      <td className={`py-1 pr-3 text-right ${tom(tudo.retorno)}`}>{pct(tudo.retorno, 0)}</td>
+      <td className={`py-1 pr-3 text-right ${tom(dentro.retorno)}`}>{pct(dentro.retorno, 0)}</td>
+      <td className={`py-1 pr-3 text-right ${tom(fora.retorno)}`}>{pct(fora.retorno, 0)}</td>
+      <td className="py-1 pr-3 text-right">{pct(tudo.quedaMaxima, 0)}*</td>
+      <td className="py-1 pr-3 text-right">{tudo.sharpe.toFixed(2)}*</td>
+      <td className="py-1 pr-3 text-right text-black/40 dark:text-white/40">—</td>
+      <td className="py-1 text-right">
+        <span className={tom(c.semAs5[0])}>{pct(c.semAs5[0], 0)}</span>
+        {" · "}
+        <span className={tom(c.semAs5[2])}>{pct(c.semAs5[2], 0)}</span>
+      </td>
+    </tr>
+  );
+}
+
 export default function RobosPanel({
   arquivo,
   medicao,
@@ -243,6 +271,17 @@ export default function RobosPanel({
     cor: corDe(e.id),
     pontos: vivo.em === null ? e.curva : [...e.curva, { t: Math.max(vivo.em, e.atualizadoEm), patrimonio }],
   }));
+  // A conta conjunta ao vivo: as curvas do Momento e do Fluxo numa conta só,
+  // como a medição a desenha. É conta no papel sobre os dois robôs, não um
+  // quinto robô, e por isso não tem cartão nem posições.
+  const conj = medicao?.estudos?.conjunta;
+  if (conj) {
+    const [sa, sb] = conj.ids.map((id) => seriesVivo.find((x) => x.id === id));
+    const pontos = sa && sb ? juntarCurvas(sa.pontos, sb.pontos, conj.peso) : [];
+    if (pontos.length >= 2) {
+      seriesVivo.push({ id: "conjunta", rotulo: "Conjunta: Momento + Fluxo, metade cada, desde que os dois existem", curto: "Conjunta", cor: corDe("conjunta"), pontos });
+    }
+  }
   if (carteira && inicio !== null) {
     const desde = carteira.filter((p) => p.t >= inicio);
     // Rebaseada a US$ 1.000 no começo dos robôs: as duas contas largam juntas.
@@ -267,6 +306,15 @@ export default function RobosPanel({
     const nome = nomeDe(m.id, robos);
     return { id: m.id, rotulo: nome, curto: CURTO[m.id] ?? nome, cor: corDe(m.id), pontos: m.curva };
   });
+  if (conj) {
+    seriesMedidas.push({
+      id: "conjunta",
+      rotulo: "Conjunta: Momento + Fluxo, metade cada, rebalanceada todo mês",
+      curto: "Conjunta",
+      cor: corDe("conjunta"),
+      pontos: conj.curva,
+    });
+  }
   if (anterior) {
     seriesMedidas.push({
       id: anterior.id,
@@ -391,6 +439,7 @@ export default function RobosPanel({
                 {medidos.map((m) => (
                   <LinhaMedicao key={m.id} m={m} nome={nomeDe(m.id, robos)} />
                 ))}
+                {conj && <LinhaConjunta c={conj} />}
                 {anterior && <LinhaMedicao m={anterior} nome="Momento anterior" referencia />}
               </tbody>
             </table>
@@ -448,6 +497,33 @@ export default function RobosPanel({
               escorregada dobrada e entrada atrasada, e com cada peça mexida sozinha, ficou positivo em tudo.
             </p>
           )}
+          {conj && momento && fluxo && (
+            <p className="text-xs text-black/50 dark:text-white/50 mt-2">
+              <strong>Os dois numa conta só.</strong> Momento e Fluxo andam por caminhos diferentes (correlação diária
+              de {conj.correlacao.toFixed(2).replace(".", ",")}), e metade da conta em cada, rebalanceada todo mês, tem
+              Sharpe maior que o de cada um nas três janelas: {conj.linhas.map((l) => l.sharpe.toFixed(2)).join(" · ")}{" "}
+              contra {momento.linhas.map((l) => l.sharpe.toFixed(2)).join(" · ")} do Momento, e a queda máxima cai
+              para {pct(conj.linhas[0].quedaMaxima, 0)}. Rende menos porque arrisca menos — o ganho é por unidade de
+              risco, e de 30% a 70% no Momento toda divisão ganha dos dois sozinhos. Sem as cinco melhores de cada
+              um, o fora fica em {pct(conj.semAs5[2], 0)}. * Pontos diários, como a correlação; a queda de hora em
+              hora é um pouco maior. A curva ao vivo dela é a soma das dos dois robôs, não um quinto robô.
+            </p>
+          )}
+          {medicao?.estudos?.walkForward && (() => {
+            const w = medicao.estudos.walkForward;
+            return (
+              <p className="text-xs text-black/50 dark:text-white/50 mt-2">
+                <strong>O &quot;fora da amostra&quot; do Momento tem futuro dentro.</strong> As peças dele foram escolhidas
+                em 07 e 08/10 olhando as duas metades da janela, e entre {w.variantes} combinações delas (janela,
+                pirâmide, saída por posto, alvo de volatilidade) a ordem de dentro prevê a de fora AO CONTRÁRIO:
+                correlação de postos {w.correlacaoPostos.toFixed(2).replace(".", ",")}. Escolhendo a cada trimestre só com o que veio antes, de 07/2025 em diante o
+                resultado é {pct(w.escolhido.retorno, 0)} (Sharpe {w.escolhido.sharpe.toFixed(2)}) contra{" "}
+                {pct(w.publicado.retorno, 0)} ({w.publicado.sharpe.toFixed(2)}) da publicada — esse é o número honesto
+                de fora. A família continua de pé: a mediana das variantes faz {pct(w.mediana.retorno, 0)} (Sharpe{" "}
+                {w.mediana.sharpe.toFixed(2)}). O que só o ao vivo mede é o que vem daqui para frente.
+              </p>
+            );
+          })()}
           {real && (
             <p className="text-xs text-black/50 dark:text-white/50 mt-2">
               <strong>O que a medição cobra da vida real.</strong> O stop não sai no nível: medido em velas de 1

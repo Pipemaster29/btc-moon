@@ -681,6 +681,52 @@ lucro, contra 15% no Momento — e ele anda por outro caminho: correlação diá
 caiu mais de 3% (−4,6% na média), o Fluxo fez −0,5%. Se as monstras pararem de
 aparecer, o Momento seca; o Fluxo não depende delas.
 
+### O que o walk-forward e a conta conjunta dizem (09/10)
+
+`npm run medir-robos -- --estudos` faz três perguntas sobre a mesma matriz e o mesmo
+motor, e `npm run medir-robos` grava as respostas na medição, que a tela desenha.
+
+**O "fora da amostra" do Momento tem futuro dentro.** As peças dele foram escolhidas
+olhando dentro e fora. Entre 32 combinações (janela de 20, 30, 45 ou 60 dias ×
+pirâmide × saída por posto × alvo de volatilidade), a correlação de postos entre o
+Sharpe dentro e o Sharpe fora é **−0,41**: escolher pelo passado teria escolhido outra
+coisa. O publicado é o 9º dentro e o 1º fora. Escolhendo a cada trimestre a de melhor
+Sharpe só com o que veio antes:
+
+| de 07/2025 em diante, pontos diários | retorno | Sharpe |
+| --- | --- | --- |
+| walk-forward (escolhida pelo passado) | **+1.153%** | **3,03** |
+| publicado | +1.587% | 3,38 |
+| mediana diária das 32 variantes | +575% | 2,76 |
+
+O walk-forward escolheu 20 dias até 2025T3 e 45 daí em diante, e saída por posto e alvo
+de volatilidade em todos os trimestres: essas duas peças o passado também escolheria; a
+janela de 45 dias, não. **O número honesto de fora é o primeiro**, e ele continua muito
+acima de zero.
+
+**Os dois numa conta só passam.** Metade em Momento e metade em Fluxo, rebalanceada na
+virada do mês:
+
+| pontos diários | inteira | dentro | fora | queda máx | Sharpe (inteira · dentro · fora) | sem as 5 de cada: inteira · dentro · fora |
+| --- | --- | --- | --- | --- | --- | --- |
+| só Momento | +4.863% | +194% | +1.424% | −32% | 2,42 · 1,48 · 3,31 | +707% · +201% · +111% |
+| 70/30 | +2.665% | +174% | +841% | −25% | 2,61 · 1,66 · 3,54 | +642% · +176% · +126% |
+| **50/50** | **+1.621%** | **+154%** | **+544%** | **−21%** | **2,71 · 1,80 · 3,64** | **+542% · +155% · +123%** |
+| 30/70 | +891% | +130% | +317% | −19% | 2,64 · 1,88 · 3,42 | +416% · +129% · +108% |
+| 50/50 sem rebalancear | +2.562% | +142% | +758% | −24% | 2,59 · 1,73 · 3,27 | +462% · +143% · +91% |
+| só Fluxo | +262% | +89% | +91% | −21% | 1,60 · 1,55 · 1,65 | +217% · +86% · +70% |
+
+Toda divisão de 70/30 a 30/70 tem Sharpe maior que o dos dois sozinhos nas três janelas.
+Rende menos porque arrisca menos: o ganho é por unidade de risco. A tela mostra a
+conjunta medida e, ao vivo, a soma das curvas dos dois robôs com a mesma regra.
+
+**A vendida do Momento perde dinheiro e fica.** Nas posições fechadas, −US$ 8.110
+contra +US$ 56.026 da comprada. Sem ela o fora fica igual (+1.417%) e o dentro cai de
++194% para +17%, com queda de −49%: ela é o seguro de 2024. Trocá-la pela venda do Fluxo
+(em par com ETH, na mesma conta) reprovou: Sharpe 2,73 e fora +1.997%, mas o dentro cai
+para +132% e, sem as 5 melhores, para +123%. As duas vendas juntas na mesma conta, pior
+ainda (Sharpe 2,03). O Fluxo rende mais na conta dele, ao lado.
+
 ### A arena
 
 Quatro robôs com US$ 1.000 cada, ao lado da carteira do painel:
