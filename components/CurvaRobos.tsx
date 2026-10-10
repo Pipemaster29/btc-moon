@@ -22,6 +22,13 @@
  * identidade nunca depende só da cor. A carteira do painel entra em cinza,
  * como contexto e não como série a identificar — o mesmo arranjo da
  * `CurvaCarteira`.
+ *
+ * O FUNDO (Momento + Fluxo, `lib/quant.ts`) tem a quinta cor da paleta, o
+ * magenta, e aparece num gráfico próprio com os dois livros dele: azul,
+ * amarelo e magenta validados em 10/10 em TODOS os pares, porque as três
+ * linhas se cruzam — daltonismo ΔE 13,0 no claro e 13,2 no escuro, visão
+ * normal 19,6 e 19,3. O magenta fica em 2,58:1 no fundo claro: rótulo na
+ * ponta e tabela embaixo, como as outras.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -31,6 +38,7 @@ export const CORES_ROBOS = [
   "[--robo-2:#eb6834] dark:[--robo-2:#d95926]",
   "[--robo-3:#1baf7a] dark:[--robo-3:#199e70]",
   "[--robo-4:#eda100] dark:[--robo-4:#c98500]",
+  "[--robo-5:#e87ba4] dark:[--robo-5:#d55181]",
   "[--robo-ctx:#898781] dark:[--robo-ctx:#8f8e88]",
 ].join(" ");
 

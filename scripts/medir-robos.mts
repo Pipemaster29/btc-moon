@@ -32,6 +32,7 @@ import {
   NOCIONAL_MINIMO,
   REGRAS_PADRAO,
   ROBOS,
+  coeficienteDeImpacto,
   decidir,
   desvioDiario,
   fechar,
@@ -52,6 +53,30 @@ import {
   type SimboloDaCorretora,
   type TradeRobo,
 } from "../lib/robos";
+import {
+  ESTATISTICAS_DA_FICHA,
+  bootstrapEstacionario,
+  correlacao,
+  fichaDe,
+  momentos,
+  paridadeDeRisco,
+  pboCSCV,
+  porMes,
+  quantil,
+  retornosDiarios,
+  sharpeDeflacionado,
+  sharpeDiario,
+  sharpeMaximoEsperado,
+  sharpeProbabilistico,
+  trilhaMinima,
+  varianciaDoSharpeNulo,
+  walkForward,
+  type CapacidadeMedida,
+  type FichaMedida,
+  type FundoMedido,
+  type MedicaoQuant,
+  type ValidacaoLivro,
+} from "../lib/quant";
 
 const INICIO_DADOS = Date.parse("2024-01-01T00:00:00Z");
 /** Uma semana depois do começo dos dados: o ranking de 30 dias só fica completo depois. */
@@ -390,9 +415,118 @@ function ranking(i: number, janelas: number[], janelasFluxo: number[] = [], jane
   return out;
 }
 
+// ------------------------------------------------------------------ as variações
+
+const MOMENTO = ROBOS.find((r) => r.id === "momento")!;
+const FLUXO = ROBOS.find((r) => r.id === "fluxo")!;
+
+/**
+ * A GRADE DE VARIAÇÕES de cada livro: as peças que a pesquisa de fato mexeu,
+ * nos valores que ela mediu, todas combinadas entre si. É dela que saem os
+ * testes de sobreajuste (`lib/quant.ts`): o PBO e o walk-forward escolhem
+ * DENTRO dela, e o Sharpe deflacionado usa o espalhamento dela. A regra
+ * publicada é uma das combinações.
+ *
+ * Momento, 144: janela da compra 30/45/60 dias × janela da venda 7/14/21 × saída
+ * por posto (sem, top 10) × pirâmide (sem, +40%) × alvo de volatilidade (sem,
+ * 60%/40 d) × vendida pela volatilidade (sem, ¼–2x), todas a 4,25%.
+ * Fluxo, 108: janela 5/7/10/14 dias × k 3/5/7 × prazo 7/14/21 dias × stop
+ * 30/45/60%, todas a 3%.
+ */
+function gradeDoMomento(): Robo[] {
+  const compra = MOMENTO.regras.pernas.find((p) => p.lado === "long")!;
+  const venda = MOMENTO.regras.pernas.find((p) => p.lado === "short")!;
+  const out: Robo[] = [];
+  for (const jc of [30, 45, 60])
+    for (const jv of [7, 14, 21])
+      for (const posto of [false, true])
+        for (const piramide of [false, true])
+          for (const alvo of [false, true])
+            for (const pv of [false, true]) {
+              const c = { ...compra, janelaDias: jc };
+              if (!posto) delete c.saidaPosto;
+              if (!piramide) delete c.piramide;
+              const v = { ...venda, janelaDias: jv };
+              if (!pv) delete v.porVolatilidade;
+              const regras = { ...MOMENTO.regras, pernas: [c, v] };
+              if (!alvo) delete regras.alvoVolatilidade;
+              out.push({ ...MOMENTO, id: `momento·c${jc}·v${jv}${posto ? "·posto" : ""}${piramide ? "·pir" : ""}${alvo ? "·alvo" : ""}${pv ? "·vol" : ""}`, regras });
+            }
+  return out;
+}
+function gradeDoFluxo(): Robo[] {
+  const venda = FLUXO.regras.pernas[0];
+  const out: Robo[] = [];
+  for (const janelaDias of [5, 7, 10, 14])
+    for (const k of [3, 5, 7])
+      for (const prazo of [7, 14, 21])
+        for (const stop of [0.3, 0.45, 0.6])
+          out.push({
+            ...FLUXO,
+            id: `fluxo·j${janelaDias}·k${k}·p${prazo}·s${stop * 100}`,
+            regras: { ...FLUXO.regras, pernas: [{ ...venda, janelaDias, k, prazoH: prazo * 24, stop }] },
+          });
+  return out;
+}
+const GRADES: { livro: Robo; variantes: Robo[] }[] = [
+  { livro: MOMENTO, variantes: gradeDoMomento() },
+  { livro: FLUXO, variantes: gradeDoFluxo() },
+];
+
 // ------------------------------------------------------------------ a simulação
 
 const porSimbolo = new Map(series.map((s) => [s.symbol, s]));
+
+/**
+ * TODAS as janelas que algum robô ou variação lê, de retorno e de fluxo: o
+ * ranking de cada dia sai uma vez com todas e serve a todos. Linha com janela
+ * a mais não muda nada — cada perna lê só a dela —, e o desvio de 45 dias vai
+ * junto sempre: só a perna com `porVolatilidade` o lê.
+ */
+const todosOsRobos = [...ROBOS, MOMENTO_ANTERIOR, ...GRADES.flatMap((g) => g.variantes)];
+const JANELAS_TODAS = [...new Set(todosOsRobos.flatMap((r) => r.regras.pernas.flatMap((p) => [p.janelaDias, ...(p.saidaPosto ? [p.janelaDias] : [])])))].sort((a, b) => a - b);
+const JANELAS_FLUXO_TODAS = [...new Set(todosOsRobos.flatMap((r) => r.regras.pernas.filter((p) => p.criterio === "fluxo").map((p) => p.janelaDias)))].sort((a, b) => a - b);
+
+/**
+ * O ranking de cada dia, guardado: a mesma conta servia a ~400 simulações e
+ * era dois terços do tempo de cada uma (2,9 s de 4,1 s no Momento). Só a
+ * combinação de sempre (desvio de 45 dias, com as regras da corretora) é
+ * guardada; as dos platôs saem na hora.
+ */
+const linhasGuardadas = new Map<number, LinhaRanking[]>();
+function linhasDoDia(i: number, janelaVol: number, comCorretora: boolean): LinhaRanking[] {
+  const padrao = janelaVol === JANELA_VOLATILIDADE_DIAS && comCorretora;
+  if (padrao) {
+    const g = linhasGuardadas.get(i);
+    if (g) return g;
+  }
+  const l = ranking(i, JANELAS_TODAS, JANELAS_FLUXO_TODAS, janelaVol, comCorretora);
+  if (padrao) linhasGuardadas.set(i, l);
+  return l;
+}
+
+/**
+ * O volume diário MÉDIO dos 7 dias até a véspera da hora `i`, em dólar — a
+ * régua do impacto. O de 24 h sozinho é o dia do pump, e é justo o dia em que
+ * a moeda entra no ranking: medido sobre ele, o impacto sairia menor do que é.
+ */
+function volumeMedio7(s: Serie, i: number): number {
+  const j = i - 1;
+  const ini = Math.max(0, s.nasce, j + 1 - 7 * 24);
+  const horas = j + 1 - ini;
+  if (horas < 24) return NaN;
+  return ((s.qvAc[j + 1] - s.qvAc[ini]) / horas) * 24;
+}
+
+/** O que a medição de capacidade e o fundo pedem a mais de uma simulação. */
+interface Extra {
+  /** Com quanto o robô começa; o padrão é `CAPITAL_ROBO`. */
+  capital?: number;
+  /** O Y da lei da raiz quadrada (`coeficienteDeImpacto`); sem ele, impacto zero. */
+  y?: number;
+  /** Onde guardar o caixa e o patrimônio de cada virada de dia: o fundo confere se a transferência cabia. */
+  viradas?: { t: number; caixa: number; patrimonio: number }[];
+}
 
 /**
  * Roda um robô de `de` a `ate` (milissegundos), do zero. A decisão é na
@@ -412,12 +546,10 @@ function simular(
   janelaVol = JANELA_VOLATILIDADE_DIAS,
   /** Falso: o motor de antes de 09/10, sem as regras da corretora — só para medir o que elas custam. */
   comCorretora = true,
+  extra: Extra = {},
 ): EstadoRobo {
   const r: Robo = tamanho === undefined ? robo : { ...robo, regras: { ...robo.regras, tamanho } };
-  const e = novoEstado(r, de);
-  const janelas = [...new Set(r.regras.pernas.map((p) => p.janelaDias))];
-  const janelasFluxo = [...new Set(r.regras.pernas.filter((p) => p.criterio === "fluxo").map((p) => p.janelaDias))];
-  const comVol = r.regras.pernas.some((p) => p.porVolatilidade) ? janelaVol : 0;
+  const e = novoEstado(r, de, extra.capital);
   // O símbolo do hedge fica no ranking mesmo no "sem as 5": é dele que sai o preço do par.
   const hedges = new Set(r.regras.pernas.flatMap((p) => (p.hedge ? [p.hedge.symbol] : [])));
   const i0 = Math.floor((de - INICIO_DADOS) / HORA);
@@ -427,7 +559,18 @@ function simular(
   for (let i = i0; i <= i1; i++) {
     const t = INICIO_DADOS + i * HORA;
     if (t % DIA === 0) {
-      const linhas = ranking(i, janelas, janelasFluxo, comVol, comCorretora).filter((l) => !excluir?.has(l.symbol) || hedges.has(l.symbol));
+      let linhas = linhasDoDia(i, janelaVol, comCorretora).filter((l) => !excluir?.has(l.symbol) || hedges.has(l.symbol));
+      if (extra.y) {
+        // O desvio de quem não tem 45 dias de série é o do meio do dia: moeda nova não sai de graça.
+        const vols = linhas.map((l) => l.vol).filter((v): v is number => typeof v === "number" && v > 0);
+        const meio = vols.length > 0 ? quantil(vols, 0.5) : NaN;
+        const y = extra.y;
+        linhas = linhas.map((l) => {
+          const s = porSimbolo.get(l.symbol)!;
+          const v = volumeMedio7(s, i);
+          return { ...l, impacto: coeficienteDeImpacto(y, typeof l.vol === "number" && l.vol > 0 ? l.vol : meio, Number.isFinite(v) && v > 0 ? v : l.volume) };
+        });
+      }
       decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, CUSTO_ATRASO);
     }
     for (const p of [...e.abertas]) {
@@ -438,6 +581,7 @@ function simular(
       if (saida) fechar(e, p, saida);
     }
     marcar(e, t + HORA);
+    if (extra.viradas && (t + HORA) % DIA === 0) extra.viradas.push({ t: t + HORA, caixa: e.caixa, patrimonio: e.patrimonio });
   }
   return e;
 }
@@ -503,12 +647,16 @@ const janelas: [string, number, number][] = [
 
 const medidos: MedicaoRobo[] = [];
 const referencias: MedicaoRobo[] = [];
+/** Os estados de cada robô em cada janela (na ordem de `janelas`), com e sem as 5 melhores: a mesa lê deles. */
+const estados = new Map<string, { janelas: EstadoRobo[]; sem5: EstadoRobo[] }>();
 for (const robo of [...ROBOS, MOMENTO_ANTERIOR]) {
   console.log(`\n== ${robo.nome} — ${robo.descricao}`);
   const linhas: LinhaMedida[] = [];
   let inteira: EstadoRobo | null = null;
+  const porJanela: EstadoRobo[] = [];
   for (const [nome, de, ate] of janelas) {
     const e = simular(robo, de, ate);
+    porJanela.push(e);
     if (nome === "inteira") inteira = e;
     const l = linhaDe(nome, e, de, ate);
     linhas.push(l);
@@ -530,7 +678,9 @@ for (const robo of [...ROBOS, MOMENTO_ANTERIOR]) {
   // AS CINCO MELHORES DA JANELA INTEIRA, tiradas de cada janela: é o teste que
   // mais reprova seguidor de tendência, porque o lucro dele mora na cauda.
   const top5 = new Set(moedas.slice(0, 5).map(([s]) => s));
-  const sem5 = janelas.map(([, de, ate]) => simular(robo, de, ate, top5).patrimonio / CAPITAL_ROBO - 1);
+  const sem5Estados = janelas.map(([, de, ate]) => simular(robo, de, ate, top5));
+  const sem5 = sem5Estados.map((x) => x.patrimonio / CAPITAL_ROBO - 1);
+  estados.set(robo.id, { janelas: porJanela, sem5: sem5Estados });
   console.log(
     `sem a melhor (${melhor.replace(/USDT$/, "")}) ${pct(sem1.patrimonio / CAPITAL_ROBO - 1)} · ` +
       `sem as 5 melhores (${[...top5].map((s) => s.replace(/USDT$/, "")).join(", ")}): ` +
@@ -680,6 +830,404 @@ if (fluxoRobo) {
   }
 }
 
+// ------------------------------------------------------------------ a mesa
+
+/**
+ * O QUE UMA MESA DE FUNDO PERGUNTA ANTES DE PÔR DINHEIRO NUMA ESTRATÉGIA, com
+ * as funções de `lib/quant.ts`: a ficha de risco de cada robô contra o BTC; se
+ * o Sharpe sobrevive à quantidade de ideias testadas até achá-lo; se escolher
+ * a regra pelo passado teria escolhido bem; quanto dinheiro cada livro aguenta
+ * com o impacto de mercado dentro; e o que os livros fazem juntos, repartidos
+ * por risco como num fundo multiestratégia.
+ *
+ * AS TENTATIVAS DA PESQUISA, contadas por baixo: os comentários de
+ * `lib/robos.ts` registram ~240 variações medidas e reprovadas ou escolhidas
+ * (as ideias da primeira bancada, as janelas, os postos, os alvos, os filtros,
+ * a rodada de livros diferentes, os platôs e os ataques), e a primeira bancada
+ * testou outras sem anotar. 300 é o N do Sharpe deflacionado "da pesquisa".
+ */
+const TENTATIVAS_DA_PESQUISA = 300;
+const SEMENTE = 20_261_010;
+const AMOSTRAS = 2000;
+/** Blocos de 20 dias em média: um mês de memória, o tamanho de uma alta de monstra. */
+const BLOCO_MEDIO = 20;
+
+/** A curva de um ponto por virada de dia (00:00 UTC), a partir da horária do motor. */
+function diaria(e: EstadoRobo): { t: number; patrimonio: number }[] {
+  const out: { t: number; patrimonio: number }[] = [];
+  let prox = 0;
+  for (const p of e.curva) if (p.t >= prox) { out.push(p); prox = p.t + DIA; }
+  return out;
+}
+const retornosDe = (e: EstadoRobo) => retornosDiarios(diaria(e));
+
+const btc = porSimbolo.get("BTCUSDT");
+/** O fechamento do BTC na virada `t`: o da vela de 1 h que termina nela. */
+const fechamentoBTC = (t: number) => {
+  const i = Math.round((t - INICIO_DADOS) / HORA) - 1;
+  return btc && i >= 0 ? btc.c[i] : NaN;
+};
+const retornoBTC = (datas: readonly number[]) => datas.map((t) => fechamentoBTC(t) / fechamentoBTC(t - DIA) - 1);
+const intervaloDe = (xs: number[]): [number, number, number] => [quantil(xs, 0.025), quantil(xs, 0.5), quantil(xs, 0.975)];
+
+function trades(e: EstadoRobo): NonNullable<FichaMedida["trades"]> {
+  const ts = e.fechadas;
+  const ganhos = ts.filter((t) => t.resultado > 0);
+  const perdas = ts.filter((t) => t.resultado < 0);
+  const soma = (xs: TradeRobo[]) => xs.reduce((a, t) => a + t.resultado, 0);
+  const media = (xs: number[]) => (xs.length > 0 ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
+  const curva = diaria(e);
+  const patrimonioMedio = media(curva.map((p) => p.patrimonio));
+  const anos = (e.atualizadoEm - e.comecouEm) / (365 * DIA);
+  const giro = ts.reduce((a, t) => a + 2 * (t.nocional + (t.hedge ? t.nocional : 0)), 0);
+  return {
+    n: ts.length,
+    positivos: ts.length > 0 ? ganhos.length / ts.length : NaN,
+    ganhoMedio: media(ganhos.map((t) => t.resultado / t.nocional)),
+    perdaMedia: media(perdas.map((t) => t.resultado / t.nocional)),
+    fatorDeLucro: soma(perdas) < 0 ? soma(ganhos) / -soma(perdas) : NaN,
+    duracaoMediaDias: media(ts.map((t) => (t.fechadaEm - t.abertaEm) / DIA)),
+    giroAnual: patrimonioMedio > 0 && anos > 0 ? giro / patrimonioMedio / anos : NaN,
+  };
+}
+
+function fichaMedida(id: string, r: number[], datas: number[], e?: EstadoRobo): FichaMedida {
+  const [sharpe, cagr, queda] = bootstrapEstacionario(r, ESTATISTICAS_DA_FICHA, AMOSTRAS, BLOCO_MEDIO, SEMENTE);
+  return {
+    id,
+    ficha: fichaDe(r, datas, id === "btc" ? undefined : retornoBTC(datas)),
+    intervalo: {
+      amostras: AMOSTRAS,
+      blocoMedio: BLOCO_MEDIO,
+      sharpe: intervaloDe(sharpe),
+      cagr: intervaloDe(cagr),
+      queda: intervaloDe(queda),
+      sharpeNegativo: sharpe.filter((x) => !(x > 0)).length / sharpe.length,
+    },
+    probabilistico: sharpeProbabilistico(r, 0),
+    trilhaMinimaDias: trilhaMinima(r, 0, 0.95),
+    trilhaMinimaDiasSharpe1: trilhaMinima(r, 1 / Math.sqrt(365), 0.95),
+    meses: porMes(r, datas),
+    ...(e ? { trades: trades(e) } : {}),
+  };
+}
+
+const f2 = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : "—");
+
+// O FUNDO: Momento e Fluxo em subcontas, pelo inverso da volatilidade de 90 dias, refeito todo dia 1º.
+const COMPONENTES = [MOMENTO, FLUXO];
+const JANELA_FUNDO = 90;
+const iCorte = (datas: readonly number[]) => datas.findIndex((t) => t > CORTE);
+type Virada = { t: number; caixa: number; patrimonio: number };
+/** Um livro do fundo numa janela, guardando o caixa de cada virada: é dele que sai a transferência. */
+function livroDoFundo(robo: Robo, de: number, ate: number, excluir?: Set<string>, tamanho?: number): { e: EstadoRobo; viradas: Virada[] } {
+  const viradas: Virada[] = [];
+  const e = simular(robo, de, ate, excluir, tamanho, undefined, true, { viradas });
+  return { e, viradas };
+}
+function fundoDe(livros: { e: EstadoRobo; viradas: Virada[] }[], historico?: number[][]) {
+  const rs = livros.map((l) => retornosDe(l.e));
+  // As séries precisam cobrir os mesmos dias; a de menos dias manda.
+  const n = Math.min(...rs.map((x) => x.r.length));
+  const datas = rs[0].datas.slice(rs[0].datas.length - n);
+  // O caixa livre de cada livro na virada que ABRE cada dia (o começo da janela é todo caixa).
+  const livre = livros.map((l) => {
+    const porT = new Map(l.viradas.map((v) => [v.t, v.patrimonio > 0 ? v.caixa / v.patrimonio : 0]));
+    return datas.map((t) => porT.get(t - DIA) ?? (t - DIA === l.e.comecouEm ? 1 : 0));
+  });
+  return paridadeDeRisco(rs.map((x) => x.r.slice(x.r.length - n)), datas, JANELA_FUNDO, 20, historico, livre);
+}
+/** As cinco moedas que mais deram ao robô na janela inteira (as do "sem as 5"). */
+const semAs5De = (id: string): string[] => medidos.find((m) => m.id === id)?.semAs5?.symbols ?? [];
+function historicoAntesDoCorte(): number[][] {
+  return COMPONENTES.map((c) => {
+    const { datas, r } = retornosDe(estados.get(c.id)!.janelas[0]);
+    return r.slice(0, iCorte(datas));
+  });
+}
+const linhaDoFundo = (janela: string, r: number[], datas: number[]) => {
+  const f = fichaDe(r, datas);
+  return { janela, retorno: f.retorno, quedaMaxima: f.quedaMaxima, sharpe: f.sharpe };
+};
+
+console.log("\n== o fundo: Momento e Fluxo em paridade de risco (90 dias, todo dia 1º, só com o caixa livre)");
+const livrosPorJanela = janelas.map(([, de, ate]) => COMPONENTES.map((c) => livroDoFundo(c, de, ate)));
+const livrosSem5 = janelas.map(([, de, ate]) => COMPONENTES.map((c) => livroDoFundo(c, de, ate, new Set(semAs5De(c.id)))));
+const fundoJanelas = livrosPorJanela.map((ls, k) => fundoDe(ls, k === 2 ? historicoAntesDoCorte() : undefined));
+const fundoSem5 = livrosSem5.map((ls, k) => fundoDe(ls, k === 2 ? historicoAntesDoCorte() : undefined));
+const fundoInteira = fundoJanelas[0];
+const linhasFundo = janelas.map(([nome], k) => linhaDoFundo(nome, fundoJanelas[k].r, fundoJanelas[k].datas));
+const semAs5Fundo = fundoSem5.map((f) => f.r.reduce((a, x) => a * (1 + x), 1) - 1);
+for (const [k, l] of linhasFundo.entries()) {
+  console.log(`${l.janela.padEnd(26)} ${pct(l.retorno).padStart(9)}  queda máx ${pct(l.quedaMaxima)} (diária)  Sharpe ${f2(l.sharpe)} · sem as 5 de cada livro ${pct(semAs5Fundo[k])}`);
+}
+// Coube a transferência? A subconta que dá dinheiro só dá o que tem livre; o resto fica para o mês seguinte.
+const limitados = fundoInteira.pesos.filter((p) => p.depois.some((w, j) => Math.abs(w - p.pesos[j]) > 1e-9)).length;
+let maiorFracao = 0;
+for (const reb of fundoInteira.pesos) {
+  for (let j = 0; j < COMPONENTES.length; j++) {
+    const sai = reb.antes[j] - reb.pesos[j];
+    if (!(sai > 0)) continue;
+    const v = livrosPorJanela[0][j].viradas.find((x) => x.t === reb.t);
+    const livre = v && v.patrimonio > 0 ? (reb.antes[j] * v.caixa) / v.patrimonio : reb.t === INICIO ? reb.antes[j] : 0;
+    maiorFracao = Math.max(maiorFracao, livre > 0 ? sai / livre : Infinity);
+  }
+}
+console.log(
+  `${fundoInteira.pesos.length} rebalanceamentos; o maior acerto pedia ${pct(maiorFracao).replace("+", "")} do caixa livre da subconta que dava` +
+    (limitados > 0 ? ` · em ${limitados} o caixa livre não cobria, e o acerto ficou pela metade até o mês seguinte` : " · todos couberam no caixa livre"),
+);
+console.log(
+  "pesos (Momento / Fluxo): " +
+    fundoInteira.pesos
+      .filter((_, k) => k % 6 === 0)
+      .map((p) => `${new Date(p.t).toISOString().slice(0, 7)} ${(p.pesos[0] * 100).toFixed(0)}/${(p.pesos[1] * 100).toFixed(0)}`)
+      .join(" · "),
+);
+// Na mesma queda do Momento: os livros com mais tamanho, cada um na sua subconta.
+const alavancado: FundoMedido["alavancado"] = [];
+for (const fator of [1.5, 2]) {
+  const ls = janelas.map(([, de, ate]) => COMPONENTES.map((c) => livroDoFundo(c, de, ate, undefined, c.regras.tamanho * fator)));
+  const recusadas = ls[0].reduce((a, l) => a + l.e.recusadas, 0);
+  const fs = ls.map((x, k) => fundoDe(x, k === 2 ? historicoAntesDoCorte() : undefined));
+  const linhas = janelas.map(([nome], k) => linhaDoFundo(nome, fs[k].r, fs[k].datas));
+  alavancado.push({ fator, linhas, recusadas });
+  console.log(
+    `livros a ${fator}x o tamanho: ` + linhas.map((l) => `${l.janela.split(" ")[0]} ${pct(l.retorno)} (queda ${pct(l.quedaMaxima)}, Sharpe ${f2(l.sharpe)})`).join(" · ") + ` · ${recusadas} recusadas`,
+  );
+}
+const fundo: FundoMedido = {
+  componentes: COMPONENTES.map((c) => c.id),
+  janelaDias: JANELA_FUNDO,
+  linhas: linhasFundo,
+  semAs5: semAs5Fundo,
+  pesos: fundoInteira.pesos.map((p) => ({ t: p.t, pesos: p.pesos.map((w) => Math.round(w * 1e4) / 1e4) })),
+  curva: [
+    { t: fundoInteira.datas[0] - DIA, patrimonio: CAPITAL_ROBO },
+    ...fundoInteira.r.reduce<{ t: number; patrimonio: number }[]>((acc, x, k) => {
+      const antes = acc.length > 0 ? acc[acc.length - 1].patrimonio : CAPITAL_ROBO;
+      acc.push({ t: fundoInteira.datas[k], patrimonio: antes * (1 + x) });
+      return acc;
+    }, []),
+  ].map((p) => ({ t: p.t, patrimonio: Math.round(p.patrimonio * 100) / 100 })),
+  transferencias: { rebalanceamentos: fundoInteira.pesos.length, semCaixa: limitados, maiorFracaoDoCaixa: maiorFracao },
+  alavancado,
+};
+
+// A FICHA DE RISCO de cada robô, do fundo e do BTC, na janela inteira.
+console.log("\n== a ficha de risco (janela inteira, curva diária; entre colchetes, o intervalo de 95% do bootstrap)");
+const fichas: FichaMedida[] = [];
+const seriesDiarias = new Map<string, { datas: number[]; r: number[] }>();
+for (const robo of ROBOS) {
+  const e = estados.get(robo.id)!.janelas[0];
+  const d = retornosDe(e);
+  seriesDiarias.set(robo.id, d);
+  fichas.push(fichaMedida(robo.id, d.r, d.datas, e));
+}
+seriesDiarias.set("fundo", { datas: fundoInteira.datas, r: fundoInteira.r });
+fichas.push(fichaMedida("fundo", fundoInteira.r, fundoInteira.datas));
+{
+  const datas = seriesDiarias.get(MOMENTO.id)!.datas;
+  const r = retornoBTC(datas);
+  seriesDiarias.set("btc", { datas, r });
+  fichas.push(fichaMedida("btc", r, datas));
+}
+for (const f of fichas) {
+  const x = f.ficha;
+  const iv = f.intervalo!;
+  console.log(
+    `${f.id.padEnd(13)} CAGR ${pct(x.cagr).padStart(8)} [${pct(iv.cagr[0])} a ${pct(iv.cagr[2])}]  vol ${pct(x.volAnual).replace("+", "")}  ` +
+      `Sharpe ${f2(x.sharpe)} [${f2(iv.sharpe[0])} a ${f2(iv.sharpe[2])}]  Sortino ${f2(x.sortino)}  Calmar ${f2(x.calmar)}  ` +
+      `queda ${pct(x.quedaMaxima)} [${pct(iv.queda[0])} a ${pct(iv.queda[2])}], ${x.maiorTempoSubmerso} d debaixo do pico  ` +
+      `VaR95 ${pct(x.var95).replace("+", "")} CVaR95 ${pct(x.cvar95).replace("+", "")}  assim. ${f2(x.assimetria)} curtose ${f2(x.curtose)}  ` +
+      `meses positivos ${pct(x.mesesPositivos).replace("+", "")}` +
+      (x.beta !== undefined ? `  beta ${f2(x.beta)} corr ${f2(x.correlacao ?? NaN)} alfa ${pct(x.alfaAnual ?? NaN)}` : "") +
+      `  PSR ${(f.probabilistico ?? NaN).toFixed(4)}  trilha mínima ${Number.isFinite(f.trilhaMinimaDias ?? NaN) ? Math.ceil(f.trilhaMinimaDias as number) : "∞"} d`,
+  );
+  if (f.trades) {
+    const t = f.trades;
+    console.log(
+      `${"".padEnd(13)} ${t.n} trades, ${pct(t.positivos).replace("+", "")} no positivo, ganho médio ${pct(t.ganhoMedio)} e perda média ${pct(t.perdaMedia)} do nocional, ` +
+        `fator de lucro ${f2(t.fatorDeLucro)}, ${t.duracaoMediaDias.toFixed(1)} d por trade, giro de ${t.giroAnual.toFixed(0)}x o patrimônio ao ano`,
+    );
+  }
+}
+const idsCorrelacao = [...ROBOS.map((r) => r.id), "fundo", "btc"];
+const matrizCorrelacao = idsCorrelacao.map((a) => idsCorrelacao.map((b) => Math.round(correlacao(seriesDiarias.get(a)!.r, seriesDiarias.get(b)!.r) * 1000) / 1000));
+console.log("correlações diárias: " + idsCorrelacao.map((a, i) => `${a} [${matrizCorrelacao[i].map((x) => x.toFixed(2)).join(" ")}]`).join(" · "));
+// Os piores dias do BTC na janela, e o que cada um fez neles.
+const datasBase = seriesDiarias.get("btc")!.datas;
+const piores = datasBase.map((t, k) => ({ t, k })).sort((a, b) => seriesDiarias.get("btc")!.r[a.k] - seriesDiarias.get("btc")!.r[b.k]).slice(0, 6);
+const estresse = piores.map(({ t, k }) => ({
+  dia: t - DIA,
+  retornos: Object.fromEntries(idsCorrelacao.map((id) => [id, Math.round(seriesDiarias.get(id)!.r[k] * 1e4) / 1e4])),
+}));
+console.log("os piores dias do BTC: " + estresse.map((x) => `${new Date(x.dia).toISOString().slice(0, 10)} BTC ${pct(x.retornos.btc)} Momento ${pct(x.retornos.momento)} Fluxo ${pct(x.retornos.fluxo)} fundo ${pct(x.retornos.fundo)}`).join(" · "));
+
+// O SOBREAJUSTE: cada livro na grade dele.
+const validacao: ValidacaoLivro[] = [];
+/** A série do walk-forward de 365 dias de cada livro: o fundo em tempo real sai delas. */
+const emTempoReal = new Map<string, { datas: number[]; r: number[] }>();
+for (const { livro, variantes } of GRADES) {
+  console.log(`\n== o sobreajuste do ${livro.nome}: ${variantes.length} variações da grade`);
+  const colunas: number[][] = [];
+  let datasGrade: number[] = [];
+  for (const [k, v] of variantes.entries()) {
+    const d = retornosDe(simular(v, INICIO, FIM));
+    colunas.push(d.r);
+    datasGrade = d.datas;
+    if ((k + 1) % 36 === 0) console.log(`  ${k + 1} de ${variantes.length}`);
+  }
+  const T = datasGrade.length;
+  const matriz = Array.from({ length: T }, (_, t) => colunas.map((c) => c[t]));
+  const diarios = colunas.map((c) => sharpeDiario(c));
+  const publicada = variantes.findIndex((v) => JSON.stringify(v.regras) === JSON.stringify(livro.regras));
+  if (publicada < 0) throw new Error(`a regra publicada do ${livro.nome} não está na grade`);
+  const rPub = colunas[publicada];
+  const desvioGrade = momentos(diarios).desvio;
+  const varianciaUsada = Math.max(desvioGrade ** 2, varianciaDoSharpeNulo(T));
+  const sharpes = diarios.map((x) => x * Math.sqrt(365));
+  const ordem = [...sharpes].sort((a, b) => a - b);
+  const posicao = ordem.length - ordem.indexOf(sharpes[publicada]);
+  const deflacionado = [variantes.length, TENTATIVAS_DA_PESQUISA].map((n) => ({
+    tentativas: n,
+    regua: sharpeMaximoEsperado(n, varianciaUsada) * Math.sqrt(365),
+    dsr: sharpeDeflacionado(rPub, n, varianciaUsada),
+  }));
+  const pbo = pboCSCV(matriz, 16);
+  const wfs: ValidacaoLivro["walkForward"] = [];
+  for (const treino of [365, null]) {
+    const wf = walkForward(matriz, datasGrade, treino, 180);
+    if (treino === 365) emTempoReal.set(livro.id, { datas: wf.datas, r: wf.r });
+    const i0 = datasGrade.indexOf(wf.datas[0]);
+    const composto = (xs: readonly number[]) => xs.reduce((a, x) => a * (1 + x), 1) - 1;
+    const totais = colunas.map((c) => composto(c.slice(i0))).sort((a, b) => a - b);
+    let trocas = 0;
+    for (let q = 1; q < wf.escolhas.length; q++) if (wf.escolhas[q].variante !== wf.escolhas[q - 1].variante) trocas++;
+    wfs.push({
+      treinoDias: treino,
+      de: wf.datas[0] - DIA,
+      retorno: composto(wf.r),
+      sharpe: sharpeDiario(wf.r) * Math.sqrt(365),
+      retornoPublicada: composto(rPub.slice(i0)),
+      sharpePublicada: sharpeDiario(rPub.slice(i0)) * Math.sqrt(365),
+      retornoMediana: totais[Math.floor(totais.length / 2)],
+      trocas,
+      trimestres: wf.escolhas.length,
+    });
+  }
+  const grade =
+    livro.id === "momento"
+      ? "janela da compra 30/45/60 dias × da venda 7/14/21 × saída por posto × pirâmide × alvo de volatilidade × vendida pela volatilidade"
+      : "janela 5/7/10/14 dias × k 3/5/7 × prazo 7/14/21 dias × stop 30/45/60%";
+  validacao.push({
+    id: livro.id,
+    grade,
+    variantes: variantes.length,
+    sharpes: ordem.map((x) => Math.round(x * 1000) / 1000),
+    sharpePublicada: sharpes[publicada],
+    posicaoDaPublicada: posicao,
+    desvioDosSharpes: { grade: desvioGrade * Math.sqrt(365), nulo: Math.sqrt(varianciaDoSharpeNulo(T)) * Math.sqrt(365) },
+    deflacionado,
+    pbo,
+    walkForward: wfs,
+  });
+  console.log(
+    `Sharpe da grade: mínimo ${f2(ordem[0])}, mediana ${f2(quantil(ordem, 0.5))}, máximo ${f2(ordem[ordem.length - 1])} · a publicada ${f2(sharpes[publicada])}, ${posicao}ª de ${variantes.length}`,
+  );
+  console.log(
+    `espalhamento dos Sharpes: ${f2(desvioGrade * Math.sqrt(365))} ao ano na grade, ${f2(Math.sqrt(varianciaDoSharpeNulo(T) * 365))} o do acaso em ${T} dias — a régua usa o maior`,
+  );
+  for (const d of deflacionado) console.log(`deflacionado com ${d.tentativas} tentativas: régua de Sharpe ${f2(d.regua)} ao ano, DSR ${d.dsr.toFixed(4)}`);
+  console.log(
+    `PBO ${pbo.pbo.toFixed(3)} em ${pbo.particoes} partições · a escolhida dentro faz Sharpe ${f2(pbo.sharpeForaDaEscolhida)} fora (mediana), perde fora em ${pct(pbo.perdaFora).replace("+", "")} · inclinação fora/dentro ${f2(pbo.inclinacao)}`,
+  );
+  for (const w of wfs) {
+    console.log(
+      `walk-forward (${w.treinoDias === null ? "passado inteiro" : `${w.treinoDias} dias`}) desde ${new Date(w.de).toISOString().slice(0, 10)}: ${pct(w.retorno)} (Sharpe ${f2(w.sharpe)}) ` +
+        `contra a publicada ${pct(w.retornoPublicada)} (Sharpe ${f2(w.sharpePublicada)}) e a variação do meio ${pct(w.retornoMediana)} · ${w.trocas} troca(s) em ${w.trimestres} trimestres`,
+    );
+  }
+}
+
+// O FUNDO EM TEMPO REAL: os dois livros com a variação que o passado escolheria, juntos.
+{
+  const ms = emTempoReal.get(MOMENTO.id);
+  const fl = emTempoReal.get(FLUXO.id);
+  if (ms && fl && ms.datas.length === fl.datas.length && ms.datas[0] === fl.datas[0]) {
+    const fr = paridadeDeRisco([ms.r, fl.r], ms.datas, JANELA_FUNDO, 20);
+    const i0 = fundoInteira.datas.indexOf(ms.datas[0]);
+    const linha = (id: string, r: number[]) => {
+      const f = fichaDe(r, ms.datas);
+      return { id, retorno: f.retorno, quedaMaxima: f.quedaMaxima, sharpe: f.sharpe };
+    };
+    fundo.tempoReal = {
+      de: ms.datas[0] - DIA,
+      linhas: [
+        linha("momento", ms.r),
+        linha("fluxo", fl.r),
+        linha("fundo", fr.r),
+        ...(i0 >= 0 ? [linha("fundo publicado", fundoInteira.r.slice(i0, i0 + ms.r.length))] : []),
+      ],
+    };
+    console.log(
+      `\n== o fundo em tempo real (cada livro com a variação que o walk-forward de 365 dias escolheria) desde ${new Date(ms.datas[0] - DIA).toISOString().slice(0, 10)}: ` +
+        fundo.tempoReal.linhas.map((l) => `${l.id} ${pct(l.retorno)} (queda ${pct(l.quedaMaxima)}, Sharpe ${f2(l.sharpe)})`).join(" · "),
+    );
+  }
+}
+
+// A CAPACIDADE: o mesmo livro com mais dinheiro, o impacto pela raiz quadrada e as regras da corretora.
+console.log("\n== a capacidade: o mesmo livro com mais dinheiro (impacto Y × σ × √(ordem ÷ volume de 7 dias))");
+const capacidade: CapacidadeMedida[] = [];
+for (const robo of COMPONENTES) {
+  for (const y of [1, 0.5]) {
+    const linhas: CapacidadeMedida["linhas"] = [];
+    for (const capital of [1e3, 1e5, 1e6, 5e6, 2e7, 1e8]) {
+      if (y !== 1 && (capital === 1e3 || capital === 1e8)) continue;
+      const e = simular(robo, INICIO, FIM, undefined, undefined, undefined, true, { capital, y });
+      const part: number[] = [];
+      const imp: number[] = [];
+      for (const t of e.fechadas) {
+        const s = porSimbolo.get(t.symbol);
+        const i = Math.round((t.abertaEm - INICIO_DADOS) / HORA);
+        if (!s) continue;
+        const adv = volumeMedio7(s, i);
+        if (!(adv > 0)) continue;
+        const x = t.nocional / (t.parcelas ?? 1) / adv;
+        part.push(x);
+        const vol = linhasDoDia(i, JANELA_VOLATILIDADE_DIAS, true).find((l) => l.symbol === t.symbol)?.vol;
+        if (typeof vol === "number" && vol > 0) imp.push(y * vol * Math.sqrt(x));
+      }
+      const l = {
+        capital,
+        retorno: e.patrimonio / capital - 1,
+        sharpe: sharpeDe(e.curva),
+        quedaMaxima: e.quedaMaxima,
+        participacao: quantil(part, 0.5),
+        impacto: imp.length > 0 ? imp.reduce((a, b) => a + b, 0) / imp.length : NaN,
+        recusadas: e.recusadas,
+      };
+      linhas.push(l);
+      console.log(
+        `${robo.nome.padEnd(8)} Y ${y}  US$ ${capital.toLocaleString("pt-BR").padStart(12)}  ${pct(l.retorno).padStart(10)}  Sharpe ${f2(l.sharpe)}  queda ${pct(l.quedaMaxima)}  ` +
+          `ordem = ${(l.participacao * 100).toFixed(3)}% do volume diário (mediana), impacto médio ${(l.impacto * 100).toFixed(2)}% por lado · ${l.recusadas} recusadas`,
+      );
+    }
+    capacidade.push({ id: robo.id, y, linhas });
+  }
+}
+
+const quant: MedicaoQuant = {
+  tentativasDaPesquisa: TENTATIVAS_DA_PESQUISA,
+  fichas,
+  correlacoes: { ids: idsCorrelacao, matriz: matrizCorrelacao },
+  validacao,
+  capacidade,
+  fundo,
+  estresse,
+};
+
 if (soSimbolos) {
   console.log("\n--simbolos: medição parcial, data/robos-medicao.json NÃO gravado");
 } else {
@@ -694,6 +1242,7 @@ if (soSimbolos) {
       nocionalMinimo: NOCIONAL_MINIMO,
       corretora: { em: corretora.em, robos: doRealismo },
     },
+    quant,
   };
   await writeFile("data/robos-medicao.json", `${JSON.stringify(m)}\n`);
   console.log("\ndata/robos-medicao.json gravado");
