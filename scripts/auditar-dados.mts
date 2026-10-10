@@ -485,6 +485,57 @@ if (gar) {
   } else console.log("  (ausente)");
 }
 
+// ---- a mesa de risco (`lib/quant.ts`, em `data/robos-medicao.json`)
+//
+// Probabilidade fora de 0..1, peso que não soma 1 e intervalo que não contém o
+// medido são o tipo de número que a tela lê como verdade sem conferir. E um
+// NaN gravado vira `null` no JSON, e `null` vira zero na conta da página.
+{
+  type M = import("../lib/robos").Medicao;
+  const m = await ler<M>("data/robos-medicao.json");
+  console.log("robos-medicao (a mesa):");
+  const q = m?.quant;
+  if (q) {
+    const entre01 = (x: number) => Number.isFinite(x) && x >= 0 && x <= 1;
+    for (const f of q.fichas) {
+      const x = f.ficha;
+      for (const campo of ["retorno", "cagr", "volAnual", "sharpe", "quedaMaxima", "var95", "cvar95"] as const) {
+        checa(`${f.id}.${campo} finito`, Number.isFinite(x[campo]), `= ${x[campo]}`);
+      }
+      checa(`${f.id}: queda máxima entre −100% e 0`, x.quedaMaxima <= 0 && x.quedaMaxima >= -1, `= ${x.quedaMaxima}`);
+      checa(`${f.id}: CVaR ≥ VaR`, x.cvar95 >= x.var95 - 1e-12, `${x.cvar95} contra ${x.var95}`);
+      if (f.intervalo) {
+        const iv = f.intervalo;
+        checa(`${f.id}: intervalo do Sharpe em ordem e contendo o medido`, iv.sharpe[0] <= iv.sharpe[1] && iv.sharpe[1] <= iv.sharpe[2] && iv.sharpe[0] <= x.sharpe && x.sharpe <= iv.sharpe[2], JSON.stringify(iv.sharpe));
+        checa(`${f.id}: fração de Sharpe ≤ 0 no bootstrap entre 0 e 1`, entre01(iv.sharpeNegativo), `= ${iv.sharpeNegativo}`);
+      }
+      if (f.probabilistico !== undefined) checa(`${f.id}: Sharpe probabilístico entre 0 e 1`, entre01(f.probabilistico), `= ${f.probabilistico}`);
+    }
+    for (const v of q.validacao) {
+      checa(`${v.id}: a publicada está na grade`, v.posicaoDaPublicada >= 1 && v.posicaoDaPublicada <= v.variantes && v.sharpes.length === v.variantes, `${v.posicaoDaPublicada} de ${v.variantes}`);
+      checa(`${v.id}: PBO entre 0 e 1, em partições`, entre01(v.pbo.pbo) && v.pbo.particoes > 0, `= ${v.pbo.pbo}`);
+      for (const d of v.deflacionado) checa(`${v.id}: deflacionado com ${d.tentativas} entre 0 e 1`, entre01(d.dsr) && d.regua >= 0, `= ${d.dsr}`);
+      // Mais tentativas, régua mais alta: se inverter, a conta do máximo esperado quebrou.
+      for (let k = 1; k < v.deflacionado.length; k++) {
+        const [a, b] = [v.deflacionado[k - 1], v.deflacionado[k]];
+        checa(`${v.id}: régua cresce com as tentativas`, (a.tentativas < b.tentativas) === (a.regua <= b.regua), `${a.tentativas}→${a.regua}, ${b.tentativas}→${b.regua}`);
+      }
+    }
+    const f = q.fundo;
+    if (f) {
+      checa("fundo: pesos de cada dia 1º somam 1", f.pesos.every((p) => Math.abs(p.pesos.reduce((a, b) => a + b, 0) - 1) < 1e-3 && p.pesos.every((w) => w >= 0)));
+      checa("fundo: curva finita, positiva e em ordem", f.curva.every((p, k) => Number.isFinite(p.patrimonio) && p.patrimonio > 0 && (k === 0 || p.t > f.curva[k - 1].t)));
+      checa("fundo: três janelas e três 'sem as 5'", f.linhas.length === 3 && f.semAs5.length === 3 && f.semAs5.every(Number.isFinite));
+    }
+    for (const c of q.capacidade) {
+      checa(`capacidade ${c.id} (Y ${c.y}): capital crescente`, c.linhas.every((l, k) => k === 0 || l.capital > c.linhas[k - 1].capital));
+      checa(`capacidade ${c.id} (Y ${c.y}): retorno acima de −100% e impacto não negativo`, c.linhas.every((l) => l.retorno >= -1 && !(l.impacto < 0)));
+    }
+    const n = q.correlacoes.ids.length;
+    checa("correlações: matriz quadrada, simétrica, 1 na diagonal", q.correlacoes.matriz.length === n && q.correlacoes.matriz.every((lin, i) => lin.length === n && Math.abs(lin[i] - 1) < 1e-3 && lin.every((x, j) => Math.abs(x - q.correlacoes.matriz[j][i]) < 1e-9 && x >= -1 && x <= 1)));
+  } else console.log("  (sem a mesa: medição anterior a 10/10)");
+}
+
 console.log(falhas === 0 ? "\nTUDO OK" : `\n${falhas} FALHAS`);
 
 // SAI COM CÓDIGO DE ERRO, e não saía.

@@ -15,6 +15,10 @@
  * anterior não vale em todo trimestre — a de 09/10 ganha em 6 de 11. Quem olha
  * a curva bonita precisa ler isso ao lado dela, e por isso a regra anterior
  * entra no gráfico e na tabela, medida no mesmo modelo.
+ *
+ * Embaixo de tudo, a mesa de risco (`MesaRobos`): a ficha com intervalo, o
+ * teste de sobreajuste, a capacidade e o fundo que junta Momento e Fluxo — e
+ * o fundo também é marcado ao vivo, com os mesmos dois robôs.
  */
 
 import {
@@ -31,7 +35,9 @@ import {
   type MedicaoRobo,
   type PosicaoRobo,
 } from "@/lib/robos";
+import { faixaDeRetornos, fundoAoVivo, retornosDiarios } from "@/lib/quant";
 import CurvaRobos, { type Ponto, type SerieRobo } from "./CurvaRobos";
+import MesaRobos from "./MesaRobos";
 import { useVivo } from "./vivo";
 
 // A cor é do robô, não da posição na lista: robô novo não repinta os antigos.
@@ -44,26 +50,13 @@ const COR: Record<string, string> = {
 const corDe = (id: string) => COR[id] ?? "var(--robo-ctx)";
 const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo" };
 /**
- * O TESTE DE VIDA REAL: o que a medição dá para janelas do mesmo tamanho que a
- * idade do robô ao vivo. Todos os retornos de `dias` dias da curva medida (um
- * ponto por dia, 01/2024–09/2026), e os percentis 10 e 90 — oito em cada dez
- * janelas terminaram entre os dois. As regras foram escolhidas olhando esse
- * mesmo período, então a medição é otimista por construção; o ao vivo é o único
- * teste limpo, e esta faixa é a régua dele.
+ * O TESTE DE VIDA REAL (`faixaDeRetornos`): o que a medição dá para janelas do
+ * mesmo tamanho que a idade do robô ao vivo — oito em cada dez janelas de
+ * 01/2024–09/2026 terminaram entre o p10 e o p90. As regras foram escolhidas
+ * olhando esse mesmo período, então a medição é otimista por construção; o ao
+ * vivo é o único teste limpo, e esta faixa é a régua dele.
  */
-function faixaMedida(curva: readonly Ponto[], dias: number): { p10: number; p50: number; p90: number; janelas: number } | null {
-  if (!(dias >= 1) || curva.length <= dias) return null;
-  const rs: number[] = [];
-  for (let k = dias; k < curva.length; k++) {
-    const a = curva[k - dias].patrimonio;
-    const b = curva[k].patrimonio;
-    if (a > 0 && b > 0) rs.push(b / a - 1);
-  }
-  if (rs.length < 30) return null;
-  rs.sort((x, y) => x - y);
-  const q = (p: number) => rs[Math.min(rs.length - 1, Math.floor(p * (rs.length - 1)))];
-  return { p10: q(0.1), p50: q(0.5), p90: q(0.9), janelas: rs.length };
-}
+const faixaMedida = faixaDeRetornos;
 
 // O nome vem do estado ao vivo; robô medido que ainda não rodou (o primeiro
 // retrato depois do deploy é que o cria) cai no nome das regras.
@@ -311,6 +304,26 @@ export default function RobosPanel({
     ...e.fechadas.filter((t) => t.livro !== undefined && t.custoLado !== undefined).map((t) => ({ livro: t.livro as number, regua: (t.custoLado as number) - TAXA })),
   ]);
   const mediana = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
+  // O FUNDO AO VIVO: os dois livros dele marcados agora, com o passado medido de
+  // cada um no lugar do desvio que o ao vivo ainda não tem (`fundoAoVivo`).
+  const quant = medicao?.quant;
+  const fundoVivo = (() => {
+    const q = quant?.fundo;
+    if (!q) return null;
+    const comps = q.componentes.map((id) => {
+      const m = marcados.find((x) => x.e.id === id);
+      const medida = medidos.find((x) => x.id === id);
+      if (!m || !medida) return null;
+      return {
+        curva: m.e.curva,
+        patrimonioAgora: m.patrimonio,
+        agora: Math.max(vivo.em ?? 0, m.e.atualizadoEm),
+        historico: retornosDiarios(medida.curva).r.slice(-q.janelaDias),
+      };
+    });
+    return comps.every((c) => c !== null) ? fundoAoVivo(comps as NonNullable<(typeof comps)[number]>[], CAPITAL_ROBO, q.janelaDias) : null;
+  })();
 
   return (
     <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
@@ -571,6 +584,7 @@ export default function RobosPanel({
               </>
             )}
           </p>
+          {medicao && quant && <MesaRobos medicao={medicao} quant={quant} fundoVivo={fundoVivo} />}
         </div>
       )}
 

@@ -126,6 +126,24 @@ no código, com número:
   +4.149%. E o Fluxo não opera a 2% de US$ 1.000 — o ETH pede US$ 20 por
   ordem.
 
+- **A mesa de risco (10/10), a pedido: "como um quant de fundo".** O que um
+  fundo pergunta antes de pôr dinheiro, medido com `lib/quant.ts` sobre o mesmo
+  motor. **A publicada do Momento é a MELHOR de 144 variações** da grade das
+  peças que a pesquisa mexeu (mediana 1,61 de Sharpe, a pior 1,01): o Sharpe
+  sobrevive ao deflacionado de 300 tentativas (93%) e o PBO é 0,13, mas
+  escolhendo em tempo real (walk-forward de 365 dias) ele faz +977% de 10/2024
+  a 09/2026 contra +6.126% da publicada nos mesmos dias — o +5.928% é o teto de
+  quem escolheu depois de ver. **O Fluxo reprova no deflacionado** (40%, PBO
+  0,37): plausível, não demonstrado. O bootstrap põe a queda do Momento entre
+  −24% e −54%. A capacidade é pequena: com o impacto pela raiz quadrada e as
+  regras da Binance, US$ 1 milhão dá Sharpe 1,83 e US$ 20 milhões, 0,70. E o
+  **fundo** — Momento e Fluxo em subcontas, repartidos todo dia 1º pelo inverso
+  da volatilidade de 90 dias, só com o caixa livre — faz Sharpe 2,85 com queda
+  de −17% (o Momento, 2,54 e −30%), melhor que os dois nas duas metades; em
+  tempo real, 2,87 com −11%, acima dos dois livros escolhidos às cegas. Não é
+  mais lucro na mesma queda: a 2x o tamanho ele faz +2.570% contra +5.928%,
+  porque o caixa recusa 1.233 entradas. `npm run testar-quant` trava as contas.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -139,7 +157,7 @@ npm run dev          # a aplicação
 npm run panorama     # o retrato de todas as moedas → data/panorama.json
 npm run carteira     # a carteira fictícia → data/carteira.json
 npm run robos        # os robôs ao vivo → data/robos.json
-npm run medir-robos  # a medição dos robôs, com o mesmo motor → data/robos-medicao.json
+npm run medir-robos  # a medição dos robôs e a mesa de risco, com o mesmo motor → data/robos-medicao.json
 npm run dados        # traz para data/ os dados vivos do robô (branch `dados`)
 ```
 
@@ -307,6 +325,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/placar.ts` | o painel acertou? Lê o histórico de emissões |
 | `lib/carteira.ts` | a carteira fictícia. **Não importa nada de `node:` no topo** — `remarcar` roda no navegador |
 | `lib/robos.ts` | os robôs: as regras (`ROBOS`), o motor puro (`percorrer`, `decidir`, `fechar`, `marcar`) e a leitura para a página. **O mesmo motor roda a medição e o ao vivo** — e também não importa nada de `node:` |
+| `lib/quant.ts` | a mesa de risco: a ficha (`fichaDe`), o Sharpe probabilístico e o deflacionado, a trilha mínima, o bootstrap estacionário, o PBO por CSCV, o walk-forward, a paridade de risco do fundo (`paridadeDeRisco`, e `fundoAoVivo` para a página). **Puro e sem `node:`**: a medição e a página usam as mesmas funções |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
 | `components/vivo.ts` | a assinatura única da página: WebSocket da Binance para preço, essa rota para financiamento e como reserva |
@@ -338,7 +357,7 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/quarentena.json` | as linhas do histórico que não são o preço do perpétuo daquela hora, julgadas contra as velas de 1h: **471 em 24/09, de HEI, CAP, SYN e JCT**. O placar não toca em rede e as pula por esta lista. Linha nova fora do perpétuo não nasce mais desde o árbitro de `lib/overview.ts` | `npm run quarentena`, à mão (fica no `main`) |
 | `data/carteira.json` | a carteira, com a tabela de regimes e a curva do regime anterior em `comparacao` — a tela desenha as duas | `npm run carteira` |
 | `data/robos.json` | **do robô, na branch `dados`**: o estado de cada robô — caixa, posições com o stop, o rastro e a saída por posto de cada uma, a metade de hedge dos pares do Fluxo (e o custo do livro de ofertas na entrada), encerradas, curva, último dia decidido. É estado incremental, não recálculo: perder o arquivo recomeça os robôs, e por isso o script **não grava** quando o arquivo existe e não se lê | `npm run robos` |
-| `data/robos-medicao.json` | a medição dos robôs de 01/2024 a 09/2026 — janelas, trimestres, sem a melhor e sem as 5 melhores, curva diária. Fica no `main`, gerado à mão | `npm run medir-robos` |
+| `data/robos-medicao.json` | a medição dos robôs de 01/2024 a 09/2026 — janelas, trimestres, sem a melhor e sem as 5 melhores, curva diária — e a mesa de risco (`quant`): fichas com intervalo, correlações, as grades com PBO, deflacionado e walk-forward, a capacidade e o fundo. Fica no `main`, gerado à mão | `npm run medir-robos` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
 | `data/fluxo-binance.json` | o último bloco lido, a identificação de cada token (perpétuo e preço conferidos, última passagem) e a memória das em vista já anunciadas. **É daqui que sai o conjunto em vista** | idem |
@@ -557,6 +576,37 @@ e no README; aqui fica o que não pode ser quebrado.
   ganha fora da amostra está medindo as monstras de 2025–2026, não uma regra.
 
 `npm run testar-robos` trava os casos-limite do motor e sai com erro se algum falha.
+
+### A mesa de risco (`lib/quant.ts`)
+
+- **A régua de cada teste está no nome da unidade.** Sharpe sem sufixo é POR
+  DIA (é o que as fórmulas pedem); o `sharpe` da `Ficha` é ANUAL, ×√365, porque
+  cripto negocia todo dia. Curtose é a comum (3 na normal). `impacto` da linha
+  do ranking é COEFICIENTE (fração do nocional por √dólar); `participacao`,
+  fração do volume diário médio de 7 dias.
+- **A grade contém a publicada**, e a medição para se não contiver: o PBO e o
+  walk-forward escolhem dentro dela, e a posição da publicada é a resposta a
+  "quanto da medição é escolha". Mexeu em `ROBOS`? A grade de `medir-robos`
+  precisa gerar a regra nova entre as combinações.
+- **O deflacionado usa o maior entre o espalhamento dos Sharpes da grade e o do
+  acaso** (`varianciaDoSharpeNulo`): grade de variações parecidas espalha pouco
+  e daria uma régua baixa demais. E o N "da pesquisa" (`TENTATIVAS_DA_PESQUISA`,
+  300) é contado por baixo — regra nova medida soma tentativas.
+- **O fundo só transfere o caixa livre** (`caixaLivre` de `paridadeDeRisco`):
+  margem de posição aberta não sai da subconta. O ao vivo (`fundoAoVivo`) é
+  conta de cotas sobre as curvas dos robôs, sem essa trava — na medição ela
+  mordeu em 1 de 33 dias 1º —, e usa o passado MEDIDO de cada livro no lugar do
+  desvio de 90 dias que o ao vivo ainda não tem.
+- **O impacto e o capital são só da capacidade.** `LinhaRanking.impacto` e o
+  `capital` de `novoEstado` não entram na medição publicada nem no ao vivo:
+  com US$ 1.000 o impacto é 0,03% por lado, menos do que a régua de custo já
+  cobra a mais. O teto do último degrau em `nocionalAceito` vale em tudo, e só
+  morde com milhões.
+- **O ranking de cada dia é guardado** em `medir-robos` (`linhasDoDia`), com
+  todas as janelas de todos os robôs e variações: foi o que levou as ~420
+  simulações de horas para ~6 minutos. Linha com janela a mais não muda nada —
+  cada perna lê só a dela —, e foi conferido: as janelas, as curvas e os "sem
+  as 5" dos cinco robôs medidos saíram iguais aos de antes, bit a bit.
 
 ---
 
@@ -807,6 +857,9 @@ Exemplo do tom (de `lib/motor.ts`):
   que chama e imprime — ver `scripts/testar-carteira.mts`.
 - `npx tsc --noEmit` e `npm run lint` antes de commitar. `npm run build` quando
   mexer em página ou componente.
+- Em texto JSX, aspas literais (“ ”) e não `&ldquo;`: com a entidade no mesmo
+  texto, o compilador desta versão come o espaço logo depois de uma expressão
+  ("blocos de 20dias", visto no HTML servido em 10/10).
 - Cores de gráfico e painel: use a skill `dataviz`. Há um validador de paleta, e
   cores já reprovaram nele (`#F0B90B` falha contraste no claro: 1,73:1).
 - Mensagem de commit: título curto no imperativo, corpo explicando **o que foi

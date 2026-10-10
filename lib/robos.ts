@@ -92,6 +92,16 @@
  * no painel de manipuladas: é a intuição de que "as manipuladas têm mais
  * potencial", medida — e é também o risco concentrado.
  *
+ * A MESA DE RISCO (10/10, `lib/quant.ts`) diz quanto disso é escolha. Na grade
+ * das peças que a pesquisa mexeu — 144 variações do Momento —, a publicada é a
+ * MELHOR (Sharpe 2,54; a mediana, 1,61; a pior, 1,01). O Sharpe sobrevive ao
+ * deflacionado de 300 tentativas (93%) e o PBO é 0,13, mas quem escolhesse a
+ * cada trimestre pelos 365 dias anteriores, sem saber o que vinha, faria +977%
+ * de 10/2024 a 09/2026, contra +6.126% desta regra nos mesmos dias: o número
+ * da tabela de cima é o teto de quem escolheu depois de ver. E ele não cabe em
+ * fundo grande: com o impacto de mercado pela raiz quadrada, US$ 1 milhão
+ * baixa o Sharpe para 1,83 e US$ 20 milhões, para 0,70.
+ *
  * O "Fluxo" é OUTRO LIVRO (`VENDA_FLUXO`, com a medição ao lado): vende as
  * moedas em que a venda a mercado dominou a semana, em par com ETH. Rende
  * menos que o Momento e quase não anda junto com ele (correlação 0,10).
@@ -111,6 +121,8 @@
  * ESTE ARQUIVO NÃO IMPORTA NADA DE `node:` — a página o importa para desenhar
  * e remarcar, como `lib/carteira.ts`.
  */
+
+import type { MedicaoQuant } from "./quant";
 
 // ------------------------------------------------------------------ as regras
 
@@ -427,12 +439,20 @@ export function lerRegrasDaCorretora(
 }
 
 /**
- * O nocional que a corretora aceita: a quantidade cai para o passo de baixo
- * (`MARKET_LOT_SIZE`), e abaixo do mínimo a ordem não existe — zero.
+ * O nocional que a corretora aceita: no máximo o teto do último degrau — a
+ * maior posição que ela deixa abrir na moeda —, a quantidade no passo de baixo
+ * (`MARKET_LOT_SIZE`), e abaixo do mínimo a ordem não existe: zero.
+ *
+ * O teto só morde na medição de CAPACIDADE (`scripts/medir-robos.mts`, com
+ * milhões no lugar de mil dólares). Na tabela de 09/10 o menor dos 1.061 tetos
+ * é de US$ 350 mil (42, EPT), o do meio de US$ 12,5 milhões, e o das moedas que
+ * fizeram o lucro do Momento, US$ 5 milhões (TUT, BEAT, RAVE, LAB) — a 1x.
  */
 export function nocionalAceito(nocional: number, preco: number, r: RegrasDaMoeda): number {
+  const teto = r.degraus.length > 0 ? r.degraus[r.degraus.length - 1].ate : Infinity;
+  const alvo = Math.min(nocional, teto);
   const passo = r.passo > 0 ? r.passo * preco : 0;
-  const n = passo > 0 ? Math.floor(nocional / passo + 1e-9) * passo : nocional;
+  const n = passo > 0 ? Math.floor(alvo / passo + 1e-9) * passo : alvo;
   return n >= r.nocionalMinimo ? n : 0;
 }
 
@@ -736,6 +756,14 @@ const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.2
  * com o de 08/10) e −0,24 com o Caça-monstra; nos 99 dias em que o Momento
  * caiu mais de 3% (−4,6% na média), o Fluxo fez −0,6%. Se as monstras pararem de aparecer, o Momento
  * seca e este não depende delas.
+ *
+ * E O QUE ELE AINDA NÃO DEMONSTROU (a mesa de risco, 10/10): o Sharpe de 1,60 é
+ * o 4º de 108 variações da grade dele e NÃO sobrevive ao deflacionado de 300
+ * tentativas (40%) — é o que a melhor de 300 ideias sem vantagem já mostraria —,
+ * com PBO de 0,37. A família inteira é positiva (a pior variação, 0,51) e o
+ * walk-forward faz +188%: plausível, não demonstrado. É no fundo, junto do
+ * Momento, que ele mais vale — ali ele dilui o risco mesmo que a vantagem seja
+ * menor do que a medida.
  *
  * Medido em 09/10 e REPROVADO neste livro: o tamanho pela volatilidade da
  * moeda, que passou na vendida do Momento (Sharpe 1,60 → 1,34, +175% a 3%);
@@ -1041,6 +1069,34 @@ export interface LinhaRanking {
    * os robôs com perna `porVolatilidade` precisam dele.
    */
   vol?: number | null;
+  /**
+   * SÓ NA MEDIÇÃO DE CAPACIDADE: o coeficiente do impacto de mercado pela lei
+   * da raiz quadrada (`impactoPorLado`). Ausente, zero — com dezenas de
+   * dólares por ordem, o livro já está todo em `custoPorLado`.
+   */
+  impacto?: number;
+}
+
+/**
+ * O IMPACTO DE MERCADO de uma ordem grande, pela lei da raiz quadrada (Tóth et
+ * al., 2011; no Bitcoin, Donier e Bonart, 2015): quem compra Q dólares de uma
+ * moeda que negocia V por dia, espalhando a ordem pelo dia, paga por volta de
+ * Y × σ × √(Q/V), com σ o desvio diário do preço e Y perto de 1. O coeficiente
+ * da linha do ranking é Y × σ ÷ √V; o custo por lado, em fração do NOCIONAL,
+ * é ele × √nocional.
+ *
+ * É a régua de quem opera milhões, e não o livro da ordem a mercado de
+ * dezenas de dólares: US$ 42 numa moeda de US$ 20 milhões por dia e 8% de
+ * desvio custam 0,01% por lado; US$ 425 mil, 1,2%.
+ */
+export function coeficienteDeImpacto(y: number, desvioDiario: number, volumeDiario: number): number {
+  if (!(y > 0) || !(desvioDiario > 0) || !(volumeDiario > 0)) return 0;
+  return (y * desvioDiario) / Math.sqrt(volumeDiario);
+}
+
+/** O custo por lado do impacto, em fração do NOCIONAL, para uma ordem deste tamanho. */
+export function impactoPorLado(coeficiente: number | undefined, nocional: number): number {
+  return coeficiente !== undefined && coeficiente > 0 && nocional > 0 ? coeficiente * Math.sqrt(nocional) : 0;
 }
 
 export const HORA = 3_600_000;
@@ -1585,12 +1641,14 @@ export function abrir(
   manipulada: boolean,
   /** Custo de entrada a mais, em fração do nocional: `CUSTO_ATRASO` na medição, zero no ao vivo. */
   custoExtra = 0,
-  /** O preço, o volume e as regras da corretora do símbolo do hedge, quando a perna tem hedge. */
-  hedge?: { preco: number; volume: number; corretora?: RegrasDaMoeda },
+  /** O preço, o volume, as regras da corretora e o impacto do símbolo do hedge, quando a perna tem hedge. */
+  hedge?: { preco: number; volume: number; corretora?: RegrasDaMoeda; impacto?: number },
   /** O multiplicador do tamanho desta moeda (`Perna.porVolatilidade`); 1 sem ele. */
   multiplicador = 1,
   /** As regras da corretora para a moeda (`RegrasDaMoeda`); ausentes, o motor de antes de 09/10. */
   corretora?: RegrasDaMoeda,
+  /** O coeficiente do impacto da moeda (`LinhaRanking.impacto`), só na medição de capacidade; 0 sem ele. */
+  impacto = 0,
 ): PosicaoRobo | null {
   if (e.abertas.some((p) => p.symbol === symbol)) return null;
   if (!(preco > 0) || !Number.isFinite(preco)) {
@@ -1628,7 +1686,7 @@ export function abrir(
     precoEntrada: preco,
     nocional,
     margem,
-    custoLado: custoPorLado(volume),
+    custoLado: custoPorLado(volume) + impactoPorLado(impacto, nocional),
     stop: comprado ? preco * (1 - perna.stop) : preco * (1 + perna.stop),
     rastro: perna.rastro,
     liquidacao: corretora
@@ -1667,7 +1725,7 @@ export function abrir(
       precoEntrada: hedge.preco,
       nocional: nocionalHedge,
       margem: margemHedge,
-      custoLado: custoPorLado(hedge.volume),
+      custoLado: custoPorLado(hedge.volume) + impactoPorLado(hedge.impacto, nocionalHedge),
       liquidacao: hc
         ? liquidacaoIsolada(ladoH, hedge.preco, nocionalHedge, margemHedge, degrauPara(hc.degraus, nocionalHedge))
         : ladoH === "long"
@@ -1716,11 +1774,11 @@ export function decidir(
     // O preço e o volume do hedge saem do mesmo retrato; sem a linha dele, o par não abre.
     const linhaHedge = perna.hedge ? linhas.find((l) => l.symbol === perna.hedge?.symbol) : undefined;
     const hedge = perna.hedge
-      ? { preco: precoDe(perna.hedge.symbol) ?? NaN, volume: linhaHedge?.volume ?? NaN, corretora: linhaHedge?.corretora }
+      ? { preco: precoDe(perna.hedge.symbol) ?? NaN, volume: linhaHedge?.volume ?? NaN, corretora: linhaHedge?.corretora, impacto: linhaHedge?.impacto }
       : undefined;
     const tamanhoDe = multiplicadorPelaVolatilidade(e.regras, perna, linhas);
     for (const l of selecionar(e.regras, perna, linhas)) {
-      const p = abrir(e, perna, l.symbol, precoDe(l.symbol) ?? NaN, quando, l.volume, manipuladas?.has(l.symbol) ?? false, custoExtra, hedge, tamanhoDe(l), l.corretora);
+      const p = abrir(e, perna, l.symbol, precoDe(l.symbol) ?? NaN, quando, l.volume, manipuladas?.has(l.symbol) ?? false, custoExtra, hedge, tamanhoDe(l), l.corretora, l.impacto);
       if (p) abertas.push(p);
     }
   }
@@ -1754,7 +1812,11 @@ export function multiplicadorPelaVolatilidade(
   };
 }
 
-export function novoEstado(r: Robo, comecouEm: number): EstadoRobo {
+/**
+ * O robô do zero. `capital` só muda na medição de capacidade: o ao vivo e a
+ * medição publicada começam com `CAPITAL_ROBO`.
+ */
+export function novoEstado(r: Robo, comecouEm: number, capital = CAPITAL_ROBO): EstadoRobo {
   return {
     id: r.id,
     nome: r.nome,
@@ -1762,13 +1824,13 @@ export function novoEstado(r: Robo, comecouEm: number): EstadoRobo {
     regras: r.regras,
     comecouEm,
     atualizadoEm: comecouEm,
-    caixa: CAPITAL_ROBO,
-    patrimonio: CAPITAL_ROBO,
-    pico: CAPITAL_ROBO,
+    caixa: capital,
+    patrimonio: capital,
+    pico: capital,
     quedaMaxima: 0,
     abertas: [],
     fechadas: [],
-    curva: [{ t: comecouEm, patrimonio: CAPITAL_ROBO }],
+    curva: [{ t: comecouEm, patrimonio: capital }],
     ultimaDecisao: null,
     diasPerdidos: 0,
     recusadas: 0,
@@ -1832,6 +1894,11 @@ export interface Medicao {
       robos: { id: string; semRegras: number; comRegras: number; liquidadas: number; vendidas: number; comMargemAMais: number }[];
     };
   };
+  /**
+   * O que uma mesa de fundo pergunta antes de pôr dinheiro (`lib/quant.ts`):
+   * ficha de risco, sobreajuste, capacidade e a carteira dos livros.
+   */
+  quant?: MedicaoQuant;
 }
 
 export interface ArquivoRobos {

@@ -847,6 +847,111 @@ rode o robô toda hora, margem isolada e uma subconta por robô. Este projeto n�
 e não vai fazer — ele não usa chave nenhuma, por desenho. O que ele faz é medir, ao vivo,
 se a regra continua funcionando.
 
+### A mesa de risco: o que um fundo perguntaria (10/10)
+
+O pedido foi "como um quant de fundo faria". Um fundo não pergunta só quanto a regra
+rende: pergunta quanto ela arrisca e com que intervalo, se o resultado sobrevive à
+quantidade de ideias testadas até achá-la, se escolher a regra em tempo real teria
+funcionado, quanto dinheiro ela aguenta e o que acontece quando os livros se juntam. As
+funções estão em `lib/quant.ts` (puras, travadas por `npm run testar-quant`), `npm run
+medir-robos` as roda sobre o mesmo motor e grava o resultado em `quant` de
+`data/robos-medicao.json`, e a página mostra tudo na "mesa de risco", embaixo dos robôs.
+
+**O Sharpe é sorte?** As regras deste repositório saíram de ~240 variações escritas nos
+comentários de `lib/robos.ts` e de outras que a primeira bancada testou sem anotar — 300,
+contadas por baixo. Com 300 tentativas SEM vantagem nenhuma, a melhor delas mostraria em
+997 dias um Sharpe anual de 1,75 só por acaso (Bailey e López de Prado, 2014). Cada livro
+foi remedido numa grade das peças que a pesquisa de fato mexeu: o Momento em 144
+variações (janela da compra 30/45/60 dias × da venda 7/14/21 × saída por posto ×
+pirâmide × alvo de volatilidade × vendida pela volatilidade), o Fluxo em 108 (janela
+5/7/10/14 × k 3/5/7 × prazo 7/14/21 dias × stop 30/45/60%).
+
+| | Momento | Fluxo |
+| --- | --- | --- |
+| a publicada na grade, por Sharpe | **1ª de 144** | 4ª de 108 |
+| Sharpe: publicada · mediana da grade · pior | 2,54 · 1,61 · 1,01 | 1,60 · 1,13 · 0,51 |
+| Sharpe deflacionado, 300 tentativas | **93%** (passa no limite) | **40%** (reprova) |
+| PBO, 12.870 partições (0,5 é sorteio) | 0,13 | 0,37 |
+| escolhendo em tempo real, 10/2024–09/2026 | +977% (Sharpe 2,32) | +188% (1,96) |
+| a publicada nos mesmos dias | +6.126% (3,21) | +249% (2,00) |
+| dias de ao vivo para afirmar Sharpe > 0 (95%) | 118 | 367 |
+
+"Escolhendo em tempo real" é o walk-forward: a cada trimestre, a variação da grade com o
+melhor Sharpe nos 365 dias anteriores, sem saber o que vinha. **É o número que importa
+para quem liga hoje.** O Momento sobrevive à deflação, todas as 144 variações dele são
+positivas e escolher pelo passado ajuda (PBO baixo) — mas a publicada é a melhor de 144,
+e quem a escolhesse às cegas faria +977% onde a medição mostra +6.126%, quase o mesmo da
+variação do meio da grade nos mesmos dias (+902%). O +5.928% da janela inteira é o teto
+de quem escolheu depois de ver. O Fluxo **não** sobrevive: o Sharpe 1,60 dele é o que a
+melhor de 300 ideias sem vantagem já mostraria. A família inteira é positiva e o
+walk-forward faz +188%, então a vantagem é plausível — mas não está demonstrada.
+
+**A ficha de risco**, na curva de um ponto por dia, com o intervalo de 95% do bootstrap
+estacionário (Politis e Romano, 1994: 2.000 séries sorteadas em blocos de 20 dias em
+média, que guardam as sequências de alta e de queda):
+
+| | retorno ao ano | Sharpe | queda máx | dias abaixo do pico | beta ao BTC |
+| --- | --- | --- | --- | --- | --- |
+| Momento | +348% [+96% a +942%] | 2,54 [1,37 a 3,60] | −30% [−54% a −24%] | 301 | −0,28 |
+| Fluxo | +60% [+10% a +135%] | 1,60 [0,47 a 2,76] | −21% [−43% a −17%] | 201 | −0,03 |
+| **Fundo** | +149% [+64% a +277%] | 2,85 [1,66 a 3,99] | −17% [−31% a −13%] | 145 | −0,11 |
+| BTC comprado | +27% [−26% a +124%] | 0,73 [−0,39 a 1,98] | −53% [−76% a −28%] | 359 | — |
+
+A queda de −30% do Momento vira −54% numa ordem ruim dos mesmos dias: é esse número, e
+não o medido, que decide o tamanho de uma conta de verdade. Ele ganha em 44% dos trades,
+com ganho médio de +27% do nocional contra perda média de −20% (fator de lucro 1,37), e
+anda contra o BTC — a vendida paga no pânico.
+
+**O fundo.** Momento e Fluxo em subcontas, o capital repartido todo dia 1º pelo inverso da
+volatilidade de 90 dias de cada livro (`paridadeDeRisco`), só com o que se sabia na véspera
+e só com o **caixa livre** de cada subconta — margem de posição aberta não sai sem fechar a
+posição, e em 1 dos 33 rebalanceamentos o acerto ficou pela metade até o mês seguinte. O
+Fluxo, que oscila menos, fica com 58% a 77% do capital.
+
+| | inteira | dentro | fora | queda máx (diária) | Sharpe | sem as 5: inteira · fora |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Fundo** | **+1.114%** | +149% | +369% | **−17%** | **2,85** | +531% · +139% |
+| Momento | +5.928% | +216% | +1.565% | −30% | 2,54 | +833% · +116% |
+| Fluxo | +260% | +90% | +89% | −21% | 1,60 | +214% · +69% |
+
+Sharpe maior que o dos dois livros nas duas metades (dentro 2,04 contra 1,56 e 1,55; fora
+3,67 contra 3,39 e 1,63), metade da queda, e no positivo em 5 dos 6 piores dias do BTC na
+janela (no de −14% de 05/02/2026, +1,3%). A janela é platô: 60, 90 e 180 dias dão Sharpe
+2,80, 2,87 e 2,88 (na conta sem a trava do caixa). **E sobrevive à escolha às cegas:** com cada livro na variação que o
+walk-forward escolheria, de 10/2024 a 09/2026, o Momento faz +977% (Sharpe 2,32, queda
+−28%), o Fluxo +188% (1,96, −20%) e **o fundo deles +371% (2,87, −11%)** — Sharpe acima
+dos dois e a menor queda. É o argumento de um fundo multiestratégia: ele não depende de
+ter acertado a melhor variação de cada livro.
+
+**O que ele não é: mais lucro na mesma queda.** Com os dois livros a 2x o tamanho, cada um
+na sua subconta, a queda chega a −30% — a do Momento — e o fundo faz +2.570% contra
++5.928% do Momento sozinho; a 1,5x, +1.872% com −23%. O caixa recusa 1.233 entradas a 2x,
+porque cada par do Fluxo prende margem nas duas metades. Medido e não entrou: o
+Caça-monstra como terceiro livro (Sharpe igual, 2,88 contra 2,87, as duas contas sem a
+trava do caixa; queda −15% contra −17%; mas dentro +96% contra +156%).
+
+**Quanto dinheiro cabe.** O mesmo livro começando com mais capital, com o impacto de
+mercado pela lei da raiz quadrada (Tóth et al., 2011; no Bitcoin, Donier e Bonart, 2015):
+quem compra Q dólares de uma moeda que negocia V por dia paga perto de Y × σ × √(Q/V),
+com σ o desvio diário dela, Y = 1 e V o volume médio de 7 dias — mais as regras da Binance
+com posição grande, que baixam a alavancagem máxima e põem teto no tamanho de cada moeda
+(US$ 5 milhões nas que fizeram o lucro do Momento):
+
+| começando com | Momento | Sharpe | impacto por lado | Fluxo | Sharpe |
+| --- | --- | --- | --- | --- | --- |
+| US$ 1 mil | +5.611% | 2,51 | 0,03% | +254% | 1,58 |
+| US$ 100 mil | +2.670% | 2,15 | 0,27% | +220% | 1,47 |
+| US$ 1 milhão | +1.439% | 1,83 | 0,69% | +154% | 1,21 |
+| US$ 5 milhões | +403% | 1,23 | 1,10% | +78% | 0,81 |
+| US$ 20 milhões | +96% | 0,70 | 1,68% | +14% | 0,31 |
+| US$ 100 milhões | −50% | −0,15 | 2,19% | −51% | −0,74 |
+
+**A capacidade é pequena**: as monstras que fazem o lucro negociam dezenas de milhões por
+dia, e quem entra nelas com milhões move o preço contra si. Com metade do impacto (Y =
+0,5, o otimista da literatura), o Momento com US$ 5 milhões faz +1.214% (Sharpe 1,82).
+Com os US$ 1.000 da arena o impacto custa 0,03% por lado (+5.928% → +5.611%), menos do
+que a régua de custo já cobra a mais — e por isso a medição publicada não o cobra.
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.
@@ -1200,7 +1305,7 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 | `npm run quarentena` | julga as linhas do histórico contra as velas de 1h do perpétuo e grava em `data/quarentena.json` as que não são o preço daquela hora, para o placar pular (à mão; o retrato já não grava linha assim) |
 | `npm run carteira` | mil dólares de mentira seguindo as calls, e o que sobrou |
 | `npm run robos` | os robôs ao vivo: percorre as velas das posições e, uma vez por dia UTC, faz a seleção (`data/robos.json`) |
-| `npm run medir-robos` | a medição dos robôs com o mesmo motor, sobre o Data Vision de 01/2024 em diante, deslistados inclusive (`data/robos-medicao.json`; ~430 MB na primeira vez, guardados em `.cache/robos/`) |
+| `npm run medir-robos` | a medição dos robôs com o mesmo motor, sobre o Data Vision de 01/2024 em diante, deslistados inclusive, e a mesa de risco — ficha, sobreajuste nas grades, capacidade e o fundo (`data/robos-medicao.json`; ~430 MB na primeira vez, guardados em `.cache/robos/`; depois, ~6 minutos) |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
@@ -1225,9 +1330,10 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 
 Nenhuma regra nova vai para o Telegram sem passar pelo `replay` antes.
 
-Três portões, que saem com erro quando algum caso falha: `npm run
+Quatro portões, que saem com erro quando algum caso falha: `npm run
 testar-carteira` (casos-limite da carteira, sem rede), `npm run testar-robos` (o
-motor dos robôs, sem rede) e `npm run testar-vivo`
+motor dos robôs, sem rede), `npm run testar-quant` (a estatística da mesa de risco
+contra os valores conhecidos da normal e das fórmulas fechadas, sem rede) e `npm run testar-vivo`
 (o preço ao vivo de ponta a ponta — WebSocket, queda, religação, aba oculta —
 contra a aplicação rodando: `npm run testar-vivo -- http://localhost:3000`).
 
