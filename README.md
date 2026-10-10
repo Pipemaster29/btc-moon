@@ -548,18 +548,21 @@ e as duas ideias no Caça-monstra.
   não o muda (2,08 a 2,11 de 2% a 6%): com o alvo ele vai de 2,22 a 2,24–2,42 em
   toda janela de 30 a 60 dias, dentro e fora.
 
-Medido com o motor que roda ao vivo, US$ 1.000 em 08/01/2024:
+Medido com o motor que roda ao vivo, US$ 1.000 em 08/01/2024. As duas primeiras linhas
+são do motor de antes das regras da Binance (abaixo, em "Na vida real"); as outras, com
+elas:
 
 | | inteira | dentro | fora | queda máx | Sharpe | sem as 5 melhores: inteira · fora |
 | --- | --- | --- | --- | --- | --- | --- |
 | regra de 07/10, 4% | +416% | +89% | +160% | −36% | 1,36 | +24% · −38% |
 | manhã de 08/10, 3% | +1.254% | +73% | +638% | −37% | 2,09 | +242% · +71% |
-| tarde de 08/10, 4% | +4.863% | +199% | +1.424% | −36% | 2,42 | +707% · +111% |
-| **hoje, 4,25% — Momento** | **+5.969%** | **+216%** | **+1.602%** | **−36%** | **2,54** | **+828% · +120%** |
-| **hoje, 6,375% — Momento turbo** | **+10.537%** | +245% | +2.706% | −46% | 2,46 | +981% · +144% |
+| tarde de 08/10, 4% | +4.502% | +188% | +1.367% | −36% | 2,38 | +633% · +104% |
+| **hoje, 4,25% — Momento** | **+5.928%** | **+216%** | **+1.565%** | **−36%** | **2,54** | **+833% · +116%** |
+| **hoje, 6,375% — Momento turbo** | **+10.307%** | +244% | +2.633% | −46% | 2,45 | +968% · +138% |
 
 Na mesma queda máxima da manhã, a regra da tarde de 08/10 quase quadruplicou a janela
-inteira, e o dentro da amostra — o ponto fraco de antes — foi de +73% a +199%. Por
+inteira (+4.863%, no motor de então), e o dentro da amostra — o ponto fraco de antes —
+foi de +73% a +199%. Por
 trimestre ela ganhava em 8 de 11; perdia 2024T1 (−24% contra −22%), 2024T4 (+4% contra
 +7%) e 2025T4 (+13% contra +23%). **Atacada** na bancada a 3%: custo de entrada 4x
 (+2.411%), escorregada do stop dobrada (+2.454%), entrada 1 h atrasada (+2.577%) e
@@ -575,23 +578,24 @@ entra com o tamanho multiplicado pela mediana do desvio diário de 45 dias das m
 elegíveis ÷ o desvio da própria moeda, entre ¼ e 2x. A moeda duas vezes mais agitada
 que a do meio é vendida com metade do tamanho.
 
-| na mesma queda máxima (−36%) | inteira | dentro | fora | sem as 5 melhores: inteira · dentro · fora |
+| na mesma queda máxima (−36%), com as regras da Binance | inteira | dentro | fora | sem as 5 melhores: inteira · dentro · fora |
 | --- | --- | --- | --- | --- |
-| sem (08/10, 4%) | +4.863% | +199% (Sharpe 1,48) | +1.424% (3,31) | +707% · +207% · +111% |
-| **com (4,25%)** | **+5.969%** | **+216% (1,55)** | **+1.602% (3,41)** | **+828% · +222% · +120%** |
+| sem (08/10, 4%) | +4.502% | +188% (Sharpe 1,43) | +1.367% (3,27) | +633% · +195% · +104% |
+| **com (4,25%)** | **+5.928%** | **+216% (1,56)** | **+1.565% (3,39)** | **+833% · +224% · +116%** |
 
-No mesmo tamanho (4%), +5.342% com queda de −35%: mais lucro e menos queda juntos.
+No mesmo tamanho (4%), +5.329% com queda de −34%: mais lucro e menos queda juntos.
 **Platô**: com o desvio de 30, 45 e 60 dias o Sharpe sobe nas duas metades ou empata
-(dentro 1,53 · 1,55 · 1,48; fora 3,35 · 3,41 · 3,40); com 14 e 21 dias o desvio é
-ruído e o dentro piora (1,43 e 1,39). Os limites ½–2x, ¼–1,5x e ¼–3x passam todos.
-**Atacada**, contra a regra anterior no mesmo ataque: custo de entrada 4x, +4.443%
-contra +3.466%; escorregada do stop dobrada, +4.618% contra +3.686% — o Sharpe maior
-nas duas metades nos dois.
+(dentro 1,54 · 1,56 · 1,44 contra 1,43; fora 3,33 · 3,39 · 3,38 contra 3,27); com 14
+dias o dentro empata (1,44) e com 21 piora (1,40) — desvio de poucos dias é ruído. Os
+limites ½–2x, ¼–1,5x e ¼–3x passam todos. **Atacada** no motor de antes das regras da
+Binance, contra a regra anterior no mesmo ataque: custo de entrada 4x, +4.443% contra
++3.466%; escorregada do stop dobrada, +4.618% contra +3.686% — o Sharpe maior nas duas
+metades nos dois.
 
 **O que ela não é.** Não é "moeda agitada é venda ruim": por quartil do desvio na
 entrada, as vendidas mais agitadas tiveram o melhor resultado médio por margem (+8,7%)
 — e o maior número de stops. A regra reparte o risco em vez de concentrá-lo nas que
-mais pulam. E **não melhora todo trimestre**: contra a regra anterior, ganha em 5 de
+mais pulam. E **não melhora todo trimestre**: contra a regra anterior, ganha em 6 de
 11. A vendida perde muito menos em 2026T2 (−18% do patrimônio → −6%) e em 2024T1
 (−28% → −24%), e mais em 2025T3 (−15% → −23%) e 2026T1 (+29% → +20%).
 
@@ -609,28 +613,29 @@ E o tamanho, na regra de hoje:
 
 | tamanho por posição | inteira | queda máx | Sharpe | recusadas por caixa |
 | --- | --- | --- | --- | --- |
-| 2% | +1.612% | −22% | 2,48 | 0 |
-| 3% | +3.273% | −29% | 2,54 | 0 |
-| 4% | +5.342% | −35% | 2,54 | 0 |
-| **4,25% — Momento** | **+5.969%** | **−36%** | **2,54** | 1 |
-| 5% | +7.392% | −40% | 2,50 | 7 |
-| 6% | +9.249% | −44% | 2,45 | 15 |
-| **6,375% — Momento turbo** | **+10.537%** | **−46%** | **2,46** | 18 |
-| 7% | +11.763% | −49% | 2,43 | 29 |
-| 8% | +16.326% | −53% | 2,45 | 67 |
+| 2% | +1.591% | −22% | 2,48 | 11 |
+| 3% | +3.204% | −29% | 2,53 | 1 |
+| 4% | +5.329% | −34% | 2,54 | 1 |
+| **4,25% — Momento** | **+5.928%** | **−36%** | **2,54** | 3 |
+| 5% | +6.858% | −39% | 2,47 | 12 |
+| 6% | +9.395% | −44% | 2,46 | 18 |
+| **6,375% — Momento turbo** | **+10.307%** | **−46%** | **2,45** | 27 |
+| 7% | +11.490% | −48% | 2,42 | 37 |
+| 8% | +14.246% | −53% | 2,40 | 90 |
 
 **Tamanho escolhe o risco, não a vantagem — e tem teto.** De 3% a 4,25% o Sharpe não
 se mexe; dali para cima o caixa começa a recusar entrada e o Sharpe cai. O Momento
-fica na queda máxima da regra anterior, e o turbo é 1,5x ele.
+fica na queda máxima da regra anterior, e o turbo é 1,5x ele. (As recusas a 2% são o
+mínimo de US$ 5 da Binance: a vendida mais agitada entra com ¼ do tamanho.)
 
 **E a ressalva que manda, que a página mostra numa coluna própria: o lucro vem de
 poucas moedas.** Tiradas as cinco que mais deram — TUT, BEAT, LAB, RAVE e LSK —, a
-janela inteira cai de +5.969% para +828% e o fora, de +1.602% para +120%; o dentro
-quase não muda (+216% → +222%). A segunda parcela entrou em 313 de 1.090 compras, e
-foram essas que fizeram o lucro da perna: US$ 158 mil, contra US$ 88 mil perdidos
-nas outras 777. É o formato de todo seguidor de tendência, e a tese só continua de
-pé enquanto continuarem aparecendo monstras. Dos US$ 70.195 que a perna comprada
-fez, US$ 49.704 vieram de moedas que hoje estão no painel: a intuição de que "as
+janela inteira cai de +5.928% para +833% e o fora, de +1.565% para +116%; o dentro
+quase não muda (+216% → +224%). A segunda parcela entrou em 311 de 1.090 compras, e
+foram essas que fizeram o lucro da perna: US$ 159 mil, contra US$ 89 mil perdidos
+nas outras 779. É o formato de todo seguidor de tendência, e a tese só continua de
+pé enquanto continuarem aparecendo monstras. Dos US$ 69.981 que a perna comprada
+fez, US$ 49.407 vieram de moedas que hoje estão no painel: a intuição de que "as
 manipuladas têm mais potencial" está medida aqui — e é também onde o risco se
 concentra.
 
@@ -696,32 +701,35 @@ Cada peça mexida sozinha ficou positiva nas três janelas e no "sem as 5": jane
 4x +224%, escorregada dobrada +266%, entrada 1 h e 3 h atrasada +260% e +259%, custo
 do hedge a 0,3% por lado +209% — também.
 
-Medido com o motor que roda ao vivo, a **3% por posição**:
+Medido com o motor que roda ao vivo e as regras da Binance, a **3% por posição**:
 
 | | inteira | dentro | fora | queda máx | Sharpe | sem as 5 melhores: inteira · fora |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Fluxo, 3%** | **+262%** | **+90%** | **+91%** | **−22%** | **1,60** | **+217% · +70%** |
-| com o alvo de volatilidade do Momento, 2% | +336% | +104% | +84% | −22% | 1,68 | +282% · +60% |
+| **Fluxo, 3%** | **+260%** | **+90%** | **+89%** | **−22%** | **1,60** | **+214% · +69%** |
 
-1.573 pares, nenhum hedge liquidado (a 2x, o ETH precisaria cair 49,5% em 14 dias;
+1.571 pares, nenhum hedge liquidado (a 2x, o ETH precisaria cair 49,5% em 14 dias;
 em 2024–2026 o pior foi −42,6%). Ganha em 8 de 11 trimestres.
 
 **O alvo de volatilidade não passou nele**, do mesmo jeito que no Caça-monstra. Na
-mesma queda máxima ele melhora o dentro (+90% → +104%, com o Sharpe igual: 1,55 e
-1,56) e piora o fora (+91% → +84%, Sharpe 1,65 → 1,51). O Sharpe da janela inteira
-sobe por mudar a aposta de lugar entre as metades, não por melhorar nenhuma delas.
+mesma queda máxima (2% com ele, 3% sem, medido antes das regras da Binance) ele
+melhora o dentro (+90% → +104%, com o Sharpe igual: 1,55 e 1,56) e piora o fora
+(+91% → +84%, Sharpe 1,65 → 1,51). O Sharpe da janela inteira sobe por mudar a aposta
+de lugar entre as metades, não por melhorar nenhuma delas. Com as regras da Binance é
+pior ainda para o alvo: a 2% de base o ETH do par fica abaixo do mínimo de US$ 20
+sempre que o alvo encolhe a aposta, e o fora cai para +37%.
 
-**Por que 3% e não mais:** cada par prende margem nas duas metades, e acima disso o
-caixa começa a recusar entrada. O Sharpe fica em 1,60 de 2% a 3% (queda de −15% a
-−22%); a 3,5% são 52 recusas e 1,57, a 4% são 163 e 1,51. Daí para cima a tabela
-deixa de ser platô: 5% mede 1,47 com 606 recusas e 6% mede 1,70 com 1.061 — o robô
-vira o que sobrou do caixa, escolhido pela ordem de chegada.
+**Por que 3%:** cada par prende margem nas duas metades, e acima disso o caixa começa
+a recusar entrada — a 3,5% são 59 recusas e Sharpe 1,55, a 4% são 199 e 1,54. E abaixo
+dele a Binance não deixa: a ordem de ETH tem de ter US$ 20, e a 2% de uma conta de US$
+1.000 ela fica abaixo disso assim que a conta passa um centavo de US$ 1.000 para baixo
+(o lote do ETH arredonda para baixo) — medido, o robô não abriu um par sequer. A 2,5%
+são 33 recusas e Sharpe 1,57.
 
 **O que ele é e o que não é.** Rende bem menos que o Momento. A virtude é outra, e
-está medida: o lucro dele não mora em cinco moedas — sem as 5 melhores sobram 83% do
+está medida: o lucro dele não mora em cinco moedas — sem as 5 melhores sobram 82% do
 lucro, contra 14% no Momento — e ele anda por outro caminho: correlação diária de
-**0,10** com o Momento e **−0,22** com o Caça-monstra. Nos 101 dias em que o Momento
-caiu mais de 3% (−4,5% na média), o Fluxo fez −0,6%. Se as monstras pararem de
+**0,10** com o Momento e **−0,24** com o Caça-monstra. Nos 99 dias em que o Momento
+caiu mais de 3% (−4,6% na média), o Fluxo fez −0,6%. Se as monstras pararem de
 aparecer, o Momento seca; o Fluxo não depende delas.
 
 ### A arena
@@ -771,6 +779,73 @@ mostra a comparação: a régua só muda com essa amostra na mão.
 perpétuos em certas contas e regiões, e o tempo entre a decisão e a ordem quando o
 retrato atrasa mais que o medido. Não é recomendação: é a medição continuando ao
 vivo.
+
+### Dá para fazer na vida real? (09/10)
+
+A pergunta passou a ser essa, e ela mudou o motor. Até 09/10 ele usava **0,5% de
+margem de manutenção para toda moeda**. A tabela de degraus da Binance é pública e não
+pede chave (`/bapi/futures/v1/friendly/future/common/brackets`), e diz outra coisa: das
+525 moedas, 149 pedem 5% no primeiro degrau e 203 pedem 2,5%; as que fizeram o lucro
+do Momento (TUT, BEAT, RAVE, MYX, AKE) pedem 5% até US$ 10 mil e 10% daí até US$ 60
+mil. Vendida a 2x numa delas, **a corretora liquida em +42,9%, antes do stop de 45%**.
+Com 5% em toda moeda e nada mais mudado, o Momento perderia 242 vendidas para a
+liquidação (+5.969% → +4.404%).
+
+O motor agora faz o que uma conta de verdade faz, com as regras de cada moeda guardadas
+na posição:
+
+- **margem a mais** onde a manutenção é alta, até a liquidação ficar 4 pontos depois do
+  stop (`alavancagemSegura`) — 1.266 de 1.298 vendidas do Momento, 1,86x em média;
+- a **liquidação pela fórmula da margem isolada**, com o desconto do degrau e o
+  financiamento saindo da margem — como na Binance;
+- a **margem reposta de hora em hora** quando o financiamento a come (`reporMargem`).
+  Sem isso sobravam 15 vendidas liquidadas, todas pelo financiamento: a DRIFT de
+  02/04/2026 pagou 98% da margem em 4,8 dias e foi liquidada com o preço caindo;
+- o **lote e o mínimo** de cada moeda (`MARKET_LOT_SIZE`, `MIN_NOTIONAL`): o ETH pede
+  US$ 20 por ordem, e a QNT só aceita múltiplos de ~US$ 25.
+
+| com as regras da Binance (tabela de 09/10) | sem | com |
+| --- | --- | --- |
+| Momento | +5.969% | **+5.928%** |
+| Momento turbo | +10.537% | **+10.307%** |
+| Caça-monstra | +176% | **+177%** |
+| Fluxo | +262% | **+260%** |
+
+Nenhuma liquidação nos quatro. A tabela é a de hoje aplicada ao passado: a Binance não
+publica o histórico dela, e a medição guarda a que usou, com a data. Moeda deslistada
+usa a tabela das manipuladas, a mais dura das comuns.
+
+**O que a medição ainda supõe, e a vida real cobra:**
+
+- **Um robô que rode toda hora.** O rastro de 30% não existe como ordem na Binance — a
+  ordem nativa de stop móvel vai até 10% (`callbackRate`) —, então o robô precisa
+  mover o stop; a reposição de margem também é dele. Medido com o rastro movido só de
+  tempos em tempos, o Momento faz:
+
+  | o robô move o rastro a cada | 1 h | 2 h | 4 h | 8 h |
+  | --- | --- | --- | --- | --- |
+  | Momento, janela inteira | **+5.928%** | +5.439% | +4.149% | +3.620% |
+
+  O dentro da amostra quase não muda; o que se perde é o fora, onde as monstras devolvem
+  o ganho entre uma passada e outra. O GitHub Actions deste projeto já ficou 4,7 horas
+  parado: para dinheiro de verdade, é uma máquina ligada.
+- **As regras foram escolhidas olhando 2024–2026 inteiro.** A medição é otimista por
+  construção, e nenhum ajuste aqui conserta isso — o teste limpo é o ao vivo. Por isso
+  cada cartão da página mostra a **faixa medida para a idade do robô**: em quantas
+  janelas do mesmo tamanho, oito em cada dez terminaram entre dois números, e se o ao
+  vivo está dentro, acima ou abaixo. Meses fora da faixa é a medição falhando na vida
+  real.
+- **As quedas.** −36% no Momento e −46% no turbo aconteceram na medição e voltam a
+  acontecer.
+- **O capital.** Com US$ 1.000 as ordens já encostam no mínimo da Binance: a vendida
+  mais agitada do Momento entra com ~US$ 11, e o Fluxo só opera a partir de 3% por par —
+  a 2%, medido, ele não abre um par sequer.
+
+**Para ligar com dinheiro de verdade** seria preciso uma conta de futuros da Binance
+onde ela for permitida, uma chave de API só de negociação (sem saque), uma máquina que
+rode o robô toda hora, margem isolada e uma subconta por robô. Este projeto não faz isso
+e não vai fazer — ele não usa chave nenhuma, por desenho. O que ele faz é medir, ao vivo,
+se a regra continua funcionando.
 
 ## O ciclo, em quatro estágios
 

@@ -16,29 +16,38 @@ import {
   CUSTO_ATRASO,
   DIA,
   ESCORREGADA_STOP,
+  FOLGA_LIQUIDACAO,
   HORA,
   JANELA_VOLATILIDADE_DIAS,
   MANUTENCAO,
   NOCIONAL_MINIMO,
+  REGRAS_PADRAO,
   ROBOS,
   abrir,
+  alavancagemSegura,
   cobrar,
   custoPorLado,
   decidir,
+  degrauPara,
   desvioDiario,
   escalaDoTamanho,
   fechar,
+  lerRegrasDaCorretora,
+  liquidacaoIsolada,
   marcar,
   multiplicadorPelaVolatilidade,
+  nocionalAceito,
   novoEstado,
   patrimonioA,
   percorrer,
   selecionar,
   valorDaPosicao,
   type Cobranca,
+  type Degrau,
   type EstadoRobo,
   type LinhaRanking,
   type Perna,
+  type RegrasDaMoeda,
   type Robo,
   type VelaRobo,
 } from "../lib/robos";
@@ -529,6 +538,86 @@ function rankingVol(): LinhaRanking[] {
   const e2 = novoEstado(ROBO_VOL, T0);
   const p = abrir(e2, VENDA_VOL, "AUSDT", 10, T0, 50e6, false, 0, undefined, NaN);
   confere("multiplicador que não é número vira 1", p !== null && perto(p.nocional, base), `${p?.nocional}`);
+}
+
+// ------------------------------------------------------------------ as regras da corretora
+console.log("\nas regras da corretora");
+/** A tabela das manipuladas (TUT, BEAT, RAVE) em 09/10: 5% até US$ 10 mil, 10% até 60 mil. */
+const TABELA_DURA: Degrau[] = [
+  { ate: 10_000, manutencao: 0.05, desconto: 0, alavancagemMaxima: 10 },
+  { ate: 60_000, manutencao: 0.1, desconto: 500, alavancagemMaxima: 5 },
+  { ate: 70_000, manutencao: 0.125, desconto: 2_000, alavancagemMaxima: 4 },
+];
+const DURA: RegrasDaMoeda = { nocionalMinimo: 5, passo: 0, degraus: TABELA_DURA };
+const BRANDA: RegrasDaMoeda = { nocionalMinimo: 5, passo: 0, degraus: [{ ate: 300_000, manutencao: 0.005, desconto: 0, alavancagemMaxima: 100 }] };
+{
+  const d = degrauPara(TABELA_DURA, 100);
+  confere("liquidação da vendida pela fórmula da Binance (2x, 5%)", perto(liquidacaoIsolada("short", 100, 100, 50, d), 150 / 1.05), `${liquidacaoIsolada("short", 100, 100, 50, d).toFixed(3)}`);
+  confere("e da comprada (3x, 5%)", perto(liquidacaoIsolada("long", 100, 100, 100 / 3, d), (100 - 100 / 3) / 0.95), `${liquidacaoIsolada("long", 100, 100, 100 / 3, d).toFixed(3)}`);
+  const graus = [degrauPara(TABELA_DURA, 9_999).manutencao, degrauPara(TABELA_DURA, 10_000).manutencao, degrauPara(TABELA_DURA, 1e9).manutencao];
+  confere("o degrau pelo nocional (o teto já é do degrau seguinte)", graus.join() === "0.05,0.1,0.125", graus.join(" "));
+  const comDesconto = liquidacaoIsolada("short", 1, 20_000, 10_000, degrauPara(TABELA_DURA, 20_000));
+  confere("o desconto do degrau entra na conta", perto(comDesconto, 30_500 / 22_000), `${comDesconto.toFixed(5)}`);
+}
+{
+  const L = alavancagemSegura("short", 0.45, 2, 100, TABELA_DURA);
+  const liq = liquidacaoIsolada("short", 100, 100, 100 / L, degrauPara(TABELA_DURA, 100));
+  confere("vendida a 2x em 5%: margem a mais até a liquidação ir ao stop + folga", L < 2 && perto(liq, 100 * (1 + 0.45 + FOLGA_LIQUIDACAO)), `${L.toFixed(3)}x, liq ${liq.toFixed(2)}`);
+  confere("em 0,5%: continua a 2x", alavancagemSegura("short", 0.45, 2, 100, BRANDA.degraus) === 2, `${alavancagemSegura("short", 0.45, 2, 100, BRANDA.degraus)}x`);
+  confere("comprada a 3x em 5%: continua a 3x", alavancagemSegura("long", 0.25, 3, 100, TABELA_DURA) === 3, `${alavancagemSegura("long", 0.25, 3, 100, TABELA_DURA)}x`);
+  const grande = alavancagemSegura("long", 0.25, 3, 20_000, TABELA_DURA);
+  confere("comprada grande, no degrau de 10%: abaixo de 3x", grande < 3 && grande > 2.9, `${grande.toFixed(3)}x`);
+}
+{
+  const passoUm: RegrasDaMoeda = { ...DURA, passo: 1 };
+  confere("a quantidade cai para o passo de baixo", perto(nocionalAceito(42.5, 25, passoUm), 25), `${nocionalAceito(42.5, 25, passoUm)}`);
+  confere("menos que um passo: a ordem não existe", nocionalAceito(20, 25, passoUm) === 0, `${nocionalAceito(20, 25, passoUm)}`);
+  confere("abaixo do mínimo: a ordem não existe", nocionalAceito(19, 1, { ...DURA, nocionalMinimo: 20 }) === 0, `${nocionalAceito(19, 1, { ...DURA, nocionalMinimo: 20 })}`);
+}
+{
+  const lidas = lerRegrasDaCorretora(
+    [
+      { symbol: "AUSDT", filters: [{ filterType: "MIN_NOTIONAL", notional: "5" }, { filterType: "MARKET_LOT_SIZE", stepSize: "0.1" }] },
+      { symbol: "SEMTABELAUSDT", filters: [] },
+    ],
+    [{ symbol: "AUSDT", riskBrackets: [{ bracketNotionalCap: 10_000, bracketMaintenanceMarginRate: 0.05, cumFastMaintenanceAmount: 0, maxOpenPosLeverage: 10 }] }],
+  );
+  const a = lidas.get("AUSDT");
+  confere("lê mínimo, passo e degraus da Binance", a?.nocionalMinimo === 5 && a.passo === 0.1 && a.degraus[0].manutencao === 0.05, JSON.stringify(a));
+  confere("símbolo sem degrau fica fora (vai para a tabela padrão, a mais dura)", !lidas.has("SEMTABELAUSDT") && REGRAS_PADRAO.degraus[0].manutencao === 0.05, `${lidas.size} lida(s)`);
+}
+{
+  const e = estado();
+  const p = abrir(e, VENDA, "AUSDT", 10, T0, 50e6, false, 0, undefined, 1, DURA)!;
+  confere("abrir com as regras: margem a mais na moeda de 5%", p.margem > p.nocional / 2 + 1e-9, `margem ${p.margem.toFixed(2)} de ${p.nocional.toFixed(2)}`);
+  confere("a liquidação nasce depois do stop", p.liquidacao > p.stop && p.corretora !== undefined, `stop ${p.stop.toFixed(3)} liq ${p.liquidacao.toFixed(3)}`);
+  // Sem o dono (sem caixa de onde repor), o financiamento sai da margem e a liquidação chega mais perto.
+  const q = abrir(estado(), VENDA, "BUSDT", 10, T0, 50e6, false, 0, undefined, 1, DURA)!;
+  const antes = q.liquidacao;
+  percorrer(q, [v(1, 10, 10.1, 9.9, 10)], [{ t: T0 + HORA, taxa: -0.05 }]);
+  confere("o financiamento pago aproxima a liquidação", q.liquidacao < antes - 1e-9, `${antes.toFixed(3)} → ${q.liquidacao.toFixed(3)}`);
+  const s = percorrer(q, [v(2, 10, 15, 10, 15)], [{ t: T0 + 2 * HORA, taxa: -0.3 }]);
+  confere("e quando ela passa para antes do stop, liquida primeiro", s?.motivo === "liquidada", `${s?.motivo} a ${s?.preco.toFixed(3)}`);
+  // Com o dono, a margem é reposta do caixa: a liquidação volta para depois do stop.
+  const caixaAntes = e.caixa;
+  const margemAntes = p.margem;
+  percorrer(p, [v(1, 10, 10.1, 9.9, 10)], [{ t: T0 + HORA, taxa: -0.05 }], e);
+  confere("a margem é reposta do caixa no que o financiamento levou", perto(p.margem - margemAntes, p.funding) && perto(caixaAntes - e.caixa, p.funding), `+US$ ${(p.margem - margemAntes).toFixed(2)} (financiamento ${p.funding.toFixed(2)})`);
+  confere("e a liquidação fica onde estava, depois do stop", perto(p.liquidacao, antes) && p.liquidacao > p.stop, `${p.liquidacao.toFixed(3)}`);
+  const s2 = percorrer(p, [v(2, 10, 15, 10, 15)], [{ t: T0 + 2 * HORA, taxa: -0.3 }], e);
+  confere("com a margem reposta, a mesma vela estopa em vez de liquidar", s2?.motivo === "stop", `${s2?.motivo}`);
+  const semCaixa = estado();
+  const r = abrir(semCaixa, VENDA, "CUSDT", 10, T0, 50e6, false, 0, undefined, 1, DURA)!;
+  semCaixa.caixa = 0;
+  const s3 = percorrer(r, [v(1, 10, 10, 10, 10), v(2, 10, 15, 10, 15)], [{ t: T0 + HORA, taxa: -0.05 }, { t: T0 + 2 * HORA, taxa: -0.3 }], semCaixa);
+  confere("sem caixa para repor, liquida", s3?.motivo === "liquidada", `${s3?.motivo}`);
+}
+{
+  const e = novoEstado(ROBO_PAR, T0);
+  const eth: RegrasDaMoeda = { ...BRANDA, nocionalMinimo: 20 };
+  e.caixa = 150; // patrimônio de US$ 150 → nocional de US$ 15 a 10%: o ETH pede 20
+  const p = abrir(e, VENDA_PAR, "AUSDT", 10, T0, 50e6, false, 0, { preco: 2000, volume: 2e9, corretora: eth }, 1, BRANDA);
+  confere("par cujo hedge fica abaixo do mínimo do ETH não abre", p === null && e.recusadas === 1, `recusadas ${e.recusadas}`);
 }
 
 // ------------------------------------------------------------------ o realismo da medição

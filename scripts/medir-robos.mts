@@ -30,21 +30,26 @@ import {
   JANELA_VOLATILIDADE_DIAS,
   MOMENTO_ANTERIOR,
   NOCIONAL_MINIMO,
+  REGRAS_PADRAO,
   ROBOS,
   decidir,
   desvioDiario,
   fechar,
+  lerRegrasDaCorretora,
   marcar,
   margemTotal,
   novoEstado,
   percorrer,
   valorDaPosicao,
+  type DegrausDaCorretora,
   type EstadoRobo,
   type LinhaMedida,
   type LinhaRanking,
   type Medicao,
   type MedicaoRobo,
+  type RegrasDaMoeda,
   type Robo,
+  type SimboloDaCorretora,
   type TradeRobo,
 } from "../lib/robos";
 
@@ -274,6 +279,58 @@ const painel = await readFile("data/panorama.json", "utf8")
   .then((t) => new Set((JSON.parse(t) as { moedas: { symbol: string }[] }).moedas.map((m) => m.symbol)))
   .catch(() => null);
 
+// ------------------------------------------------------------------ a corretora
+
+/**
+ * As regras da Binance DE HOJE — nocional mínimo, passo da quantidade e os
+ * degraus da margem de manutenção (`lerRegrasDaCorretora`) —, aplicadas à
+ * janela inteira: a Binance não publica o histórico da tabela. Ficam no cache
+ * com a data, para a medição não mudar de uma rodada para outra sem ninguém
+ * pedir; `--corretora-nova` baixa de novo. Moeda deslistada ou sem degrau usa
+ * `REGRAS_PADRAO`, a tabela mais dura das comuns.
+ */
+const ARQ_CORRETORA = `${CACHE}/corretora.json`;
+interface CacheCorretora {
+  em: string;
+  simbolos: SimboloDaCorretora[];
+  degraus: DegrausDaCorretora[];
+}
+async function baixarJson<T>(url: string): Promise<T | null> {
+  for (let tentativa = 1; tentativa <= 4; tentativa++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
+      if (res.ok) return (await res.json()) as T;
+    } catch {
+      // tenta de novo
+    }
+    await new Promise((r) => setTimeout(r, 1000 * tentativa));
+  }
+  return null;
+}
+let corretora: CacheCorretora | null = null;
+if (existsSync(ARQ_CORRETORA) && !args.includes("--corretora-nova")) {
+  corretora = JSON.parse(await readFile(ARQ_CORRETORA, "utf8")) as CacheCorretora;
+} else {
+  const [ei, tb] = await Promise.all([
+    baixarJson<{ symbols: SimboloDaCorretora[] }>("https://www.binance.com/fapi/v1/exchangeInfo"),
+    baixarJson<{ data?: { brackets?: DegrausDaCorretora[] } }>("https://www.binance.com/bapi/futures/v1/friendly/future/common/brackets"),
+  ]);
+  // Sem a tabela a medição NÃO roda com a régua antiga em silêncio: para.
+  if (!ei?.symbols?.length || !tb?.data?.brackets?.length) {
+    console.error("a Binance não devolveu o exchangeInfo ou a tabela de degraus — sem as regras da corretora a medição não roda");
+    process.exit(1);
+  }
+  corretora = { em: new Date().toISOString().slice(0, 10), simbolos: ei.symbols, degraus: tb.data.brackets };
+  await mkdir(CACHE, { recursive: true });
+  await writeFile(ARQ_CORRETORA, JSON.stringify(corretora));
+}
+const regrasDaCorretora = lerRegrasDaCorretora(corretora.simbolos, corretora.degraus);
+const regrasDe = (symbol: string): RegrasDaMoeda => regrasDaCorretora.get(symbol) ?? REGRAS_PADRAO;
+console.log(
+  `regras da corretora de ${corretora.em}: ${regrasDaCorretora.size} símbolos com degraus; ` +
+    `${series.filter((s) => !regrasDaCorretora.has(s.symbol)).length} das ${series.length} moedas medidas usam a tabela padrão`,
+);
+
 // ------------------------------------------------------------------ o ranking
 
 /** Volume das 24 h que terminam no fechamento da vela `i`. */
@@ -289,7 +346,7 @@ function volume24(s: Serie, i: number): number {
  * últimas 24·d horas que foi compra a mercado — a mesma conta que o ao vivo faz
  * com as velas diárias —, e só existe quando a série cobre a janela inteira.
  */
-function ranking(i: number, janelas: number[], janelasFluxo: number[] = [], janelaVol = 0): LinhaRanking[] {
+function ranking(i: number, janelas: number[], janelasFluxo: number[] = [], janelaVol = 0, comCorretora = true): LinhaRanking[] {
   const out: LinhaRanking[] = [];
   const j = i - 1;
   for (const s of series) {
@@ -306,6 +363,7 @@ function ranking(i: number, janelas: number[], janelasFluxo: number[] = [], jane
       volume: volume24(s, j),
       // Moeda cuja primeira vela é o começo dos dados já existia antes: idade desconhecida, e maior.
       idadeDias: s.nasce === 0 && s.c[0] > 0 ? null : (j - s.nasce) / 24,
+      ...(comCorretora ? { corretora: regrasDe(s.symbol) } : {}),
     };
     if (janelasFluxo.length > 0) {
       const fluxo: Record<number, number | null> = {};
@@ -352,6 +410,8 @@ function simular(
   tamanho?: number,
   /** A janela do desvio de `Perna.porVolatilidade`, em dias — só para medir o platô dela. */
   janelaVol = JANELA_VOLATILIDADE_DIAS,
+  /** Falso: o motor de antes de 09/10, sem as regras da corretora — só para medir o que elas custam. */
+  comCorretora = true,
 ): EstadoRobo {
   const r: Robo = tamanho === undefined ? robo : { ...robo, regras: { ...robo.regras, tamanho } };
   const e = novoEstado(r, de);
@@ -367,7 +427,7 @@ function simular(
   for (let i = i0; i <= i1; i++) {
     const t = INICIO_DADOS + i * HORA;
     if (t % DIA === 0) {
-      const linhas = ranking(i, janelas, janelasFluxo, comVol).filter((l) => !excluir?.has(l.symbol) || hedges.has(l.symbol));
+      const linhas = ranking(i, janelas, janelasFluxo, comVol, comCorretora).filter((l) => !excluir?.has(l.symbol) || hedges.has(l.symbol));
       decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, CUSTO_ATRASO);
     }
     for (const p of [...e.abertas]) {
@@ -521,6 +581,47 @@ for (const robo of [...ROBOS, MOMENTO_ANTERIOR]) {
   });
 }
 
+// O QUE AS REGRAS DA CORRETORA CUSTAM: cada robô no motor de antes de 09/10
+// (0,5% de manutenção em toda moeda, liquidação fixa, sem passo nem mínimo
+// por símbolo) contra o publicado, e quanto da margem cada lado precisou a mais.
+console.log(`\n== as regras da corretora (tabela de ${corretora.em}), robô a robô`);
+const doRealismo: NonNullable<NonNullable<Medicao["realismo"]>["corretora"]>["robos"] = [];
+for (const robo of ROBOS) {
+  let semRegras = NaN;
+  for (const com of [false, true]) {
+    const es = janelas.map(([, de, ate]) => simular(robo, de, ate, undefined, undefined, undefined, com));
+    const liq = es[0].fechadas.filter((t) => t.motivo === "liquidada").length;
+    if (!com) semRegras = es[0].patrimonio / CAPITAL_ROBO - 1;
+    else {
+      const vendidas = es[0].fechadas.filter((t) => t.lado === "short" && !t.hedge);
+      const alvo = Math.max(0, ...robo.regras.pernas.filter((p) => p.lado === "short" && !p.hedge).map((p) => p.alavancagem));
+      doRealismo.push({
+        id: robo.id,
+        semRegras,
+        comRegras: es[0].patrimonio / CAPITAL_ROBO - 1,
+        liquidadas: liq,
+        vendidas: vendidas.length,
+        comMargemAMais: vendidas.filter((t) => t.nocional / t.margem < alvo - 0.005).length,
+      });
+    }
+    console.log(
+      `${(robo.nome + (com ? " · com as regras" : " · sem")).padEnd(34)} ` +
+        janelas.map(([j], k) => `${j.split(" ")[0]} ${pct(es[k].patrimonio / CAPITAL_ROBO - 1)}`).join(" · ") +
+        `  queda máx ${pct(es[0].quedaMaxima)}  Sharpe ${sharpeDe(es[0].curva).toFixed(2)}  ${liq} liquidada(s) · ${es[0].recusadas} recusada(s)`,
+    );
+    if (com) {
+      for (const lado of ["long", "short"] as const) {
+        const ts = es[0].fechadas.filter((t) => t.lado === lado && !t.hedge);
+        if (ts.length === 0) continue;
+        const alav = ts.map((t) => t.nocional / t.margem);
+        const alvo = Math.max(...robo.regras.pernas.filter((p) => p.lado === lado).map((p) => p.alavancagem));
+        const menor = alav.filter((x) => x < alvo - 0.005).length;
+        console.log(`    ${lado === "long" ? "compradas" : "vendidas"}: ${menor} de ${ts.length} com margem a mais (alavancagem média ${(alav.reduce((x, y) => x + y, 0) / alav.length).toFixed(2)}x, alvo ${alvo}x)`);
+      }
+    }
+  }
+}
+
 // A escala do tamanho, medida sobre o mesmo livro: é a resposta a "e se arriscasse mais?".
 console.log("\n== o tamanho, no livro do Momento (janela inteira)");
 for (const tam of [0.02, 0.03, 0.035, 0.04, 0.0425, 0.05, 0.06, 0.06375, 0.07, 0.08]) {
@@ -587,7 +688,12 @@ if (soSimbolos) {
     universo: { moedas: series.length, deslistadas, de: INICIO, ate: FIM },
     robos: medidos,
     referencias,
-    realismo: { escorregadaStop: ESCORREGADA_STOP, custoAtraso: CUSTO_ATRASO, nocionalMinimo: NOCIONAL_MINIMO },
+    realismo: {
+      escorregadaStop: ESCORREGADA_STOP,
+      custoAtraso: CUSTO_ATRASO,
+      nocionalMinimo: NOCIONAL_MINIMO,
+      corretora: { em: corretora.em, robos: doRealismo },
+    },
   };
   await writeFile("data/robos-medicao.json", `${JSON.stringify(m)}\n`);
   console.log("\ndata/robos-medicao.json gravado");

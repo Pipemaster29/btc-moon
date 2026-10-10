@@ -12,7 +12,7 @@
  *
  * E A RESSALVA FICA NA TELA, não num comentário: o lucro medido da perna
  * comprada vem de poucas moedas, e a melhora de cada regra nova sobre a
- * anterior não vale em todo trimestre — a de 09/10 ganha em 5 de 11. Quem olha
+ * anterior não vale em todo trimestre — a de 09/10 ganha em 6 de 11. Quem olha
  * a curva bonita precisa ler isso ao lado dela, e por isso a regra anterior
  * entra no gráfico e na tabela, medida no mesmo modelo.
  */
@@ -43,6 +43,28 @@ const COR: Record<string, string> = {
 };
 const corDe = (id: string) => COR[id] ?? "var(--robo-ctx)";
 const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo" };
+/**
+ * O TESTE DE VIDA REAL: o que a medição dá para janelas do mesmo tamanho que a
+ * idade do robô ao vivo. Todos os retornos de `dias` dias da curva medida (um
+ * ponto por dia, 01/2024–09/2026), e os percentis 10 e 90 — oito em cada dez
+ * janelas terminaram entre os dois. As regras foram escolhidas olhando esse
+ * mesmo período, então a medição é otimista por construção; o ao vivo é o único
+ * teste limpo, e esta faixa é a régua dele.
+ */
+function faixaMedida(curva: readonly Ponto[], dias: number): { p10: number; p50: number; p90: number; janelas: number } | null {
+  if (!(dias >= 1) || curva.length <= dias) return null;
+  const rs: number[] = [];
+  for (let k = dias; k < curva.length; k++) {
+    const a = curva[k - dias].patrimonio;
+    const b = curva[k].patrimonio;
+    if (a > 0 && b > 0) rs.push(b / a - 1);
+  }
+  if (rs.length < 30) return null;
+  rs.sort((x, y) => x - y);
+  const q = (p: number) => rs[Math.min(rs.length - 1, Math.floor(p * (rs.length - 1)))];
+  return { p10: q(0.1), p50: q(0.5), p90: q(0.9), janelas: rs.length };
+}
+
 // O nome vem do estado ao vivo; robô medido que ainda não rodou (o primeiro
 // retrato depois do deploy é que o cria) cai no nome das regras.
 const nomeDe = (id: string, robos: readonly EstadoRobo[]) =>
@@ -326,6 +348,10 @@ export default function RobosPanel({
             const compradas = e.abertas.filter((p) => p.lado === "long").length;
             const manip = e.abertas.filter((p) => p.manipulada).length;
             const acertos = e.fechadas.filter((t) => t.resultado > 0).length;
+            // A idade em dias inteiros, até a marcação de agora.
+            const dias = Math.floor((Math.max(vivo.em ?? 0, e.atualizadoEm) - e.comecouEm) / DIA);
+            const medido = medidos.find((m) => m.id === e.id);
+            const faixa = medido ? faixaMedida(medido.curva, dias) : null;
             return (
               <div key={e.id} className="rounded-lg border border-black/10 dark:border-white/10 p-3">
                 <p className="font-semibold">{e.nome}</p>
@@ -350,6 +376,19 @@ export default function RobosPanel({
                   {e.fechadas.length > 0 && <> · {acertos} no positivo</>}
                   {e.diasPerdidos > 0 && <> · {e.diasPerdidos} dia(s) sem retrato</>}
                 </p>
+                {faixa ? (
+                  <p
+                    className="text-xs text-black/60 dark:text-white/60 tabular-nums mt-1"
+                    title={`Em ${faixa.janelas.toLocaleString("pt-BR")} janelas de ${dias} dia(s) da medição (01/2024–09/2026), oito em cada dez terminaram entre estes dois números. Ao vivo fora da faixa por meses é a medição falhando na vida real.`}
+                  >
+                    medido em {dias} dia{dias === 1 ? "" : "s"}: {pct(faixa.p10)} a {pct(faixa.p90)} (8 em 10) · ao vivo{" "}
+                    <strong className="font-medium">{ret < faixa.p10 ? "abaixo da faixa" : ret > faixa.p90 ? "acima da faixa" : "dentro da faixa"}</strong>
+                  </p>
+                ) : (
+                  medido && (
+                    <p className="text-xs text-black/40 dark:text-white/40 mt-1">a faixa medida aparece com um dia inteiro ao vivo</p>
+                  )
+                )}
               </div>
             );
           })}
@@ -413,7 +452,7 @@ export default function RobosPanel({
                 </>
               )}
               , com o Sharpe maior nas duas metades. Atacada com custo de entrada 4x e escorregada do stop dobrada,
-              continua acima da anterior; e não ganha em todo trimestre — em 5 de 11. Na comprada a mesma regra
+              continua acima da anterior; e não ganha em todo trimestre — em 6 de 11. Na comprada a mesma regra
               derruba o resultado: as monstras são as moedas mais agitadas. <strong>O que não muda</strong>: o lucro
               mora na cauda.
               {momento.piramide && (
@@ -479,6 +518,40 @@ export default function RobosPanel({
               )}
             </p>
           )}
+          {real?.corretora && (
+            <p className="text-xs text-black/50 dark:text-white/50 mt-2">
+              <strong>As regras da Binance.</strong> A medição usa a tabela pública de degraus de margem de{" "}
+              {real.corretora.em.split("-").reverse().slice(0, 2).join("/")}: nas moedas que fizeram o lucro do Momento a
+              margem de manutenção é de 5% até US$ 10 mil, e a 2x a corretora liquidaria a vendida em +43%, antes do stop
+              de 45%. Por isso cada posição entra com a margem que põe a liquidação depois do stop, a liquidação segue a
+              fórmula da margem isolada com o financiamento saindo da margem, a margem é reposta de hora em hora quando o
+              financiamento a come, e cada ordem respeita o lote e o mínimo da moeda — o que se faz numa conta de verdade.
+              {(() => {
+                const m = real.corretora.robos.find((r) => r.id === "momento");
+                return m ? (
+                  <>
+                    {" "}
+                    No Momento, {m.comMargemAMais.toLocaleString("pt-BR")} de {m.vendidas.toLocaleString("pt-BR")} vendidas
+                    precisaram de margem a mais, {m.liquidadas === 0 ? "nenhuma foi liquidada" : `${m.liquidadas} foram liquidadas`}, e
+                    a janela inteira vai de {pct(m.semRegras, 0)} sem as regras para {pct(m.comRegras, 0)} com elas.
+                  </>
+                ) : null;
+              })()}
+            </p>
+          )}
+          <p className="text-xs text-black/50 dark:text-white/50 mt-2">
+            <strong>Dá para fazer na vida real?</strong> O que a conta de cima não cobre, e decide. As regras foram
+            escolhidas olhando 2024–2026 inteiro, então a medição é otimista por construção: o teste que falta é o ao
+            vivo contra a faixa medida de cada cartão, e ele leva meses. O stop móvel de 30% não existe como ordem na
+            Binance (a nativa vai até 10%): um robô precisa movê-lo de hora em hora — mexendo nele só a cada 4 horas, o
+            Momento medido cai de +5.928% para +4.149%. A tabela de degraus é a de hoje aplicada ao passado. E as quedas de
+            −36% do Momento e −46% do turbo aconteceram na medição e voltam a acontecer. Com US$ 1.000, as ordens já
+            encostam no mínimo da Binance: a vendida mais agitada do Momento entra com ~US$ 11, e o Fluxo só opera a
+            partir de 3% por par — a 2%, a ordem de ETH fica abaixo dos US$ 20 exigidos e nenhum par abre. Para ligar com
+            dinheiro de verdade: conta de futuros da Binance onde ela for permitida, chave de API só de negociação (sem
+            saque), uma máquina que rode o robô toda hora — o GitHub Actions deste projeto já ficou horas parado — e uma
+            subconta por robô.
+          </p>
           <p className="text-xs text-black/50 dark:text-white/50 mt-2">
             É o formato de todo seguidor de tendência — perde pouco quase sempre e ganha muito de vez em quando —, e
             a tese só segue de pé enquanto aparecerem monstras
