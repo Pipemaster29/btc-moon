@@ -103,6 +103,29 @@ no código, com número:
   nele e reprovou como no Caça-monstra: na mesma queda, melhora o dentro e
   piora o fora (Sharpe 1,65 → 1,51).
 
+- **A vendida do Momento pela volatilidade da moeda (09/10).** A vendida perde
+  US$ 8 mil na soma e mesmo assim segura 2024 (sem ela o dentro vai de +199% a
+  +17%). Passou repartir o risco entre as vendidas: cada uma com o tamanho ×
+  mediana do desvio diário de 45 dias ÷ o da moeda, entre ¼ e 2x. Na mesma
+  queda (4,25% contra 4%), com as regras da Binance, +4.502% → +5.928%,
+  Sharpe 2,38 → 2,54, dentro 1,43 → 1,56, fora 3,27 → 3,39, sem as 5 +633% →
+  +833%; platô de 30 a 60 dias e nos limites, e de pé sob custo 4x e
+  escorregada dobrada. Não melhora todo trimestre (6 de 11). Reprovados na mesma rodada: a mesma regra na
+  comprada (+1.848%) e no Fluxo, o Fluxo dentro da conta do Momento, o fluxo
+  como filtro, a trava de "dia de alta", k e janela da vendida.
+
+- **As regras da Binance entraram no motor (09/10), a pedido: "precisa ser
+  realista".** O motor usava 0,5% de manutenção em toda moeda; a tabela
+  pública de degraus diz 5% até US$ 10 mil nas que fizeram o lucro (TUT,
+  BEAT, RAVE), onde a vendida a 2x seria liquidada em +42,9%, antes do stop.
+  Com a tabela de cada moeda, a liquidação da margem isolada (financiamento
+  saindo da margem), margem a mais onde precisa, a margem reposta de hora em
+  hora e o lote e o mínimo de cada ordem: Momento +5.969% → +5.928%, Fluxo
+  +262% → +260%, nenhuma liquidação. O que a medição ainda supõe é um robô
+  que rode toda hora: com o rastro movido só a cada 4 h, o Momento cai para
+  +4.149%. E o Fluxo não opera a 2% de US$ 1.000 — o ETH pede US$ 20 por
+  ordem.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -484,6 +507,21 @@ e no README; aqui fica o que não pode ser quebrado.
   principal saiu. Par sem o preço do hedge NÃO abre pela metade, e par sem as
   velas do hedge NÃO anda: percorrer só a metade principal deixaria o hedge
   num preço velho. Hedge liquidado leva só a margem dele, e o par segue.
+- **O tamanho pela volatilidade é da VENDIDA do Momento** (`porVolatilidade`,
+  `multiplicadorPelaVolatilidade`): na comprada ele derruba o resultado (as
+  monstras são as moedas mais agitadas) e no Fluxo também. A mediana é a das
+  elegíveis da perna no dia; moeda sem desvio lido entra com o tamanho normal,
+  e o ao vivo e a medição leem os MESMOS fechamentos diários (`desvioDiario`,
+  `JANELA_VOLATILIDADE_DIAS`).
+- **As regras da corretora moram na posição** (`corretora`, `RegrasDaMoeda`),
+  como o stop: a medição e o ao vivo as tiram da mesma tabela pública
+  (`lerRegrasDaCorretora`), e a posição aberta antes de 09/10, sem elas,
+  segue com a liquidação fixa de antes. Com elas a liquidação é refeita a
+  cada vela com a margem que sobra depois do financiamento, e
+  `reporMargem` devolve a liquidação para a `FOLGA_LIQUIDACAO` além do stop
+  — sem caixa, liquida. Sem a tabela da Binance, a seleção do dia espera e a
+  medição para: a régua antiga em silêncio não volta. Moeda sem degrau usa
+  `REGRAS_PADRAO`, a tabela mais dura das comuns, nunca uma mais branda.
 - **O critério "fluxo" é fração do volume, não preço** (`Perna.criterio`): a
   parte do volume em dólar da janela que foi compra a mercado (taker buy). O
   ao vivo soma as velas diárias da Binance (`k[10]` sobre `k[7]`); a medição,
@@ -506,11 +544,13 @@ e no README; aqui fica o que não pode ser quebrado.
   PATRIMÔNIO (o base, antes do alvo de volatilidade); `CUSTO_ATRASO`,
   `custoLado` e `livro` são fração do NOCIONAL por lado; `ESCORREGADA_STOP`, do
   resto da vela além do nível; `AlvoVolatilidade.anual`, volatilidade ANUAL;
-  `fluxo`, fração do VOLUME da janela. No par, `margem` e `resultado` do trade
+  `vol` (do ranking), desvio DIÁRIO de preço; `fluxo`, fração do VOLUME da
+  janela; `Degrau.manutencao`, fração do NOCIONAL, e `Degrau.desconto`,
+  DÓLARES; `FOLGA_LIQUIDACAO`, PREÇO (fração da entrada). No par, `margem` e `resultado` do trade
   somam as duas metades; o `hedge` do trade guarda a parte do hedge.
 - **Tamanho escolhe o risco, não a vantagem — e tem teto.** Na regra de hoje o
-  Sharpe fica em 2,40–2,42 de 2% a 4% e cai depois, porque o caixa começa a
-  recusar entrada: a 7% o robô rende menos que a 6%. Pedido de "mais lucro" por
+  Sharpe fica em 2,53–2,54 de 3% a 4,25% e cai depois, porque o caixa começa a
+  recusar entrada (12 recusas a 5%, 90 a 8%). Pedido de "mais lucro" por
   tamanho é pedido de mais queda, e a tabela de `npm run medir-robos` diz quanto.
 - **Regra nova só com a medição refeita**, e as duas colunas que mais reprovam
   aqui são "dentro da amostra" e "sem as 5 melhores". Um robô de momento que só

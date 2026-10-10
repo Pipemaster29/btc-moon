@@ -51,44 +51,50 @@
  *   tarde de 08/10: a compra SAI no dia em que a moeda deixa as 10 que mais
  *                   sobem (`COMPRA_MOMENTO`), e o tamanho segue a agitação do
  *                   próprio patrimônio (`ALVO_MOMENTO`).
+ *   09/10:          cada VENDA tem o tamanho pela volatilidade da própria
+ *                   moeda (`VENDA_MOMENTO`).
  *
  * Medido no livro inteiro com ESTE motor (`npm run medir-robos`), US$ 1.000 em
- * 08/01/2024 e o patrimônio em 30/09/2026:
+ * 08/01/2024 e o patrimônio em 30/09/2026. As duas primeiras linhas são do
+ * motor de antes das regras da corretora (`RegrasDaMoeda`); as outras, com
+ * elas — a margem de manutenção de cada moeda, a liquidação da margem isolada
+ * com o financiamento saindo dela, o lote e o mínimo de cada ordem:
  *
  *   regra                        inteira    dentro    fora     queda máx   Sharpe
  *   07/10, 30 dias, 4%             +416%      +89%     +160%     −36%       1,36
  *   manhã de 08/10, 3%           +1.254%      +73%     +638%     −37%       2,09
- *   hoje, 4% ← "Momento"         +4.863%     +199%   +1.424%     −36%       2,42
- *   hoje, 6% ← "Momento turbo"   +8.472%     +233%   +2.301%     −46%       2,35
+ *   tarde de 08/10, 4%           +4.502%     +188%   +1.367%     −36%       2,38
+ *   hoje, 4,25% ← "Momento"      +5.928%     +216%   +1.565%     −36%       2,54
+ *   hoje, 6,375% ← "turbo"      +10.307%     +244%   +2.633%     −46%       2,45
  *
- * E o tamanho, na regra de hoje: 2% +1.631% (−25%), 3% +3.012% (−31%), 4%
- * +4.863% (−36%), 5% +6.095% (−42%), 6% +8.472% (−46%), 7% +7.868% (−51%), 8%
- * +9.946% (−56%). O Sharpe fica em 2,40–2,42 até 4% e cai depois: a 6% o caixa
- * já recusa 25 entradas, a 7% recusa 62 e rende MENOS que a 6%. Tamanho escolhe
- * o risco, não a vantagem — e tem teto, onde a margem acaba. O Momento ficou
- * na queda máxima da manhã (−36% contra −37%); o turbo, no tamanho em que o caixa ainda
- * acompanha, com menos queda que o de antes (−46% contra −51%).
+ * E o tamanho, na regra de hoje: 2% +1.591% (−22%), 3% +3.204% (−29%), 4%
+ * +5.329% (−34%), 4,25% +5.928% (−36%), 5% +6.858% (−39%), 6% +9.395% (−44%),
+ * 6,375% +10.307% (−46%), 7% +11.490% (−48%), 8% +14.246% (−53%). O Sharpe
+ * fica em 2,53–2,54 de 3% a 4,25% e cai depois (2,40 a 2,47), quando o caixa
+ * começa a recusar entrada: 12 recusas a 5%, 27 a 6,375%, 90 a 8%. Tamanho
+ * escolhe o risco, não a vantagem. O Momento ficou na queda máxima da regra
+ * anterior (−36%), e o turbo é 1,5x ele, na queda do turbo anterior (−46%).
  *
- * NA MESMA QUEDA MÁXIMA, a regra de hoje faz +4.863% contra +1.254%, e o que a
- * manhã tinha de ruim virou: o dentro da amostra, que ia de +89% para +73%,
- * vai a +199%. Por trimestre ela ganha em 8 de 11; perde 2024T1 (−24% contra
- * −22%), 2024T4 (+4% contra +7%) e 2025T4 (+13% contra +23%).
+ * NA MESMA QUEDA MÁXIMA, a regra de hoje faz +5.928% contra +4.502% da tarde
+ * de 08/10, com o Sharpe subindo nas duas metades. Por trimestre ela ganha em
+ * 9 de 11 (perde 2024T1, −19%, e 2026T3, −10%), mas contra a regra anterior a
+ * melhora NÃO é de todo trimestre: 6 de 11 — está medida em `VENDA_MOMENTO`.
  *
  * O QUE ISSO NÃO É, e é a ressalva que manda: o lucro vem de POUCAS MOEDAS.
- * Tirando as cinco que mais deram ao Momento (TUT, BEAT, RAVE, LAB, LSK), a
- * janela inteira cai de +4.863% para +707% e o fora, de +1.424% para +111%;
- * o dentro quase não muda (+199% → +207%). A pirâmide entrou em 312 de 1.090
- * compras, e foram essas que fizeram o lucro da perna: US$ 126 mil, contra US$
- * 70 mil perdidos nas outras 778. É o formato de qualquer seguidor de
+ * Tirando as cinco que mais deram ao Momento (TUT, BEAT, LAB, RAVE, LSK), a
+ * janela inteira cai de +5.928% para +833% e o fora, de +1.565% para +116%;
+ * o dentro quase não muda (+216% → +224%). A pirâmide entrou em 311 de 1.090
+ * compras, e foram essas que fizeram o lucro da perna: US$ 159 mil, contra US$
+ * 89 mil perdidos nas outras 779. É o formato de qualquer seguidor de
  * tendência — perde pouco quase sempre e ganha muito de vez em quando —, e a
  * tese só continua de pé enquanto continuarem aparecendo monstras. Dos US$
- * 56.026 que a perna comprada fez, US$ 37.957 vieram de moedas que hoje estão
+ * 69.981 que a perna comprada fez, US$ 49.407 vieram de moedas que hoje estão
  * no painel de manipuladas: é a intuição de que "as manipuladas têm mais
  * potencial", medida — e é também o risco concentrado.
  *
  * O "Fluxo" é OUTRO LIVRO (`VENDA_FLUXO`, com a medição ao lado): vende as
  * moedas em que a venda a mercado dominou a semana, em par com ETH. Rende
- * menos que o Momento e quase não anda junto com ele (correlação 0,16).
+ * menos que o Momento e quase não anda junto com ele (correlação 0,10).
  *
  * O "Caça-monstra" é essa intuição sozinha: só a perna comprada, mais
  * concentrada e aceitando moeda menor. Fora da amostra, +189%; dentro, −3%,
@@ -166,6 +172,14 @@ export interface Perna {
    * mercado cai. Não combina com pirâmide.
    */
   hedge?: { symbol: string; alavancagem: number };
+  /**
+   * O TAMANHO PELA VOLATILIDADE DA MOEDA: cada posição da perna tem o tamanho
+   * multiplicado pela mediana do desvio diário das elegíveis do dia ÷ o desvio
+   * da própria moeda (`LinhaRanking.vol`), entre `minimo` e `maximo`. A moeda
+   * duas vezes mais agitada que a do meio entra com metade do tamanho. Sem a
+   * leitura do desvio, o tamanho normal. Ausente: todas do mesmo tamanho.
+   */
+  porVolatilidade?: { minimo: number; maximo: number };
 }
 
 /**
@@ -254,6 +268,173 @@ export const CUSTO_ATRASO = 0.001;
  * esta régua de momento). Abaixo dele a ordem é recusada — aqui também.
  */
 export const NOCIONAL_MINIMO = 5;
+
+// ------------------------------------------------------------------ a corretora
+
+/**
+ * Um degrau da tabela de alavancagem da Binance: até que nocional ele vale, e
+ * o que ele exige da posição. A tabela é pública e sem chave
+ * (`/bapi/futures/v1/friendly/future/common/brackets`), e é ela que decide
+ * onde a corretora liquida.
+ */
+export interface Degrau {
+  /** Teto do degrau, em nocional da posição (dólares). */
+  ate: number;
+  /** Margem de manutenção, em fração do NOCIONAL. */
+  manutencao: number;
+  /** O desconto da manutenção no degrau (`cumFastMaintenanceAmount`), em dólares. */
+  desconto: number;
+  /** A maior alavancagem que a corretora aceita numa posição deste tamanho. */
+  alavancagemMaxima: number;
+}
+
+/**
+ * O que a Binance exige de uma ordem e de uma posição numa moeda: o nocional
+ * mínimo (`MIN_NOTIONAL`), o passo da quantidade numa ordem a mercado
+ * (`MARKET_LOT_SIZE`, em unidades da moeda; 0 se desconhecido) e os degraus
+ * da margem de manutenção.
+ *
+ * ATÉ 09/10 O MOTOR USAVA 0,5% DE MANUTENÇÃO PARA TODA MOEDA. Na tabela de
+ * 09/10, das 525 moedas, 149 pedem 5% no primeiro degrau e 203 pedem 2,5% —
+ * e as que fizeram o lucro do Momento (TUT, BEAT, RAVE, MYX, AKE) pedem 5% até
+ * US$ 10 mil e 10% daí até US$ 60 mil. Vendida a 2x numa delas, a corretora
+ * liquida em +42,9%, ANTES do stop de 45%; o motor antigo deixava a posição
+ * viva até o stop. Com 5% em toda moeda e nada mais mudado, o Momento perdia
+ * 242 vendidas para a liquidação (+5.969% → +4.404%) e o Fluxo 175. Com a
+ * tabela de cada moeda, a margem que põe a liquidação depois do stop
+ * (`alavancagemSegura`: 1.266 de 1.298 vendidas do Momento, 1,86x em média) e a
+ * reposição dela (`reporMargem`), nenhuma — e +5.969% → +5.928%.
+ */
+export interface RegrasDaMoeda {
+  /** Nocional mínimo da ordem, em dólares. */
+  nocionalMinimo: number;
+  /** Passo da quantidade, em unidades da moeda; 0 sem passo conhecido. */
+  passo: number;
+  degraus: Degrau[];
+}
+
+/**
+ * As regras de uma moeda que a tabela não tem — na medição, as deslistadas. É
+ * a tabela das manipuladas de 2025–2026 (TUT, BEAT, RAVE, MYX, AKE), a mais
+ * dura das comuns: errar para o lado de liquidar cedo.
+ */
+export const REGRAS_PADRAO: RegrasDaMoeda = {
+  nocionalMinimo: NOCIONAL_MINIMO,
+  passo: 0,
+  degraus: [
+    { ate: 10_000, manutencao: 0.05, desconto: 0, alavancagemMaxima: 10 },
+    { ate: 60_000, manutencao: 0.1, desconto: 500, alavancagemMaxima: 5 },
+    { ate: 70_000, manutencao: 0.125, desconto: 2_000, alavancagemMaxima: 4 },
+    { ate: 250_000, manutencao: 0.1667, desconto: 4_919, alavancagemMaxima: 3 },
+    { ate: 2_500_000, manutencao: 0.25, desconto: 25_744, alavancagemMaxima: 2 },
+    { ate: 5_000_000, manutencao: 0.5, desconto: 650_744, alavancagemMaxima: 1 },
+  ],
+};
+
+/**
+ * A FOLGA entre o stop e a liquidação, em variação de PREÇO, que a margem de
+ * cada posição precisa garantir na entrada. Com ela, a vendida a 2x de uma
+ * moeda de 0,5% de manutenção continua a 2x (liquidação a +49,3%, stop a
+ * 45%), e a de 5% recebe margem a mais até a liquidação ir a +49%: é o que se
+ * faz numa conta de verdade, acrescentando margem à posição isolada.
+ */
+export const FOLGA_LIQUIDACAO = 0.04;
+
+/** O degrau em que cai uma posição deste nocional. */
+export function degrauPara(degraus: readonly Degrau[], nocional: number): Degrau {
+  for (const d of degraus) if (nocional < d.ate) return d;
+  return degraus[degraus.length - 1];
+}
+
+/**
+ * O preço de liquidação da margem ISOLADA, pela fórmula da Binance:
+ * comprado (N − M − desconto) ÷ (Q × (1 − manutenção)), vendido
+ * (N + M + desconto) ÷ (Q × (1 + manutenção)), com N o nocional da entrada,
+ * Q a quantidade e M a margem que sobra na posição — a inicial menos o
+ * financiamento pago, porque na margem isolada a cobrança sai dela.
+ */
+export function liquidacaoIsolada(lado: LadoRobo, precoEntrada: number, nocional: number, margem: number, d: Degrau): number {
+  const q = nocional / precoEntrada;
+  return lado === "long"
+    ? Math.max(0, (nocional - margem - d.desconto) / (q * (1 - d.manutencao)))
+    : (nocional + margem + d.desconto) / (q * (1 + d.manutencao));
+}
+
+/**
+ * A alavancagem da posição: a da perna, a não ser que a corretora liquide
+ * antes do stop (mais a `FOLGA_LIQUIDACAO`) ou não aceite esse tamanho nessa
+ * alavancagem — aí a menor das duas. Fração, não inteiro: na Binance a
+ * alavancagem é inteira, e o resto vem de margem acrescentada à posição.
+ */
+export function alavancagemSegura(lado: LadoRobo, stop: number, alavancagem: number, nocional: number, degraus: readonly Degrau[]): number {
+  const d = degrauPara(degraus, nocional);
+  const c = d.desconto / nocional;
+  const minimoInverso =
+    lado === "long" ? 1 - c - (1 - stop - FOLGA_LIQUIDACAO) * (1 - d.manutencao) : (1 + stop + FOLGA_LIQUIDACAO) * (1 + d.manutencao) - 1 - c;
+  const teto = minimoInverso > 0 ? 1 / minimoInverso : Infinity;
+  return Math.max(1, Math.min(alavancagem, d.alavancagemMaxima, teto));
+}
+
+/** Os campos que se leem do `exchangeInfo` de um símbolo. */
+export interface SimboloDaCorretora {
+  symbol: string;
+  filters?: { filterType: string; notional?: string; stepSize?: string }[];
+}
+
+/** Os campos que se leem da tabela de degraus de um símbolo. */
+export interface DegrausDaCorretora {
+  symbol: string;
+  riskBrackets?: {
+    bracketNotionalCap: number;
+    bracketMaintenanceMarginRate: number;
+    cumFastMaintenanceAmount: number;
+    maxOpenPosLeverage: number;
+  }[];
+}
+
+/**
+ * As regras de cada símbolo a partir do `exchangeInfo` e da tabela de degraus.
+ * Símbolo sem degrau legível fica FORA do mapa — quem consulta usa
+ * `REGRAS_PADRAO`, a tabela mais dura, e não uma régua inventada mais branda.
+ */
+export function lerRegrasDaCorretora(
+  simbolos: readonly SimboloDaCorretora[],
+  tabela: readonly DegrausDaCorretora[],
+): Map<string, RegrasDaMoeda> {
+  const porSimbolo = new Map(tabela.map((t) => [t.symbol, t.riskBrackets ?? []]));
+  const out = new Map<string, RegrasDaMoeda>();
+  for (const s of simbolos) {
+    const degraus = (porSimbolo.get(s.symbol) ?? [])
+      .map((b) => ({
+        ate: Number(b.bracketNotionalCap),
+        manutencao: Number(b.bracketMaintenanceMarginRate),
+        desconto: Number(b.cumFastMaintenanceAmount),
+        alavancagemMaxima: Number(b.maxOpenPosLeverage),
+      }))
+      .filter((d) => d.ate > 0 && d.manutencao > 0 && d.manutencao < 1 && Number.isFinite(d.desconto) && d.alavancagemMaxima >= 1)
+      .sort((a, b) => a.ate - b.ate);
+    if (degraus.length === 0) continue;
+    const f = new Map((s.filters ?? []).map((x) => [x.filterType, x]));
+    const minimo = Number(f.get("MIN_NOTIONAL")?.notional);
+    const passo = Number(f.get("MARKET_LOT_SIZE")?.stepSize ?? f.get("LOT_SIZE")?.stepSize);
+    out.set(s.symbol, {
+      nocionalMinimo: Number.isFinite(minimo) && minimo > 0 ? minimo : NOCIONAL_MINIMO,
+      passo: Number.isFinite(passo) && passo > 0 ? passo : 0,
+      degraus,
+    });
+  }
+  return out;
+}
+
+/**
+ * O nocional que a corretora aceita: a quantidade cai para o passo de baixo
+ * (`MARKET_LOT_SIZE`), e abaixo do mínimo a ordem não existe — zero.
+ */
+export function nocionalAceito(nocional: number, preco: number, r: RegrasDaMoeda): number {
+  const passo = r.passo > 0 ? r.passo * preco : 0;
+  const n = passo > 0 ? Math.floor(nocional / passo + 1e-9) * passo : nocional;
+  return n >= r.nocionalMinimo ? n : 0;
+}
 
 /**
  * A perna comprada de 07/10: as 5 que mais subiram em 30 dias, sem pirâmide.
@@ -368,7 +549,7 @@ const COMPRA_MOMENTO: Perna = { ...COMPRA_45, saidaPosto: 10 };
  * 45% e não 50% porque a 2x a liquidação fica em +49,5%, e o stop precisa vir
  * antes dela; 30% a 50% são todos positivos nas duas metades.
  */
-const VENDA_MOMENTO: Perna = {
+const VENDA_14: Perna = {
   lado: "short",
   janelaDias: 14,
   k: 5,
@@ -377,6 +558,70 @@ const VENDA_MOMENTO: Perna = {
   prazoH: 14 * 24,
   alavancagem: 2,
 };
+
+/**
+ * A VENDIDA DO MOMENTO desde 09/10: a de 14 dias, com o tamanho de cada
+ * posição pela volatilidade da própria moeda (`porVolatilidade`, ¼ a 2x): a
+ * mediana do desvio diário de 45 dias das elegíveis ÷ o desvio da moeda. A
+ * moeda duas vezes mais agitada que a do meio é vendida com metade do tamanho.
+ *
+ * Medido com ESTE motor e as regras da corretora sobre a regra da tarde de
+ * 08/10, na mesma queda máxima (−36%: 4,25% com a regra, 4% sem):
+ *
+ *                       inteira    dentro          fora            sem as 5: inteira · dentro · fora
+ *   sem (08/10)         +4.502%   +188% (1,43)   +1.367% (3,27)     +633% · +195% · +104%
+ *   com ← esta          +5.928%   +216% (1,56)   +1.565% (3,39)     +833% · +224% · +116%
+ *
+ * (entre parênteses, o Sharpe de cada metade). No MESMO tamanho, 4%, a regra
+ * faz +5.329% com queda de −34%: mais lucro e menos queda juntos.
+ *
+ * PLATÔ — a janela do desvio, a 4,25%: 30 dias +5.562% (Sharpe dentro 1,54,
+ * fora 3,33), 45 dias +5.928% (1,56 e 3,39), 60 dias +5.134% (1,44 e 3,38),
+ * contra 1,43 e 3,27 da regra anterior. Com 14 dias o dentro empata (1,44) e
+ * com 21 piora (1,40): desvio de poucos dias é ruído. Os limites: ½ a 2x
+ * +5.878%, ¼ a 1,5x +5.919%, ¼ a 3x +5.908%. O resto deste comentário foi
+ * medido no motor de antes das regras da corretora, a régua da rodada: ATAQUE,
+ * contra a regra anterior no mesmo ataque, custo de entrada 4x +4.443% contra
+ * +3.466% (Sharpe dentro 1,37 contra 1,28; fora 3,27 contra 3,15); escorregada
+ * do stop dobrada +4.618% contra +3.686% (1,50 contra 1,41; 3,21 contra 3,11).
+ *
+ * O QUE ELA NÃO É. Não é "a moeda agitada é venda ruim": por quartil do
+ * desvio na entrada, as vendidas mais agitadas tiveram o MELHOR resultado
+ * médio por margem (+8,7%) — e o maior número de stops (72 de 284). A regra
+ * reparte o risco entre as vendidas em vez de concentrá-lo nas que mais
+ * pulam. E não melhora todo trimestre: contra a regra anterior ganha em 6 de
+ * 11 (5 no motor antigo). A vendida perde muito menos em 2026T2 (−18% do
+ * patrimônio → −6%) e em 2024T1 (−28% → −24%), e mais em 2025T3 (−15% → −23%)
+ * e 2026T1 (+29% → +20%); a comprada, com o patrimônio maior, faz o resto.
+ *
+ * Medido na mesma rodada e REPROVADO, sobre a regra anterior a 4%:
+ *
+ *   tamanho pela volatilidade na COMPRADA   +1.848%: as monstras são as moedas
+ *                                           mais agitadas, e o lucro mora nelas
+ *   só a comprada, sem a vendida            dentro +17%, queda −51%: a vendida
+ *                                           perde US$ 8 mil na soma e segura 2024
+ *   vendida com ½ ou ¾ do tamanho           dentro +118% e +161%
+ *   vendida trocada pelo par do Fluxo       fora +2.022% a +2.194%, dentro +91% a
+ *                                           +138%, queda −41% a −46%
+ *   o par do Fluxo como terceira perna      escolhendo antes: +1.568% a +3.830%;
+ *                                           depois: +4.239% a +5.022%, queda −36%
+ *                                           a −38% — o caixa não comporta os dois
+ *                                           livros, e a vendida perde as melhores
+ *                                           moedas para o par
+ *   fluxo como filtro (7 ou 14 dias)        comprada fora das 10% a 30% mais
+ *                                           vendidas a mercado: +3.888% a +4.515%;
+ *                                           vendida só nas mais vendidas: +2.237% a
+ *                                           +4.206%
+ *   não comprar depois de um dia de alta    15% a 40%: +1.724% a +2.614% — é nesse
+ *                                           dia que a monstra começa; na vendida,
+ *                                           depois de um dia de queda: +3.373% a
+ *                                           +4.828%
+ *   k da comprada 3, 4, 6, 7                +1.780%, +3.637%, +4.174%, +3.388%
+ *   k da vendida 3, 4, 6, 7                 +4.424% (dentro +132%), +4.855%
+ *                                           (empata), +2.809%, +2.671%
+ *   janela da vendida 7, 10, 21, 30 dias    +1.835%, +2.925%, +3.547%, +2.375%
+ */
+const VENDA_MOMENTO: Perna = { ...VENDA_14, porVolatilidade: { minimo: 0.25, maximo: 2 } };
 
 /**
  * O ALVO DE VOLATILIDADE do Momento: 60% ao ano, medido nos últimos 40 dias do
@@ -412,7 +657,10 @@ const VENDA_MOMENTO: Perna = {
  * mesmo jeito: na mesma queda (−22%: 2% com ele, 3% sem), dentro +90% → +104%
  * com o Sharpe igual (1,55 e 1,56), fora +91% → +84% com o Sharpe caindo de
  * 1,65 para 1,51. O Sharpe da janela inteira subia (1,60 → 1,68) por mudar a
- * aposta de lugar entre as metades, não por melhorar nenhuma delas.
+ * aposta de lugar entre as metades, não por melhorar nenhuma delas. (Medido
+ * antes das regras da corretora; com elas é pior ainda para o alvo: a 2% de
+ * base o ETH do par fica abaixo do mínimo de US$ 20 sempre que o alvo encolhe
+ * a aposta, e o fora cai para +37%.)
  */
 const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.25, maximo: 2 };
 
@@ -472,20 +720,31 @@ const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.2
  * por lado +209%. Ganha em 8 de 11 trimestres; perde 2024T1 (−9%), 2024T3 (−12%)
  * e 2026T2 (−2%).
  *
- * MEDIDO COM ESTE MOTOR, a 3% por posição e sem o alvo de volatilidade (que
- * aqui não passou — ver `ALVO_MOMENTO`): +262% na janela inteira (queda máxima
- * −22%, Sharpe 1,60), +90% dentro e +91% fora; sem as 5 melhores, +217%
- * inteira, +87% dentro e +70% fora. Ganha em 8 de 11 trimestres. 1.573 pares,
- * nenhum hedge liquidado; dos US$ 2.603 que fizeram, US$ 1.751 vieram da perna
- * vendida e US$ 852 do ETH.
+ * MEDIDO COM ESTE MOTOR e as regras da corretora, a 3% por posição e sem o
+ * alvo de volatilidade (que aqui não passou — ver `ALVO_MOMENTO`): +260% na
+ * janela inteira (queda máxima −22%, Sharpe 1,60), +90% dentro e +89% fora;
+ * sem as 5 melhores, +214% inteira, +86% dentro e +69% fora. Ganha em 8 de 11
+ * trimestres. 1.571 pares, nenhum hedge liquidado; dos US$ 2.584 que fizeram,
+ * US$ 1.722 vieram da perna vendida e US$ 862 do ETH. Sem as regras da
+ * corretora eram +262%: o par quase não sente a margem de manutenção, porque
+ * a 2x as duas metades ficam longe da liquidação.
  *
  * O QUE ELE É E O QUE NÃO É: rende bem menos que o Momento (Sharpe 1,60 contra
  * 2,42). A virtude é outra, e está medida. O lucro dele não mora em cinco
- * moedas: sem as 5 melhores sobram 83% do lucro, no Momento 15%. E ele anda
- * por outro caminho: correlação diária de 0,16 com o Momento e −0,22 com o
- * Caça-monstra; nos 123 dias em que o Momento caiu mais de 3% (−4,6% na
- * média), o Fluxo fez −0,5%. Se as monstras pararem de aparecer, o Momento
+ * moedas: sem as 5 melhores sobram 82% do lucro, no Momento 14%. E ele anda
+ * por outro caminho: correlação diária de 0,10 com o Momento de 09/10 (0,16
+ * com o de 08/10) e −0,24 com o Caça-monstra; nos 99 dias em que o Momento
+ * caiu mais de 3% (−4,6% na média), o Fluxo fez −0,6%. Se as monstras pararem de aparecer, o Momento
  * seca e este não depende delas.
+ *
+ * Medido em 09/10 e REPROVADO neste livro: o tamanho pela volatilidade da
+ * moeda, que passou na vendida do Momento (Sharpe 1,60 → 1,34, +175% a 3%);
+ * sair quando a moeda deixa as 20, 40 ou 80 de menor fluxo (+126%, +141% e
+ * +219%: a pressão vendedora para de aparecer e o efeito continua); e hedge
+ * maior que o nocional. O beta das vendidas do Fluxo contra o ETH é 1,00 na
+ * mediana dos 30 dias antes da entrada e 1,06 durante a posição (0,80 a 1,31
+ * entre os quartis): o 1 para 1 já é o neutro, e o 1,25 da bancada (+298%
+ * contra +271%) é ETH comprado a mais, que rendeu porque o ETH subiu no fora.
  */
 const VENDA_FLUXO: Perna = {
   lado: "short",
@@ -511,19 +770,28 @@ const VENDA_FLUXO: Perna = {
  */
 const UNIVERSO = { volumeMinimo: 20e6, idadeMinimaDias: 14 };
 
+/**
+ * O tamanho base do Momento, antes do alvo de volatilidade; o turbo usa 1,5x.
+ * 4,25% e não 4%: com a vendida pela volatilidade (`VENDA_MOMENTO`) a queda
+ * máxima a 4% caiu para −34%, e 4,25% a devolve aos −36% da regra anterior —
+ * a comparação entre regras é sempre na mesma queda. A tabela inteira está no
+ * topo do arquivo.
+ */
+const TAMANHO_MOMENTO = 0.0425;
+
 export const ROBOS: Robo[] = [
   {
     id: "momento",
     nome: "Momento",
     descricao:
-      "Compra as 5 que mais subiram em 45 dias (dobra a aposta nas que sobem +40% e sai das que deixam o top 10) e vende as 5 que mais caíram em 14, todo dia, em qualquer perpétuo com US$ 20 mi de volume. A aposta encolhe quando o patrimônio fica agitado.",
-    regras: { tamanho: 0.04, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO], alvoVolatilidade: ALVO_MOMENTO },
+      "Compra as 5 que mais subiram em 45 dias (dobra a aposta nas que sobem +40% e sai das que deixam o top 10) e vende as 5 que mais caíram em 14, menos nas mais agitadas, todo dia, em qualquer perpétuo com US$ 20 mi de volume. A aposta encolhe quando o patrimônio fica agitado.",
+    regras: { tamanho: TAMANHO_MOMENTO, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO], alvoVolatilidade: ALVO_MOMENTO },
   },
   {
     id: "turbo",
     nome: "Momento turbo",
     descricao: "O mesmo livro com 1,5x o tamanho — a resposta medida para \"e se arriscasse mais?\".",
-    regras: { tamanho: 0.06, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO], alvoVolatilidade: ALVO_MOMENTO },
+    regras: { tamanho: 1.5 * TAMANHO_MOMENTO, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO], alvoVolatilidade: ALVO_MOMENTO },
   },
   {
     id: "caca-monstra",
@@ -545,11 +813,14 @@ export const ROBOS: Robo[] = [
     nome: "Fluxo",
     descricao:
       "Vende as 5 moedas em que a venda a mercado mais dominou nos últimos 7 dias e compra ETH do mesmo tamanho para cada uma: aposta que elas vão pior que o ETH, não que o mercado cai. 14 dias, stop de 45%.",
-    // 3% e não mais: cada par prende margem nas DUAS metades, e acima disso o
-    // caixa começa a recusar entrada. O Sharpe fica em 1,60 de 2% a 3% (queda
-    // de −15% a −22%), e a 3,5% são 52 recusas e 1,57; a 4%, 163 e 1,51.
-    // Sem o alvo de volatilidade do Momento, que aqui NÃO passou (ver
-    // `ALVO_MOMENTO`).
+    // 3%: cada par prende margem nas DUAS metades, e acima disso o caixa
+    // começa a recusar entrada — a 3,5% são 59 recusas e Sharpe 1,55; a 4%,
+    // 199 e 1,54. E abaixo dele a Binance não deixa: o ETH pede US$ 20 por
+    // ordem, e a 2% de uma conta de US$ 1.000 o hedge fica abaixo disso assim
+    // que a conta passa um centavo de US$ 1.000 para baixo (o lote do ETH, de
+    // 0,001, arredonda para baixo) — medido, o robô não abriu um par sequer.
+    // A 2,5%, 33 recusas e Sharpe 1,57. Sem o alvo de volatilidade do Momento, que aqui
+    // NÃO passou (ver `ALVO_MOMENTO`).
     regras: { tamanho: 0.03, ...UNIVERSO, pernas: [VENDA_FLUXO] },
   },
 ];
@@ -562,8 +833,8 @@ export const ROBOS: Robo[] = [
 export const MOMENTO_ANTERIOR: Robo = {
   id: "momento-anterior",
   nome: "Momento anterior",
-  descricao: "45 dias e pirâmide, sem saída por posto nem alvo de volatilidade, 3% por posição.",
-  regras: { tamanho: 0.03, ...UNIVERSO, pernas: [COMPRA_45, VENDA_MOMENTO] },
+  descricao: "A regra de 08/10: vendida do mesmo tamanho em toda moeda, 4% por posição.",
+  regras: { tamanho: 0.04, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_14], alvoVolatilidade: ALVO_MOMENTO },
 };
 
 // ------------------------------------------------------------------ o estado
@@ -589,6 +860,8 @@ export interface PernaHedge {
    * só com a perna principal até ela sair.
    */
   liquidadaEm?: number;
+  /** As regras da corretora para o símbolo do hedge na entrada; ausente, a liquidação fica fixa (como antes de 09/10). */
+  corretora?: RegrasDaMoeda;
 }
 
 export interface PosicaoRobo {
@@ -657,6 +930,13 @@ export interface PosicaoRobo {
    * custo do modelo (`custoLado` menos a `TAXA`) para conferir a régua.
    */
   livro?: number;
+  /**
+   * As regras da corretora na entrada (`RegrasDaMoeda`): com elas a
+   * liquidação é recalculada a cada vela com a margem que sobra depois do
+   * financiamento, e a parcela da pirâmide respeita o degrau do novo tamanho.
+   * Ausente (posição aberta antes de 09/10), a liquidação fica a da entrada.
+   */
+  corretora?: RegrasDaMoeda;
   /** A outra metade do par, quando a perna tem hedge. */
   hedge?: PernaHedge;
 }
@@ -753,10 +1033,45 @@ export interface LinhaRanking {
    * perna de critério "fluxo" precisam dela.
    */
   fluxo?: Record<number, number | null>;
+  /** As regras da corretora para a moeda; ausente, o motor antigo (0,5% de manutenção, US$ 5 de mínimo, sem passo). */
+  corretora?: RegrasDaMoeda;
+  /**
+   * O desvio dos retornos diários, de fechamento a fechamento, nos últimos
+   * `JANELA_VOLATILIDADE_DIAS` dias, em fração de PREÇO (`desvioDiario`). Só
+   * os robôs com perna `porVolatilidade` precisam dele.
+   */
+  vol?: number | null;
 }
 
 export const HORA = 3_600_000;
 export const DIA = 24 * HORA;
+
+/**
+ * A janela do desvio de `Perna.porVolatilidade`, em DIAS. De 30 a 60 dias a
+ * regra melhora o Momento nas duas metades; com 14 e 21 o desvio é ruído e o
+ * dentro da amostra piora (ver `VENDA_MOMENTO`). 45 é o meio do platô.
+ */
+export const JANELA_VOLATILIDADE_DIAS = 45;
+
+/**
+ * O desvio padrão dos retornos diários a partir dos fechamentos diários, do
+ * mais velho ao mais novo (o último é o da véspera da decisão). Dia sem
+ * fechamento entra como NaN e anula os dois retornos que tocam nele. Com
+ * menos de dois terços dos retornos da janela, nulo: desvio de poucos dias é
+ * ruído, e "não consegui ler" não pode virar posição maior ou menor.
+ */
+export function desvioDiario(fechamentos: readonly number[]): number | null {
+  const rs: number[] = [];
+  for (let k = 1; k < fechamentos.length; k++) {
+    const a = fechamentos[k - 1];
+    const b = fechamentos[k];
+    if (a > 0 && b > 0 && Number.isFinite(a) && Number.isFinite(b)) rs.push(b / a - 1);
+  }
+  if (rs.length < 2 || rs.length < Math.round((2 / 3) * (fechamentos.length - 1))) return null;
+  const m = rs.reduce((s, r) => s + r, 0) / rs.length;
+  const v = Math.sqrt(rs.reduce((s, r) => s + (r - m) ** 2, 0) / (rs.length - 1));
+  return Number.isFinite(v) ? v : null;
+}
 
 /**
  * Taxa mais escorregada, por lado, sobre o nocional — a mesma régua da
@@ -891,6 +1206,11 @@ export function percorrer(
     }
 
     const ns = nivelDoStop(p);
+    // A liquidação anda com o financiamento: na margem isolada ele sai da margem.
+    if (p.corretora) {
+      if (e) reporMargem(e, p, ns);
+      p.liquidacao = liquidacaoAgora(p);
+    }
     const liq = p.liquidacao;
     // 2. Liquidação e stop estão do mesmo lado, e saindo da abertura o preço
     //    cruza primeiro o mais perto. A corretora só chega antes quando a vela
@@ -926,6 +1246,43 @@ export function percorrer(
 }
 
 /**
+ * REPÕE A MARGEM ISOLADA do caixa até a liquidação voltar a ficar a
+ * `FOLGA_LIQUIDACAO` além do stop de agora (`ns`) — o que se faz numa conta de
+ * verdade (`/fapi/v1/positionMargin`), uma vez por hora. Sem caixa para tudo,
+ * repõe o que der.
+ *
+ * Sem ela, com as regras da corretora, o Momento perdia 15 vendidas para a
+ * liquidação, todas pelo FINANCIAMENTO: a vendida de uma moeda espremida paga
+ * a taxa, a taxa sai da margem e a liquidação chega antes do stop. A DRIFT de
+ * 02/04/2026 pagou 98% da margem em 4,8 dias e foi liquidada com o preço
+ * CAINDO; a DEXE de 22/07/2026, 90% em 3,3 dias. Com ela: zero liquidações, e
+ * +5.803% → +5.928% (dentro +212% → +216%, fora +1.552% → +1.565%).
+ */
+function reporMargem(e: EstadoRobo, p: PosicaoRobo, ns: number): void {
+  if (!p.corretora) return;
+  const comprado = p.lado === "long";
+  const alvo = comprado ? ns - FOLGA_LIQUIDACAO * p.precoEntrada : ns + FOLGA_LIQUIDACAO * p.precoEntrada;
+  const d = degrauPara(p.corretora.degraus, p.nocional);
+  const q = p.nocional / p.precoEntrada;
+  // A margem que sobra (depois do financiamento) para a liquidação estar no alvo.
+  const precisa = comprado ? p.nocional - d.desconto - alvo * q * (1 - d.manutencao) : alvo * q * (1 + d.manutencao) - p.nocional - d.desconto;
+  const falta = precisa - (p.margem - p.funding);
+  if (!(falta > 0) || !(e.caixa > 0)) return;
+  const poe = Math.min(falta, e.caixa);
+  e.caixa -= poe;
+  p.margem += poe;
+}
+
+/**
+ * A liquidação de agora de uma posição com as regras da corretora: o degrau do
+ * nocional e a margem que sobra depois do financiamento (positivo é custo).
+ */
+export function liquidacaoAgora(p: PosicaoRobo | PernaHedge): number {
+  const degraus = p.corretora?.degraus ?? REGRAS_PADRAO.degraus;
+  return liquidacaoIsolada(p.lado, p.precoEntrada, p.nocional, p.margem - p.funding, degrauPara(degraus, p.nocional));
+}
+
+/**
  * A metade de hedge numa vela: o financiamento até a abertura, a liquidação
  * dela (a corretora fecha SÓ o hedge, que leva a própria margem, e o par segue
  * com a metade principal) e o preço de fechamento. Vela do hedge que falta é
@@ -935,6 +1292,7 @@ function andarHedge(h: PernaHedge, v: VelaRobo | undefined, cobrancas: readonly 
   if (h.liquidadaEm !== undefined) return;
   cobrar(h, cobrancas, t);
   if (!v || !(v.o > 0 && v.h > 0 && v.l > 0 && v.c > 0)) return;
+  if (h.corretora) h.liquidacao = liquidacaoAgora(h);
   const tocaLiq = h.lado === "long" ? v.l <= h.liquidacao : v.h >= h.liquidacao;
   if (tocaLiq) {
     h.liquidadaEm = t + HORA;
@@ -972,9 +1330,12 @@ function acrescentar(e: EstadoRobo, p: PosicaoRobo, v: VelaRobo, gatilho: number
   const base = comprado ? Math.max(v.o, gatilho) : Math.min(v.o, gatilho);
   const preco = comprado ? base + ESCORREGADA_STOP * (v.h - base) : base - ESCORREGADA_STOP * (base - v.l);
   const alavancagem = p.nocional / p.margem;
-  const nocional = e.regras.tamanho * patrimonioA(e) * (p.piramide?.tamanho ?? 1) * escalaDoTamanho(e, v.t);
+  const bruto = e.regras.tamanho * patrimonioA(e) * (p.piramide?.tamanho ?? 1) * escalaDoTamanho(e, v.t);
+  const nocional = p.corretora && preco > 0 ? nocionalAceito(bruto, preco, p.corretora) : bruto;
   const margem = nocional / alavancagem;
-  if (!(nocional >= NOCIONAL_MINIMO) || !(margem <= e.caixa) || !(preco > 0)) {
+  // A posição inteira precisa caber, nessa alavancagem, no degrau do tamanho novo.
+  const cabe = !p.corretora || alavancagem <= degrauPara(p.corretora.degraus, p.nocional + nocional).alavancagemMaxima;
+  if (!(nocional >= NOCIONAL_MINIMO) || !(margem <= e.caixa) || !(preco > 0) || !cabe) {
     e.recusadas++;
     return;
   }
@@ -983,8 +1344,12 @@ function acrescentar(e: EstadoRobo, p: PosicaoRobo, v: VelaRobo, gatilho: number
   p.nocional += nocional;
   p.margem += margem;
   p.precoEntrada = p.nocional / quantidade;
-  const distLiq = 1 / alavancagem - MANUTENCAO;
-  p.liquidacao = comprado ? p.precoEntrada * (1 - distLiq) : p.precoEntrada * (1 + distLiq);
+  if (p.corretora) {
+    p.liquidacao = liquidacaoAgora(p);
+  } else {
+    const distLiq = 1 / alavancagem - MANUTENCAO;
+    p.liquidacao = comprado ? p.precoEntrada * (1 - distLiq) : p.precoEntrada * (1 + distLiq);
+  }
   p.stop = comprado ? Math.max(p.stop, p.liquidacao * 1.01) : Math.min(p.stop, p.liquidacao * 0.99);
   p.parcelas = (p.parcelas ?? 1) + 1;
 }
@@ -1198,7 +1563,7 @@ export function sairPorPosto(
     if (k === undefined || k < p.posto.n) continue;
     const preco = precoDe(p.symbol);
     if (preco === undefined || !(preco > 0) || !Number.isFinite(preco)) continue;
-    if (custoExtra > 0) p.custoExtra = (p.custoExtra ?? 0) + custoExtra * p.nocional * (p.hedge ? 2 : 1);
+    if (custoExtra > 0) p.custoExtra = (p.custoExtra ?? 0) + custoExtra * (p.nocional + (p.hedge?.nocional ?? 0));
     saidas.push(fechar(e, p, { preco, quando, motivo: "posto" }, p.hedge ? precoDe(p.hedge.symbol) : undefined));
   }
   return saidas;
@@ -1220,8 +1585,12 @@ export function abrir(
   manipulada: boolean,
   /** Custo de entrada a mais, em fração do nocional: `CUSTO_ATRASO` na medição, zero no ao vivo. */
   custoExtra = 0,
-  /** O preço e o volume do símbolo do hedge, quando a perna tem hedge. */
-  hedge?: { preco: number; volume: number },
+  /** O preço, o volume e as regras da corretora do símbolo do hedge, quando a perna tem hedge. */
+  hedge?: { preco: number; volume: number; corretora?: RegrasDaMoeda },
+  /** O multiplicador do tamanho desta moeda (`Perna.porVolatilidade`); 1 sem ele. */
+  multiplicador = 1,
+  /** As regras da corretora para a moeda (`RegrasDaMoeda`); ausentes, o motor de antes de 09/10. */
+  corretora?: RegrasDaMoeda,
 ): PosicaoRobo | null {
   if (e.abertas.some((p) => p.symbol === symbol)) return null;
   if (!(preco > 0) || !Number.isFinite(preco)) {
@@ -1234,10 +1603,19 @@ export function abrir(
     return null;
   }
   const pat = patrimonioA(e);
-  const nocional = e.regras.tamanho * pat * escalaDoTamanho(e, quando);
-  const margem = nocional / perna.alavancagem;
-  const margemHedge = perna.hedge ? nocional / perna.hedge.alavancagem : 0;
-  if (!(nocional >= NOCIONAL_MINIMO) || margem + margemHedge > e.caixa) {
+  const mult = Number.isFinite(multiplicador) && multiplicador > 0 ? multiplicador : 1;
+  const bruto = e.regras.tamanho * mult * pat * escalaDoTamanho(e, quando);
+  // Com as regras da corretora: a quantidade no passo dela, o mínimo dela, e a
+  // margem que põe a liquidação depois do stop (`alavancagemSegura`).
+  const nocional = corretora ? nocionalAceito(bruto, preco, corretora) : bruto;
+  const alavancagem = corretora ? alavancagemSegura(perna.lado, perna.stop, perna.alavancagem, nocional, corretora.degraus) : perna.alavancagem;
+  const margem = nocional / alavancagem;
+  // O hedge tem o mesmo nocional, no passo e no mínimo do símbolo dele; não tem stop, só o teto do degrau.
+  const hc = hedge?.corretora;
+  const nocionalHedge = perna.hedge && hedge ? (hc ? nocionalAceito(nocional, hedge.preco, hc) : nocional) : 0;
+  const alavancagemHedge = perna.hedge ? Math.min(perna.hedge.alavancagem, hc ? degrauPara(hc.degraus, nocionalHedge).alavancagemMaxima : Infinity) : 1;
+  const margemHedge = perna.hedge ? nocionalHedge / alavancagemHedge : 0;
+  if (!(nocional >= NOCIONAL_MINIMO) || (perna.hedge && !(nocionalHedge >= NOCIONAL_MINIMO)) || margem + margemHedge > e.caixa) {
     e.recusadas++;
     return null;
   }
@@ -1253,7 +1631,11 @@ export function abrir(
     custoLado: custoPorLado(volume),
     stop: comprado ? preco * (1 - perna.stop) : preco * (1 + perna.stop),
     rastro: perna.rastro,
-    liquidacao: comprado ? preco * (1 - distLiq) : preco * (1 + distLiq),
+    liquidacao: corretora
+      ? liquidacaoIsolada(perna.lado, preco, nocional, margem, degrauPara(corretora.degraus, nocional))
+      : comprado
+        ? preco * (1 - distLiq)
+        : preco * (1 + distLiq),
     melhor: preco,
     prazoAte: quando + perna.prazoH * HORA,
     funding: 0,
@@ -1270,7 +1652,8 @@ export function abrir(
         }
       : {}),
     // O atraso da medição vale para as duas metades do par: as duas ordens esperam o retrato.
-    ...(custoExtra > 0 ? { custoExtra: custoExtra * nocional * (perna.hedge ? 2 : 1) } : {}),
+    ...(custoExtra > 0 ? { custoExtra: custoExtra * (nocional + nocionalHedge) } : {}),
+    ...(corretora ? { corretora } : {}),
     ...(perna.saidaPosto
       ? { posto: { janelaDias: perna.janelaDias, n: perna.saidaPosto, ...(perna.criterio ? { criterio: perna.criterio } : {}) } }
       : {}),
@@ -1282,13 +1665,18 @@ export function abrir(
       symbol: perna.hedge.symbol,
       lado: ladoH,
       precoEntrada: hedge.preco,
-      nocional,
+      nocional: nocionalHedge,
       margem: margemHedge,
       custoLado: custoPorLado(hedge.volume),
-      liquidacao: ladoH === "long" ? hedge.preco * (1 - distH) : hedge.preco * (1 + distH),
+      liquidacao: hc
+        ? liquidacaoIsolada(ladoH, hedge.preco, nocionalHedge, margemHedge, degrauPara(hc.degraus, nocionalHedge))
+        : ladoH === "long"
+          ? hedge.preco * (1 - distH)
+          : hedge.preco * (1 + distH),
       funding: 0,
       fundingAte: quando,
       precoAtual: hedge.preco,
+      ...(hc ? { corretora: hc } : {}),
     };
   }
   e.caixa -= margem + margemHedge;
@@ -1327,14 +1715,43 @@ export function decidir(
   for (const perna of pernas) {
     // O preço e o volume do hedge saem do mesmo retrato; sem a linha dele, o par não abre.
     const linhaHedge = perna.hedge ? linhas.find((l) => l.symbol === perna.hedge?.symbol) : undefined;
-    const hedge = perna.hedge ? { preco: precoDe(perna.hedge.symbol) ?? NaN, volume: linhaHedge?.volume ?? NaN } : undefined;
+    const hedge = perna.hedge
+      ? { preco: precoDe(perna.hedge.symbol) ?? NaN, volume: linhaHedge?.volume ?? NaN, corretora: linhaHedge?.corretora }
+      : undefined;
+    const tamanhoDe = multiplicadorPelaVolatilidade(e.regras, perna, linhas);
     for (const l of selecionar(e.regras, perna, linhas)) {
-      const p = abrir(e, perna, l.symbol, precoDe(l.symbol) ?? NaN, quando, l.volume, manipuladas?.has(l.symbol) ?? false, custoExtra, hedge);
+      const p = abrir(e, perna, l.symbol, precoDe(l.symbol) ?? NaN, quando, l.volume, manipuladas?.has(l.symbol) ?? false, custoExtra, hedge, tamanhoDe(l), l.corretora);
       if (p) abertas.push(p);
     }
   }
   e.ultimaDecisao = Math.floor(quando / DIA) * DIA;
   return abertas;
+}
+
+/**
+ * O multiplicador de `Perna.porVolatilidade` para cada moeda do dia: a mediana
+ * do desvio entre as elegíveis da perna (as mesmas de `ordenar`) ÷ o desvio da
+ * moeda, entre os limites. Perna sem a regra, dia sem nenhum desvio lido ou
+ * moeda sem o seu: 1.
+ */
+export function multiplicadorPelaVolatilidade(
+  regras: RegrasRobo,
+  perna: Perna,
+  linhas: readonly LinhaRanking[],
+): (l: LinhaRanking) => number {
+  const pv = perna.porVolatilidade;
+  if (!pv) return () => 1;
+  const desvios = ordenar(regras, perna, linhas)
+    .map((l) => l.vol)
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0)
+    .sort((a, b) => a - b);
+  if (desvios.length === 0) return () => 1;
+  const mediana = desvios[Math.floor(desvios.length / 2)];
+  return (l) => {
+    const v = l.vol;
+    if (typeof v !== "number" || !Number.isFinite(v) || !(v > 0)) return 1;
+    return Math.min(pv.maximo, Math.max(pv.minimo, mediana / v));
+  };
 }
 
 export function novoEstado(r: Robo, comecouEm: number): EstadoRobo {
@@ -1401,7 +1818,20 @@ export interface Medicao {
    */
   referencias?: MedicaoRobo[];
   /** O que o modelo realista cobra, para a tela dizer. */
-  realismo?: { escorregadaStop: number; custoAtraso: number; nocionalMinimo: number };
+  realismo?: {
+    escorregadaStop: number;
+    custoAtraso: number;
+    nocionalMinimo: number;
+    /**
+     * As regras da Binance (`RegrasDaMoeda`): de que dia é a tabela de degraus e,
+     * por robô, a janela inteira sem elas e com elas, as liquidações e as
+     * vendidas que precisaram de margem a mais.
+     */
+    corretora?: {
+      em: string;
+      robos: { id: string; semRegras: number; comRegras: number; liquidadas: number; vendidas: number; comMargemAMais: number }[];
+    };
+  };
 }
 
 export interface ArquivoRobos {

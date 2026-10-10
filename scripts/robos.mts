@@ -32,18 +32,24 @@ import {
   CAPITAL_ROBO,
   DIA,
   HORA,
+  JANELA_VOLATILIDADE_DIAS,
+  REGRAS_PADRAO,
   ROBOS,
   TAXA,
   decidir,
+  desvioDiario,
   fechar,
+  lerRegrasDaCorretora,
   marcar,
   novoEstado,
   percorrer,
   type ArquivoRobos,
   type Cobranca,
+  type DegrausDaCorretora,
   type EstadoRobo,
   type LinhaRanking,
   type PosicaoRobo,
+  type SimboloDaCorretora,
   type TradeRobo,
   type VelaRobo,
 } from "../lib/robos";
@@ -107,7 +113,7 @@ const parados = (anterior?.robos ?? []).filter((e) => !ROBOS.some((r) => r.id ==
 
 // ------------------------------------------------------------------ o mercado
 
-interface Simbolo {
+interface Simbolo extends SimboloDaCorretora {
   symbol: string;
   status: string;
   contractType: string;
@@ -119,6 +125,12 @@ if (!info?.symbols?.length) {
   console.log("robôs: a Binance não devolveu a lista de símbolos — nada gravado, a próxima rodada tenta de novo");
   process.exit(0);
 }
+// As regras da corretora — nocional mínimo, passo da quantidade e os degraus da
+// margem de manutenção (tabela pública, sem chave). Sem elas a seleção do dia
+// espera: abrir com a régua errada é escolher a liquidação no escuro. As saídas
+// não precisam delas, porque cada posição guarda as suas.
+const tabelaDeDegraus = await pegar<{ data?: { brackets?: DegrausDaCorretora[] } }>("/bapi/futures/v1/friendly/future/common/brackets");
+const regrasDaCorretora = tabelaDeDegraus?.data?.brackets?.length ? lerRegrasDaCorretora(info.symbols, tabelaDeDegraus.data.brackets) : null;
 const status = new Map(info.symbols.map((s) => [s.symbol, s.status]));
 // Só perpétuo USDT de moeda: os de ação e de metal (`TRADIFI_PERPETUAL`) não entram.
 const universo = info.symbols.filter(
@@ -227,7 +239,8 @@ const abertasAgora = new Map<string, number>();
 if (decidem.length > 0) {
   const janelas = [...new Set(decidem.flatMap((e) => e.regras.pernas.map((p) => p.janelaDias)))];
   const janelasFluxo = [...new Set(decidem.flatMap((e) => e.regras.pernas.filter((p) => p.criterio === "fluxo").map((p) => p.janelaDias)))];
-  const maior = Math.max(...janelas);
+  const comVol = decidem.some((e) => e.regras.pernas.some((p) => p.porVolatilidade));
+  const maior = Math.max(...janelas, comVol ? JANELA_VOLATILIDADE_DIAS + 1 : 0);
   const linhas: LinhaRanking[] = [];
   let responderam = 0;
   await Promise.all(
@@ -270,17 +283,32 @@ if (decidem.length > 0) {
           fluxo[d] = inteira && qv > 0 && Number.isFinite(tb) ? tb / qv : null;
         }
       }
+      // O desvio da `Perna.porVolatilidade`: os fechamentos diários até ontem, os
+      // mesmos que a medição lê de 24 em 24 h. Dia que falta entra como NaN.
+      let vol: number | null | undefined;
+      if (comVol) {
+        const fechamentos: number[] = [];
+        for (let k = JANELA_VOLATILIDADE_DIAS + 1; k >= 1; k--) {
+          const dia = porDia.get(hoje - k * DIA);
+          fechamentos.push(dia ? Number(dia[4]) : NaN);
+        }
+        vol = desvioDiario(fechamentos);
+      }
       linhas.push({
         symbol: s.symbol,
         retorno,
         volume: Number(ontem[7]),
         idadeDias: s.onboardDate > 0 ? (hoje - HORA - s.onboardDate) / DIA : null,
         ...(fluxo ? { fluxo } : {}),
+        ...(vol !== undefined ? { vol } : {}),
+        ...(regrasDaCorretora ? { corretora: regrasDaCorretora.get(s.symbol) ?? REGRAS_PADRAO } : {}),
       });
     }),
   );
   if (responderam < 0.9 * universo.length) {
     console.log(`robôs: só ${responderam} de ${universo.length} moedas responderam ao ranking — a seleção do dia espera a próxima rodada`);
+  } else if (!regrasDaCorretora) {
+    console.log("robôs: a Binance não devolveu a tabela de degraus de margem — a seleção do dia espera a próxima rodada");
   } else {
     linhas.sort((a, b) => a.symbol.localeCompare(b.symbol));
     const novas: PosicaoRobo[] = [];

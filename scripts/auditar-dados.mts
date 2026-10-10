@@ -409,7 +409,7 @@ if (gar) {
 // entrada, e um número que vira `null` no JSON — um `-Infinity` gravado sai
 // como `null` e entra no motor como zero na rodada seguinte.
 {
-  const { valorDaPosicao } = await import("../lib/robos");
+  const { valorDaPosicao, liquidacaoIsolada, degrauPara } = await import("../lib/robos");
   type R = import("../lib/robos").ArquivoRobos;
   const r = await ler<R>("data/robos.json");
   console.log("robos:");
@@ -426,8 +426,24 @@ if (gar) {
         }
         // Depois de uma parcela da pirâmide a liquidação SOBE com o preço médio;
         // é este teste que pega um `acrescentar` que esqueceu de subir o stop junto.
-        const doLadoCerto = p.lado === "long" ? p.stop < p.precoEntrada && p.liquidacao < p.stop : p.stop > p.precoEntrada && p.liquidacao > p.stop;
-        checa(`${e.id}/${p.symbol}: stop do lado certo e antes da liquidação`, doLadoCerto, `entrada ${p.precoEntrada} stop ${p.stop} liq ${p.liquidacao}`);
+        // Com as regras da corretora a liquidação anda com o financiamento, e só
+        // a reposição da margem a mantém além do stop: o que se confere aí é a
+        // MARGEM, com a liquidação refeita sem o financiamento.
+        const liqConferida = p.corretora
+          ? liquidacaoIsolada(p.lado, p.precoEntrada, p.nocional, p.margem, degrauPara(p.corretora.degraus, p.nocional))
+          : p.liquidacao;
+        const doLadoCerto = p.lado === "long" ? p.stop < p.precoEntrada && liqConferida < p.stop : p.stop > p.precoEntrada && liqConferida > p.stop;
+        checa(`${e.id}/${p.symbol}: stop do lado certo e antes da liquidação`, doLadoCerto, `entrada ${p.precoEntrada} stop ${p.stop} liq ${liqConferida}`);
+        if (p.corretora) {
+          const c = p.corretora;
+          const ok =
+            c.nocionalMinimo > 0 &&
+            c.passo >= 0 &&
+            c.degraus.length > 0 &&
+            c.degraus.every((d, k) => d.ate > 0 && d.manutencao > 0 && d.manutencao < 1 && d.alavancagemMaxima >= 1 && (k === 0 || d.ate > c.degraus[k - 1].ate));
+          checa(`${e.id}/${p.symbol}: regras da corretora legíveis (mínimo, passo e degraus em ordem)`, ok, JSON.stringify(c).slice(0, 120));
+          checa(`${e.id}/${p.symbol}: alavancagem até a do degrau`, p.nocional / p.margem <= degrauPara(c.degraus, p.nocional).alavancagemMaxima + 1e-9, `${(p.nocional / p.margem).toFixed(2)}x`);
+        }
         if (p.parcelas !== undefined) {
           checa(`${e.id}/${p.symbol}: parcelas é inteiro ≥ 2`, Number.isInteger(p.parcelas) && p.parcelas >= 2, `= ${p.parcelas}`);
         }
