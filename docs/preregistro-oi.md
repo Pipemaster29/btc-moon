@@ -65,3 +65,25 @@ reprova — e a reprovação fica escrita em `lib/robos.ts`, como as outras.
 
 Depois da decisão, as três são rodadas na reserva e os números vão para o
 registro, para ninguém precisar acreditar na escolha.
+
+## O resultado (10/10, depois do pré-registro)
+
+`npm run medir-robos -- --oi`, com 467.525 arquivos diários baixados e o dado
+lido em 90% das moeda-dia do desenho.
+
+| desenho, 08/01/2024 a 31/03/2026 | desenho | 1ª metade | 2ª metade | sem as 5 | queda |
+| --- | --- | --- | --- | --- | --- |
+| publicado | +1.864% (2,40) | +216% (1,56) | +444% (3,65) | +432% | −36% |
+| OI 7 d | +862% (1,87) | +174% (1,39) | +190% (2,34) | +219% | −45% |
+| OI 14 d | +797% (1,78) | +128% (1,17) | +254% (2,63) | +219% | −43% |
+| Top traders 7 d | +304% (1,36) | +26% (0,53) | +196% (2,50) | +28% | −45% |
+
+Entre parênteses, o Sharpe. **Nenhuma passou em nenhum critério: o filtro
+REPROVA sem chegar à reserva.** A reserva, rodada só para o registro:
+
+| reserva, 01/04 a 30/09/2026 | retorno | Sharpe | queda |
+| --- | --- | --- | --- |
+| publicado | +155% | 2,62 | −30% |
+| OI 7 d | +42% | 1,18 | −47% |
+| OI 14 d | +3% | 0,45 | −53% |
+| Top traders 7 d | +98% | 1,85 | −26% |
