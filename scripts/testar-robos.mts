@@ -214,6 +214,11 @@ function linha(symbol: string, r30: number | null, r14: number | null, volume = 
   confere("volume baixo, moeda nova e sem série ficam fora", c2.join() === "M9USDT,M8USDT", c2.join());
   const velha = selecionar(ROBO.regras, COMPRA, [...linhas, linha("VELHAUSDT", 5, 0, 50e6, null)]).map((l) => l.symbol);
   confere("idade desconhecida (mais velha que a série) entra", velha[0] === "VELHAUSDT", velha.join());
+  // O filtro de open interest (`docs/preregistro-oi.md`): pula quem viu o OI
+  // cair e segue o ranking; sem leitura, passa — falta de dado não é veto.
+  const comOI = linhas.map((l) => ({ ...l, oi: { oi7: l.symbol === "M9USDT" ? -0.1 : l.symbol === "M8USDT" ? null : 0.2 } }));
+  const filtro = selecionar(ROBO.regras, { ...COMPRA, filtroOI: { campo: "oi", janelaDias: 7 } }, comOI).map((l) => l.symbol);
+  confere("filtro de OI: pula o OI caindo, deixa passar o sem leitura", filtro.join() === "M8USDT,M7USDT", filtro.join());
 }
 {
   // A mesma moeda é a que mais subiu em 30 dias E a que mais caiu em 14: a

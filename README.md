@@ -952,6 +952,33 @@ dia, e quem entra nelas com milhões move o preço contra si. Com metade do impa
 Com os US$ 1.000 da arena o impacto custa 0,03% por lado (+5.928% → +5.611%), menos do
 que a régua de custo já cobra a mais — e por isso a medição publicada não o cobra.
 
+### O open interest, pré-registrado e reprovado (10/10)
+
+A única ideia nova com mecanismo que ainda não tinha sido medida: separar a monstra que
+sobe com **demanda alavancada nova** (open interest em contratos crescendo) da que sobe
+com **vendido sendo espremido** (open interest caindo), e comprar só a primeira. A
+pergunta, as três variantes, as janelas e o critério foram commitados
+(`docs/preregistro-oi.md`) **antes** de baixar um único arquivo — 467.525 arquivos
+diários de métricas do Data Vision, público e sem chave (`npx tsx scripts/baixar-oi.mts`).
+Desenho de 01/2024 a 03/2026; reserva de 04 a 09/2026, rodada só depois da escolha, que
+é feita pelo código (`npm run medir-robos -- --oi`).
+
+| desenho | retorno | Sharpe | sem as 5 melhores |
+| --- | --- | --- | --- |
+| publicado | +1.864% | 2,40 | +432% |
+| só com o OI de 7 dias subindo | +862% | 1,87 | +219% |
+| só com o OI de 14 dias subindo | +797% | 1,78 | +219% |
+| só com os maiores traders comprando mais | +304% | 1,36 | +28% |
+
+Nenhuma passou em nenhum critério. O inverso — comprar só com o open interest caindo —
+nasceu deste resultado, então foi pré-registrado à parte e julgado **só na reserva**
+(`docs/preregistro-oi-invertido.md`): +24% (Sharpe 0,96) contra +155% (2,62) do
+publicado. **Subindo ou caindo, filtrar tira a monstra junto.**
+
+E a mesma rodada mediu o que pesa mais que o filtro: **na reserva, o Momento sem as 5
+moedas que mais deram (TUT, BEAT, RAVE, LAB, LSK) perde 67%.** Os seis meses mais
+recentes do lucro são, inteiros, de cinco moedas.
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.

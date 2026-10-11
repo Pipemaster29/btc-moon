@@ -144,6 +144,14 @@ no código, com número:
   mais lucro na mesma queda: a 2x o tamanho ele faz +2.570% contra +5.928%,
   porque o caixa recusa 1.233 entradas. `npm run testar-quant` trava as contas.
 
+- **O open interest reprovou nos dois sentidos — e o lucro recente é de cinco
+  moedas (10/10).** Pré-registrado antes de baixar o dado (`docs/`): comprar
+  só a monstra com o open interest de 7 ou 14 dias subindo, ou com os maiores
+  traders comprando, piora o Momento em todos os critérios (Sharpe 2,40 →
+  1,36–1,87 no desenho). O inverso, julgado só na reserva de 04–09/2026: +24%
+  contra +155%. Na mesma reserva, o publicado sem as 5 melhores perde 67%.
+  `npx tsx scripts/baixar-oi.mts` e `npm run medir-robos -- --oi`.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 

@@ -192,6 +192,15 @@ export interface Perna {
    * leitura do desvio, o tamanho normal. Ausente: todas do mesmo tamanho.
    */
   porVolatilidade?: { minimo: number; maximo: number };
+  /**
+   * O FILTRO DE POSIÇÃO EM ABERTO (`docs/preregistro-oi.md`): a perna só entra
+   * na moeda cujo `campo` cresceu nos últimos `janelaDias` — "oi" é o open
+   * interest em CONTRATOS, "top" a razão comprado/vendido dos maiores traders
+   * (`LinhaRanking.oi`). O ranking é percorrido em ordem, pulando quem não
+   * passa. Sem o dado, PASSA: falta de leitura não vira veto. Ausente: sem
+   * filtro. Medido em 10/10 e só na medição — nenhum robô o usa.
+   */
+  filtroOI?: { campo: "oi" | "top"; janelaDias: number; /** Verdadeiro: só com o campo CAINDO (`docs/preregistro-oi-invertido.md`). */ caindo?: boolean };
 }
 
 /**
@@ -553,6 +562,26 @@ const COMPRA_45: Perna = {
  * ou 100 dias (+640% e +291%); vender só com ele abaixo (o dentro vira −15%);
  * pirâmide na vendida em −20% ou −30% (o dentro cai para +44% a +61% e a queda
  * vai a −52%); stop de 20% ou 30%; volume mínimo de 10 ou 50 milhões.
+ *
+ * O OPEN INTEREST REPROVOU (10/10, pré-registrado em `docs/preregistro-oi.md`
+ * antes de baixar o dado; `npm run medir-robos -- --oi`). A ideia era comprar só
+ * a monstra cujo open interest em contratos cresce — demanda alavancada nova —
+ * e pular a que sobe com ele caindo. No desenho (01/2024–03/2026), contra o
+ * publicado em +1.864% (Sharpe 2,40; sem as 5 melhores +432%):
+ *
+ *   só com o OI de 7 dias subindo       +862%  Sharpe 1,87   sem as 5 +219%
+ *   só com o OI de 14 dias subindo      +797%  Sharpe 1,78   sem as 5 +219%
+ *   só com os maiores traders comprando +304%  Sharpe 1,36   sem as 5  +28%
+ *
+ * Nenhuma passou em nenhum dos três critérios, e a reserva (04–09/2026),
+ * rodada só para o registro, diz o mesmo: publicado +155% (2,62), as três de
+ * +3% a +98%. O dado existia em 90% das moeda-dia.
+ *
+ * E O INVERSO TAMBÉM (`docs/preregistro-oi-invertido.md`, julgado só na
+ * reserva porque nasceu do desenho acima): só com o OI de 7 dias CAINDO, +24%
+ * (Sharpe 0,96) contra +155% (2,62). Subindo ou caindo, filtrar tira a monstra
+ * junto. A mesma rodada mediu que, na reserva, o publicado SEM as 5 melhores
+ * moedas perde 67%: os seis meses mais recentes são, inteiros, de cinco moedas.
  */
 const COMPRA_MOMENTO: Perna = { ...COMPRA_45, saidaPosto: 10 };
 
@@ -1070,6 +1099,12 @@ export interface LinhaRanking {
    */
   vol?: number | null;
   /**
+   * A variação em fração do open interest em contratos ("oi7", "oi14") e da
+   * razão dos maiores traders ("top7") até a véspera da decisão; nulo sem
+   * leitura. Só a perna com `filtroOI` lê.
+   */
+  oi?: Record<string, number | null>;
+  /**
    * SÓ NA MEDIÇÃO DE CAPACIDADE: o coeficiente do impacto de mercado pela lei
    * da raiz quadrada (`impactoPorLado`). Ausente, zero — com dezenas de
    * dólares por ordem, o livro já está todo em `custoPorLado`.
@@ -1583,6 +1618,15 @@ export function selecionar(regras: RegrasRobo, perna: Perna, linhas: readonly Li
   // O símbolo do hedge não entra na própria perna: vender ETH contra ETH é zero.
   const ordem = ordenar(regras, perna, linhas).filter((l) => l.symbol !== perna.hedge?.symbol);
   if (ordem.length < 4 * perna.k) return [];
+  const f = perna.filtroOI;
+  if (f) {
+    return ordem
+      .filter((l) => {
+        const v = l.oi?.[`${f.campo}${f.janelaDias}`];
+        return typeof v !== "number" || !Number.isFinite(v) || (f.caindo ? v < 0 : v > 0);
+      })
+      .slice(0, perna.k);
+  }
   return ordem.slice(0, perna.k);
 }
 

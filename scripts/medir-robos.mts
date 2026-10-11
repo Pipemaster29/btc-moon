@@ -49,6 +49,7 @@ import {
   type Medicao,
   type MedicaoRobo,
   type RegrasDaMoeda,
+  type Perna,
   type Robo,
   type SimboloDaCorretora,
   type TradeRobo,
@@ -504,6 +505,8 @@ function linhasDoDia(i: number, janelaVol: number, comCorretora: boolean): Linha
   if (padrao) linhasGuardadas.set(i, l);
   return l;
 }
+/** A que `simular` chama: `linhasDoDia`, ou ela com o open interest junto no estudo `--oi`. */
+let linhasComOI = linhasDoDia;
 
 /**
  * O volume diário MÉDIO dos 7 dias até a véspera da hora `i`, em dólar — a
@@ -559,7 +562,7 @@ function simular(
   for (let i = i0; i <= i1; i++) {
     const t = INICIO_DADOS + i * HORA;
     if (t % DIA === 0) {
-      let linhas = linhasDoDia(i, janelaVol, comCorretora).filter((l) => !excluir?.has(l.symbol) || hedges.has(l.symbol));
+      let linhas = linhasComOI(i, janelaVol, comCorretora).filter((l) => !excluir?.has(l.symbol) || hedges.has(l.symbol));
       if (extra.y) {
         // O desvio de quem não tem 45 dias de série é o do meio do dia: moeda nova não sai de graça.
         const vols = linhas.map((l) => l.vol).filter((v): v is number => typeof v === "number" && v > 0);
@@ -644,6 +647,138 @@ const janelas: [string, number, number][] = [
   ["dentro (até 06/2025)", INICIO, CORTE],
   ["fora (07/2025 em diante)", CORTE, FIM],
 ];
+
+if (args.includes("--oi") || args.includes("--oi-invertido")) {
+  await estudarOI(args.includes("--oi-invertido"));
+  process.exit(0);
+}
+
+/**
+ * O teste pré-registrado em `docs/preregistro-oi.md`, como está escrito lá: as
+ * três variantes no DESENHO, a escolha pelo critério fixado, e só então a
+ * RESERVA. A escolha é do código, não de quem olha — a reserva só roda
+ * depois dela. Precisa de `npx tsx scripts/baixar-oi.mts` antes.
+ */
+async function estudarOI(invertido = false): Promise<void> {
+  const { readdir: ler } = await import("node:fs/promises");
+  const pasta = ".cache/oi";
+  const series = new Map<string, Record<string, [number, number] | null>>();
+  for (const arq of await ler(pasta)) series.set(arq.replace(/\.json$/, ""), JSON.parse(await readFile(`${pasta}/${arq}`, "utf8")));
+  const diaDe = (t: number) => new Date(t).toISOString().slice(0, 10);
+  let comDado = 0;
+  let semDado = 0;
+  const variacao = (symbol: string, t: number, campo: 0 | 1, dias: number): number | null => {
+    const s = series.get(symbol);
+    // O valor da decisão da meia-noite de D é a última linha do arquivo de D−1.
+    const agora = s?.[diaDe(t - DIA)];
+    const antes = s?.[diaDe(t - DIA - dias * DIA)];
+    const a = agora?.[campo];
+    const b = antes?.[campo];
+    if (typeof a === "number" && typeof b === "number" && Number.isFinite(a) && Number.isFinite(b) && b > 0) {
+      comDado++;
+      return a / b - 1;
+    }
+    semDado++;
+    return null;
+  };
+  const compra = MOMENTO.regras.pernas.find((p) => p.lado === "long")!;
+  const comFiltro = (id: string, filtroOI: NonNullable<Perna["filtroOI"]>): Robo => ({
+    ...MOMENTO,
+    id,
+    regras: { ...MOMENTO.regras, pernas: MOMENTO.regras.pernas.map((p) => (p === compra ? { ...p, filtroOI } : p)) },
+  });
+  const variantes: [string, Robo][] = [
+    ["OI 7 d", comFiltro("oi7", { campo: "oi", janelaDias: 7 })],
+    ["OI 14 d", comFiltro("oi14", { campo: "oi", janelaDias: 14 })],
+    ["Top traders 7 d", comFiltro("top7", { campo: "top", janelaDias: 7 })],
+  ];
+  // As linhas do dia com o open interest junto: só as variantes leem, e o publicado as ignora.
+  const original = linhasDoDia;
+  const cacheOI = new Map<number, LinhaRanking[]>();
+  linhasComOI = (i: number, janelaVol: number, comCorretora: boolean) => {
+    const g = cacheOI.get(i);
+    if (g) return g;
+    const linhas = original(i, janelaVol, comCorretora);
+    const t = INICIO_DADOS + i * HORA;
+    const out = linhas.map((l) => ({
+      ...l,
+      oi: { oi7: variacao(l.symbol, t, 0, 7), oi14: variacao(l.symbol, t, 0, 14), top7: variacao(l.symbol, t, 1, 7) },
+    }));
+    cacheOI.set(i, out);
+    return out;
+  };
+
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  if (invertido) {
+    // `docs/preregistro-oi-invertido.md`: uma variante, julgada SÓ na reserva,
+    // porque a ideia nasceu do desenho do teste anterior.
+    const robo = comFiltro("oi7-caindo", { campo: "oi", janelaDias: 7, caindo: true });
+    console.log("\n== OI 7 d CAINDO — o juiz é a reserva (01/04 a 30/09/2026)");
+    const pub = simular(MOMENTO, FIM_DESENHO, FIM);
+    const top = new Set([...porMoeda(pub).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s));
+    const pubSem = simular(MOMENTO, FIM_DESENHO, FIM, top);
+    const v = simular(robo, FIM_DESENHO, FIM);
+    const vSem = simular(robo, FIM_DESENHO, FIM, top);
+    const fmt = (e: EstadoRobo) => `${pct(e.patrimonio / CAPITAL_ROBO - 1)} (Sharpe ${sharpeDe(e.curva).toFixed(2)}, queda ${pct(e.quedaMaxima)})`;
+    console.log(`publicado        ${fmt(pub)} · sem as 5 (${[...top].join(", ")}): ${pct(pubSem.patrimonio / CAPITAL_ROBO - 1)}`);
+    console.log(`OI 7 d caindo    ${fmt(v)} · sem as 5: ${pct(vSem.patrimonio / CAPITAL_ROBO - 1)}`);
+    const ok1 = sharpeDe(v.curva) > sharpeDe(pub.curva);
+    const ok2 = vSem.patrimonio >= pubSem.patrimonio;
+    console.log(`${ok1 ? "✓" : "✗"} Sharpe maior · ${ok2 ? "✓" : "✗"} sem as 5 não pior → ${ok1 && ok2 ? "CANDIDATA (não ligada)" : "REPROVADA"}`);
+    console.log("\n== o desenho, CONTAMINADO (a ideia nasceu dele), só para o registro");
+    for (const [nome, de, ate] of [["desenho", INICIO, FIM_DESENHO], ["1ª metade", INICIO, CORTE], ["2ª metade", CORTE, FIM_DESENHO]] as const) {
+      console.log(`${nome.padEnd(10)} publicado ${fmt(simular(MOMENTO, de, ate))} · caindo ${fmt(simular(robo, de, ate))}`);
+    }
+    return;
+  }
+  const desenho: [string, number, number][] = [
+    ["desenho", INICIO, FIM_DESENHO],
+    ["1ª metade", INICIO, CORTE],
+    ["2ª metade", CORTE, FIM_DESENHO],
+  ];
+  const linha = (nome: string, es: EstadoRobo[], sem5: EstadoRobo) =>
+    console.log(
+      `${nome.padEnd(16)} ` +
+        es.map((e, k) => `${desenho[k][0]} ${pct(e.patrimonio / CAPITAL_ROBO - 1)} (Sharpe ${sharpeDe(e.curva).toFixed(2)})`).join(" · ") +
+        ` · sem as 5: ${pct(sem5.patrimonio / CAPITAL_ROBO - 1)} · queda ${pct(es[0].quedaMaxima)}`,
+    );
+
+  console.log("\n== DESENHO (08/01/2024 a 31/03/2026) — a reserva ainda não foi rodada");
+  const base = desenho.map(([, de, ate]) => simular(MOMENTO, de, ate));
+  const top5 = new Set([...porMoeda(base[0]).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s));
+  const baseSem5 = simular(MOMENTO, INICIO, FIM_DESENHO, top5);
+  linha("publicado", base, baseSem5);
+  const sb = base.map((e) => sharpeDe(e.curva));
+  const aprovadas: { nome: string; robo: Robo; sharpe: number }[] = [];
+  for (const [nome, robo] of variantes) {
+    const es = desenho.map(([, de, ate]) => simular(robo, de, ate));
+    const sem5 = simular(robo, INICIO, FIM_DESENHO, top5);
+    linha(nome, es, sem5);
+    const sv = es.map((e) => sharpeDe(e.curva));
+    const criterios = [
+      ["Sharpe do desenho maior", sv[0] > sb[0]],
+      ["nenhuma metade pior", sv[1] >= sb[1] && sv[2] >= sb[2]],
+      ["sem as 5 não pior", sem5.patrimonio >= baseSem5.patrimonio],
+    ] as const;
+    console.log(`                 ${criterios.map(([c, ok]) => `${ok ? "✓" : "✗"} ${c}`).join(" · ")}`);
+    if (criterios.every(([, ok]) => ok)) aprovadas.push({ nome, robo, sharpe: sv[0] });
+  }
+
+  // A cobertura: em quantas linhas (moeda-dia, as três variações juntas) o dado existia.
+  console.log(`open interest lido em ${pct(comDado / Math.max(1, comDado + semDado))} das variações moeda-dia do desenho; o resto passou sem filtro`);
+  const escolhida = aprovadas.sort((a, b) => b.sharpe - a.sharpe)[0];
+  console.log(escolhida ? `\nescolhida pelo critério: ${escolhida.nome}` : "\nnenhuma passou no desenho: o filtro REPROVA sem chegar à reserva");
+
+  console.log("\n== RESERVA (01/04/2026 a 30/09/2026)");
+  const reserva = (r: Robo) => simular(r, FIM_DESENHO, FIM);
+  const rb = reserva(MOMENTO);
+  console.log(`publicado        ${pct(rb.patrimonio / CAPITAL_ROBO - 1)} (Sharpe ${sharpeDe(rb.curva).toFixed(2)}, queda ${pct(rb.quedaMaxima)})`);
+  for (const [nome, robo] of variantes) {
+    const e = reserva(robo);
+    const marca = escolhida?.robo === robo ? (sharpeDe(e.curva) >= sharpeDe(rb.curva) ? " ← escolhida: APROVADA" : " ← escolhida: REPROVADA na reserva") : " (registro)";
+    console.log(`${nome.padEnd(16)} ${pct(e.patrimonio / CAPITAL_ROBO - 1)} (Sharpe ${sharpeDe(e.curva).toFixed(2)}, queda ${pct(e.quedaMaxima)})${marca}`);
+  }
+}
 
 const medidos: MedicaoRobo[] = [];
 const referencias: MedicaoRobo[] = [];
