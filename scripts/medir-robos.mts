@@ -652,6 +652,179 @@ if (args.includes("--oi") || args.includes("--oi-invertido")) {
   await estudarOI(args.includes("--oi-invertido"));
   process.exit(0);
 }
+if (args.includes("--tamanho")) {
+  estudarTamanho();
+  process.exit(0);
+}
+
+/**
+ * A rodada 1 do loop de melhoria (`docs/preregistro-tamanho.md`), como está
+ * escrita lá: o Momento, o Fluxo e o fundo com o tamanho base multiplicado,
+ * julgados no DESENHO pelo teto de 50% de queda do documento de objetivos, a
+ * escolha pelo código, e só então a RESERVA. Depois da decisão, a escolhida em
+ * tempo real — as grades rodadas no tamanho dela e o walk-forward de 365 dias.
+ */
+function estudarTamanho(): void {
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  const TETO = -0.5;
+  const desenho: [string, number, number][] = [
+    ["desenho", INICIO, FIM_DESENHO],
+    ["1ª metade", INICIO, CORTE],
+    ["2ª metade", CORTE, FIM_DESENHO],
+  ];
+  const aoMes = (ret: number, de: number, ate: number) => (1 + ret) ** (30.4375 / ((ate - de) / DIA)) - 1;
+  const escalado = (r: Robo, L: number): Robo => ({ ...r, id: `${r.id}x${L}`, regras: { ...r.regras, tamanho: r.regras.tamanho * L } });
+  const quedaDe = (curva: readonly { t: number; patrimonio: number }[]) => {
+    let pico = 0;
+    let q = 0;
+    for (const p of curva) {
+      if (p.patrimonio > pico) pico = p.patrimonio;
+      if (pico > 0) q = Math.min(q, p.patrimonio / pico - 1);
+    }
+    return q;
+  };
+  type Livro = { e: EstadoRobo; viradas: Virada[] };
+  type Medida = { ret: number; mes: number; queda: number; sharpe: number; recusadas: number };
+  const medida = (curva: readonly { t: number; patrimonio: number }[], de: number, ate: number, recusadas = 0): Medida => {
+    const ret = curva[curva.length - 1].patrimonio / curva[0].patrimonio - 1;
+    return { ret, mes: aoMes(ret, de, ate), queda: quedaDe(curva), sharpe: sharpeDe(curva as { t: number; patrimonio: number }[]), recusadas };
+  };
+  /**
+   * O fundo de dois livros com as cotas marcadas HORA A HORA: os pesos de cada
+   * dia 1º saem de `paridadeDeRisco` (inverso do desvio de 90 dias, só com o
+   * caixa livre), e entre um dia 1º e o outro o patrimônio é a soma das cotas
+   * de cada subconta vezes o patrimônio dela naquela hora — a curva em que a
+   * queda do teto de 50% é medida.
+   */
+  const fundoHorario = (livros: Livro[]): { t: number; patrimonio: number }[] => {
+    const rs = livros.map((l) => retornosDiarios(diaria(l.e)));
+    const n = Math.min(...rs.map((x) => x.r.length));
+    const datas = rs[0].datas.slice(rs[0].datas.length - n);
+    const livre = livros.map((l) => {
+      const porT = new Map(l.viradas.map((v) => [v.t, v.patrimonio > 0 ? v.caixa / v.patrimonio : 0]));
+      return datas.map((t) => porT.get(t - DIA) ?? (t - DIA === l.e.comecouEm ? 1 : 0));
+    });
+    const f = paridadeDeRisco(rs.map((x) => x.r.slice(x.r.length - n)), datas, 90, 20, undefined, livre);
+    const valores = livros.map((l) => new Map(l.e.curva.map((p) => [p.t, p.patrimonio])));
+    const rebal = new Map(f.pesos.map((p) => [p.t, p.depois]));
+    const curva: { t: number; patrimonio: number }[] = [];
+    let cotas: number[] | null = null;
+    for (const p of livros[0].e.curva) {
+      const vs = valores.map((m) => m.get(p.t));
+      if (vs.some((v) => v === undefined || !(v > 0))) continue;
+      const v = vs as number[];
+      const total: number = cotas ? cotas.reduce((a, q, j) => a + q * v[j], 0) : CAPITAL_ROBO;
+      const depois = rebal.get(p.t);
+      if (cotas === null || depois) {
+        const pesos = depois ?? livros.map(() => 1 / livros.length);
+        cotas = pesos.map((w, j) => (w * total) / v[j]);
+      }
+      curva.push({ t: p.t, patrimonio: total });
+    }
+    return curva;
+  };
+  const top5De = (e: EstadoRobo) => new Set([...porMoeda(e).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s));
+  const fmt = (m: Medida) => `${pct(m.ret).padStart(9)} (${pct(m.mes)} ao mês, queda ${pct(m.queda)}, Sharpe ${m.sharpe.toFixed(2)})`;
+
+  // Cada livro em cada L, nas três janelas do desenho e sem as 5 da versão ×1 dele no desenho.
+  const tamanhos = { momento: [1, 1.25, 1.5, 1.75, 2, 2.5, 3], fluxo: [1, 1.25, 1.5, 2, 2.5, 3] };
+  const familias = { momento: [1, 1.25, 1.5, 1.75, 2], fluxo: [1, 1.25, 1.5, 2], fundo: [1, 1.5, 2, 2.5, 3] };
+  const base = { momento: MOMENTO, fluxo: FLUXO };
+  const top5 = {
+    momento: top5De(simular(MOMENTO, INICIO, FIM_DESENHO)),
+    fluxo: top5De(simular(FLUXO, INICIO, FIM_DESENHO)),
+  };
+  const livros = new Map<string, { janelas: Livro[]; sem5: Livro }>();
+  for (const id of ["momento", "fluxo"] as const) {
+    for (const L of tamanhos[id]) {
+      const r = escalado(base[id], L);
+      livros.set(`${id}:${L}`, {
+        janelas: desenho.map(([, de, ate]) => livroDoFundo(r, de, ate)),
+        sem5: livroDoFundo(r, INICIO, FIM_DESENHO, top5[id]),
+      });
+    }
+  }
+  console.log("\n== DESENHO (08/01/2024 a 31/03/2026) — a reserva ainda não foi rodada; teto de queda 50%, de hora em hora");
+  type Candidata = { familia: "momento" | "fluxo" | "fundo"; L: number; mes: number };
+  const elegiveis: Candidata[] = [];
+  for (const familia of ["momento", "fluxo", "fundo"] as const) {
+    for (const L of familias[familia]) {
+      let ms: Medida[];
+      let sem5: Medida;
+      if (familia === "fundo") {
+        const m = livros.get(`momento:${L}`)!;
+        const f = livros.get(`fluxo:${L}`)!;
+        ms = desenho.map(([, de, ate], k) => medida(fundoHorario([m.janelas[k], f.janelas[k]]), de, ate, m.janelas[k].e.recusadas + f.janelas[k].e.recusadas));
+        sem5 = medida(fundoHorario([m.sem5, f.sem5]), INICIO, FIM_DESENHO);
+      } else {
+        const l = livros.get(`${familia}:${L}`)!;
+        ms = desenho.map(([, de, ate], k) => medida(l.janelas[k].e.curva, de, ate, l.janelas[k].e.recusadas));
+        sem5 = medida(l.sem5.e.curva, INICIO, FIM_DESENHO);
+      }
+      const ok = ms.every((m) => m.queda >= TETO) && sem5.ret > 0;
+      if (ok) elegiveis.push({ familia, L, mes: ms[0].mes });
+      console.log(
+        `${`${familia} ×${L}`.padEnd(14)} ` + ms.map((m, k) => `${desenho[k][0]} ${fmt(m)}`).join(" · ") +
+          ` · sem as 5 ${pct(sem5.ret)} · ${ms[0].recusadas} recusadas → ${ok ? "elegível" : "fora do teto"}`,
+      );
+    }
+  }
+  const escolhida = elegiveis.sort((a, b) => b.mes - a.mes)[0];
+  if (!escolhida) {
+    console.log("\nnenhuma variante cabe no teto de 50%: REPROVA sem chegar à reserva");
+    return;
+  }
+  console.log(`\nescolhida pelo critério: ${escolhida.familia} ×${escolhida.L} (${pct(escolhida.mes)} ao mês no desenho)`);
+
+  console.log("\n== RESERVA (01/04/2026 a 30/09/2026)");
+  const naReserva = (familia: Candidata["familia"], L: number): Medida => {
+    if (familia === "fundo") {
+      const m = livroDoFundo(escalado(MOMENTO, L), FIM_DESENHO, FIM);
+      const f = livroDoFundo(escalado(FLUXO, L), FIM_DESENHO, FIM);
+      return medida(fundoHorario([m, f]), FIM_DESENHO, FIM, m.e.recusadas + f.e.recusadas);
+    }
+    const e = simular(escalado(base[familia], L), FIM_DESENHO, FIM);
+    return medida(e.curva, FIM_DESENHO, FIM, e.recusadas);
+  };
+  const ref = naReserva(escolhida.familia, 1);
+  const res = naReserva(escolhida.familia, escolhida.L);
+  const aprovada = res.queda >= TETO && res.mes >= ref.mes;
+  console.log(`${`${escolhida.familia} ×1`.padEnd(14)} ${fmt(ref)}`);
+  console.log(`${`${escolhida.familia} ×${escolhida.L}`.padEnd(14)} ${fmt(res)} ← escolhida: ${aprovada ? "APROVADA" : "REPROVADA na reserva"}`);
+  console.log("\n(registro, depois da decisão)");
+  for (const familia of ["momento", "fluxo", "fundo"] as const) {
+    for (const L of familias[familia]) {
+      if (familia === escolhida.familia && (L === escolhida.L || L === 1)) continue;
+      console.log(`${`${familia} ×${L}`.padEnd(14)} ${fmt(naReserva(familia, L))}`);
+    }
+  }
+
+  // A META: a escolhida em tempo real — as grades no tamanho dela, o walk-forward de 365 dias.
+  console.log(`\n== em tempo real, no tamanho escolhido (×${escolhida.L}): o walk-forward de 365 dias das grades`);
+  const emTempo = new Map<string, { datas: number[]; r: number[] }>();
+  for (const { livro, variantes } of GRADES) {
+    if (escolhida.familia !== "fundo" && livro.id !== escolhida.familia) continue;
+    const colunas: number[][] = [];
+    let datas: number[] = [];
+    for (const v of variantes) {
+      const d = retornosDiarios(diaria(simular(escalado(v, escolhida.L), INICIO, FIM)));
+      colunas.push(d.r);
+      datas = d.datas;
+    }
+    const matriz = Array.from({ length: datas.length }, (_, t) => colunas.map((c) => c[t]));
+    const wf = walkForward(matriz, datas, 365, 180);
+    emTempo.set(livro.id, { datas: wf.datas, r: wf.r });
+    const f = fichaDe(wf.r, wf.datas);
+    console.log(`${livro.nome.padEnd(8)} desde ${new Date(wf.datas[0] - DIA).toISOString().slice(0, 10)}: ${pct(f.retorno)} (${pct(aoMes(f.retorno, wf.datas[0] - DIA, wf.datas[wf.datas.length - 1]))} ao mês, queda diária ${pct(f.quedaMaxima)}, Sharpe ${f.sharpe.toFixed(2)})`);
+  }
+  if (escolhida.familia === "fundo") {
+    const ms = emTempo.get(MOMENTO.id)!;
+    const fl = emTempo.get(FLUXO.id)!;
+    const fr = paridadeDeRisco([ms.r, fl.r], ms.datas, 90, 20);
+    const f = fichaDe(fr.r, ms.datas);
+    console.log(`fundo    desde ${new Date(ms.datas[0] - DIA).toISOString().slice(0, 10)}: ${pct(f.retorno)} (${pct(aoMes(f.retorno, ms.datas[0] - DIA, ms.datas[ms.datas.length - 1]))} ao mês, queda diária ${pct(f.quedaMaxima)}, Sharpe ${f.sharpe.toFixed(2)})`);
+  }
+}
 
 /**
  * O teste pré-registrado em `docs/preregistro-oi.md`, como está escrito lá: as

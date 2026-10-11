@@ -152,6 +152,15 @@ no código, com número:
   contra +155%. Na mesma reserva, o publicado sem as 5 melhores perde 67%.
   `npx tsx scripts/baixar-oi.mts` e `npm run medir-robos -- --oi`.
 
+- **O loop de melhoria (11/10), a pedido: 30% ao mês.** Roda a partir de um
+  documento de objetivos, uma hipótese por rodada, cada uma pré-registrada em
+  `docs/` antes de medir, com a reserva de 04–09/2026 só para a escolhida. A
+  rodada 1 (`--tamanho`) mediu o tamanho de crescimento máximo dentro de 50% de
+  queda: é o turbo de hoje (Momento ×1,5) — 13,4% ao mês no desenho, 19,6% na
+  reserva e 11,7% em tempo real. Tamanho não chega a 30%: o caixa recusa
+  entrada antes (o fundo a ×3 recusa 2.166). O resto da meta tem de vir de
+  vantagem nova ou de menos margem presa por posição.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 

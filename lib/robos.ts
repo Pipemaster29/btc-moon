@@ -848,6 +848,12 @@ export const ROBOS: Robo[] = [
     id: "turbo",
     nome: "Momento turbo",
     descricao: "O mesmo livro com 1,5x o tamanho — a resposta medida para \"e se arriscasse mais?\".",
+    // 1,5x é o tamanho de crescimento máximo dentro de 50% de queda — o teto
+    // do documento de objetivos do loop —, medido em `docs/preregistro-tamanho.md`
+    // (rodada 1, 11/10): no desenho 01/2024–03/2026, 13,4% ao mês com −46%;
+    // a 1,75x a queda vai a −50,1%. Na reserva (04–09/2026), 19,6% ao mês contra
+    // 16,8% do Momento; em tempo real, 11,7% ao mês. Nem o Fluxo nem o fundo
+    // passam dele em retorno dentro do teto: o caixa recusa entrada antes.
     regras: { tamanho: 1.5 * TAMANHO_MOMENTO, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO], alvoVolatilidade: ALVO_MOMENTO },
   },
   {

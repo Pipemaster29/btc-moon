@@ -979,6 +979,24 @@ E a mesma rodada mediu o que pesa mais que o filtro: **na reserva, o Momento sem
 moedas que mais deram (TUT, BEAT, RAVE, LAB, LSK) perde 67%.** Os seis meses mais
 recentes do lucro são, inteiros, de cinco moedas.
 
+### O loop de melhoria: 30% ao mês (11/10)
+
+O pedido: um loop que rode até os robôs renderem **30% ao mês**. Ele roda a partir de
+um documento de objetivos (meta, critérios, limites, fila de hipóteses e diário), uma
+hipótese por rodada, cada uma **pré-registrada em `docs/` antes de medir**, com o
+desenho de 01/2024 a 03/2026 e a reserva de 04 a 09/2026 só para a escolhida — o
+método do teste do open interest. A meta só conta com cinco testes juntos: medição
+completa, tempo real (walk-forward), as duas metades e a cauda, Sharpe deflacionado e
+queda de até 50% de hora em hora.
+
+30% ao mês é ×23 por ano. O crescimento máximo de uma estratégia é SR²/2 ao ano,
+apostando a fração de Kelly: a meta pede Sharpe real de 2,5 com Kelly cheio — que perde
+metade do patrimônio em metade das trajetórias — ou 2,9 com meio Kelly.
+
+| rodada | hipótese | resultado | decisão |
+| --- | --- | --- | --- |
+| 1 | o tamanho de crescimento máximo dentro de −50% (`docs/preregistro-tamanho.md`) | Momento ×1,5 — o turbo de hoje: 13,4% ao mês no desenho, 19,6% na reserva, **11,7% em tempo real**; o fundo chega a 11,4% (×2,5), com o caixa recusando 1.574 entradas | aprovada, sem mudança: o turbo já está nesse tamanho |
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.
