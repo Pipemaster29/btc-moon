@@ -34,3 +34,25 @@ na mesa de risco (Sharpe deflacionado e walk-forward). Reprovou em algum: fica
 escrita como reprovada.
 
 O desenho é impresso junto, marcado como contaminado.
+
+## O resultado (10/10, depois do pré-registro)
+
+`npm run medir-robos -- --oi-invertido`.
+
+| reserva, 01/04 a 30/09/2026 | retorno | Sharpe | queda | sem as 5 do publicado |
+| --- | --- | --- | --- | --- |
+| publicado | +155% | 2,62 | −30% | **−67%** |
+| OI 7 d caindo | +24% | 0,96 | −34% | −64% |
+
+✗ Sharpe maior · ✓ sem as 5 não pior → **REPROVADA.**
+
+O desenho, contaminado e só para o registro: publicado +1.864% (2,40), caindo
++509% (1,72); 1ª metade +216% contra +108%, 2ª metade +444% contra +163%.
+
+**Subindo ou caindo, o open interest piora o Momento.** A leitura mais simples:
+o lucro mora em pegar as 5 do topo do ranking sem exceção, e qualquer filtro que
+tire candidatas aumenta a chance de perder justamente a monstra.
+
+**E o achado que pesa mais que o filtro:** na reserva, o Momento publicado SEM
+as 5 moedas que mais deram (TUT, BEAT, RAVE, LAB, LSK) perde 67%. Os seis meses
+mais recentes do lucro são, inteiros, dessas cinco.

@@ -648,8 +648,8 @@ const janelas: [string, number, number][] = [
   ["fora (07/2025 em diante)", CORTE, FIM],
 ];
 
-if (args.includes("--oi")) {
-  await estudarOI();
+if (args.includes("--oi") || args.includes("--oi-invertido")) {
+  await estudarOI(args.includes("--oi-invertido"));
   process.exit(0);
 }
 
@@ -659,7 +659,7 @@ if (args.includes("--oi")) {
  * RESERVA. A escolha é do código, não de quem olha — a reserva só roda
  * depois dela. Precisa de `npx tsx scripts/baixar-oi.mts` antes.
  */
-async function estudarOI(): Promise<void> {
+async function estudarOI(invertido = false): Promise<void> {
   const { readdir: ler } = await import("node:fs/promises");
   const pasta = ".cache/oi";
   const series = new Map<string, Record<string, [number, number] | null>>();
@@ -709,6 +709,28 @@ async function estudarOI(): Promise<void> {
   };
 
   const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  if (invertido) {
+    // `docs/preregistro-oi-invertido.md`: uma variante, julgada SÓ na reserva,
+    // porque a ideia nasceu do desenho do teste anterior.
+    const robo = comFiltro("oi7-caindo", { campo: "oi", janelaDias: 7, caindo: true });
+    console.log("\n== OI 7 d CAINDO — o juiz é a reserva (01/04 a 30/09/2026)");
+    const pub = simular(MOMENTO, FIM_DESENHO, FIM);
+    const top = new Set([...porMoeda(pub).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s));
+    const pubSem = simular(MOMENTO, FIM_DESENHO, FIM, top);
+    const v = simular(robo, FIM_DESENHO, FIM);
+    const vSem = simular(robo, FIM_DESENHO, FIM, top);
+    const fmt = (e: EstadoRobo) => `${pct(e.patrimonio / CAPITAL_ROBO - 1)} (Sharpe ${sharpeDe(e.curva).toFixed(2)}, queda ${pct(e.quedaMaxima)})`;
+    console.log(`publicado        ${fmt(pub)} · sem as 5 (${[...top].join(", ")}): ${pct(pubSem.patrimonio / CAPITAL_ROBO - 1)}`);
+    console.log(`OI 7 d caindo    ${fmt(v)} · sem as 5: ${pct(vSem.patrimonio / CAPITAL_ROBO - 1)}`);
+    const ok1 = sharpeDe(v.curva) > sharpeDe(pub.curva);
+    const ok2 = vSem.patrimonio >= pubSem.patrimonio;
+    console.log(`${ok1 ? "✓" : "✗"} Sharpe maior · ${ok2 ? "✓" : "✗"} sem as 5 não pior → ${ok1 && ok2 ? "CANDIDATA (não ligada)" : "REPROVADA"}`);
+    console.log("\n== o desenho, CONTAMINADO (a ideia nasceu dele), só para o registro");
+    for (const [nome, de, ate] of [["desenho", INICIO, FIM_DESENHO], ["1ª metade", INICIO, CORTE], ["2ª metade", CORTE, FIM_DESENHO]] as const) {
+      console.log(`${nome.padEnd(10)} publicado ${fmt(simular(MOMENTO, de, ate))} · caindo ${fmt(simular(robo, de, ate))}`);
+    }
+    return;
+  }
   const desenho: [string, number, number][] = [
     ["desenho", INICIO, FIM_DESENHO],
     ["1ª metade", INICIO, CORTE],

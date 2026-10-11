@@ -200,7 +200,7 @@ export interface Perna {
    * passa. Sem o dado, PASSA: falta de leitura não vira veto. Ausente: sem
    * filtro. Medido em 10/10 e só na medição — nenhum robô o usa.
    */
-  filtroOI?: { campo: "oi" | "top"; janelaDias: number };
+  filtroOI?: { campo: "oi" | "top"; janelaDias: number; /** Verdadeiro: só com o campo CAINDO (`docs/preregistro-oi-invertido.md`). */ caindo?: boolean };
 }
 
 /**
@@ -576,6 +576,12 @@ const COMPRA_45: Perna = {
  * Nenhuma passou em nenhum dos três critérios, e a reserva (04–09/2026),
  * rodada só para o registro, diz o mesmo: publicado +155% (2,62), as três de
  * +3% a +98%. O dado existia em 90% das moeda-dia.
+ *
+ * E O INVERSO TAMBÉM (`docs/preregistro-oi-invertido.md`, julgado só na
+ * reserva porque nasceu do desenho acima): só com o OI de 7 dias CAINDO, +24%
+ * (Sharpe 0,96) contra +155% (2,62). Subindo ou caindo, filtrar tira a monstra
+ * junto. A mesma rodada mediu que, na reserva, o publicado SEM as 5 melhores
+ * moedas perde 67%: os seis meses mais recentes são, inteiros, de cinco moedas.
  */
 const COMPRA_MOMENTO: Perna = { ...COMPRA_45, saidaPosto: 10 };
 
@@ -1617,7 +1623,7 @@ export function selecionar(regras: RegrasRobo, perna: Perna, linhas: readonly Li
     return ordem
       .filter((l) => {
         const v = l.oi?.[`${f.campo}${f.janelaDias}`];
-        return typeof v !== "number" || !Number.isFinite(v) || v > 0;
+        return typeof v !== "number" || !Number.isFinite(v) || (f.caindo ? v < 0 : v > 0);
       })
       .slice(0, perna.k);
   }
