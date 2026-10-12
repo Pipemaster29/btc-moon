@@ -531,14 +531,60 @@ interface Extra {
   viradas?: { t: number; caixa: number; patrimonio: number }[];
 }
 
+/** O que uma hora de um robô precisa saber além do estado dele. */
+interface Contexto {
+  janelaVol: number;
+  comCorretora: boolean;
+  excluir?: Set<string>;
+  /** O símbolo do hedge fica no ranking mesmo no "sem as 5": é dele que sai o preço do par. */
+  hedges: Set<string>;
+  extra: Extra;
+}
+
+const vela = (s: Serie, i: number, t: number) => ({ t, o: s.o[i], h: s.h[i], l: s.l[i], c: s.c[i] });
+const cobrancaDe = (s: Serie, i: number, t: number) => (Number.isNaN(s.fr[i]) ? [] : [{ t, taxa: s.fr[i] }]);
+
 /**
- * Roda um robô de `de` a `ate` (milissegundos), do zero. A decisão é na
- * abertura da vela da meia-noite, com o fechamento da anterior; a entrada é na
- * abertura dela, PAGANDO o custo medido do atraso (`CUSTO_ATRASO`), porque o
- * ao vivo entra no primeiro retrato depois da meia-noite e não nela. O stop
- * escorrega como medido no minuto do disparo (`ESCORREGADA_STOP`), dentro de
- * `percorrer`.
+ * UMA HORA de um robô: na abertura da vela da meia-noite, a decisão do dia com
+ * o fechamento da anterior — a entrada na abertura dela, PAGANDO o custo medido
+ * do atraso (`CUSTO_ATRASO`), porque o ao vivo entra no primeiro retrato depois
+ * da meia-noite e não nela —; depois, a vela de cada posição aberta, com o stop
+ * escorregando como medido no minuto do disparo (`ESCORREGADA_STOP`, dentro de
+ * `percorrer`); e a marcação no fechamento.
  */
+function umaHora(e: EstadoRobo, i: number, ctx: Contexto): void {
+  const t = INICIO_DADOS + i * HORA;
+  if (t % DIA === 0) {
+    let linhas = linhasComOI(i, ctx.janelaVol, ctx.comCorretora).filter((l) => !ctx.excluir?.has(l.symbol) || ctx.hedges.has(l.symbol));
+    if (ctx.extra.y) {
+      // O desvio de quem não tem 45 dias de série é o do meio do dia: moeda nova não sai de graça.
+      const vols = linhas.map((l) => l.vol).filter((v): v is number => typeof v === "number" && v > 0);
+      const meio = vols.length > 0 ? quantil(vols, 0.5) : NaN;
+      const y = ctx.extra.y;
+      linhas = linhas.map((l) => {
+        const s = porSimbolo.get(l.symbol)!;
+        const v = volumeMedio7(s, i);
+        return { ...l, impacto: coeficienteDeImpacto(y, typeof l.vol === "number" && l.vol > 0 ? l.vol : meio, Number.isFinite(v) && v > 0 ? v : l.volume) };
+      });
+    }
+    decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, CUSTO_ATRASO);
+  }
+  for (const p of [...e.abertas]) {
+    const s = porSimbolo.get(p.symbol)!;
+    const sh = p.hedge ? porSimbolo.get(p.hedge.symbol) : undefined;
+    const hedge = sh ? { velas: [vela(sh, i, t)], cobrancas: cobrancaDe(sh, i, t) } : undefined;
+    const saida = percorrer(p, [vela(s, i, t)], cobrancaDe(s, i, t), e, hedge);
+    if (saida) fechar(e, p, saida);
+  }
+  marcar(e, t + HORA);
+  if (ctx.extra.viradas && (t + HORA) % DIA === 0) ctx.extra.viradas.push({ t: t + HORA, caixa: e.caixa, patrimonio: e.patrimonio });
+}
+
+/** As horas (índices) de `de` a `ate`, cortadas no fim dos dados. */
+const horasDe = (de: number, ate: number): [number, number] => [Math.floor((de - INICIO_DADOS) / HORA), Math.min(fim, Math.floor((ate - INICIO_DADOS) / HORA))];
+const hedgesDe = (r: Robo) => new Set(r.regras.pernas.flatMap((p) => (p.hedge ? [p.hedge.symbol] : [])));
+
+/** Roda um robô de `de` a `ate` (milissegundos), do zero, hora a hora (`umaHora`). */
 function simular(
   robo: Robo,
   de: number,
@@ -553,40 +599,87 @@ function simular(
 ): EstadoRobo {
   const r: Robo = tamanho === undefined ? robo : { ...robo, regras: { ...robo.regras, tamanho } };
   const e = novoEstado(r, de, extra.capital);
-  // O símbolo do hedge fica no ranking mesmo no "sem as 5": é dele que sai o preço do par.
-  const hedges = new Set(r.regras.pernas.flatMap((p) => (p.hedge ? [p.hedge.symbol] : [])));
-  const i0 = Math.floor((de - INICIO_DADOS) / HORA);
-  const i1 = Math.min(fim, Math.floor((ate - INICIO_DADOS) / HORA));
-  const vela = (s: Serie, i: number, t: number) => ({ t, o: s.o[i], h: s.h[i], l: s.l[i], c: s.c[i] });
-  const cobrancaDe = (s: Serie, i: number, t: number) => (Number.isNaN(s.fr[i]) ? [] : [{ t, taxa: s.fr[i] }]);
+  const ctx: Contexto = { janelaVol, comCorretora, excluir, hedges: hedgesDe(r), extra };
+  const [i0, i1] = horasDe(de, ate);
+  for (let i = i0; i <= i1; i++) umaHora(e, i, ctx);
+  return e;
+}
+
+/**
+ * O FUNDO HORA A HORA: as subcontas lado a lado, cada uma com o seu robô, e o
+ * patrimônio do fundo como a soma das cotas de cada uma vezes o patrimônio dela
+ * — o mesmo fundo da mesa de risco (`paridadeDeRisco`: inverso do desvio de 90
+ * dias de cada livro, refeito no primeiro dia de cada mês, só com o caixa
+ * livre), mas simulado junto, para que uma regra do FUNDO possa mexer nos robôs
+ * antes da decisão de cada dia.
+ *
+ * Com `alvo`, a regra é o alvo de volatilidade do fundo inteiro (rodada 2 do
+ * loop, `docs/preregistro-alvo-fundo.md`): a cada meia-noite, o tamanho base dos
+ * dois livros é multiplicado por alvo ÷ (desvio dos retornos diários do fundo
+ * nos `janelaDias` dias anteriores × √365), entre os limites; com menos de 20
+ * dias de curva, 1. O alvo próprio do Momento continua valendo dentro dele.
+ */
+function simularFundo(
+  robos: Robo[],
+  de: number,
+  ate: number,
+  opcoes: { alvo?: { anual: number; janelaDias: number; minimo: number; maximo: number }; excluir?: (Set<string> | undefined)[] } = {},
+): { curva: { t: number; patrimonio: number }[]; estados: EstadoRobo[]; escalas: number[] } {
+  const estados = robos.map((r) => novoEstado({ ...r, regras: { ...r.regras } }, de));
+  const bases = robos.map((r) => r.regras.tamanho);
+  const ctxs: Contexto[] = robos.map((r, j) => ({ janelaVol: JANELA_VOLATILIDADE_DIAS, comCorretora: true, excluir: opcoes.excluir?.[j], hedges: hedgesDe(r), extra: {} }));
+  const n = robos.length;
+  let cotas = robos.map(() => 1 / n);
+  const doFundo: number[] = [];
+  const dosLivros: number[][] = robos.map(() => []);
+  const curva: { t: number; patrimonio: number }[] = [{ t: de, patrimonio: CAPITAL_ROBO }];
+  const escalas: number[] = [];
+  const desvio = (vals: readonly number[], janela: number): number => {
+    const rs: number[] = [];
+    for (let k = Math.max(1, vals.length - janela); k < vals.length; k++) if (vals[k - 1] > 0) rs.push(vals.at(k)! / vals.at(k - 1)! - 1);
+    return rs.length >= 20 ? momentos(rs).desvio : NaN;
+  };
+  let mes = -1;
+  const [i0, i1] = horasDe(de, ate);
   for (let i = i0; i <= i1; i++) {
     const t = INICIO_DADOS + i * HORA;
     if (t % DIA === 0) {
-      let linhas = linhasComOI(i, janelaVol, comCorretora).filter((l) => !excluir?.has(l.symbol) || hedges.has(l.symbol));
-      if (extra.y) {
-        // O desvio de quem não tem 45 dias de série é o do meio do dia: moeda nova não sai de graça.
-        const vols = linhas.map((l) => l.vol).filter((v): v is number => typeof v === "number" && v > 0);
-        const meio = vols.length > 0 ? quantil(vols, 0.5) : NaN;
-        const y = extra.y;
-        linhas = linhas.map((l) => {
-          const s = porSimbolo.get(l.symbol)!;
-          const v = volumeMedio7(s, i);
-          return { ...l, impacto: coeficienteDeImpacto(y, typeof l.vol === "number" && l.vol > 0 ? l.vol : meio, Number.isFinite(v) && v > 0 ? v : l.volume) };
-        });
+      const vs = estados.map((e) => e.patrimonio);
+      const fundo = cotas.reduce((a, q, j) => a + q * vs[j], 0);
+      doFundo.push(fundo);
+      vs.forEach((v, j) => dosLivros[j].push(v));
+      const d = new Date(t);
+      const m = d.getUTCFullYear() * 12 + d.getUTCMonth();
+      if (m !== mes) {
+        mes = m;
+        // Os pesos do mês: o inverso do desvio de 90 dias de cada livro (iguais sem 20 dias de passado).
+        const desvios = dosLivros.map((vals) => desvio(vals, 90));
+        const brutos = desvios.every((x) => x > 0) ? desvios.map((x) => 1 / x) : desvios.map(() => 1);
+        const soma = brutos.reduce((a, b) => a + b, 0);
+        const pesos = brutos.map((b) => b / soma);
+        // Só o caixa livre sai de uma subconta; o que veio vai para quem faltava, na proporção.
+        const valores = cotas.map((q, j) => q * vs[j]);
+        const quer = valores.map((v, j) => v - pesos[j] * fundo);
+        const pode = quer.map((q, j) => (q > 0 ? Math.min(q, valores[j] * Math.min(1, Math.max(0, estados[j].caixa / Math.max(1e-9, estados[j].patrimonio)))) : 0));
+        const veio = pode.reduce((a, b) => a + b, 0);
+        const faltava = quer.reduce((a, q) => a + (q < 0 ? -q : 0), 0);
+        const novos = valores.map((v, j) => (quer[j] > 0 ? v - pode[j] : faltava > 0 ? v + (-quer[j] * veio) / faltava : v));
+        cotas = novos.map((v, j) => v / vs[j]);
       }
-      decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, CUSTO_ATRASO);
+      // O alvo do fundo: a escala do dia, lida só do passado do próprio fundo.
+      let escala = 1;
+      if (opcoes.alvo) {
+        const a = opcoes.alvo;
+        const sd = desvio(doFundo, a.janelaDias);
+        if (sd > 0) escala = Math.min(a.maximo, Math.max(a.minimo, a.anual / (sd * Math.sqrt(365))));
+      }
+      escalas.push(escala);
+      estados.forEach((e, j) => (e.regras = { ...e.regras, tamanho: bases[j] * escala }));
     }
-    for (const p of [...e.abertas]) {
-      const s = porSimbolo.get(p.symbol)!;
-      const sh = p.hedge ? porSimbolo.get(p.hedge.symbol) : undefined;
-      const hedge = sh ? { velas: [vela(sh, i, t)], cobrancas: cobrancaDe(sh, i, t) } : undefined;
-      const saida = percorrer(p, [vela(s, i, t)], cobrancaDe(s, i, t), e, hedge);
-      if (saida) fechar(e, p, saida);
-    }
-    marcar(e, t + HORA);
-    if (extra.viradas && (t + HORA) % DIA === 0) extra.viradas.push({ t: t + HORA, caixa: e.caixa, patrimonio: e.patrimonio });
+    estados.forEach((e, j) => umaHora(e, i, ctxs[j]));
+    curva.push({ t: t + HORA, patrimonio: cotas.reduce((a, q, j) => a + q * estados[j].patrimonio, 0) });
   }
-  return e;
+  return { curva, estados, escalas };
 }
 
 function sharpeDe(curva: { t: number; patrimonio: number }[]): number {
@@ -655,6 +748,106 @@ if (args.includes("--oi") || args.includes("--oi-invertido")) {
 if (args.includes("--tamanho")) {
   estudarTamanho();
   process.exit(0);
+}
+if (args.includes("--alvo-fundo")) {
+  estudarAlvoFundo();
+  process.exit(0);
+}
+
+/**
+ * A rodada 2 do loop (`docs/preregistro-alvo-fundo.md`), como está escrita lá:
+ * o fundo inteiro com o alvo de volatilidade de 40%, 60% ou 80% ao ano,
+ * simulado com as subcontas lado a lado (`simularFundo`), julgado no DESENHO
+ * pelo teto de 50% de queda e contra a campeã da rodada 1 (Momento ×1,5); um
+ * controle sem alvo tem de reproduzir o fundo ×1 da rodada 1 antes de tudo.
+ */
+function estudarAlvoFundo(): void {
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  const TETO = -0.5;
+  const desenho: [string, number, number][] = [
+    ["desenho", INICIO, FIM_DESENHO],
+    ["1ª metade", INICIO, CORTE],
+    ["2ª metade", CORTE, FIM_DESENHO],
+  ];
+  const aoMes = (ret: number, de: number, ate: number) => (1 + ret) ** (30.4375 / ((ate - de) / DIA)) - 1;
+  const quedaDe = (curva: readonly { t: number; patrimonio: number }[]) => {
+    let pico = 0;
+    let q = 0;
+    for (const p of curva) {
+      if (p.patrimonio > pico) pico = p.patrimonio;
+      if (pico > 0) q = Math.min(q, p.patrimonio / pico - 1);
+    }
+    return q;
+  };
+  type Medida = { ret: number; mes: number; queda: number; sharpe: number; recusadas: number; escala?: number };
+  const medida = (curva: { t: number; patrimonio: number }[], de: number, ate: number, recusadas = 0, escalas?: number[]): Medida => {
+    const ret = curva[curva.length - 1].patrimonio / curva[0].patrimonio - 1;
+    const escala = escalas && escalas.length > 0 ? escalas.reduce((a, b) => a + b, 0) / escalas.length : undefined;
+    return { ret, mes: aoMes(ret, de, ate), queda: quedaDe(curva), sharpe: sharpeDe(curva), recusadas, ...(escala !== undefined ? { escala } : {}) };
+  };
+  const fmt = (m: Medida) =>
+    `${pct(m.ret).padStart(9)} (${pct(m.mes)} ao mês, queda ${pct(m.queda)}, Sharpe ${m.sharpe.toFixed(2)}${m.escala !== undefined ? `, escala média ${m.escala.toFixed(2)}` : ""})`;
+  const top5De = (e: EstadoRobo) => new Set([...porMoeda(e).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s));
+  const sem5 = [top5De(simular(MOMENTO, INICIO, FIM_DESENHO)), top5De(simular(FLUXO, INICIO, FIM_DESENHO))];
+  const livros = [MOMENTO, FLUXO];
+  const doFundo = (de: number, ate: number, alvo?: number, excluir?: Set<string>[]): Medida => {
+    const f = simularFundo(livros, de, ate, { ...(alvo ? { alvo: { anual: alvo, janelaDias: 40, minimo: 0.25, maximo: 2 } } : {}), ...(excluir ? { excluir } : {}) });
+    return medida(f.curva, de, ate, f.estados.reduce((a, e) => a + e.recusadas, 0), alvo ? f.escalas : undefined);
+  };
+
+  // O CONTROLE: sem alvo, o fundo lado a lado tem de ser o fundo ×1 da rodada 1 (+684,5%, −20,7%).
+  console.log("\n== CONTROLE: o fundo sem alvo, simulado lado a lado");
+  const controle = desenho.map(([, de, ate]) => doFundo(de, ate));
+  console.log(controle.map((m, k) => `${desenho[k][0]} ${fmt(m)}`).join(" · "));
+  const reproduz = Math.abs(controle[0].ret - 6.845) < 0.01 && Math.abs(controle[0].queda - -0.207) < 0.002;
+  console.log(reproduz ? "reproduz o fundo ×1 da rodada 1: a simulação lado a lado confere" : "NÃO reproduz o fundo ×1 da rodada 1 — a rodada para aqui, antes de julgar");
+  if (!reproduz) return;
+
+  console.log("\n== DESENHO (08/01/2024 a 31/03/2026) — a reserva ainda não foi rodada; teto de queda 50%, de hora em hora");
+  const campea = escaladoMomento(1.5);
+  const cd = simular(campea, INICIO, FIM_DESENHO);
+  const campeaDesenho = medida(cd.curva, INICIO, FIM_DESENHO, cd.recusadas);
+  console.log(`${"campeã (Momento ×1,5)".padEnd(22)} ${fmt(campeaDesenho)}`);
+  const alvos = [0.4, 0.6, 0.8];
+  const elegiveis: { alvo: number; mes: number }[] = [];
+  for (const alvo of alvos) {
+    const ms = desenho.map(([, de, ate]) => doFundo(de, ate, alvo));
+    const s5 = doFundo(INICIO, FIM_DESENHO, alvo, sem5);
+    const ok = ms.every((m) => m.queda >= TETO) && s5.ret > 0;
+    if (ok) elegiveis.push({ alvo, mes: ms[0].mes });
+    console.log(
+      `${`fundo, alvo ${alvo * 100}%`.padEnd(22)} ` + ms.map((m, k) => `${desenho[k][0]} ${fmt(m)}`).join(" · ") +
+        ` · sem as 5 ${pct(s5.ret)} · ${ms[0].recusadas} recusadas → ${ok ? "elegível" : "fora do teto"}`,
+    );
+  }
+  const escolhida = elegiveis.sort((a, b) => b.mes - a.mes)[0];
+  const venceDesenho = escolhida && escolhida.mes > campeaDesenho.mes;
+  console.log(
+    !escolhida
+      ? "\nnenhuma cabe no teto: REPROVA sem chegar à reserva"
+      : `\nescolhida: alvo de ${escolhida.alvo * 100}% (${pct(escolhida.mes)} ao mês) · ${venceDesenho ? "supera a campeã no desenho" : `NÃO supera a campeã (${pct(campeaDesenho.mes)} ao mês): REPROVA sem chegar à reserva`}`,
+  );
+
+  console.log("\n== RESERVA (01/04/2026 a 30/09/2026)");
+  const cr = simular(campea, FIM_DESENHO, FIM);
+  const campeaReserva = medida(cr.curva, FIM_DESENHO, FIM, cr.recusadas);
+  console.log(`${"campeã (Momento ×1,5)".padEnd(22)} ${fmt(campeaReserva)}`);
+  if (escolhida && venceDesenho) {
+    const r = doFundo(FIM_DESENHO, FIM, escolhida.alvo);
+    const aprovada = r.queda >= TETO && r.mes >= campeaReserva.mes;
+    console.log(`${`fundo, alvo ${escolhida.alvo * 100}%`.padEnd(22)} ${fmt(r)} ← escolhida: ${aprovada ? "APROVADA" : "REPROVADA na reserva"}`);
+  }
+  console.log("(registro, depois da decisão)");
+  for (const alvo of alvos) {
+    if (escolhida && venceDesenho && alvo === escolhida.alvo) continue;
+    console.log(`${`fundo, alvo ${alvo * 100}%`.padEnd(22)} ${fmt(doFundo(FIM_DESENHO, FIM, alvo))}`);
+  }
+  console.log(`${"fundo sem alvo".padEnd(22)} ${fmt(doFundo(FIM_DESENHO, FIM))}`);
+}
+
+/** O Momento com o tamanho base multiplicado — o turbo é ×1,5. */
+function escaladoMomento(L: number): Robo {
+  return { ...MOMENTO, id: `momento-x${L}`, regras: { ...MOMENTO.regras, tamanho: MOMENTO.regras.tamanho * L } };
 }
 
 /**

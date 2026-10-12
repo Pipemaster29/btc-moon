@@ -63,3 +63,44 @@ retorno ao mês for maior ou igual ao da campeã na reserva (19,6%).
 **O que muda se for aprovada**: ela vira candidata a robô ao vivo próprio (o
 fundo com alvo), e o loop decide como ligá-la na rodada seguinte; o retorno em
 tempo real dela é medido antes de ligar. Reprovada, fica escrita como reprovada.
+
+## O resultado (12/10, depois do pré-registro)
+
+`npm run medir-robos -- --alvo-fundo`. Retorno ao mês entre parênteses; a queda é
+a de hora em hora, das cotas de cada subconta.
+
+**O controle confere:** o fundo sem alvo, simulado com as subcontas lado a lado,
+faz +684,4% no desenho com queda de −20,7% — o fundo ×1 da rodada 1, que vinha
+da curva de cada livro montada depois (+684,5%, −20,7%). A campeã também saiu
+igual à da rodada 1 (+2.795,2%), com o passo de uma hora extraído do `simular`.
+
+| desenho, 08/01/2024 a 31/03/2026 | desenho | 1ª metade | 2ª metade | queda | sem as 5 | escala média | recusadas |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| campeã: Momento ×1,5 | +2.795% (13,4%) | — | — | −46,0% | — | — | — |
+| fundo sem alvo (controle) | +684% (8,0%) | +152% (5,3%) | +200% (13,0%) | −20,7% | — | 1 | — |
+| fundo, alvo 40% | +757% (8,4%) | +174% (5,8%) | +193% (12,7%) | −21,0% | +384% | 1,14 | 92 |
+| fundo, alvo 60% | +1.006% (9,4%) | +215% (6,7%) | +195% (12,8%) | −24,8% | +376% | 1,47 | 382 |
+| **fundo, alvo 80%** | **+1.016% (9,4%)** | +206% (6,5%) | +248% (14,9%) | −29,9% | +412% | 1,72 | 582 |
+
+As três cabem no teto; a escolhida é a de 80% (9,4% ao mês), e ela **não supera
+a campeã (13,4%): REPROVA sem chegar à reserva.** De 60% para 80% o alvo pede
+17% mais tamanho e o retorno não sai do lugar, porque o caixa recusa 582
+entradas: quando o fundo está calmo e o alvo manda crescer, a margem isolada de
+cada posição já ocupa o caixa das duas subcontas. É o mesmo teto da rodada 1,
+alcançado por outro caminho.
+
+E não é melhor que o tamanho fixo na mesma queda: o fundo ×1,5 da rodada 1 fazia
+9,7% ao mês com −26,5%; o alvo de 60%, 9,4% com −24,8%.
+
+| reserva, 01/04 a 30/09/2026 (registro, depois da decisão) | retorno | ao mês | queda | Sharpe |
+| --- | --- | --- | --- | --- |
+| campeã: Momento ×1,5 | +193% | 19,6% | −35,3% | 2,47 |
+| fundo, alvo 40% | +93% | 11,5% | −16,5% | 3,36 |
+| fundo, alvo 60% | +87% | 11,0% | −18,4% | 2,98 |
+| fundo, alvo 80% | +88% | 11,1% | −19,3% | 2,82 |
+| fundo sem alvo | +60% | 8,1% | −15,7% | 2,64 |
+
+**O que fica:** nada muda nos robôs nem no fundo da página. A simulação do
+fundo com as subcontas lado a lado (`simularFundo`) fica na medição, porque
+qualquer regra que olhe o fundo inteiro precisa dela.
+

@@ -710,6 +710,12 @@ const VENDA_MOMENTO: Perna = { ...VENDA_14, porVolatilidade: { minimo: 0.25, max
  * antes das regras da corretora; com elas é pior ainda para o alvo: a 2% de
  * base o ETH do par fica abaixo do mínimo de US$ 20 sempre que o alvo encolhe
  * a aposta, e o fora cai para +37%.)
+ *
+ * E no FUNDO INTEIRO (os dois livros escalados juntos pela agitação do fundo,
+ * rodada 2 do loop, `docs/preregistro-alvo-fundo.md`) também não: com alvo de
+ * 40%, 60% e 80% ao ano o fundo vai de 8,0% para 8,4%, 9,4% e 9,4% ao mês no
+ * desenho, abaixo dos 13,4% do turbo — o caixa recusa 582 entradas a 80% — e
+ * não ganha do tamanho fixo na mesma queda (×1,5: 9,7% com −26,5%).
  */
 const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.25, maximo: 2 };
 

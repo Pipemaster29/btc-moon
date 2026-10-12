@@ -996,6 +996,7 @@ metade do patrimônio em metade das trajetórias — ou 2,9 com meio Kelly.
 | rodada | hipótese | resultado | decisão |
 | --- | --- | --- | --- |
 | 1 | o tamanho de crescimento máximo dentro de −50% (`docs/preregistro-tamanho.md`) | Momento ×1,5 — o turbo de hoje: 13,4% ao mês no desenho, 19,6% na reserva, **11,7% em tempo real**; o fundo chega a 11,4% (×2,5), com o caixa recusando 1.574 entradas | aprovada, sem mudança: o turbo já está nesse tamanho |
+| 2 | o alvo de volatilidade no fundo inteiro, de 40%, 60% ou 80% ao ano (`docs/preregistro-alvo-fundo.md`) | o fundo vai de 8,0% a 9,4% ao mês no desenho, abaixo dos 13,4% da campeã; o caixa recusa 582 entradas a 80% | reprovada sem chegar à reserva |
 
 ## O ciclo, em quatro estágios
 

@@ -158,8 +158,11 @@ no código, com número:
   rodada 1 (`--tamanho`) mediu o tamanho de crescimento máximo dentro de 50% de
   queda: é o turbo de hoje (Momento ×1,5) — 13,4% ao mês no desenho, 19,6% na
   reserva e 11,7% em tempo real. Tamanho não chega a 30%: o caixa recusa
-  entrada antes (o fundo a ×3 recusa 2.166). O resto da meta tem de vir de
-  vantagem nova ou de menos margem presa por posição.
+  entrada antes (o fundo a ×3 recusa 2.166). A rodada 2 (`--alvo-fundo`) pôs
+  o alvo de volatilidade no fundo inteiro: 9,4% ao mês no máximo, reprovada —
+  o caixa recusa do mesmo jeito. O resto da meta tem de vir de vantagem nova
+  ou de menos margem presa por posição. `simularFundo` simula as subcontas
+  lado a lado, para regras que olham o fundo inteiro.
 
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
