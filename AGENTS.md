@@ -170,6 +170,17 @@ no código, com número:
   inteiro, e o ataque (`Extra.custoAtraso`, `EstadoRobo.escorregada`) fica na
   medição para as próximas regras.
 
+- **É lógica, não sorte de escolha — e cada perna empata numa metade (13/10).**
+  O placebo (`--placebo`) roda o Momento com a escolha sorteada e a gestão
+  igual, na mesma quantidade de entradas por dia: as duas pernas sorteadas
+  perdem 76% na mediana de 40 sorteios (Sharpe −0,66; o maior, 0,32) contra
+  +4.008% (2,31) do publicado sem a saída por posto, e nenhum sorteio passa
+  dele em nenhuma metade. Sozinha, a compra pelo momento empata com o acaso
+  até 06/2025 (2 de 40 passam) e a venda, de 07/2025 em diante (3 de 40). 26%
+  das compras dão lucro e os 10 melhores trades de 2.388 fazem mais que o
+  lucro inteiro: o erro frequente é o desenho. A recompra logo depois da
+  saída (`--reentrada`) rende pior por trade e soma +US$ 26.544.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 

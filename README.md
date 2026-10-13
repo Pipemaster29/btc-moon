@@ -1010,6 +1010,44 @@ do loop entraram no deflacionado: com 326, o Momento fica em 93% e o turbo em 90
 dos 95% que a meta pede. As hipóteses que sobraram na fila continuam escritas no
 documento de objetivos.
 
+### É lógica ou sorte? O placebo (13/10)
+
+A pergunta veio de quem olha o ao vivo: os robôs erram muito e entram em furada — é
+lógica ou sorte? `npm run medir-robos -- --placebo` responde com o mesmo motor: o Momento
+com a escolha SORTEADA e a gestão igual — o mesmo stop, rastro, pirâmide, prazo, alvo de
+volatilidade, custo e regras da corretora, e a mesma quantidade de entradas por dia em
+cada perna, ao acaso entre as moedas elegíveis. Sem a saída por posto dos dois lados,
+porque ela lê o ranking do momento. 40 sorteios por configuração; o critério, escrito e
+commitado antes de rodar, era o real acima de 95% dos sorteios na janela inteira e nas
+duas metades.
+
+| 01/2024 a 09/2026 | inteira | até 06/2025 | de 07/2025 | Sharpe |
+| --- | --- | --- | --- | --- |
+| o publicado sem a saída por posto (a régua) | **+4.008%** | **+118%** | **+1.786%** | 2,31 |
+| as duas pernas sorteadas: mediana · 95º percentil | −76% · −25% | −48% · −5% | −54% · +1% | −0,66 (o maior, 0,32) |
+| só a compra sorteada | −30% · +77% | +23% · +118% (2 de 40 passam do real) | −45% · −5% | 0,10 |
+| só a venda sorteada | +1.348% · +2.421% | +18% · +59% | +1.164% · +1.844% (3 de 40 passam) | 1,74 |
+
+**É lógica, não sorte de escolha.** Com a mesma gestão, escolher ao acaso perde 76% na
+mediana, e nenhum dos 40 sorteios chega ao real em nenhuma metade: a gestão sozinha não
+ganha dinheiro, quem ganha é a escolha pelo momento. Mas cada perna sozinha empata com o
+acaso numa metade — a compra até 06/2025, a venda de 07/2025 em diante: as duas se
+revezam, a vendida segurando 2024 e a comprada pegando as monstras de 2025–2026.
+
+**E o que parece erro é o desenho.** No publicado, 26% das compras dão lucro (ganho médio
+US$ 633, perda média US$ 140); os 10 melhores trades de 2.388 fizeram US$ 96 mil, mais que
+o lucro inteiro (US$ 59 mil), e as 5 melhores moedas, US$ 75 mil. 45% das janelas de 5
+dias e 30% das de 30 dias ficam no prejuízo. A recompra logo depois da saída
+(`--reentrada`), que o ao vivo fez com a STRK e a GTC em 13/10, também foi medida: 591 das
+1.090 compras voltam à mesma moeda até 3 dias depois de um stop, rastro ou posto, rendem
+pior por trade (−6,0% da margem na média, contra −0,6%) e somam +US$ 26.544 — é por elas
+que a monstra que recua e volta é pega de novo.
+
+O que o placebo NÃO diz é que a vantagem continue. Ele mede que a escolha bate o acaso
+NESTES 33 meses, que tiveram as monstras. O gabarito — as regras escolhidas depois de
+ver — está na mesa de risco (em tempo real, +977% contra +6.126%), e a dependência de
+poucas moedas, no teste do open interest (sem as 5 melhores, a reserva perde 67%).
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.

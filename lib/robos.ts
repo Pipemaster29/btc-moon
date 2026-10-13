@@ -102,6 +102,17 @@
  * fundo grande: com o impacto de mercado pela raiz quadrada, US$ 1 milhão
  * baixa o Sharpe para 1,83 e US$ 20 milhões, para 0,70.
  *
+ * O PLACEBO (13/10, `npm run medir-robos -- --placebo`) diz quanto é a ESCOLHA
+ * e quanto é a gestão. Com o mesmo stop, rastro, pirâmide, prazo, alvo, custo
+ * e regras da corretora, e a mesma quantidade de entradas por dia, escolher as
+ * moedas ao acaso perde 76% na mediana de 40 sorteios (Sharpe −0,66; o melhor,
+ * 0,32), contra +4.008% (2,31) deste livro sem a saída por posto — e nenhum
+ * sorteio passa dele em nenhuma metade. A gestão sozinha perde; quem ganha é o
+ * momento. Mas cada perna sozinha empata com o acaso numa metade: a comprada
+ * até 06/2025 (2 de 40 sorteios passam dela) e a vendida de 07/2025 em diante
+ * (3 de 40). E o erro frequente é o desenho: 26% das compras dão lucro, e os
+ * 10 melhores trades de 2.388 fazem mais que o lucro inteiro.
+ *
  * O "Fluxo" é OUTRO LIVRO (`VENDA_FLUXO`, com a medição ao lado): vende as
  * moedas em que a venda a mercado dominou a semana, em par com ETH. Rende
  * menos que o Momento e quase não anda junto com ele (correlação 0,10).
