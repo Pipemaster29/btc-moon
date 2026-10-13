@@ -388,6 +388,8 @@ console.log(
  * universo, não dentro.
  */
 const VALIDADE_DO_RETRATO = 8 * DIA;
+/** O market cap mínimo do universo das grandes, em dólares — o do robô (`RegrasRobo.capMinima`). */
+const CAP_GRANDES = 2e9;
 /** Por perpétuo, em ordem: desde quando vale (a meia-noite seguinte ao retrato) e quantas unidades DO PERPÉTUO circulam. */
 const unidadesDe = new Map<string, { desde: number; unidades: number }[]>();
 const usaGrandes = ROBOS.some((r) => r.regras.capMinima !== undefined) || args.includes("--grandes");
@@ -855,131 +857,73 @@ if (args.includes("--reentrada")) {
   estudarReentrada();
   process.exit(0);
 }
+if (args.includes("--grandes-reserva")) {
+  estudarGrandesReserva();
+  process.exit(0);
+}
 if (args.includes("--grandes")) {
   estudarGrandes();
   process.exit(0);
 }
 
-/**
- * O ROBÔ DAS GRANDES (13/10, o pedido: "um bot usando só moeda grande, de US$
- * 2 bi para cima — as regras você define e vai testando, mas realista"). A
- * EXPLORAÇÃO, só no DESENHO (08/01/2024 a 31/03/2026): a reserva de 04–09/2026
- * fica fechada até a regra escolhida estar escrita em
- * `docs/preregistro-grandes.md`. Toda variação rodada aqui soma tentativas.
- *
- * O universo é o de CADA DIA (`marketCapEm`): as moedas que valiam US$ 2 bi ou
- * mais naquela meia-noite, com perpétuo, US$ 20 milhões de volume e 14 dias de
- * série. As referências ao lado são o BTC comprado e parado e a cesta das
- * grandes em pesos iguais, refeita todo dia e sem custo — o que um índice das
- * grandes teria feito.
- *
- * As famílias, com o mesmo motor, custo e regras da corretora dos outros
- * robôs, a 10% do patrimônio por posição:
- *
- *   controle     o Momento publicado, só nas grandes;
- *   tendência    compra as 3 que mais subiram em N dias, SE subiram, e vende
- *                as 3 que mais caíram, SE caíram (`Perna.minimo` = 0) — no
- *                mercado que só cai, fica vendido; no que só sobe, comprado —,
- *                com saída quando deixam as 6 primeiras e o tamanho pela
- *                volatilidade de cada moeda (o BTC, menos agitado, entra maior);
- *   só comprada  a perna comprada da tendência, sozinha: em dia sem ninguém
- *                subindo, fica em caixa;
- *   momento      a tendência sem o limiar: compra as 3 do topo e vende as 3
- *                do fundo mesmo que todas subam ou todas caiam;
- *   reversão     o contrário (`Perna.inverso`): compra as que mais caíram e
- *                vende as que mais subiram, por até 7 dias.
- */
-function estudarGrandes(): void {
-  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
-  const desenho: [string, number, number][] = [
-    ["desenho", INICIO, FIM_DESENHO],
-    ["1ª metade", INICIO, CORTE],
-    ["2ª metade", CORTE, FIM_DESENHO],
-  ];
-  const aoMes = (ret: number, de: number, ate: number) => (1 + ret) ** (30.4375 / ((ate - de) / DIA)) - 1;
-  const quedaDe = (curva: readonly { t: number; patrimonio: number }[]) => {
-    let pico = 0;
-    let q = 0;
-    for (const p of curva) {
-      if (p.patrimonio > pico) pico = p.patrimonio;
-      if (pico > 0) q = Math.min(q, p.patrimonio / pico - 1);
-    }
-    return q;
-  };
-  type Medida = { ret: number; mes: number; queda: number; sharpe: number };
-  const medida = (curva: { t: number; patrimonio: number }[], de: number, ate: number): Medida => {
-    const ret = curva[curva.length - 1].patrimonio / curva[0].patrimonio - 1;
-    return { ret, mes: aoMes(ret, de, ate), queda: quedaDe(curva), sharpe: sharpeDe(curva) };
-  };
-  const fmt = (m: Medida) => `${pct(m.ret).padStart(8)} (${pct(m.mes)}/mês, queda ${pct(m.queda)}, Sharpe ${m.sharpe.toFixed(2)})`;
-  const CAP = 2e9;
-  const eGrande = (l: LinhaRanking) => typeof l.marketCap === "number" && l.marketCap >= CAP && l.volume >= 20e6;
+/** Grande e operável naquele dia: market cap lido e acima do mínimo, e US$ 20 mi de volume. */
+function eGrande(l: LinhaRanking): boolean {
+  return typeof l.marketCap === "number" && l.marketCap >= CAP_GRANDES && l.volume >= 20e6;
+}
 
-  // O universo, trimestre a trimestre: quantas grandes operáveis havia em média
-  // por dia, e em quantos dias o ranking de 60 dias (14 dias de idade e a série
-  // cobrindo a janela) ficou abaixo das 20 moedas com que a saída por posto
-  // aceita ler (`MINIMO_NO_RANKING`).
-  console.log("\n== O UNIVERSO: grandes com perpétuo e US$ 20 mi de volume, média por dia");
-  const porTrimestre = new Map<string, { dias: number; soma: number; nomes: Set<string>; abaixoDe20: number }>();
-  const [d0, d1] = horasDe(INICIO, FIM);
-  // O menor número de grandes casadas num dia, sem a régua de volume: é a conta que o ao vivo faz
-  // para desconfiar da lista (`lerGrandes` em `scripts/robos.mts`).
-  let menorCasadas = Infinity;
-  for (let i = d0; i <= d1; i++) {
+type MedidaGrandes = { ret: number; mes: number; queda: number; sharpe: number };
+
+/** Retorno, retorno ao mês, queda máxima (na curva de hora em hora) e Sharpe de uma curva. */
+function medidaDasGrandes(curva: { t: number; patrimonio: number }[], de: number, ate: number): MedidaGrandes {
+  const ret = curva[curva.length - 1].patrimonio / curva[0].patrimonio - 1;
+  let pico = 0;
+  let queda = 0;
+  for (const p of curva) {
+    if (p.patrimonio > pico) pico = p.patrimonio;
+    if (pico > 0) queda = Math.min(queda, p.patrimonio / pico - 1);
+  }
+  return { ret, mes: (1 + ret) ** (30.4375 / ((ate - de) / DIA)) - 1, queda, sharpe: sharpeDe(curva) };
+}
+
+function fmtDasGrandes(m: MedidaGrandes): string {
+  return `${pct(m.ret).padStart(8)} (${pct(m.mes)}/mês, queda ${pct(m.queda)}, Sharpe ${m.sharpe.toFixed(2)})`;
+}
+
+/** As referências: o BTC parado e a cesta das grandes em pesos iguais, refeita todo dia, marcadas de hora em hora. */
+function referenciasDasGrandes(de: number, ate: number): { btc: { t: number; patrimonio: number }[]; cesta: { t: number; patrimonio: number }[] } {
+  const [i0, i1] = horasDe(de, ate);
+  const btc = porSimbolo.get("BTCUSDT")!;
+  const base = btc.c[i0 - 1];
+  const curvaBTC: { t: number; patrimonio: number }[] = [];
+  const curvaCesta: { t: number; patrimonio: number }[] = [];
+  let valor = CAPITAL_ROBO;
+  let cesta: { s: Serie; abertura: number }[] = [];
+  let valorNaVirada = CAPITAL_ROBO;
+  for (let i = i0; i <= i1; i++) {
     const t = INICIO_DADOS + i * HORA;
-    if (t % DIA !== 0) continue;
-    const todas = linhasDoDia(i, JANELA_VOLATILIDADE_DIAS, true);
-    menorCasadas = Math.min(menorCasadas, todas.filter((l) => typeof l.marketCap === "number" && l.marketCap >= CAP).length);
-    const g = todas.filter(eGrande);
-    const no60 = g.filter((l) => typeof l.retorno[60] === "number" && (l.idadeDias === null || l.idadeDias >= 14)).length;
-    const d = new Date(t);
-    const q = `${d.getUTCFullYear()}T${Math.floor(d.getUTCMonth() / 3) + 1}`;
-    const x = porTrimestre.get(q) ?? { dias: 0, soma: 0, nomes: new Set<string>(), abaixoDe20: 0 };
-    x.dias++;
-    x.soma += g.length;
-    if (no60 < 20) x.abaixoDe20++;
-    for (const l of g) x.nomes.add(l.symbol.replace(/USDT$/, ""));
-    porTrimestre.set(q, x);
-  }
-  for (const [q, x] of porTrimestre) {
-    console.log(`${q}: ${(x.soma / x.dias).toFixed(1)} por dia, ${x.nomes.size} no trimestre · ${x.abaixoDe20} de ${x.dias} dias com menos de 20 no ranking de 60 dias`);
-  }
-  console.log(`o dia com menos grandes casadas (sem a régua de volume) teve ${menorCasadas}`);
-
-  // As referências: o BTC parado e a cesta das grandes em pesos iguais, marcadas de hora em hora.
-  const referencias = (de: number, ate: number) => {
-    const [i0, i1] = horasDe(de, ate);
-    const btc = porSimbolo.get("BTCUSDT")!;
-    const base = btc.c[i0 - 1];
-    const curvaBTC: { t: number; patrimonio: number }[] = [];
-    const curvaCesta: { t: number; patrimonio: number }[] = [];
-    let valor = CAPITAL_ROBO;
-    let cesta: { s: Serie; abertura: number }[] = [];
-    let valorNaVirada = CAPITAL_ROBO;
-    for (let i = i0; i <= i1; i++) {
-      const t = INICIO_DADOS + i * HORA;
-      if (t % DIA === 0) {
-        valorNaVirada = valor;
-        cesta = linhasDoDia(i, JANELA_VOLATILIDADE_DIAS, true)
-          .filter(eGrande)
-          .map((l) => ({ s: porSimbolo.get(l.symbol)!, abertura: porSimbolo.get(l.symbol)!.c[i - 1] }))
-          .filter((x) => x.abertura > 0);
-      }
-      const rs = cesta.map((x) => x.s.c[i] / x.abertura).filter((r) => Number.isFinite(r) && r > 0);
-      if (rs.length > 0) valor = valorNaVirada * (rs.reduce((a, b) => a + b, 0) / rs.length);
-      curvaCesta.push({ t: t + HORA, patrimonio: valor });
-      const c = btc.c[i];
-      if (c > 0) curvaBTC.push({ t: t + HORA, patrimonio: (CAPITAL_ROBO * c) / base });
+    if (t % DIA === 0) {
+      valorNaVirada = valor;
+      cesta = linhasDoDia(i, JANELA_VOLATILIDADE_DIAS, true)
+        .filter(eGrande)
+        .map((l) => ({ s: porSimbolo.get(l.symbol)!, abertura: porSimbolo.get(l.symbol)!.c[i - 1] }))
+        .filter((x) => x.abertura > 0);
     }
-    return { btc: [{ t: de, patrimonio: CAPITAL_ROBO }, ...curvaBTC], cesta: [{ t: de, patrimonio: CAPITAL_ROBO }, ...curvaCesta] };
-  };
-  console.log("\n== AS REFERÊNCIAS, sem custo e sem alavancagem");
-  const refs = desenho.map(([, de, ate]) => referencias(de, ate));
-  console.log(`${"BTC comprado e parado".padEnd(34)} ` + refs.map((r, k) => `${desenho[k][0]} ${fmt(medida(r.btc, desenho[k][1], desenho[k][2]))}`).join(" · "));
-  console.log(`${"cesta das grandes, pesos iguais".padEnd(34)} ` + refs.map((r, k) => `${desenho[k][0]} ${fmt(medida(r.cesta, desenho[k][1], desenho[k][2]))}`).join(" · "));
+    const rs = cesta.map((x) => x.s.c[i] / x.abertura).filter((r) => Number.isFinite(r) && r > 0);
+    if (rs.length > 0) valor = valorNaVirada * (rs.reduce((a, b) => a + b, 0) / rs.length);
+    curvaCesta.push({ t: t + HORA, patrimonio: valor });
+    const c = btc.c[i];
+    if (c > 0) curvaBTC.push({ t: t + HORA, patrimonio: (CAPITAL_ROBO * c) / base });
+  }
+  return { btc: [{ t: de, patrimonio: CAPITAL_ROBO }, ...curvaBTC], cesta: [{ t: de, patrimonio: CAPITAL_ROBO }, ...curvaCesta] };
+}
 
-  // As variações.
-  const UNIVERSO_GRANDES = { volumeMinimo: 20e6, idadeMinimaDias: 14, capMinima: CAP };
+/**
+ * AS VARIAÇÕES MEDIDAS NAS GRANDES, as quatro rodadas do motor (a 3ª foi de
+ * bancada, em `estudarGrandes`), na ordem em que foram escritas. Cada uma soma
+ * uma tentativa; a reserva roda todas na janela inteira para o walk-forward.
+ */
+function variantesDasGrandes(): [string, Robo][] {
+  const UNIVERSO_GRANDES = { volumeMinimo: 20e6, idadeMinimaDias: 14, capMinima: CAP_GRANDES };
   const porVol = { minimo: 0.25, maximo: 2 };
   const comprada = (janelaDias: number, extra: Partial<Perna> = {}): Perna => ({
     lado: "long", janelaDias, k: 3, stop: 0.2, rastro: null, prazoH: 90 * 24, alavancagem: 3, ...extra,
@@ -993,7 +937,7 @@ function estudarGrandes(): void {
     descricao: id,
     regras: { tamanho, ...UNIVERSO_GRANDES, pernas },
   });
-  const variantes: [string, Robo][] = [["controle: o Momento publicado", { ...MOMENTO, id: "grandes·momento", regras: { ...MOMENTO.regras, capMinima: CAP } }]];
+  const variantes: [string, Robo][] = [["controle: o Momento publicado", { ...MOMENTO, id: "grandes·momento", regras: { ...MOMENTO.regras, capMinima: CAP_GRANDES } }]];
   for (const N of [14, 30, 60]) {
     for (const rastro of [null, 0.2]) {
       const t: Partial<Perna> = { minimo: 0, saidaPosto: 6, porVolatilidade: porVol, rastro };
@@ -1034,6 +978,87 @@ function estudarGrandes(): void {
     const r = robo(`tendencia${N}-alvo`, [comprada(N, t3), vendida(N, t3)]);
     variantes.push([`tendência L/S ${N} d, alvo de volatilidade`, { ...r, regras: { ...r.regras, alvoVolatilidade: MOMENTO.regras.alvoVolatilidade } }]);
   }
+  return variantes;
+}
+
+/**
+ * O ROBÔ DAS GRANDES (13/10, o pedido: "um bot usando só moeda grande, de US$
+ * 2 bi para cima — as regras você define e vai testando, mas realista"). A
+ * EXPLORAÇÃO, só no DESENHO (08/01/2024 a 31/03/2026): a reserva de 04–09/2026
+ * fica fechada até a regra escolhida estar escrita em
+ * `docs/preregistro-grandes.md`. Toda variação rodada aqui soma tentativas.
+ *
+ * O universo é o de CADA DIA (`marketCapEm`): as moedas que valiam US$ 2 bi ou
+ * mais naquela meia-noite, com perpétuo, US$ 20 milhões de volume e 14 dias de
+ * série. As referências ao lado são o BTC comprado e parado e a cesta das
+ * grandes em pesos iguais, refeita todo dia e sem custo — o que um índice das
+ * grandes teria feito.
+ *
+ * As famílias, com o mesmo motor, custo e regras da corretora dos outros
+ * robôs, a 10% do patrimônio por posição:
+ *
+ *   controle     o Momento publicado, só nas grandes;
+ *   tendência    compra as 3 que mais subiram em N dias, SE subiram, e vende
+ *                as 3 que mais caíram, SE caíram (`Perna.minimo` = 0) — no
+ *                mercado que só cai, fica vendido; no que só sobe, comprado —,
+ *                com saída quando deixam as 6 primeiras e o tamanho pela
+ *                volatilidade de cada moeda (o BTC, menos agitado, entra maior);
+ *   só comprada  a perna comprada da tendência, sozinha: em dia sem ninguém
+ *                subindo, fica em caixa;
+ *   momento      a tendência sem o limiar: compra as 3 do topo e vende as 3
+ *                do fundo mesmo que todas subam ou todas caiam;
+ *   reversão     o contrário (`Perna.inverso`): compra as que mais caíram e
+ *                vende as que mais subiram, por até 7 dias.
+ */
+function estudarGrandes(): void {
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  const desenho: [string, number, number][] = [
+    ["desenho", INICIO, FIM_DESENHO],
+    ["1ª metade", INICIO, CORTE],
+    ["2ª metade", CORTE, FIM_DESENHO],
+  ];
+  const medida = medidaDasGrandes;
+  const fmt = fmtDasGrandes;
+  const CAP = CAP_GRANDES;
+
+  // O universo, trimestre a trimestre: quantas grandes operáveis havia em média
+  // por dia, e em quantos dias o ranking de 60 dias (14 dias de idade e a série
+  // cobrindo a janela) ficou abaixo das 20 moedas com que a saída por posto
+  // aceita ler (`MINIMO_NO_RANKING`).
+  console.log("\n== O UNIVERSO: grandes com perpétuo e US$ 20 mi de volume, média por dia");
+  const porTrimestre = new Map<string, { dias: number; soma: number; nomes: Set<string>; abaixoDe20: number }>();
+  const [d0, d1] = horasDe(INICIO, FIM);
+  // O menor número de grandes casadas num dia, sem a régua de volume: é a conta que o ao vivo faz
+  // para desconfiar da lista (`lerGrandes` em `scripts/robos.mts`).
+  let menorCasadas = Infinity;
+  for (let i = d0; i <= d1; i++) {
+    const t = INICIO_DADOS + i * HORA;
+    if (t % DIA !== 0) continue;
+    const todas = linhasDoDia(i, JANELA_VOLATILIDADE_DIAS, true);
+    menorCasadas = Math.min(menorCasadas, todas.filter((l) => typeof l.marketCap === "number" && l.marketCap >= CAP).length);
+    const g = todas.filter(eGrande);
+    const no60 = g.filter((l) => typeof l.retorno[60] === "number" && (l.idadeDias === null || l.idadeDias >= 14)).length;
+    const d = new Date(t);
+    const q = `${d.getUTCFullYear()}T${Math.floor(d.getUTCMonth() / 3) + 1}`;
+    const x = porTrimestre.get(q) ?? { dias: 0, soma: 0, nomes: new Set<string>(), abaixoDe20: 0 };
+    x.dias++;
+    x.soma += g.length;
+    if (no60 < 20) x.abaixoDe20++;
+    for (const l of g) x.nomes.add(l.symbol.replace(/USDT$/, ""));
+    porTrimestre.set(q, x);
+  }
+  for (const [q, x] of porTrimestre) {
+    console.log(`${q}: ${(x.soma / x.dias).toFixed(1)} por dia, ${x.nomes.size} no trimestre · ${x.abaixoDe20} de ${x.dias} dias com menos de 20 no ranking de 60 dias`);
+  }
+  console.log(`o dia com menos grandes casadas (sem a régua de volume) teve ${menorCasadas}`);
+
+  const referencias = referenciasDasGrandes;
+  console.log("\n== AS REFERÊNCIAS, sem custo e sem alavancagem");
+  const refs = desenho.map(([, de, ate]) => referencias(de, ate));
+  console.log(`${"BTC comprado e parado".padEnd(34)} ` + refs.map((r, k) => `${desenho[k][0]} ${fmt(medida(r.btc, desenho[k][1], desenho[k][2]))}`).join(" · "));
+  console.log(`${"cesta das grandes, pesos iguais".padEnd(34)} ` + refs.map((r, k) => `${desenho[k][0]} ${fmt(medida(r.cesta, desenho[k][1], desenho[k][2]))}`).join(" · "));
+
+  const variantes = variantesDasGrandes();
 
   // RODADA 3, A BANCADA (só para decidir se vale a regra no motor): a tendência
   // POR MOEDA, como a dos fundos de tendência — cada grande do dia comprada se
@@ -1123,6 +1148,99 @@ function estudarGrandes(): void {
       ? `\n${elegiveis.length} de ${variantes.length} com as duas metades positivas; escolhida pelo critério: ${escolhida.nome} (Sharpe ${escolhida.sharpe.toFixed(2)} no desenho)`
       : "\nnenhuma variação tem as duas metades positivas",
   );
+}
+
+/**
+ * O JULGAMENTO DA RESERVA do robô das grandes, como está escrito em
+ * `docs/preregistro-grandes.md` (commitado antes desta função existir): o robô
+ * publicado (`ROBOS`, id "grandes") tem de reproduzir a escolhida no desenho;
+ * passa se o retorno na reserva (01/04 a 30/09/2026) for positivo E se, no
+ * desenho, o retorno continuar positivo com o custo de entrada 4x e, separado,
+ * com a escorregada do stop dobrada. Fora do critério, impressos depois da
+ * decisão: as referências na reserva, o Sharpe deflacionado com 367
+ * tentativas, a regra em tempo real (o walk-forward de 365 dias entre as 29
+ * variações do motor) e as outras variações na reserva.
+ */
+function estudarGrandesReserva(): void {
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  const TENTATIVAS = 300 + 14 + 3 + 9 + 41;
+  const robo = ROBOS.find((r) => r.id === "grandes");
+  if (!robo) {
+    console.log("o robô das grandes não está em ROBOS");
+    return;
+  }
+  const variantes = variantesDasGrandes();
+  const escolhida = variantes.find(([nome]) => nome === "tendência L/S 45 d, alvo de volatilidade")!;
+
+  // 0. O publicado é a escolhida: a mesma curva no desenho, ponto a ponto.
+  const pub = simular(robo, INICIO, FIM_DESENHO);
+  const esc = simular(escolhida[1], INICIO, FIM_DESENHO);
+  const igual = pub.curva.length === esc.curva.length && pub.curva.every((p, k) => Math.abs(p.patrimonio - esc.curva[k].patrimonio) < 1e-9);
+  const md = medidaDasGrandes(pub.curva, INICIO, FIM_DESENHO);
+  console.log(`\n== O PUBLICADO NO DESENHO: ${fmtDasGrandes(md)} — ${igual ? "a mesma curva da escolhida, ponto a ponto" : "NÃO reproduz a escolhida: o julgamento para aqui"}`);
+  if (!igual) return;
+
+  // 1. A reserva.
+  console.log("\n== RESERVA (01/04/2026 a 30/09/2026)");
+  const res = simular(robo, FIM_DESENHO, FIM);
+  const mr = medidaDasGrandes(res.curva, FIM_DESENHO, FIM);
+  const refs = referenciasDasGrandes(FIM_DESENHO, FIM);
+  console.log(`${"Grandes".padEnd(34)} ${fmtDasGrandes(mr)} · ${res.fechadas.length + res.abertas.length} trades`);
+  console.log(`${"BTC comprado e parado".padEnd(34)} ${fmtDasGrandes(medidaDasGrandes(refs.btc, FIM_DESENHO, FIM))}`);
+  console.log(`${"cesta das grandes, pesos iguais".padEnd(34)} ${fmtDasGrandes(medidaDasGrandes(refs.cesta, FIM_DESENHO, FIM))}`);
+  const lados = (["long", "short"] as const).map((l) => `${l === "long" ? "comprada" : "vendida"} US$ ${res.fechadas.filter((t) => t.lado === l).reduce((a, t) => a + t.resultado, 0).toFixed(0)}`);
+  console.log(`encerradas na reserva: ${lados.join(", ")}`);
+  const passaReserva = mr.ret > 0;
+  console.log(passaReserva ? "→ retorno positivo na reserva" : "→ retorno NÃO positivo na reserva");
+
+  // 2. O ataque, no desenho.
+  console.log("\n== O ATAQUE, no desenho");
+  const ataques: [string, Extra][] = [
+    ["custo de entrada 4x", { custoAtraso: 4 * CUSTO_ATRASO }],
+    ["escorregada dobrada", { escorregada: 2 * ESCORREGADA_STOP }],
+  ];
+  let aguenta = true;
+  for (const [rotulo, extra] of ataques) {
+    const e = simular(robo, INICIO, FIM_DESENHO, undefined, undefined, JANELA_VOLATILIDADE_DIAS, true, extra);
+    const m = medidaDasGrandes(e.curva, INICIO, FIM_DESENHO);
+    aguenta &&= m.ret > 0;
+    console.log(`${rotulo.padEnd(22)} ${fmtDasGrandes(m)} → ${m.ret > 0 ? "aguenta" : "NÃO aguenta"}`);
+  }
+  console.log(`\n→ ${passaReserva && aguenta ? "PASSA: não perdeu onde não foi escolhida, e aguenta o ataque" : "REPROVADA"}`);
+
+  // 3. Depois da decisão, para o registro: as 29 variações na janela inteira.
+  console.log("\n== DEPOIS DA DECISÃO, para o registro");
+  const colunas: number[][] = [];
+  const sharpes: number[] = [];
+  let datas: number[] = [];
+  for (const [nome, r] of variantes) {
+    const e = simular(r, INICIO, FIM);
+    const d = retornosDiarios(diaria(e));
+    colunas.push(d.r);
+    datas = d.datas;
+    sharpes.push(sharpeDiario(d.r));
+    const naReserva = medidaDasGrandes(simular(r, FIM_DESENHO, FIM).curva, FIM_DESENHO, FIM);
+    if (nome !== escolhida[0]) console.log(`${nome.padEnd(44)} reserva ${fmtDasGrandes(naReserva)}`);
+  }
+  const doPub = retornosDiarios(diaria(simular(robo, INICIO, FIM)));
+  const media = sharpes.reduce((a, b) => a + b, 0) / sharpes.length;
+  const desvio = Math.sqrt(sharpes.reduce((a, b) => a + (b - media) ** 2, 0) / (sharpes.length - 1));
+  const variancia = Math.max(desvio ** 2, varianciaDoSharpeNulo(doPub.r.length));
+  console.log(
+    `\ndeflacionado, 01/2024 a 09/2026, ${TENTATIVAS} tentativas: Sharpe ${(sharpeDiario(doPub.r) * Math.sqrt(365)).toFixed(2)}, ` +
+      `régua do acaso ${(sharpeMaximoEsperado(TENTATIVAS, variancia) * Math.sqrt(365)).toFixed(2)}, DSR ${sharpeDeflacionado(doPub.r, TENTATIVAS, variancia).toFixed(3)}`,
+  );
+  const wf = walkForward(Array.from({ length: datas.length }, (_, t) => colunas.map((c) => c[t])), datas, 365, 180);
+  const f = fichaDe(wf.r, wf.datas);
+  const de = wf.datas[0] - DIA;
+  const k0 = doPub.datas.indexOf(wf.datas[0]);
+  const mesmo = fichaDe(doPub.r.slice(k0), doPub.datas.slice(k0));
+  const nomes = wf.escolhas.map((x) => `${new Date(x.de).toISOString().slice(0, 7)} ${variantes[x.variante][0]}`);
+  console.log(
+    `em tempo real (walk-forward de 365 dias entre as ${variantes.length} variações), desde ${new Date(de).toISOString().slice(0, 10)}: ` +
+      `${pct(f.retorno)} (Sharpe ${f.sharpe.toFixed(2)}, queda diária ${pct(f.quedaMaxima)}) · o publicado nos mesmos dias ${pct(mesmo.retorno)} (Sharpe ${mesmo.sharpe.toFixed(2)})`,
+  );
+  console.log(`escolhas a cada trimestre: ${nomes.join(" · ")}`);
 }
 
 /**

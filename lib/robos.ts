@@ -937,6 +937,55 @@ const VENDA_FLUXO: Perna = {
 const UNIVERSO = { volumeMinimo: 20e6, idadeMinimaDias: 14 };
 
 /**
+ * O ROBÔ DAS GRANDES (13/10, o pedido: "um bot usando só moeda grande, de US$ 2
+ * bi para cima, realista"; `docs/preregistro-grandes.md`). O universo é o de
+ * CADA DIA (`RegrasRobo.capMinima`): as moedas com US$ 2 bilhões ou mais de
+ * market cap naquela meia-noite, do retrato semanal da CoinMarketCap casado com
+ * o perpétuo pelo preço (`casarComPerpetuos`) — 22 a 42 por dia, conforme o
+ * trimestre. Escolher pelas grandes de hoje seria escolher as que deram certo.
+ *
+ * A regra é a TENDÊNCIA das duas pernas: compra as 3 grandes que mais subiram
+ * em 45 dias, SE subiram (`minimo` 0), e vende as 3 que mais caíram, SE caíram;
+ * sai quando deixam as 6 primeiras; o tamanho pela volatilidade de cada moeda
+ * (o BTC, menos agitado, entra maior) e o alvo de volatilidade do Momento no
+ * patrimônio. No mercado que só cai ela fica vendida; no que só sobe, comprada.
+ *
+ * ELA NÃO TEM VANTAGEM DEMONSTRADA, e foi escolhida sabendo disso. No desenho
+ * (08/01/2024 a 31/03/2026), 41 tentativas em quatro rodadas, com o mesmo
+ * motor e custo dos outros robôs (`npm run medir-robos -- --grandes`):
+ *
+ *   BTC parado                       +55,5%  Sharpe  0,65  queda −50%
+ *   cesta das grandes, pesos iguais  −43,3%  Sharpe  0,01  queda −78%
+ *   o Momento publicado nas grandes   +1,6%  Sharpe  0,24  queda −52%
+ *   tendência L/S 30 / 60 / 90 dias   −3,1% / +26,4% / +1,4%
+ *   só comprada, 14 a 60 dias        −5,9% a +4,1%
+ *   reversão, 3 a 14 dias            −62% a −67%: o custo come
+ *   tendência POR MOEDA (bancada)    −14% a +12%, de 14 a 90 dias
+ *   esta: 45 dias com o alvo         +33,7%  Sharpe  0,52  queda −39%
+ *                                    metades +11,8% e +20,3%; sem as 5, −8,8%
+ *
+ * Pico estreito e não platô, e abaixo do BTC parado em Sharpe. O critério que a
+ * escolheu (as duas metades positivas, o maior Sharpe) estava no código antes
+ * da última rodada, e a reserva de 04–09/2026 só rodou depois do pré-registro.
+ */
+const COMPRA_GRANDES: Perna = {
+  lado: "long",
+  janelaDias: 45,
+  k: 3,
+  // Vinte e não vinte e cinco: o desvio diário das grandes é de 3% a 5%, menos
+  // da metade do das manipuladas, e o stop só existe para a queda que o posto
+  // não pega a tempo. Não foi variado: é da regra, não do ajuste.
+  stop: 0.2,
+  rastro: null,
+  prazoH: 90 * 24,
+  alavancagem: 3,
+  minimo: 0,
+  saidaPosto: 6,
+  porVolatilidade: { minimo: 0.25, maximo: 2 },
+};
+const VENDA_GRANDES: Perna = { ...COMPRA_GRANDES, lado: "short", alavancagem: 2 };
+
+/**
  * O tamanho base do Momento, antes do alvo de volatilidade; o turbo usa 1,5x.
  * 4,25% e não 4%: com a vendida pela volatilidade (`VENDA_MOMENTO`) a queda
  * máxima a 4% caiu para −34%, e 4,25% a devolve aos −36% da regra anterior —
@@ -994,6 +1043,23 @@ export const ROBOS: Robo[] = [
     // A 2,5%, 33 recusas e Sharpe 1,57. Sem o alvo de volatilidade do Momento, que aqui
     // NÃO passou (ver `ALVO_MOMENTO`).
     regras: { tamanho: 0.03, ...UNIVERSO, pernas: [VENDA_FLUXO] },
+  },
+  {
+    id: "grandes",
+    nome: "Grandes",
+    descricao:
+      "Só moedas de US$ 2 bi ou mais naquele dia: compra as 3 que mais subiram em 45 dias, se subiram, e vende as 3 que mais caíram, se caíram, saindo quando deixam as 6 primeiras. A aposta encolhe quando o patrimônio fica agitado.",
+    // 10% por posição é o tamanho em que as 41 tentativas foram medidas, e não
+    // foi variado. A ordem de BTC pede US$ 100 (`RegrasDaMoeda`): numa conta de
+    // US$ 1.000 é o tamanho que deixa a maior das grandes ao alcance do robô.
+    regras: {
+      tamanho: 0.1,
+      volumeMinimo: 20e6,
+      idadeMinimaDias: 14,
+      capMinima: 2e9,
+      pernas: [COMPRA_GRANDES, VENDA_GRANDES],
+      alvoVolatilidade: ALVO_MOMENTO,
+    },
   },
 ];
 
