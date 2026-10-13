@@ -766,6 +766,39 @@ if (args.includes("--placebo")) {
   estudarPlacebo();
   process.exit(0);
 }
+if (args.includes("--reentrada")) {
+  estudarReentrada();
+  process.exit(0);
+}
+
+/**
+ * A RECOMPRA LOGO DEPOIS DA SAÍDA (13/10, visto ao vivo): o Momento saiu da
+ * STRK e da GTC pelo rastro em 12/10 e comprou as duas de novo na decisão de
+ * 13/10, porque elas continuavam entre as 5 que mais subiram em 45 dias. Para
+ * quem olha, é entrar de novo na furada da véspera. Diagnóstico, não regra: no
+ * publicado, a entrada que volta à mesma moeda até 3 dias depois de uma saída
+ * por stop, rastro ou posto rende diferente das outras?
+ */
+function estudarReentrada(): void {
+  const e = simular(MOMENTO, INICIO, FIM);
+  const trades = [...e.fechadas].sort((a, b) => a.abertaEm - b.abertaEm);
+  const saidas = new Map<string, number[]>();
+  for (const t of trades) if (t.motivo === "stop" || t.motivo === "rastro" || t.motivo === "posto") saidas.set(`${t.lado}:${t.symbol}`, [...(saidas.get(`${t.lado}:${t.symbol}`) ?? []), t.fechadaEm]);
+  const soma = (ts: readonly TradeRobo[]) => ts.reduce((a, t) => a + t.resultado, 0);
+  for (const lado of ["long", "short"] as const) {
+    const ts = trades.filter((t) => t.lado === lado);
+    const volta = (t: TradeRobo) => (saidas.get(`${lado}:${t.symbol}`) ?? []).some((s) => s <= t.abertaEm && t.abertaEm - s <= 3 * DIA);
+    const re = ts.filter(volta);
+    const novas = ts.filter((t) => !volta(t));
+    const linha = (nome: string, xs: TradeRobo[]) => {
+      const o = xs.map((t) => t.resultado / t.margem).sort((a, b) => a - b);
+      return `${nome}: ${xs.length} trades, ${pct(xs.filter((t) => t.resultado > 0).length / Math.max(1, xs.length))} no lucro, mediana ${pct(quantil(o, 0.5))} da margem, média ${pct(o.reduce((a, b) => a + b, 0) / Math.max(1, o.length))} da margem, soma US$ ${soma(xs).toFixed(0)}`;
+    };
+    console.log(`\n== ${lado === "long" ? "comprada" : "vendida"}`);
+    console.log(linha("recompra até 3 dias depois de stop, rastro ou posto", re));
+    console.log(linha("as outras entradas", novas));
+  }
+}
 
 /** Um número em [0, 1) fixado por (semente, dia, janela, moeda): o mesmo sorteio sempre que a conta for refeita. */
 function sortear(semente: number, i: number, janela: number, symbol: string): number {
