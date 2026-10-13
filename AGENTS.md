@@ -333,8 +333,10 @@ coisas que foram medidas e estão no código:
   receber, publicar no máximo uma vez por segundo, derrubar, religar, aba
   oculta, aba de volta, dormir. Onze casos, e ele sai com erro se algum falha.
 
-Quem consome: as células de preço e 24h da tabela (`PrecoVivo`) e a carteira
-(`CarteiraPanel`, que remarca as posições com `remarcar`). O número do retrato é
+Quem consome: as células de preço e 24h da tabela (`PrecoVivo`), a carteira
+(`CarteiraPanel`, que remarca as posições com `remarcar`) e os robôs
+(`useRobosMarcados`, de `components/robosVivo.ts`, que o ao vivo e a mesa de
+risco dividem). O número do retrato é
 sempre o ponto de partida e nunca some — se a rota não responder, a célula fica
 exatamente como estava.
 
@@ -346,6 +348,32 @@ diferença, na tela, marcada como atual.
 inteiro, as regras de saída e o caminho de velas — isso é do `npm run carteira`.
 Uma posição que já passou do stop aparece passada do stop, sinalizada, até o
 retrato seguinte fechá-la com a hora certa.
+
+### As abas (13/10)
+
+O site tem cinco abas, e **cada uma é uma rota, não estado**: Bitcoin (`/`),
+Radar (`/radar` e `/radar/[symbol]`), Robôs (`/robos`, com `/robos/medicao` e
+`/robos/mesa`), Carteira (`/carteira`) e Garimpo (`/garimpo`). Até 13/10 o radar
+era uma página só, com dez arquivos de `data/` pedidos para mostrar qualquer um
+deles e as posições dos robôs no fim de tudo.
+
+- **A barra mora no layout raiz** (`app/layout.tsx`, `AbasDoSite` de
+  `components/Abas.tsx`) e a aba ativa sai de `useSelectedLayoutSegment`. Aba
+  nova entra em `ABAS_DO_SITE`; parte de uma aba entra como rota embaixo dela,
+  com `SubAbas` no layout da aba — é o que `app/robos/layout.tsx` faz.
+- **Cada aba busca só o que mostra**, com `revalidate = 300` como o radar sempre
+  teve, e usa a moldura de `components/Pagina.tsx` (`Pagina`, `Cabeca`, `Secao`):
+  a mesma largura da barra (6xl) e o índice de âncoras das seções.
+- **O resumo do placar fica no Radar, acima das candidatas** (`PlacarResumo`), e
+  o placar inteiro na Carteira (`PlacarPanel`). Separar a página não podia levar
+  junto a razão de o placar vir antes das recomendações.
+- **O ao vivo dos robôs recebe só as curvas medidas** (a faixa de cada cartão),
+  não os ~300 KB de `robos-medicao.json`: o resto não precisa viajar até o
+  navegador.
+- **Celular**: a barra perde a marca abaixo de `sm` para as cinco abas caberem em
+  390 px, e tabela larga rola de lado dentro do cartão (`min-w-*` com
+  `whitespace-nowrap`) em vez de quebrar cada célula em três linhas. Conferido em
+  13/10 no Chromium, claro e escuro, em 390 e 1280 px: nenhuma aba rola de lado.
 
 ### Os módulos
 
@@ -366,6 +394,12 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
 | `components/vivo.ts` | a assinatura única da página: WebSocket da Binance para preço, essa rota para financiamento e como reserva |
+| `components/Abas.tsx` | a barra das abas do site (`AbasDoSite`, `ABAS_DO_SITE`) e o seletor de partes de uma aba (`SubAbas`) |
+| `components/Pagina.tsx` | a moldura de toda aba: largura, respiro, cabeçalho e o índice de âncoras |
+| `components/robosVivo.ts` | os robôs marcados agora (`useRobosMarcados`) e o fundo ao vivo (`fundoVivoDe`), para o ao vivo e a mesa dizerem o mesmo patrimônio |
+| `components/robosFormato.ts` | cor, nome curto e formatos de número dos robôs, iguais nas três partes da aba |
+| `components/RobosAoVivo.tsx`, `RobosMedidos.tsx`, `MesaAoVivo.tsx` | as três partes da aba Robôs; `MesaRobos.tsx` é a mesa em si |
+| `components/PlacarPanel.tsx` | o placar inteiro (aba Carteira) e o resumo de uma linha (Radar) |
 | `lib/sinais.ts` | o formato de `data/sinais.json` e a leitura dele pela página |
 | `lib/fluxo.ts` | `resumirFluxo`: soma o bruto do fluxo da Binance por moeda, com a cobertura de cada dia junto |
 | `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |

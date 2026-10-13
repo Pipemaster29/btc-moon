@@ -82,7 +82,7 @@ export default function GarimpoPanel({ g, naTela = [] }: { g: Garimpo; naTela?: 
         <strong>mediana medida</strong> da faixa em que cada moeda caiu, não por nota
         inventada.
         {jaEmVista > 0 &&
-          ` ${jaEmVista} das achadas fora da lista já estão na tabela, em vista, e não se repetem aqui.`}
+          ` ${jaEmVista} das achadas fora da lista já estão na tabela do Radar, em vista, e não se repetem aqui.`}
       </p>
 
       <p className="text-xs text-[#C42B3E] dark:text-[#F6465D] mt-2 border-l-2 border-[#F6465D]/40 pl-2">
@@ -115,7 +115,7 @@ export default function GarimpoPanel({ g, naTela = [] }: { g: Garimpo; naTela?: 
               >
                 Idade
               </th>
-              <th className="font-normal py-1 text-left">Faixa medida</th>
+              <th className="font-normal py-1 pl-6 text-left">Faixa medida</th>
             </tr>
           </thead>
           <tbody>
@@ -153,7 +153,7 @@ export default function GarimpoPanel({ g, naTela = [] }: { g: Garimpo; naTela?: 
                 <td className="py-1.5 text-right text-black/50 dark:text-white/50">
                   {a.idadeDias == null ? "—" : `${Math.round(a.idadeDias)}d`}
                 </td>
-                <td className="py-1.5 text-black/60 dark:text-white/60" title={a.porque.join(" · ")}>
+                <td className="py-1.5 pl-6 text-black/60 dark:text-white/60" title={a.porque.join(" · ")}>
                   {a.faixa.rotulo}{" "}
                   <span className="text-black/40 dark:text-white/40">
                     → {(a.faixa.mediana7d * 100).toFixed(0)}% em 7d ({a.faixa.moedas[0]}/

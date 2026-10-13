@@ -28,9 +28,14 @@ Porque as duas coisas se parecem no gráfico e têm consequências opostas.
 
 ## As duas telas
 
-**`/`** — o gráfico do bitcoin, com os eventos que moveram o mercado marcados, e
-embaixo dele a **liquidez projetada**. É a referência de contexto, não o objeto
-de estudo.
+O site tem **cinco abas**, uma por assunto, e cada uma é uma rota que busca só os
+dados dela. Até 13/10 o radar era uma página só, com a carteira, os robôs, a
+medição deles, a mesa de risco, o placar, os sinais, a tabela, o fluxo da Binance
+e o garimpo empilhados — e as posições dos robôs no fim de tudo.
+
+**Bitcoin (`/`)** — o gráfico do bitcoin, com os eventos que moveram o mercado
+marcados, e embaixo dele a **liquidez projetada**. É a referência de contexto,
+não o objeto de estudo.
 
 O botão 🌕 marca lua nova e lua cheia, e os marcadores aparecem quando há menos
 de 400 velas na tela — 12,4 lunações por ano viram uma cerca no histórico
@@ -39,18 +44,28 @@ máximo quatro minutos contra as efemérides do Observatório Naval dos EUA. É
 ornamento, e fica desligado por padrão: não há nada aqui que sustente a lua
 mexendo no preço.
 
-**`/radar`** — a triagem: todas as moedas vigiadas numa tabela, ordenadas por
-quanto merecem atenção agora. Duas requisições por moeda, quarenta e duas moedas
-em menos de um segundo. Clicar numa abre **`/radar/[moeda]`** com o retrato
-completo: estrutura do supply, carteira por carteira, transferências grandes,
-posicionamento, mapa de liquidação e o estágio do ciclo.
+**Radar (`/radar`)** — a triagem: todas as moedas vigiadas numa tabela, ordenadas
+por quanto merecem atenção agora. Duas requisições por moeda, quarenta e duas
+moedas em menos de um segundo. Clicar numa abre **`/radar/[moeda]`** com o
+retrato completo: estrutura do supply, carteira por carteira, transferências
+grandes, posicionamento, mapa de liquidação e o estágio do ciclo. Acima da
+tabela, as candidatas a comprar e a vender — e acima delas o veredito do
+**placar**, porque quem lê "vender" precisa saber, na mesma tela, que o viés
+ainda não separou de nada.
 
-Na ordem em que aparecem, e a ordem é o argumento: a **carteira fictícia** com a
-curva do patrimônio contra a das regras anteriores sobre as mesmas calls; o
-**placar** dizendo que nenhum viés separou; os **sinais clássicos medidos**, uma
-barra divergente por sinal, para a pergunta "e se eu usasse RSI?" ter a resposta
-na mesma tela; as candidatas e a tabela; o **fluxo da carteira quente da
-Binance**, por porta; e o garimpo.
+**Robôs (`/robos`)** — as carteiras fictícias que operam qualquer perpétuo com
+uma regra medida, em três partes: o **ao vivo** (os cartões com a faixa medida de
+cada um, as posições de um robô por vez e a curva), a **medição** desde 01/2024
+(`/robos/medicao`) e a **mesa de risco** (`/robos/mesa`).
+
+**Carteira (`/carteira`)** — o radar posto à prova, na ordem que é o argumento: a
+**carteira fictícia** com a curva do patrimônio contra a das regras anteriores
+sobre as mesmas calls; o **placar** dizendo que nenhum viés separou; e os
+**sinais clássicos medidos**, uma barra divergente por sinal, para a pergunta "e
+se eu usasse RSI?" ter a resposta na mesma tela.
+
+**Garimpo (`/garimpo`)** — o que está fora da lista: o **fluxo da carteira quente
+da Binance**, por porta, e o que o universo inteiro de perpétuos devolveu.
 
 ### Ao vivo, sem servidor
 
@@ -855,7 +870,7 @@ quantidade de ideias testadas até achá-la, se escolher a regra em tempo real t
 funcionado, quanto dinheiro ela aguenta e o que acontece quando os livros se juntam. As
 funções estão em `lib/quant.ts` (puras, travadas por `npm run testar-quant`), `npm run
 medir-robos` as roda sobre o mesmo motor e grava o resultado em `quant` de
-`data/robos-medicao.json`, e a página mostra tudo na "mesa de risco", embaixo dos robôs.
+`data/robos-medicao.json`, e a aba Robôs mostra tudo na "Mesa de risco" (`/robos/mesa`).
 
 **O Sharpe é sorte?** As regras deste repositório saíram de ~240 variações escritas nos
 comentários de `lib/robos.ts` e de outras que a primeira bancada testou sem anotar — 300,

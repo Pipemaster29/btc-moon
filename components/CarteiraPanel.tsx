@@ -349,7 +349,7 @@ export default function CarteiraPanel({ c: guardada, bases = {} }: { c: Carteira
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-4 mt-4 text-sm">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mt-4 text-sm">
         <div>
           <p className="text-black/50 dark:text-white/50">Patrimônio</p>
           <p className={`text-2xl font-semibold tabular-nums ${tom(c.retorno)}`}>
@@ -402,7 +402,7 @@ export default function CarteiraPanel({ c: guardada, bases = {} }: { c: Carteira
           gerar.
         </p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-3 mt-4 text-sm border-t border-black/10 dark:border-white/10 pt-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mt-4 text-sm border-t border-black/10 dark:border-white/10 pt-4">
           <div>
             <p className="text-black/50 dark:text-white/50">Queda máxima</p>
             <p className={`text-xl font-semibold tabular-nums ${tom(c.quedaMaxima)}`}>
