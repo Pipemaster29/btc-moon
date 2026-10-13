@@ -212,6 +212,22 @@ export interface Perna {
    * filtro. Medido em 10/10 e só na medição — nenhum robô o usa.
    */
   filtroOI?: { campo: "oi" | "top"; janelaDias: number; /** Verdadeiro: só com o campo CAINDO (`docs/preregistro-oi-invertido.md`). */ caindo?: boolean };
+  /**
+   * O LIMIAR DA TENDÊNCIA: a perna só entra na moeda cujo retorno da janela
+   * está do lado que ela aposta, por pelo menos isto (fração de PREÇO). Com 0,
+   * a comprada só pega quem subiu e a vendida só quem caiu — o ranking escolhe
+   * entre elas, e num dia em que todas caem a comprada não abre nada. O limiar
+   * corta depois da régua de tamanho do ranking (4k elegíveis), não antes: ela
+   * é sobre o universo, não sobre a tendência. Só para o critério "retorno".
+   * Ausente: as k primeiras do ranking, subindo ou caindo.
+   */
+  minimo?: number;
+  /**
+   * O RANKING AO CONTRÁRIO: a comprada pega as que MAIS CAÍRAM e a vendida as
+   * que mais subiram — a aposta de reversão. A saída por posto lê o mesmo
+   * ranking invertido. Ausente: o momento.
+   */
+  inverso?: boolean;
 }
 
 /**
@@ -242,6 +258,13 @@ export interface RegrasRobo {
   idadeMinimaDias: number;
   pernas: Perna[];
   alvoVolatilidade?: AlvoVolatilidade;
+  /**
+   * O MARKET CAP MÍNIMO, em dólares: só entra no ranking a moeda com market cap
+   * lido e maior ou igual a isto naquele dia (`LinhaRanking.marketCap`). Moeda
+   * sem a leitura fica de fora — "não consegui ler" não vira "é grande". É o
+   * universo do robô "Grandes". Ausente: qualquer tamanho.
+   */
+  capMinima?: number;
 }
 
 export interface Robo {
@@ -1013,7 +1036,7 @@ export interface PosicaoRobo {
    * `n` primeiras. Mora na posição como o stop e o rastro — a que entrou antes
    * da regra não sai por ela. Ausente: sem saída por posto.
    */
-  posto?: { janelaDias: number; n: number; criterio?: "retorno" | "fluxo" };
+  posto?: { janelaDias: number; n: number; criterio?: "retorno" | "fluxo"; inverso?: boolean };
   /**
    * SÓ NO AO VIVO: quanto o livro de ofertas da Binance cobraria na hora da
    * entrada, por lado, em fração do nocional — meio spread mais o impacto de
@@ -1150,6 +1173,13 @@ export interface LinhaRanking {
    * dólares por ordem, o livro já está todo em `custoPorLado`.
    */
   impacto?: number;
+  /**
+   * O market cap da moeda naquele dia, em DÓLARES: na medição, o do retrato
+   * semanal da CoinMarketCap mais recente até a decisão (`scripts/baixar-grandes.mts`),
+   * casado com o perpétuo pelo preço; no ao vivo, o de hoje. Nulo sem leitura.
+   * Só o robô com `RegrasRobo.capMinima` lê.
+   */
+  marketCap?: number | null;
 }
 
 /**
@@ -1632,9 +1662,10 @@ function criterioDe(perna: Pick<Perna, "janelaDias" | "criterio">, l: LinhaRanki
  */
 export function ordenar(
   regras: RegrasRobo,
-  perna: Pick<Perna, "lado" | "janelaDias" | "criterio">,
+  perna: Pick<Perna, "lado" | "janelaDias" | "criterio" | "inverso">,
   linhas: readonly LinhaRanking[],
 ): LinhaRanking[] {
+  const capMinima = regras.capMinima;
   const elegiveis = linhas.filter((l) => {
     const r = criterioDe(perna, l);
     return (
@@ -1643,12 +1674,21 @@ export function ordenar(
       Number.isFinite(r) &&
       Number.isFinite(l.volume) &&
       l.volume >= regras.volumeMinimo &&
-      (l.idadeDias === null || l.idadeDias >= regras.idadeMinimaDias)
+      (l.idadeDias === null || l.idadeDias >= regras.idadeMinimaDias) &&
+      // Sem a leitura do market cap a moeda fica FORA do universo das grandes: "não consegui" não vira "é grande".
+      (capMinima === undefined || (typeof l.marketCap === "number" && Number.isFinite(l.marketCap) && l.marketCap >= capMinima))
     );
   });
   const ordem = elegiveis.sort((a, b) => (criterioDe(perna, a) as number) - (criterioDe(perna, b) as number));
-  return perna.lado === "long" ? ordem.reverse() : ordem;
+  // Comprada pega o topo, vendida o fundo; invertida, o contrário (`Perna.inverso`).
+  return (perna.lado === "long") !== !!perna.inverso ? ordem.reverse() : ordem;
 }
+
+/**
+ * O lado da régua para onde a perna aposta: +1 quando ela pega o TOPO do
+ * critério (comprada no momento, vendida na reversão), −1 quando pega o FUNDO.
+ */
+const sentidoDe = (perna: Pick<Perna, "lado" | "inverso">) => ((perna.lado === "long") !== !!perna.inverso ? 1 : -1);
 
 /**
  * As k moedas da perna num dia: as primeiras do ranking (`ordenar`).
@@ -1658,8 +1698,14 @@ export function ordenar(
  */
 export function selecionar(regras: RegrasRobo, perna: Perna, linhas: readonly LinhaRanking[]): LinhaRanking[] {
   // O símbolo do hedge não entra na própria perna: vender ETH contra ETH é zero.
-  const ordem = ordenar(regras, perna, linhas).filter((l) => l.symbol !== perna.hedge?.symbol);
+  let ordem = ordenar(regras, perna, linhas).filter((l) => l.symbol !== perna.hedge?.symbol);
   if (ordem.length < 4 * perna.k) return [];
+  // O limiar da tendência corta DEPOIS da régua de tamanho: ela é sobre o universo do dia, não sobre quem está subindo.
+  const minimo = perna.minimo;
+  if (minimo !== undefined) {
+    const s = sentidoDe(perna);
+    ordem = ordem.filter((l) => s * (criterioDe(perna, l) as number) >= minimo);
+  }
   const f = perna.filtroOI;
   if (f) {
     return ordem
@@ -1694,10 +1740,11 @@ export function sairPorPosto(
   const postos = new Map<string, Map<string, number>>();
   for (const p of [...e.abertas]) {
     if (!p.posto) continue;
-    const chave = `${p.lado}:${p.posto.janelaDias}`;
+    // O ranking guardado é o da perna inteira: lado, janela, critério e sentido — duas pernas do mesmo lado não dividem posto.
+    const chave = `${p.lado}:${p.posto.janelaDias}:${p.posto.criterio ?? "retorno"}:${p.posto.inverso ? "inverso" : ""}`;
     let posto = postos.get(chave);
     if (!posto) {
-      const ordem = ordenar(e.regras, { lado: p.lado, janelaDias: p.posto.janelaDias, criterio: p.posto.criterio }, linhas);
+      const ordem = ordenar(e.regras, { lado: p.lado, janelaDias: p.posto.janelaDias, criterio: p.posto.criterio, inverso: p.posto.inverso }, linhas);
       posto = new Map(ordem.length >= MINIMO_NO_RANKING ? ordem.map((l, k) => [l.symbol, k]) : []);
       postos.set(chave, posto);
     }
@@ -1799,7 +1846,14 @@ export function abrir(
     ...(custoExtra > 0 ? { custoExtra: custoExtra * (nocional + nocionalHedge) } : {}),
     ...(corretora ? { corretora } : {}),
     ...(perna.saidaPosto
-      ? { posto: { janelaDias: perna.janelaDias, n: perna.saidaPosto, ...(perna.criterio ? { criterio: perna.criterio } : {}) } }
+      ? {
+          posto: {
+            janelaDias: perna.janelaDias,
+            n: perna.saidaPosto,
+            ...(perna.criterio ? { criterio: perna.criterio } : {}),
+            ...(perna.inverso ? { inverso: true } : {}),
+          },
+        }
       : {}),
   };
   if (perna.hedge && hedge) {
