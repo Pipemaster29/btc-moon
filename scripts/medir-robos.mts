@@ -529,6 +529,10 @@ interface Extra {
   y?: number;
   /** Onde guardar o caixa e o patrimônio de cada virada de dia: o fundo confere se a transferência cabia. */
   viradas?: { t: number; caixa: number; patrimonio: number }[];
+  /** O custo do atraso da entrada, em fração do nocional; o padrão é `CUSTO_ATRASO`. Só o ataque o muda. */
+  custoAtraso?: number;
+  /** A escorregada do stop (`EstadoRobo.escorregada`); o padrão é `ESCORREGADA_STOP`. Só o ataque a muda. */
+  escorregada?: number;
 }
 
 /** O que uma hora de um robô precisa saber além do estado dele. */
@@ -567,7 +571,7 @@ function umaHora(e: EstadoRobo, i: number, ctx: Contexto): void {
         return { ...l, impacto: coeficienteDeImpacto(y, typeof l.vol === "number" && l.vol > 0 ? l.vol : meio, Number.isFinite(v) && v > 0 ? v : l.volume) };
       });
     }
-    decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, CUSTO_ATRASO);
+    decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, ctx.extra.custoAtraso ?? CUSTO_ATRASO);
   }
   for (const p of [...e.abertas]) {
     const s = porSimbolo.get(p.symbol)!;
@@ -599,6 +603,7 @@ function simular(
 ): EstadoRobo {
   const r: Robo = tamanho === undefined ? robo : { ...robo, regras: { ...robo.regras, tamanho } };
   const e = novoEstado(r, de, extra.capital);
+  if (extra.escorregada !== undefined) e.escorregada = extra.escorregada;
   const ctx: Contexto = { janelaVol, comCorretora, excluir, hedges: hedgesDe(r), extra };
   const [i0, i1] = horasDe(de, ate);
   for (let i = i0; i <= i1; i++) umaHora(e, i, ctx);
@@ -752,6 +757,165 @@ if (args.includes("--tamanho")) {
 if (args.includes("--alvo-fundo")) {
   estudarAlvoFundo();
   process.exit(0);
+}
+if (args.includes("--piramide")) {
+  await estudarPiramide();
+  process.exit(0);
+}
+
+/** O robô com a parcela da pirâmide `P` vezes o tamanho normal (nas pernas que têm pirâmide) e o tamanho base ×L. */
+function comParcela(r: Robo, P: number, L: number): Robo {
+  return {
+    ...r,
+    id: `${r.id}·parcela${P}·x${L}`,
+    regras: {
+      ...r.regras,
+      tamanho: r.regras.tamanho * L,
+      pernas: r.regras.pernas.map((p) => (p.piramide ? { ...p, piramide: { ...p.piramide, tamanho: P } } : p)),
+    },
+  };
+}
+
+/**
+ * A rodada 3 do loop (`docs/preregistro-piramide.md`), como está escrita lá: a
+ * parcela da pirâmide do Momento a 1,5x, 2x e 3x o tamanho normal, cada uma
+ * com o tamanho base ×1, ×1,25 e ×1,5, julgadas no DESENHO pelo teto de 50% de
+ * queda e contra a campeã da rodada 1 (Momento ×1,5, parcela 1). Só a escolhida
+ * vai à reserva e, passando, ao ataque — custo de entrada 4x e escorregada do
+ * stop dobrada, cada um contra a campeã no mesmo ataque.
+ */
+async function estudarPiramide(): Promise<void> {
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  const TETO = -0.5;
+  // `TENTATIVAS_DA_PESQUISA` (300) mais as 14 da rodada 1, as 3 da 2 e as 9 desta.
+  const TENTATIVAS = 300 + 14 + 3 + 9;
+  const desenho: [string, number, number][] = [
+    ["desenho", INICIO, FIM_DESENHO],
+    ["1ª metade", INICIO, CORTE],
+    ["2ª metade", CORTE, FIM_DESENHO],
+  ];
+  const aoMes = (ret: number, de: number, ate: number) => (1 + ret) ** (30.4375 / ((ate - de) / DIA)) - 1;
+  const quedaDe = (curva: readonly { t: number; patrimonio: number }[]) => {
+    let pico = 0;
+    let q = 0;
+    for (const p of curva) {
+      if (p.patrimonio > pico) pico = p.patrimonio;
+      if (pico > 0) q = Math.min(q, p.patrimonio / pico - 1);
+    }
+    return q;
+  };
+  type Medida = { ret: number; mes: number; queda: number; sharpe: number; recusadas: number };
+  const medida = (e: EstadoRobo, de: number, ate: number): Medida => {
+    const ret = e.curva[e.curva.length - 1].patrimonio / e.curva[0].patrimonio - 1;
+    return { ret, mes: aoMes(ret, de, ate), queda: quedaDe(e.curva), sharpe: sharpeDe(e.curva), recusadas: e.recusadas };
+  };
+  const fmt = (m: Medida) => `${pct(m.ret).padStart(9)} (${pct(m.mes)} ao mês, queda ${pct(m.queda)}, Sharpe ${m.sharpe.toFixed(2)})`;
+  const nome = (P: number, L: number) => `parcela ${P} · ×${L}`.padEnd(18);
+  const top5 = new Set([...porMoeda(simular(MOMENTO, INICIO, FIM_DESENHO)).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s));
+  /** Quanto da perna comprada veio das posições que ganharam a parcela — o mecanismo, fora do critério. */
+  const mecanismo = (e: EstadoRobo) => {
+    const compras = e.fechadas.filter((t) => t.lado === "long");
+    const com = compras.filter((t) => (t.parcelas ?? 1) > 1);
+    const soma = (ts: TradeRobo[]) => ts.reduce((a, t) => a + t.resultado, 0);
+    return `parcela em ${com.length} de ${compras.length} compras, que fizeram US$ ${soma(com).toFixed(0)} de US$ ${soma(compras).toFixed(0)}`;
+  };
+
+  console.log(`\n== DESENHO (08/01/2024 a 31/03/2026) — a reserva ainda não foi rodada; teto de queda 50%, de hora em hora; sem as 5: ${[...top5].join(", ")}`);
+  const PARCELAS = [1.5, 2, 3];
+  const BASES = [1, 1.25, 1.5];
+  const elegiveis: { P: number; L: number; mes: number }[] = [];
+  let campeaDesenho: Medida | null = null;
+  for (const P of [1, ...PARCELAS]) {
+    for (const L of BASES) {
+      const r = comParcela(MOMENTO, P, L);
+      const es = desenho.map(([, de, ate]) => simular(r, de, ate));
+      const ms = es.map((e, k) => medida(e, desenho[k][1], desenho[k][2]));
+      const s5 = medida(simular(r, INICIO, FIM_DESENHO, top5), INICIO, FIM_DESENHO);
+      const ok = ms.every((m) => m.queda >= TETO) && s5.ret > 0;
+      if (P === 1 && L === 1.5) campeaDesenho = ms[0];
+      if (ok && P !== 1) elegiveis.push({ P, L, mes: ms[0].mes });
+      console.log(
+        `${nome(P, L)} ` + ms.map((m, k) => `${desenho[k][0]} ${fmt(m)}`).join(" · ") +
+          ` · sem as 5 ${pct(s5.ret)} · ${ms[0].recusadas} recusadas · ${mecanismo(es[0])} → ` +
+          (P === 1 ? (L === 1.5 ? "a campeã" : "referência (rodada 1)") : ok ? "elegível" : "fora do teto"),
+      );
+    }
+  }
+  const campea = comParcela(MOMENTO, 1, 1.5);
+  const escolhida = elegiveis.sort((a, b) => b.mes - a.mes)[0];
+  const venceDesenho = !!escolhida && escolhida.mes > campeaDesenho!.mes;
+  console.log(
+    !escolhida
+      ? "\nnenhuma cabe no teto: REPROVA sem chegar à reserva"
+      : `\nescolhida: parcela ${escolhida.P}, ×${escolhida.L} (${pct(escolhida.mes)} ao mês) · ${venceDesenho ? "supera a campeã no desenho" : `NÃO supera a campeã (${pct(campeaDesenho!.mes)} ao mês): REPROVA sem chegar à reserva`}`,
+  );
+
+  console.log("\n== RESERVA (01/04/2026 a 30/09/2026)");
+  const campeaReserva = medida(simular(campea, FIM_DESENHO, FIM), FIM_DESENHO, FIM);
+  console.log(`${"campeã".padEnd(18)} ${fmt(campeaReserva)}`);
+  let aprovada = false;
+  if (escolhida && venceDesenho) {
+    const robo = comParcela(MOMENTO, escolhida.P, escolhida.L);
+    const r = medida(simular(robo, FIM_DESENHO, FIM), FIM_DESENHO, FIM);
+    const passaReserva = r.queda >= TETO && r.mes >= campeaReserva.mes;
+    console.log(`${nome(escolhida.P, escolhida.L)} ${fmt(r)} ← escolhida: ${passaReserva ? "passa na reserva" : "REPROVADA na reserva"}`);
+    if (passaReserva) {
+      console.log("\n== O ATAQUE, no desenho: cada um contra a campeã no mesmo ataque");
+      const ataques: [string, Extra][] = [
+        ["custo de entrada 4x", { custoAtraso: 4 * CUSTO_ATRASO }],
+        ["escorregada dobrada", { escorregada: 2 * ESCORREGADA_STOP }],
+      ];
+      let aguenta = true;
+      for (const [rotulo, extra] of ataques) {
+        const c = medida(simular(campea, INICIO, FIM_DESENHO, undefined, undefined, JANELA_VOLATILIDADE_DIAS, true, extra), INICIO, FIM_DESENHO);
+        const v = medida(simular(robo, INICIO, FIM_DESENHO, undefined, undefined, JANELA_VOLATILIDADE_DIAS, true, extra), INICIO, FIM_DESENHO);
+        const ok = v.queda >= TETO && v.mes > c.mes;
+        aguenta &&= ok;
+        console.log(`${rotulo.padEnd(20)} campeã ${fmt(c)} · escolhida ${fmt(v)} → ${ok ? "aguenta" : "NÃO aguenta"}`);
+      }
+      aprovada = aguenta;
+    }
+    console.log(`\n→ ${aprovada ? "APROVADA" : "REPROVADA"}`);
+  }
+
+  // As tentativas somadas: o deflacionado da escolhida (e da campeã) na janela inteira.
+  const medicao = JSON.parse(await readFile("data/robos-medicao.json", "utf8")) as Medicao;
+  const grade = medicao.quant?.validacao.find((v) => v.id === "momento")?.desvioDosSharpes.grade ?? 0;
+  const deflacionadoDe = (robo: Robo) => {
+    const { r } = retornosDiarios(diaria(simular(robo, INICIO, FIM)));
+    const variancia = Math.max((grade / Math.sqrt(365)) ** 2, varianciaDoSharpeNulo(r.length));
+    return `Sharpe ${(sharpeDiario(r) * Math.sqrt(365)).toFixed(2)}, régua ${(sharpeMaximoEsperado(TENTATIVAS, variancia) * Math.sqrt(365)).toFixed(2)}, DSR ${sharpeDeflacionado(r, TENTATIVAS, variancia).toFixed(4)}`;
+  };
+  console.log(`\n== deflacionado com ${TENTATIVAS} tentativas, 01/2024 a 09/2026`);
+  console.log(`${"campeã".padEnd(18)} ${deflacionadoDe(campea)}`);
+  if (escolhida) console.log(`${nome(escolhida.P, escolhida.L)} ${deflacionadoDe(comParcela(MOMENTO, escolhida.P, escolhida.L))}`);
+
+  if (aprovada && escolhida) {
+    // A META: a escolhida em tempo real — a grade com a parcela dela, o walk-forward de 365 dias.
+    const variantes = GRADES.find((g) => g.livro.id === MOMENTO.id)!.variantes;
+    const colunas: number[][] = [];
+    let datas: number[] = [];
+    for (const v of variantes) {
+      const d = retornosDiarios(diaria(simular(comParcela(v, escolhida.P, escolhida.L), INICIO, FIM)));
+      colunas.push(d.r);
+      datas = d.datas;
+    }
+    const wf = walkForward(Array.from({ length: datas.length }, (_, t) => colunas.map((c) => c[t])), datas, 365, 180);
+    const f = fichaDe(wf.r, wf.datas);
+    const de = wf.datas[0] - DIA;
+    console.log(
+      `\n== em tempo real (walk-forward de 365 dias na grade com a parcela ${escolhida.P}, ×${escolhida.L}): desde ${new Date(de).toISOString().slice(0, 10)} ` +
+        `${pct(f.retorno)} (${pct(aoMes(f.retorno, de, wf.datas[wf.datas.length - 1]))} ao mês, queda diária ${pct(f.quedaMaxima)}, Sharpe ${f.sharpe.toFixed(2)})`,
+    );
+  }
+
+  console.log("\n== RESERVA das outras (registro, depois da decisão)");
+  for (const P of [1, ...PARCELAS]) {
+    for (const L of BASES) {
+      if ((P === 1 && L === 1.5) || (escolhida && venceDesenho && P === escolhida.P && L === escolhida.L)) continue;
+      console.log(`${nome(P, L)} ${fmt(medida(simular(comParcela(MOMENTO, P, L), FIM_DESENHO, FIM), FIM_DESENHO, FIM))}`);
+    }
+  }
 }
 
 /**

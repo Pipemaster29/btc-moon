@@ -1067,6 +1067,12 @@ export interface EstadoRobo {
   diasPerdidos: number;
   /** Seleções que não viraram posição por falta de caixa ou de preço. */
   recusadas: number;
+  /**
+   * A escorregada do stop desta conta, quando não é a medida
+   * (`ESCORREGADA_STOP`): só a medição a muda, no ataque de escorregada
+   * dobrada. O ao vivo nunca a grava.
+   */
+  escorregada?: number;
 }
 
 // ------------------------------------------------------------------ o mercado
@@ -1331,7 +1337,8 @@ export function percorrer(
       // No nível, ou na abertura se a vela saltou por cima dele — e então a
       // escorregada medida no minuto do disparo (`ESCORREGADA_STOP`).
       const nivel = comprado ? Math.min(v.o, ns) : Math.max(v.o, ns);
-      const preco = comprado ? nivel - ESCORREGADA_STOP * (nivel - v.l) : nivel + ESCORREGADA_STOP * (v.h - nivel);
+      const esc = e?.escorregada ?? ESCORREGADA_STOP;
+      const preco = comprado ? nivel - esc * (nivel - v.l) : nivel + esc * (v.h - nivel);
       const doRastro = comprado ? ns > p.stop : ns < p.stop;
       p.ultimaVela = v.t;
       return { preco, quando: v.t + HORA, motivo: doRastro ? "rastro" : "stop" };
@@ -1431,7 +1438,8 @@ function andarHedge(h: PernaHedge, v: VelaRobo | undefined, cobrancas: readonly 
 function acrescentar(e: EstadoRobo, p: PosicaoRobo, v: VelaRobo, gatilho: number): void {
   const comprado = p.lado === "long";
   const base = comprado ? Math.max(v.o, gatilho) : Math.min(v.o, gatilho);
-  const preco = comprado ? base + ESCORREGADA_STOP * (v.h - base) : base - ESCORREGADA_STOP * (base - v.l);
+  const esc = e.escorregada ?? ESCORREGADA_STOP;
+  const preco = comprado ? base + esc * (v.h - base) : base - esc * (base - v.l);
   const alavancagem = p.nocional / p.margem;
   const bruto = e.regras.tamanho * patrimonioA(e) * (p.piramide?.tamanho ?? 1) * escalaDoTamanho(e, v.t);
   const nocional = p.corretora && preco > 0 ? nocionalAceito(bruto, preco, p.corretora) : bruto;
