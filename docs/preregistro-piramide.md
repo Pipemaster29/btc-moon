@@ -73,3 +73,69 @@ grade do Momento com a parcela P nas que têm pirâmide, todas no tamanho ×L, e
 walk-forward de 365 dias escolhendo entre elas a cada trimestre — é impresso e
 vai para o documento de objetivos, se ela for aprovada. Não entra no critério
 de aprovação; entra no da meta.
+
+## O resultado (13/10, depois do pré-registro)
+
+`npm run medir-robos -- --piramide`. Retorno ao mês entre parênteses; a queda é a
+de hora em hora. As três referências com a parcela de hoje reproduzem a rodada 1
+casa por casa (+1.864,3%, +2.220,0% e +2.795,2%).
+
+| desenho, 08/01/2024 a 31/03/2026 | desenho | 1ª metade | 2ª metade | queda | Sharpe | sem as 5 | |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| parcela 1 · ×1 (o Momento) | +1.864% (11,8%) | +216% (6,7%) | +444% (20,7%) | −35,8% | 2,40 | +432% | referência |
+| parcela 1 · ×1,25 | +2.220% (12,5%) | +228% (6,9%) | +549% (23,1%) | −40,7% | 2,31 | +455% | referência |
+| parcela 1 · ×1,5 (a campeã, o turbo) | +2.795% (13,4%) | +244% (7,2%) | +662% (25,3%) | −46,0% | 2,30 | +471% | referência |
+| parcela 1,5 · ×1 | +2.111% (12,3%) | +219% (6,8%) | +493% (21,9%) | −38,4% | 2,35 | +466% | elegível |
+| parcela 1,5 · ×1,25 | +2.434% (12,8%) | +223% (6,8%) | +617% (24,5%) | −43,5% | 2,26 | +394% | elegível |
+| parcela 1,5 · ×1,5 | +3.042% (13,8%) | +235% (7,0%) | +750% (26,8%) | −48,7% | 2,24 | +432% | elegível |
+| parcela 2 · ×1 | +2.375% (12,7%) | +225% (6,9%) | +537% (22,8%) | −40,2% | 2,32 | +469% | elegível |
+| parcela 2 · ×1,25 | +2.695% (13,3%) | +227% (6,9%) | +678% (25,6%) | −45,8% | 2,22 | +394% | elegível |
+| parcela 2 · ×1,5 | +3.312% (14,1%) | +226% (6,9%) | +831% (28,1%) | −51,6% | 2,19 | +433% | fora do teto |
+| parcela 3 · ×1 | +2.622% (13,1%) | +218% (6,7%) | +626% (24,6%) | −43,6% | 2,20 | +511% | elegível |
+| **parcela 3 · ×1,25** | **+3.111% (13,9%)** | +226% (6,9%) | +801% (27,7%) | **−49,5%** | 2,13 | +422% | **escolhida** |
+| parcela 3 · ×1,5 | +4.164% (15,1%) | +251% (7,3%) | +981% (30,3%) | −55,0% | 2,14 | +325% | fora do teto |
+
+**Escolhida: parcela 3x, tamanho ×1,25** — 13,9% ao mês, acima dos 13,4% da
+campeã, com a queda a meio ponto do teto.
+
+| reserva, 01/04 a 30/09/2026 | retorno | ao mês | queda | Sharpe |
+| --- | --- | --- | --- | --- |
+| campeã | +193% | 19,6% | −35,3% | 2,47 |
+| **parcela 3 · ×1,25** | **+264%** | **24,0%** | **−41,9%** | 2,40 |
+
+✓ queda até 50% · ✓ retorno ao mês maior que o da campeã → passa na reserva, e
+vai ao ataque, no desenho, cada um contra a campeã no mesmo ataque:
+
+| ataque, desenho | campeã | parcela 3 · ×1,25 | |
+| --- | --- | --- | --- |
+| custo de entrada 4x | +1.872% (11,8%), queda −47,9% | +2.418% (12,8%), **queda −53,8%** | não aguenta |
+| escorregada do stop dobrada | +2.126% (12,3%), queda −46,6% | +2.372% (12,7%), **queda −52,2%** | não aguenta |
+
+O retorno continua acima do da campeã nos dois ataques, mas a queda passa do
+teto nos dois: **REPROVADA.** A meio ponto do teto no desenho, o custo um pouco
+pior da vida real é o que basta para passar dele.
+
+**O que a rodada mede além do veredito.** O mecanismo é verdadeiro: na campeã,
+as 190 de 756 compras que ganharam a parcela fizeram US$ 55.598, e a perna
+comprada inteira fez US$ 20.093 — as outras 566 perderam US$ 35.505. Mas
+aumentar a parcela é aumentar o tamanho por outro caminho, e pelo mesmo preço:
+dentro do teto, cada variante fica a menos de 0,3 ponto por mês da reta do
+tamanho puro da rodada 1 na mesma queda — acima em três, abaixo em quatro (a
+parcela 1,5x ×1,5, com −48,7%, faz 13,8% ao mês; o tamanho puro faria ~13,9% na
+mesma queda) —, e o Sharpe cai a cada parcela maior (a ×1: 2,40, 2,35, 2,32 e
+2,20). A primeira metade do desenho não sai de 6,7%–7,3% ao mês em nenhuma; o
+que a parcela maior ganha mora na segunda metade e na reserva, em que ela ganha
+em todo tamanho (a ×1: 16,8% com a parcela de hoje, 18,2%, 19,7% e 22,0% ao mês)
+— as monstras de 2025–2026 de novo.
+
+**As tentativas:** com 326 (300 da pesquisa e as 26 das três rodadas), o Sharpe
+deflacionado da campeã é 90,1% e o da escolhida, 86,9% — o 4º teste da meta
+pede 95%.
+
+A reserva das outras, rodada só para o registro depois da decisão: parcela 1 ×1
++155% (16,8%) · ×1,25 +175% (18,3%); parcela 1,5 ×1 +173% (18,2%) · ×1,25 +200%
+(20,1%) · ×1,5 +222% (21,5%); parcela 2 ×1 +194% (19,7%) · ×1,25 +223% (21,5%) ·
+×1,5 +250% (23,2%); parcela 3 ×1 +231% (22,0%) · ×1,5 +296% (25,7%, queda −44,6%).
+
+**O que fica:** nada muda nos robôs. O ataque fica na medição (`Extra.custoAtraso`
+e `EstadoRobo.escorregada`, que só a medição muda), para as próximas regras.

@@ -130,10 +130,10 @@ no código, com número:
   fundo pergunta antes de pôr dinheiro, medido com `lib/quant.ts` sobre o mesmo
   motor. **A publicada do Momento é a MELHOR de 144 variações** da grade das
   peças que a pesquisa mexeu (mediana 1,61 de Sharpe, a pior 1,01): o Sharpe
-  sobrevive ao deflacionado de 300 tentativas (93%) e o PBO é 0,13, mas
+  sobrevive ao deflacionado de 326 tentativas (93%) e o PBO é 0,13, mas
   escolhendo em tempo real (walk-forward de 365 dias) ele faz +977% de 10/2024
   a 09/2026 contra +6.126% da publicada nos mesmos dias — o +5.928% é o teto de
-  quem escolheu depois de ver. **O Fluxo reprova no deflacionado** (40%, PBO
+  quem escolheu depois de ver. **O Fluxo reprova no deflacionado** (39%, PBO
   0,37): plausível, não demonstrado. O bootstrap põe a queda do Momento entre
   −24% e −54%. A capacidade é pequena: com o impacto pela raiz quadrada e as
   regras da Binance, US$ 1 milhão dá Sharpe 1,83 e US$ 20 milhões, 0,70. E o
@@ -160,9 +160,15 @@ no código, com número:
   reserva e 11,7% em tempo real. Tamanho não chega a 30%: o caixa recusa
   entrada antes (o fundo a ×3 recusa 2.166). A rodada 2 (`--alvo-fundo`) pôs
   o alvo de volatilidade no fundo inteiro: 9,4% ao mês no máximo, reprovada —
-  o caixa recusa do mesmo jeito. O resto da meta tem de vir de vantagem nova
-  ou de menos margem presa por posição. `simularFundo` simula as subcontas
-  lado a lado, para regras que olham o fundo inteiro.
+  o caixa recusa do mesmo jeito. A rodada 3 (`--piramide`) aumentou a parcela
+  da pirâmide do Momento: a escolhida (3x, ×1,25) fez 13,9% no desenho e 24,0%
+  na reserva e passou do teto no ataque (−53,8% com custo 4x) — na mesma
+  queda, parcela maior rende o mesmo que tamanho puro. **O loop parou aí (13/10),
+  três rodadas sem melhora**: dentro de −50%, tudo cai na mesma reta, que acaba
+  em 13–14% ao mês; 30% pediria um livro novo com Sharpe próprio perto de 2,5.
+  `simularFundo` simula as subcontas lado a lado, para regras que olham o fundo
+  inteiro, e o ataque (`Extra.custoAtraso`, `EstadoRobo.escorregada`) fica na
+  medição para as próximas regras.
 
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
@@ -611,7 +617,8 @@ e no README; aqui fica o que não pode ser quebrado.
 - **O deflacionado usa o maior entre o espalhamento dos Sharpes da grade e o do
   acaso** (`varianciaDoSharpeNulo`): grade de variações parecidas espalha pouco
   e daria uma régua baixa demais. E o N "da pesquisa" (`TENTATIVAS_DA_PESQUISA`,
-  300) é contado por baixo — regra nova medida soma tentativas.
+  326: 300 até 10/10 e as 26 do loop) é contado por baixo — regra nova medida
+  soma tentativas.
 - **O fundo só transfere o caixa livre** (`caixaLivre` de `paridadeDeRisco`):
   margem de posição aberta não sai da subconta. O ao vivo (`fundoAoVivo`) é
   conta de cotas sobre as curvas dos robôs, sem essa trava — na medição ela

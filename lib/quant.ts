@@ -6,11 +6,11 @@
  * Por que isto existe. A medição dos robôs (`npm run medir-robos`) diz quanto
  * cada regra teria feito; ela não diz quanto disso é sorte de quem testou
  * centenas de variações e publicou a melhor. As regras deste repositório saíram
- * de ~300 tentativas contadas por baixo (as reprovadas estão escritas ao lado
- * de cada constante de `lib/robos.ts`), e com 300 tentativas sem vantagem
- * nenhuma a melhor delas mostra, em 997 dias, um Sharpe anual perto de 1,8 só
- * por acaso. Os testes daqui são os que uma mesa de fundo roda antes de pôr
- * dinheiro numa estratégia:
+ * de 326 tentativas contadas por baixo (as reprovadas estão escritas ao lado
+ * de cada constante de `lib/robos.ts`, e as do loop de melhoria em `docs/`), e
+ * com 326 tentativas sem vantagem nenhuma a melhor delas mostra, em 997 dias,
+ * um Sharpe anual perto de 1,8 só por acaso. Os testes daqui são os que uma
+ * mesa de fundo roda antes de pôr dinheiro numa estratégia:
  *
  *   `sharpeProbabilistico`  a chance de o Sharpe verdadeiro passar de uma régua,
  *                           com a assimetria e a cauda dos retornos dentro

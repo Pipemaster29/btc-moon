@@ -95,7 +95,7 @@
  * A MESA DE RISCO (10/10, `lib/quant.ts`) diz quanto disso é escolha. Na grade
  * das peças que a pesquisa mexeu — 144 variações do Momento —, a publicada é a
  * MELHOR (Sharpe 2,54; a mediana, 1,61; a pior, 1,01). O Sharpe sobrevive ao
- * deflacionado de 300 tentativas (93%) e o PBO é 0,13, mas quem escolhesse a
+ * deflacionado de 326 tentativas (93%) e o PBO é 0,13, mas quem escolhesse a
  * cada trimestre pelos 365 dias anteriores, sem saber o que vinha, faria +977%
  * de 10/2024 a 09/2026, contra +6.126% desta regra nos mesmos dias: o número
  * da tabela de cima é o teto de quem escolheu depois de ver. E ele não cabe em
@@ -525,6 +525,17 @@ const COMPRA_30: Perna = {
  * ou 90 dias (dentro piora); duas ou três parcelas (+30/+60%, +30/+60/+100%),
  * que na janela de 30 dias não melhoram o dentro sobre uma só (+107% e +109%
  * contra +110%) e aumentam a queda máxima (−45% e −49% contra −42%).
+ *
+ * A PARCELA MAIOR REPROVOU (rodada 3 do loop, 13/10, pré-registrada em
+ * `docs/preregistro-piramide.md`; `npm run medir-robos -- --piramide`). O lucro
+ * da perna mora mesmo nas posições que ganham a parcela — no turbo, as 190 de
+ * 756 compras com parcela fizeram US$ 55.598, e a perna inteira, US$ 20.093 —,
+ * mas parcela de 1,5x, 2x ou 3x é tamanho por outro caminho: na mesma queda,
+ * a menos de 0,3 ponto por mês da reta do tamanho puro, e o Sharpe cai a cada
+ * parcela maior (2,40 → 2,20 a 3x). A escolhida no desenho, 3x com o tamanho
+ * ×1,25 (13,9% ao mês contra 13,4% do turbo, queda −49,5%), passou na reserva
+ * e estourou o teto de 50% no ataque: −53,8% com o custo de entrada 4x e
+ * −52,2% com a escorregada dobrada.
  */
 const COMPRA_45: Perna = {
   ...COMPRA_30,
@@ -793,8 +804,8 @@ const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.2
  * seca e este não depende delas.
  *
  * E O QUE ELE AINDA NÃO DEMONSTROU (a mesa de risco, 10/10): o Sharpe de 1,60 é
- * o 4º de 108 variações da grade dele e NÃO sobrevive ao deflacionado de 300
- * tentativas (40%) — é o que a melhor de 300 ideias sem vantagem já mostraria —,
+ * o 4º de 108 variações da grade dele e NÃO sobrevive ao deflacionado de 326
+ * tentativas (39%) — é o que a melhor de 326 ideias sem vantagem já mostraria —,
  * com PBO de 0,37. A família inteira é positiva (a pior variação, 0,51) e o
  * walk-forward faz +188%: plausível, não demonstrado. É no fundo, junto do
  * Momento, que ele mais vale — ali ele dilui o risco mesmo que a vantagem seja

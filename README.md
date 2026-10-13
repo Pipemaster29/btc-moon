@@ -859,8 +859,8 @@ medir-robos` as roda sobre o mesmo motor e grava o resultado em `quant` de
 
 **O Sharpe é sorte?** As regras deste repositório saíram de ~240 variações escritas nos
 comentários de `lib/robos.ts` e de outras que a primeira bancada testou sem anotar — 300,
-contadas por baixo. Com 300 tentativas SEM vantagem nenhuma, a melhor delas mostraria em
-997 dias um Sharpe anual de 1,75 só por acaso (Bailey e López de Prado, 2014). Cada livro
+contadas por baixo, e 326 com as 26 variantes do loop de melhoria. Com 326 tentativas SEM
+vantagem nenhuma, a melhor delas mostraria em 997 dias um Sharpe anual de 1,77 só por acaso (Bailey e López de Prado, 2014). Cada livro
 foi remedido numa grade das peças que a pesquisa de fato mexeu: o Momento em 144
 variações (janela da compra 30/45/60 dias × da venda 7/14/21 × saída por posto ×
 pirâmide × alvo de volatilidade × vendida pela volatilidade), o Fluxo em 108 (janela
@@ -870,7 +870,7 @@ pirâmide × alvo de volatilidade × vendida pela volatilidade), o Fluxo em 108 
 | --- | --- | --- |
 | a publicada na grade, por Sharpe | **1ª de 144** | 4ª de 108 |
 | Sharpe: publicada · mediana da grade · pior | 2,54 · 1,61 · 1,01 | 1,60 · 1,13 · 0,51 |
-| Sharpe deflacionado, 300 tentativas | **93%** (passa no limite) | **40%** (reprova) |
+| Sharpe deflacionado, 326 tentativas | **93%** (passa no limite) | **39%** (reprova) |
 | PBO, 12.870 partições (0,5 é sorteio) | 0,13 | 0,37 |
 | escolhendo em tempo real, 10/2024–09/2026 | +977% (Sharpe 2,32) | +188% (1,96) |
 | a publicada nos mesmos dias | +6.126% (3,21) | +249% (2,00) |
@@ -883,7 +883,7 @@ positivas e escolher pelo passado ajuda (PBO baixo) — mas a publicada é a mel
 e quem a escolhesse às cegas faria +977% onde a medição mostra +6.126%, quase o mesmo da
 variação do meio da grade nos mesmos dias (+902%). O +5.928% da janela inteira é o teto
 de quem escolheu depois de ver. O Fluxo **não** sobrevive: o Sharpe 1,60 dele é o que a
-melhor de 300 ideias sem vantagem já mostraria. A família inteira é positiva e o
+melhor de 326 ideias sem vantagem já mostraria. A família inteira é positiva e o
 walk-forward faz +188%, então a vantagem é plausível — mas não está demonstrada.
 
 **A ficha de risco**, na curva de um ponto por dia, com o intervalo de 95% do bootstrap
@@ -997,6 +997,18 @@ metade do patrimônio em metade das trajetórias — ou 2,9 com meio Kelly.
 | --- | --- | --- | --- |
 | 1 | o tamanho de crescimento máximo dentro de −50% (`docs/preregistro-tamanho.md`) | Momento ×1,5 — o turbo de hoje: 13,4% ao mês no desenho, 19,6% na reserva, **11,7% em tempo real**; o fundo chega a 11,4% (×2,5), com o caixa recusando 1.574 entradas | aprovada, sem mudança: o turbo já está nesse tamanho |
 | 2 | o alvo de volatilidade no fundo inteiro, de 40%, 60% ou 80% ao ano (`docs/preregistro-alvo-fundo.md`) | o fundo vai de 8,0% a 9,4% ao mês no desenho, abaixo dos 13,4% da campeã; o caixa recusa 582 entradas a 80% | reprovada sem chegar à reserva |
+| 3 | a parcela maior na pirâmide do Momento, 1,5x, 2x e 3x, com o tamanho ×1 a ×1,5 (`docs/preregistro-piramide.md`) | a escolhida (3x, ×1,25) faz 13,9% ao mês no desenho e 24,0% na reserva, e a queda passa do teto no ataque (−53,8% com custo 4x, −52,2% com escorregada dobrada); na mesma queda, a parcela maior rende o mesmo que o tamanho puro | reprovada no ataque |
+
+**O loop parou na rodada 3 (13/10)**, pela regra do documento de objetivos: três rodadas
+seguidas sem melhora na meta. Dentro de 50% de queda, todo jeito de pôr mais dinheiro na
+mesa — mais tamanho, o alvo de volatilidade no fundo, a parcela maior — caiu na mesma
+reta, cerca de 0,8 ponto de retorno ao mês a cada 4 ou 5 pontos de queda, e ela acaba em
+13% a 14% ao mês no desenho e em 11,7% escolhendo em tempo real. 30% ao mês pediria um
+livro novo, que não ande junto do Momento, com Sharpe próprio perto de 2,5 — o melhor
+segundo livro medido, o Fluxo, tem 1,60 —, ou uma queda que quebra a conta. As tentativas
+do loop entraram no deflacionado: com 326, o Momento fica em 93% e o turbo em 90%, abaixo
+dos 95% que a meta pede. As hipóteses que sobraram na fila continuam escritas no
+documento de objetivos.
 
 ## O ciclo, em quatro estágios
 

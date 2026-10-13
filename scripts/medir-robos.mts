@@ -787,7 +787,7 @@ function comParcela(r: Robo, P: number, L: number): Robo {
 async function estudarPiramide(): Promise<void> {
   const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
   const TETO = -0.5;
-  // `TENTATIVAS_DA_PESQUISA` (300) mais as 14 da rodada 1, as 3 da 2 e as 9 desta.
+  // O mesmo N de `TENTATIVAS_DA_PESQUISA`, que é declarada depois daqui: 300 mais as 14 da rodada 1, as 3 da 2 e as 9 desta.
   const TENTATIVAS = 300 + 14 + 3 + 9;
   const desenho: [string, number, number][] = [
     ["desenho", INICIO, FIM_DESENHO],
@@ -1509,9 +1509,11 @@ if (fluxoRobo) {
  * `lib/robos.ts` registram ~240 variações medidas e reprovadas ou escolhidas
  * (as ideias da primeira bancada, as janelas, os postos, os alvos, os filtros,
  * a rodada de livros diferentes, os platôs e os ataques), e a primeira bancada
- * testou outras sem anotar. 300 é o N do Sharpe deflacionado "da pesquisa".
+ * testou outras sem anotar: 300 até 10/10. O loop de melhoria somou as suas —
+ * 14 variantes na rodada 1, 3 na 2 e 9 na 3 (`docs/preregistro-*.md`) —, e o N
+ * do Sharpe deflacionado "da pesquisa" passou a 326.
  */
-const TENTATIVAS_DA_PESQUISA = 300;
+const TENTATIVAS_DA_PESQUISA = 300 + 14 + 3 + 9;
 const SEMENTE = 20_261_010;
 const AMOSTRAS = 2000;
 /** Blocos de 20 dias em média: um mês de memória, o tamanho de uma alta de monstra. */
