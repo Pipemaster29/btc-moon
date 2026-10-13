@@ -710,12 +710,16 @@ for (const r of ROBOS) {
   // A medição tem em média 25 posições abertas (máximo 38): a média precisa
   // caber no caixa com folga. No pico o turbo recusa algumas — a medição conta
   // e as recusas estão dentro do resultado dela.
-  // No par, as duas metades prendem margem.
+  // No par, as duas metades prendem margem. O robô das grandes não chega a 25:
+  // cada perna segura as que estão entre as `saidaPosto` primeiras de um
+  // universo de 22 a 42 moedas (o máximo medido está em `lib/robos.ts`).
+  const porPerna = (p: Perna) => (r.regras.capMinima !== undefined && p.saidaPosto ? p.saidaPosto : 25 / r.regras.pernas.length);
   const margemMedia = r.regras.pernas.reduce(
-    (s, p) => s + (25 / r.regras.pernas.length) * (r.regras.tamanho / p.alavancagem + (p.hedge ? r.regras.tamanho / p.hedge.alavancagem : 0)),
+    (s, p) => s + porPerna(p) * (r.regras.tamanho / p.alavancagem + (p.hedge ? r.regras.tamanho / p.hedge.alavancagem : 0)),
     0,
   );
-  confere(`${r.nome}: 25 posições cabem no caixa`, margemMedia < 0.8, `${(margemMedia * 100).toFixed(0)}% em margem`);
+  const posicoes = Math.round(r.regras.pernas.reduce((s, p) => s + porPerna(p), 0));
+  confere(`${r.nome}: ${posicoes} posições cabem no caixa`, margemMedia < 0.8, `${(margemMedia * 100).toFixed(0)}% em margem`);
 }
 
 {

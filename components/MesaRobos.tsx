@@ -26,10 +26,11 @@ const NOME: Record<string, string> = {
   turbo: "Momento turbo",
   "caca-monstra": "Caça-monstra",
   fluxo: "Fluxo",
+  grandes: "Grandes",
   fundo: "Fundo (Momento + Fluxo)",
   btc: "BTC comprado",
 };
-const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo", fundo: "Fundo", btc: "BTC" };
+const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo", grandes: "Grandes", fundo: "Fundo", btc: "BTC" };
 const nome = (id: string) => NOME[id] ?? id;
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -630,7 +631,7 @@ export default function MesaRobos({
               <thead className="text-black/40 dark:text-white/40">
                 <tr className="text-left">
                   <th className={th}>dia</th>
-                  {["btc", "momento", "fluxo", "fundo", "caca-monstra"].map((id) => (
+                  {["btc", "momento", "fluxo", "fundo", "caca-monstra", "grandes"].map((id) => (
                     <th key={id} className={`${th} text-right`}>
                       {CURTO[id]}
                     </th>
@@ -641,7 +642,7 @@ export default function MesaRobos({
                 {estresse.map((x) => (
                   <tr key={x.dia} className={linhaTabela}>
                     <td className="py-1 pr-3">{data(x.dia)}</td>
-                    {["btc", "momento", "fluxo", "fundo", "caca-monstra"].map((id) => (
+                    {["btc", "momento", "fluxo", "fundo", "caca-monstra", "grandes"].map((id) => (
                       <td key={id} className={`py-1 pr-3 text-right ${tom(x.retornos[id] ?? 0)}`}>
                         {pct(x.retornos[id] ?? NaN, 1)}
                       </td>
@@ -654,7 +655,7 @@ export default function MesaRobos({
           <p className={nota}>
             A vendida do Momento e o par do Fluxo pagam no pânico; o Caça-monstra, só comprado, cai junto. Correlação diária com
             o BTC: Momento {num(corr("momento", "btc"))}, Fluxo {num(corr("fluxo", "btc"))}, fundo {num(corr("fundo", "btc"))},
-            Caça-monstra {num(corr("caca-monstra", "btc"))}.
+            Caça-monstra {num(corr("caca-monstra", "btc"))}, Grandes {num(corr("grandes", "btc"))}.
           </p>
         </section>
       )}

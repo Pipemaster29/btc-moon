@@ -13,9 +13,11 @@ const COR: Record<string, string> = {
   turbo: "var(--robo-2)",
   "caca-monstra": "var(--robo-3)",
   fluxo: "var(--robo-4)",
+  // A 5ª cor da paleta é a do fundo, na mesa de risco: o das grandes fica com a 6ª.
+  grandes: "var(--robo-6)",
 };
 export const corDe = (id: string) => COR[id] ?? "var(--robo-ctx)";
-export const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo" };
+export const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo", grandes: "Grandes" };
 
 // O nome vem do estado ao vivo; robô medido que ainda não rodou (o primeiro
 // retrato depois do deploy é que o cria) cai no nome das regras.

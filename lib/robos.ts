@@ -967,6 +967,24 @@ const UNIVERSO = { volumeMinimo: 20e6, idadeMinimaDias: 14 };
  * Pico estreito e não platô, e abaixo do BTC parado em Sharpe. O critério que a
  * escolheu (as duas metades positivas, o maior Sharpe) estava no código antes
  * da última rodada, e a reserva de 04–09/2026 só rodou depois do pré-registro.
+ *
+ * REPROVADA, pelo critério escrito antes (`npm run medir-robos --
+ * --grandes-reserva`). Na reserva fez +48,7% (Sharpe 2,24, queda −19%), contra
+ * +22,5% do BTC parado e +32,3% da cesta — mas a reserva foi de alta para as
+ * grandes, e 25 das 28 outras variações também ganharam nela (só as três
+ * reversões perderam); e o +48,7% é todo de nove posições ainda abertas em
+ * 30/09, metade numa só (ZEC, +US$ 242) — as encerradas somam zero. O ataque
+ * reprova: com o custo de entrada 4x o desenho vai de +33,7% para −9,0% (a
+ * escorregada dobrada aguenta, +31,6%) — a vantagem medida é mais fina que o
+ * custo. Com 367 tentativas o Sharpe de 0,72 da janela inteira fica contra
+ * uma régua do acaso de 2,37: deflacionado 0,003. E em tempo real, escolhendo
+ * entre as 29 variações a cada trimestre pelo ano anterior, desde 10/2024:
+ * −51% (Sharpe −0,83), contra +105% desta nos mesmos dias. Ela entra no ao
+ * vivo como a resposta a "e se só moeda grande?", não como regra que passou.
+ *
+ * As vendidas chegam a 12 abertas ao mesmo tempo (as compradas, a 7), e não a
+ * 6: a moeda que cai abaixo de US$ 2 bi sai do ranking, e a posição dela fica
+ * até o stop ou o prazo — "fora do ranking" não é "caiu no ranking".
  */
 const COMPRA_GRANDES: Perna = {
   lado: "long",

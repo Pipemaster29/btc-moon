@@ -150,3 +150,52 @@ regra — a pergunta do usuário é "como seria", e a resposta é o robô rodand
 lado dos outros. A reserva decide o que a página diz dele: "não perdeu fora de
 onde foi escolhido" ou "reprovado na reserva". Nenhum dos dois é vantagem
 demonstrada, e a página diz isso também.
+
+## O resultado (13/10, depois do pré-registro)
+
+`npm run medir-robos -- --grandes-reserva`. O robô publicado (`ROBOS`, id
+"grandes") dá a mesma curva da escolhida no desenho, ponto a ponto: +33,7%
+(1,1% ao mês, queda −39,4%, Sharpe 0,52).
+
+**Reserva** (01/04 a 30/09/2026):
+
+    Grandes                           +48,7% (6,8% ao mês, queda −19,2%, Sharpe 2,24) · 100 trades
+    BTC comprado e parado             +22,5% (3,4% ao mês, queda −29,4%, Sharpe 1,25)
+    cesta das grandes, pesos iguais   +32,3% (4,8% ao mês, queda −32,2%, Sharpe 1,32)
+
+Retorno positivo: passa nesta parte. Mas o número precisa ser lido inteiro:
+as posições ENCERRADAS na reserva somam zero (comprada +US$ 7, vendida −US$ 7),
+e o +48,7% é de nove posições ainda abertas em 30/09, que marcavam +US$ 487 —
+metade numa só, ZEC comprada desde 06/08 (+US$ 242), e mais UNI desde 31/08
+(+US$ 126). Foi um semestre de alta para as grandes: 25 das outras 28 variações
+também ganharam nele, e só as três reversões perderam.
+
+**O ataque**, no desenho:
+
+    custo de entrada 4x    −9,0% (queda −46,9%, Sharpe 0,13)  → NÃO aguenta
+    escorregada dobrada   +31,6% (queda −39,5%, Sharpe 0,50)  → aguenta
+
+**→ REPROVADA.** A vantagem medida no desenho é mais fina que o custo: cobrando
+0,4% e não 0,1% pela entrada, os +33,7% viram −9,0%. (A régua de 0,1% foi
+medida nas manipuladas; nas grandes o atraso deve custar menos — mas mudar a
+régua depois de ver a reprovação seria escolher o resultado.)
+
+**Depois da decisão, para o registro:**
+
+- Sharpe deflacionado, 01/2024 a 09/2026, com 367 tentativas: Sharpe de 0,72
+  contra uma régua do acaso de 2,37 — **0,003**. É o que a melhor de 367
+  ideias sem vantagem nenhuma já mostraria.
+- **Em tempo real** — as 29 variações rodadas na janela inteira e o walk-forward
+  de 365 dias escolhendo a de maior Sharpe no ano anterior, a cada trimestre:
+  desde 01/10/2024, **−51,1%** (Sharpe −0,83, queda diária −62,3%), contra
+  +105,0% (Sharpe 1,02) da escolhida nos mesmos dias. Quem fizesse esta
+  pesquisa ao vivo teria trocado de regra oito vezes e perdido metade do
+  dinheiro: a escolhida só é a melhor olhando de 2026 para trás.
+- As outras na reserva: a tendência das duas pernas de +5% a +38% conforme a
+  janela, a só comprada de +20% a +24%, o Momento publicado nas grandes +18%,
+  os pares com ETH +14% e +16%, as reversões de −24% a −34%.
+
+**O que muda**: como estava escrito, o robô "Grandes" entra no ao vivo com
+esta regra, e a página diz dele o que este registro diz — reprovado no ataque
+de custo, sem vantagem demonstrada, na arena como a resposta a "e se só moeda
+grande?". O N da pesquisa passa a 367.

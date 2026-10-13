@@ -569,7 +569,8 @@ const porSimbolo = new Map(series.map((s) => [s.symbol, s]));
  */
 const todosOsRobos = [...ROBOS, MOMENTO_ANTERIOR, ...GRADES.flatMap((g) => g.variantes)];
 /** As janelas que a exploração das grandes (`estudarGrandes`) lê e nenhum robô publicado lê. */
-const JANELAS_DAS_GRANDES = args.includes("--grandes") ? [3, 7, 14, 30, 45, 60, 90, 120] : [];
+// As duas etapas leem: `--grandes` e `--grandes-reserva`, que roda as 29 variações na janela inteira.
+const JANELAS_DAS_GRANDES = args.some((a) => a.startsWith("--grandes")) ? [3, 7, 14, 30, 45, 60, 90, 120] : [];
 const JANELAS_TODAS = [
   ...new Set([...todosOsRobos.flatMap((r) => r.regras.pernas.flatMap((p) => [p.janelaDias, ...(p.saidaPosto ? [p.janelaDias] : [])])), ...JANELAS_DAS_GRANDES]),
 ].sort((a, b) => a - b);
@@ -1179,6 +1180,20 @@ function estudarGrandesReserva(): void {
   const md = medidaDasGrandes(pub.curva, INICIO, FIM_DESENHO);
   console.log(`\n== O PUBLICADO NO DESENHO: ${fmtDasGrandes(md)} — ${igual ? "a mesma curva da escolhida, ponto a ponto" : "NÃO reproduz a escolhida: o julgamento para aqui"}`);
   if (!igual) return;
+  // Quantas posições ficam abertas ao mesmo tempo, por lado: o teste do caixa (`testar-robos`) cita o máximo.
+  for (const lado of ["long", "short"] as const) {
+    const eventos = [...pub.fechadas, ...pub.abertas]
+      .filter((p) => p.lado === lado)
+      .flatMap((p) => [
+        { t: p.abertaEm, d: 1 },
+        { t: "fechadaEm" in p ? p.fechadaEm : Infinity, d: -1 },
+      ])
+      .sort((a, b) => a.t - b.t || a.d - b.d);
+    let n = 0;
+    let maximo = 0;
+    for (const ev of eventos) maximo = Math.max(maximo, (n += ev.d));
+    console.log(`${lado === "long" ? "compradas" : "vendidas"} abertas ao mesmo tempo, no máximo: ${maximo}`);
+  }
 
   // 1. A reserva.
   console.log("\n== RESERVA (01/04/2026 a 30/09/2026)");
@@ -1190,6 +1205,12 @@ function estudarGrandesReserva(): void {
   console.log(`${"cesta das grandes, pesos iguais".padEnd(34)} ${fmtDasGrandes(medidaDasGrandes(refs.cesta, FIM_DESENHO, FIM))}`);
   const lados = (["long", "short"] as const).map((l) => `${l === "long" ? "comprada" : "vendida"} US$ ${res.fechadas.filter((t) => t.lado === l).reduce((a, t) => a + t.resultado, 0).toFixed(0)}`);
   console.log(`encerradas na reserva: ${lados.join(", ")}`);
+  // O resto do resultado está nas posições abertas em 30/09: quais, e quanto cada uma marca.
+  const abertas = res.abertas.map((p) => ({ p, r: valorDaPosicao(p, p.precoAtual) - margemTotal(p) })).sort((a, b) => b.r - a.r);
+  console.log(
+    `abertas em 30/09: ${abertas.length}, marcando US$ ${abertas.reduce((a, x) => a + x.r, 0).toFixed(0)} — ` +
+      abertas.map(({ p, r }) => `${p.lado === "long" ? "+" : "−"}${p.symbol.replace(/USDT$/, "")} desde ${new Date(p.abertaEm).toISOString().slice(5, 10)} US$ ${r.toFixed(0)}`).join(", "),
+  );
   const passaReserva = mr.ret > 0;
   console.log(passaReserva ? "→ retorno positivo na reserva" : "→ retorno NÃO positivo na reserva");
 
@@ -1223,8 +1244,11 @@ function estudarGrandesReserva(): void {
     if (nome !== escolhida[0]) console.log(`${nome.padEnd(44)} reserva ${fmtDasGrandes(naReserva)}`);
   }
   const doPub = retornosDiarios(diaria(simular(robo, INICIO, FIM)));
-  const media = sharpes.reduce((a, b) => a + b, 0) / sharpes.length;
-  const desvio = Math.sqrt(sharpes.reduce((a, b) => a + (b - media) ** 2, 0) / (sharpes.length - 1));
+  // Variação sem nenhum trade não tem Sharpe (NaN) e envenenaria a régua inteira: fica de fora e é contada.
+  const validos = sharpes.filter((x) => Number.isFinite(x));
+  if (validos.length < sharpes.length) console.log(`ATENÇÃO: ${sharpes.length - validos.length} variação(ões) sem Sharpe na janela inteira`);
+  const media = validos.reduce((a, b) => a + b, 0) / validos.length;
+  const desvio = Math.sqrt(validos.reduce((a, b) => a + (b - media) ** 2, 0) / (validos.length - 1));
   const variancia = Math.max(desvio ** 2, varianciaDoSharpeNulo(doPub.r.length));
   console.log(
     `\ndeflacionado, 01/2024 a 09/2026, ${TENTATIVAS} tentativas: Sharpe ${(sharpeDiario(doPub.r) * Math.sqrt(365)).toFixed(2)}, ` +
@@ -2200,9 +2224,10 @@ if (fluxoRobo) {
  * a rodada de livros diferentes, os platôs e os ataques), e a primeira bancada
  * testou outras sem anotar: 300 até 10/10. O loop de melhoria somou as suas —
  * 14 variantes na rodada 1, 3 na 2 e 9 na 3 (`docs/preregistro-*.md`) —, e o N
- * do Sharpe deflacionado "da pesquisa" passou a 326.
+ * do Sharpe deflacionado "da pesquisa" passou a 326. O robô das grandes somou
+ * 41 (`docs/preregistro-grandes.md`): 367.
  */
-const TENTATIVAS_DA_PESQUISA = 300 + 14 + 3 + 9;
+const TENTATIVAS_DA_PESQUISA = 300 + 14 + 3 + 9 + 41;
 const SEMENTE = 20_261_010;
 const AMOSTRAS = 2000;
 /** Blocos de 20 dias em média: um mês de memória, o tamanho de uma alta de monstra. */

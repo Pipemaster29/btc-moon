@@ -29,6 +29,14 @@
  * linhas se cruzam — daltonismo ΔE 13,0 no claro e 13,2 no escuro, visão
  * normal 19,6 e 19,3. O magenta fica em 2,58:1 no fundo claro: rótulo na
  * ponta e tabela embaixo, como as outras.
+ *
+ * O ROBÔ DAS GRANDES tem a sexta, o verde (`#008300` nos dois modos), porque a
+ * quinta é do fundo. Os cinco robôs na ordem da arena, validados em 13/10 no
+ * par vizinho: no claro, daltonismo ΔE 9,1 e visão normal 22,9, e o verde passa
+ * dos 3:1; no escuro, todos acima de 3:1, visão normal 19,8 e daltonismo 6,9
+ * entre o amarelo e o verde — dentro da faixa de 6 a 8, que a régua só aceita
+ * com codificação a mais. Ela já está aqui: o rótulo na ponta de cada linha, a
+ * legenda e a tabela.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -39,6 +47,7 @@ export const CORES_ROBOS = [
   "[--robo-3:#1baf7a] dark:[--robo-3:#199e70]",
   "[--robo-4:#eda100] dark:[--robo-4:#c98500]",
   "[--robo-5:#e87ba4] dark:[--robo-5:#d55181]",
+  "[--robo-6:#008300] dark:[--robo-6:#008300]",
   "[--robo-ctx:#898781] dark:[--robo-ctx:#8f8e88]",
 ].join(" ");
 
