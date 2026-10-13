@@ -16,17 +16,25 @@
  * 10/01/2024, 56 em 15/06/2025 e 60 em 28/09/2026, stablecoins incluídas (a
  * etiqueta "stablecoin" vem junto, e o robô as tira).
  *
+ * O RETRATO DE UMA DATA É O FECHAMENTO DELA, 23:59 UTC. Conferido em 13/10
+ * contra as velas de 1 h do perpétuo: o BTC do retrato de 09/03/2025 está a
+ * US$ 80.601, o perpétuo fechou o dia em 80.689 e o abriu em 86.185; o ETH,
+ * 2.015 contra 2.019 no fechamento e 2.203 na abertura. A medição só o usa da
+ * meia-noite seguinte em diante.
+ *
  * Guarda só o que a medição usa: id, símbolo, nome, se é stablecoin, preço,
  * market cap e volume de 24 h, das 300 primeiras. Data que falhou por rede não
- * é gravada, e a próxima rodada tenta de novo.
+ * é gravada, e a próxima rodada tenta de novo. `npm run medir-robos` chama
+ * `baixarGrandes` sozinho, e só os domingos que faltam custam requisição.
  *
  * Rode com: npx tsx scripts/baixar-grandes.mts
  */
 
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
 
-const CACHE = ".cache/grandes";
+export const CACHE_GRANDES = ".cache/grandes";
 const DIA = 86_400_000;
 /** O primeiro domingo de 12/2023: a decisão de 01/01/2024 já tem um retrato de antes dela. */
 const DE = Date.parse("2023-12-03T00:00:00Z");
@@ -80,22 +88,34 @@ async function retrato(data: string): Promise<MoedaDoRetrato[] | null> {
   return null;
 }
 
-await mkdir(CACHE, { recursive: true });
-const hoje = Date.now();
-let novos = 0;
-let falhas = 0;
-for (let t = DE; t <= hoje; t += 7 * DIA) {
-  const data = new Date(t).toISOString().slice(0, 10);
-  const arq = `${CACHE}/${data}.json`;
-  if (existsSync(arq)) continue;
-  const r = await retrato(data);
-  if (!r) {
-    falhas++;
-    continue;
+/**
+ * Baixa os domingos que faltam em `.cache/grandes/`, até o último que já
+ * fechou. Devolve quantos vieram e quantos falharam — falha não vira arquivo.
+ */
+export async function baixarGrandes(): Promise<{ novos: number; falhas: number }> {
+  await mkdir(CACHE_GRANDES, { recursive: true });
+  // O retrato de hoje ainda não fechou: só datas de ontem para trás.
+  const ate = Date.now() - DIA;
+  let novos = 0;
+  let falhas = 0;
+  for (let t = DE; t <= ate; t += 7 * DIA) {
+    const data = new Date(t).toISOString().slice(0, 10);
+    const arq = `${CACHE_GRANDES}/${data}.json`;
+    if (existsSync(arq)) continue;
+    const r = await retrato(data);
+    if (!r) {
+      falhas++;
+      continue;
+    }
+    await writeFile(arq, JSON.stringify(r));
+    novos++;
+    // Uma por segundo: é o endereço de uma página pública, não uma API paga.
+    await new Promise((res) => setTimeout(res, 1000));
   }
-  await writeFile(arq, JSON.stringify(r));
-  novos++;
-  // Uma por segundo: é o endereço de uma página pública, não uma API paga.
-  await new Promise((res) => setTimeout(res, 1000));
+  return { novos, falhas };
 }
-console.log(`${novos} retratos novos em ${CACHE}${falhas ? `, ${falhas} falharam (rode de novo)` : ""}`);
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  const { novos, falhas } = await baixarGrandes();
+  console.log(`${novos} retratos novos em ${CACHE_GRANDES}${falhas ? `, ${falhas} falharam (rode de novo)` : ""}`);
+}

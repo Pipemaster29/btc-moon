@@ -30,8 +30,10 @@ import {
   JANELA_VOLATILIDADE_DIAS,
   MOMENTO_ANTERIOR,
   NOCIONAL_MINIMO,
+  OURO_TOKENIZADO,
   REGRAS_PADRAO,
   ROBOS,
+  casarComPerpetuos,
   coeficienteDeImpacto,
   decidir,
   desvioDiario,
@@ -49,6 +51,7 @@ import {
   type Medicao,
   type MedicaoRobo,
   type RegrasDaMoeda,
+  type LadoRobo,
   type Perna,
   type Robo,
   type SimboloDaCorretora,
@@ -357,6 +360,82 @@ console.log(
     `${series.filter((s) => !regrasDaCorretora.has(s.symbol)).length} das ${series.length} moedas medidas usam a tabela padrão`,
 );
 
+// ------------------------------------------------------------------ as grandes
+
+/**
+ * O UNIVERSO DAS GRANDES (`RegrasRobo.capMinima`): quantas unidades de cada
+ * perpétuo circulam, do retrato semanal da CoinMarketCap
+ * (`scripts/baixar-grandes.mts`). O market cap de cada decisão é essa
+ * quantidade vezes o fechamento do perpétuo na véspera — o número que o ao
+ * vivo lê na hora —, com a quantidade do último retrato FECHADO antes da
+ * decisão: o de um domingo é o fechamento dele, 23:59 UTC, e só vale da
+ * meia-noite seguinte em diante.
+ *
+ * CASADO PELO PREÇO A CADA RETRATO (a armadilha nº 1): o símbolo da
+ * CoinMarketCap vira `XUSDT`, `1000XUSDT` ou `1000000XUSDT`, e só vale se o
+ * fechamento do perpétuo naquela hora estiver entre 0,8 e 1,25 do preço do
+ * retrato vezes o multiplicador. Conferido em 13/10 sobre os 150 domingos:
+ * 4.976 de 6.768 moeda-semanas acima de US$ 2 bi casaram; as outras não têm
+ * perpétuo na Binance (LEO, CRO, OKB, MNT, os embrulhados e os de staking,
+ * PI) ou não o tinham naquela semana (HYPE até 05/2025, TAO até 04/2024, TON
+ * até 08/2024), e a RAY da Binance, a 3,5% do preço da Raydium, é outra moeda.
+ *
+ * Fora: as stablecoins (a etiqueta da CoinMarketCap) e o ouro tokenizado —
+ * como as ações e os metais lá em cima, não é moeda.
+ *
+ * Um retrato vale por 8 dias: moeda que saiu das 300 primeiras, ou semana que
+ * não baixou, vira "sem leitura" — e sem leitura a moeda fica fora do
+ * universo, não dentro.
+ */
+const VALIDADE_DO_RETRATO = 8 * DIA;
+/** Por perpétuo, em ordem: desde quando vale (a meia-noite seguinte ao retrato) e quantas unidades DO PERPÉTUO circulam. */
+const unidadesDe = new Map<string, { desde: number; unidades: number }[]>();
+const usaGrandes = ROBOS.some((r) => r.regras.capMinima !== undefined) || args.includes("--grandes");
+if (usaGrandes) {
+  const { baixarGrandes, CACHE_GRANDES } = await import("./baixar-grandes.mjs");
+  const { readdir } = await import("node:fs/promises");
+  const { falhas } = await baixarGrandes();
+  if (falhas > 0) console.log(`ATENÇÃO: ${falhas} retrato(s) da CoinMarketCap não baixaram — as semanas deles ficam sem universo`);
+  const doSimbolo = new Map(series.map((s) => [s.symbol, s]));
+  let casadas = 0;
+  let grandes = 0;
+  for (const arq of (await readdir(CACHE_GRANDES)).filter((a) => a.endsWith(".json")).sort()) {
+    const desde = Date.parse(`${arq.slice(0, 10)}T00:00:00Z`) + DIA;
+    // O fechamento do domingo é o da vela das 23 h: índice da hora anterior à meia-noite seguinte.
+    const i = Math.floor((desde - INICIO_DADOS) / HORA) - 1;
+    if (i < 0 || i >= T) continue;
+    const lista = JSON.parse(await readFile(`${CACHE_GRANDES}/${arq}`, "utf8")) as import("./baixar-grandes.mjs").MoedaDoRetrato[];
+    // O mesmo casamento do ao vivo (`casarComPerpetuos`), com o fechamento do domingo no lugar do preço de agora.
+    const daSemana = casarComPerpetuos(lista, (symbol) => doSimbolo.get(symbol)?.c[i]);
+    grandes += lista.filter((m) => !m.estavel && !OURO_TOKENIZADO.has(m.symbol.toUpperCase()) && m.marketCap >= 2e9).length;
+    for (const [symbol, { unidades, marketCap }] of daSemana) {
+      if (marketCap >= 2e9) casadas++;
+      const xs = unidadesDe.get(symbol) ?? [];
+      xs.push({ desde, unidades });
+      unidadesDe.set(symbol, xs);
+    }
+  }
+  console.log(`universo das grandes: ${unidadesDe.size} perpétuos com market cap lido; ${casadas} de ${grandes} moeda-semanas acima de US$ 2 bi casaram com um perpétuo pelo preço`);
+}
+
+/** O market cap de um perpétuo na decisão do instante `t`, ao preço `preco` do perpétuo; nulo sem retrato válido. */
+function marketCapEm(symbol: string, t: number, preco: number): number | null {
+  const xs = unidadesDe.get(symbol);
+  if (!xs) return null;
+  let lo = 0;
+  let hi = xs.length - 1;
+  let k = -1;
+  while (lo <= hi) {
+    const m = (lo + hi) >> 1;
+    if (xs[m].desde <= t) {
+      k = m;
+      lo = m + 1;
+    } else hi = m - 1;
+  }
+  if (k < 0 || t - xs[k].desde > VALIDADE_DO_RETRATO) return null;
+  return xs[k].unidades * preco;
+}
+
 // ------------------------------------------------------------------ o ranking
 
 /** Volume das 24 h que terminam no fechamento da vela `i`. */
@@ -390,6 +469,8 @@ function ranking(i: number, janelas: number[], janelasFluxo: number[] = [], jane
       // Moeda cuja primeira vela é o começo dos dados já existia antes: idade desconhecida, e maior.
       idadeDias: s.nasce === 0 && s.c[0] > 0 ? null : (j - s.nasce) / 24,
       ...(comCorretora ? { corretora: regrasDe(s.symbol) } : {}),
+      // Só quando algum robô lê: a linha sem o campo é a mesma de antes para os outros.
+      ...(usaGrandes ? { marketCap: marketCapEm(s.symbol, INICIO_DADOS + i * HORA, c) } : {}),
     };
     if (janelasFluxo.length > 0) {
       const fluxo: Record<number, number | null> = {};
@@ -485,7 +566,11 @@ const porSimbolo = new Map(series.map((s) => [s.symbol, s]));
  * junto sempre: só a perna com `porVolatilidade` o lê.
  */
 const todosOsRobos = [...ROBOS, MOMENTO_ANTERIOR, ...GRADES.flatMap((g) => g.variantes)];
-const JANELAS_TODAS = [...new Set(todosOsRobos.flatMap((r) => r.regras.pernas.flatMap((p) => [p.janelaDias, ...(p.saidaPosto ? [p.janelaDias] : [])])))].sort((a, b) => a - b);
+/** As janelas que a exploração das grandes (`estudarGrandes`) lê e nenhum robô publicado lê. */
+const JANELAS_DAS_GRANDES = args.includes("--grandes") ? [3, 7, 14, 30, 45, 60, 90, 120] : [];
+const JANELAS_TODAS = [
+  ...new Set([...todosOsRobos.flatMap((r) => r.regras.pernas.flatMap((p) => [p.janelaDias, ...(p.saidaPosto ? [p.janelaDias] : [])])), ...JANELAS_DAS_GRANDES]),
+].sort((a, b) => a - b);
 const JANELAS_FLUXO_TODAS = [...new Set(todosOsRobos.flatMap((r) => r.regras.pernas.filter((p) => p.criterio === "fluxo").map((p) => p.janelaDias)))].sort((a, b) => a - b);
 
 /**
@@ -769,6 +854,275 @@ if (args.includes("--placebo")) {
 if (args.includes("--reentrada")) {
   estudarReentrada();
   process.exit(0);
+}
+if (args.includes("--grandes")) {
+  estudarGrandes();
+  process.exit(0);
+}
+
+/**
+ * O ROBÔ DAS GRANDES (13/10, o pedido: "um bot usando só moeda grande, de US$
+ * 2 bi para cima — as regras você define e vai testando, mas realista"). A
+ * EXPLORAÇÃO, só no DESENHO (08/01/2024 a 31/03/2026): a reserva de 04–09/2026
+ * fica fechada até a regra escolhida estar escrita em
+ * `docs/preregistro-grandes.md`. Toda variação rodada aqui soma tentativas.
+ *
+ * O universo é o de CADA DIA (`marketCapEm`): as moedas que valiam US$ 2 bi ou
+ * mais naquela meia-noite, com perpétuo, US$ 20 milhões de volume e 14 dias de
+ * série. As referências ao lado são o BTC comprado e parado e a cesta das
+ * grandes em pesos iguais, refeita todo dia e sem custo — o que um índice das
+ * grandes teria feito.
+ *
+ * As famílias, com o mesmo motor, custo e regras da corretora dos outros
+ * robôs, a 10% do patrimônio por posição:
+ *
+ *   controle     o Momento publicado, só nas grandes;
+ *   tendência    compra as 3 que mais subiram em N dias, SE subiram, e vende
+ *                as 3 que mais caíram, SE caíram (`Perna.minimo` = 0) — no
+ *                mercado que só cai, fica vendido; no que só sobe, comprado —,
+ *                com saída quando deixam as 6 primeiras e o tamanho pela
+ *                volatilidade de cada moeda (o BTC, menos agitado, entra maior);
+ *   só comprada  a perna comprada da tendência, sozinha: em dia sem ninguém
+ *                subindo, fica em caixa;
+ *   momento      a tendência sem o limiar: compra as 3 do topo e vende as 3
+ *                do fundo mesmo que todas subam ou todas caiam;
+ *   reversão     o contrário (`Perna.inverso`): compra as que mais caíram e
+ *                vende as que mais subiram, por até 7 dias.
+ */
+function estudarGrandes(): void {
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  const desenho: [string, number, number][] = [
+    ["desenho", INICIO, FIM_DESENHO],
+    ["1ª metade", INICIO, CORTE],
+    ["2ª metade", CORTE, FIM_DESENHO],
+  ];
+  const aoMes = (ret: number, de: number, ate: number) => (1 + ret) ** (30.4375 / ((ate - de) / DIA)) - 1;
+  const quedaDe = (curva: readonly { t: number; patrimonio: number }[]) => {
+    let pico = 0;
+    let q = 0;
+    for (const p of curva) {
+      if (p.patrimonio > pico) pico = p.patrimonio;
+      if (pico > 0) q = Math.min(q, p.patrimonio / pico - 1);
+    }
+    return q;
+  };
+  type Medida = { ret: number; mes: number; queda: number; sharpe: number };
+  const medida = (curva: { t: number; patrimonio: number }[], de: number, ate: number): Medida => {
+    const ret = curva[curva.length - 1].patrimonio / curva[0].patrimonio - 1;
+    return { ret, mes: aoMes(ret, de, ate), queda: quedaDe(curva), sharpe: sharpeDe(curva) };
+  };
+  const fmt = (m: Medida) => `${pct(m.ret).padStart(8)} (${pct(m.mes)}/mês, queda ${pct(m.queda)}, Sharpe ${m.sharpe.toFixed(2)})`;
+  const CAP = 2e9;
+  const eGrande = (l: LinhaRanking) => typeof l.marketCap === "number" && l.marketCap >= CAP && l.volume >= 20e6;
+
+  // O universo, trimestre a trimestre: quantas grandes operáveis havia em média
+  // por dia, e em quantos dias o ranking de 60 dias (14 dias de idade e a série
+  // cobrindo a janela) ficou abaixo das 20 moedas com que a saída por posto
+  // aceita ler (`MINIMO_NO_RANKING`).
+  console.log("\n== O UNIVERSO: grandes com perpétuo e US$ 20 mi de volume, média por dia");
+  const porTrimestre = new Map<string, { dias: number; soma: number; nomes: Set<string>; abaixoDe20: number }>();
+  const [d0, d1] = horasDe(INICIO, FIM);
+  // O menor número de grandes casadas num dia, sem a régua de volume: é a conta que o ao vivo faz
+  // para desconfiar da lista (`lerGrandes` em `scripts/robos.mts`).
+  let menorCasadas = Infinity;
+  for (let i = d0; i <= d1; i++) {
+    const t = INICIO_DADOS + i * HORA;
+    if (t % DIA !== 0) continue;
+    const todas = linhasDoDia(i, JANELA_VOLATILIDADE_DIAS, true);
+    menorCasadas = Math.min(menorCasadas, todas.filter((l) => typeof l.marketCap === "number" && l.marketCap >= CAP).length);
+    const g = todas.filter(eGrande);
+    const no60 = g.filter((l) => typeof l.retorno[60] === "number" && (l.idadeDias === null || l.idadeDias >= 14)).length;
+    const d = new Date(t);
+    const q = `${d.getUTCFullYear()}T${Math.floor(d.getUTCMonth() / 3) + 1}`;
+    const x = porTrimestre.get(q) ?? { dias: 0, soma: 0, nomes: new Set<string>(), abaixoDe20: 0 };
+    x.dias++;
+    x.soma += g.length;
+    if (no60 < 20) x.abaixoDe20++;
+    for (const l of g) x.nomes.add(l.symbol.replace(/USDT$/, ""));
+    porTrimestre.set(q, x);
+  }
+  for (const [q, x] of porTrimestre) {
+    console.log(`${q}: ${(x.soma / x.dias).toFixed(1)} por dia, ${x.nomes.size} no trimestre · ${x.abaixoDe20} de ${x.dias} dias com menos de 20 no ranking de 60 dias`);
+  }
+  console.log(`o dia com menos grandes casadas (sem a régua de volume) teve ${menorCasadas}`);
+
+  // As referências: o BTC parado e a cesta das grandes em pesos iguais, marcadas de hora em hora.
+  const referencias = (de: number, ate: number) => {
+    const [i0, i1] = horasDe(de, ate);
+    const btc = porSimbolo.get("BTCUSDT")!;
+    const base = btc.c[i0 - 1];
+    const curvaBTC: { t: number; patrimonio: number }[] = [];
+    const curvaCesta: { t: number; patrimonio: number }[] = [];
+    let valor = CAPITAL_ROBO;
+    let cesta: { s: Serie; abertura: number }[] = [];
+    let valorNaVirada = CAPITAL_ROBO;
+    for (let i = i0; i <= i1; i++) {
+      const t = INICIO_DADOS + i * HORA;
+      if (t % DIA === 0) {
+        valorNaVirada = valor;
+        cesta = linhasDoDia(i, JANELA_VOLATILIDADE_DIAS, true)
+          .filter(eGrande)
+          .map((l) => ({ s: porSimbolo.get(l.symbol)!, abertura: porSimbolo.get(l.symbol)!.c[i - 1] }))
+          .filter((x) => x.abertura > 0);
+      }
+      const rs = cesta.map((x) => x.s.c[i] / x.abertura).filter((r) => Number.isFinite(r) && r > 0);
+      if (rs.length > 0) valor = valorNaVirada * (rs.reduce((a, b) => a + b, 0) / rs.length);
+      curvaCesta.push({ t: t + HORA, patrimonio: valor });
+      const c = btc.c[i];
+      if (c > 0) curvaBTC.push({ t: t + HORA, patrimonio: (CAPITAL_ROBO * c) / base });
+    }
+    return { btc: [{ t: de, patrimonio: CAPITAL_ROBO }, ...curvaBTC], cesta: [{ t: de, patrimonio: CAPITAL_ROBO }, ...curvaCesta] };
+  };
+  console.log("\n== AS REFERÊNCIAS, sem custo e sem alavancagem");
+  const refs = desenho.map(([, de, ate]) => referencias(de, ate));
+  console.log(`${"BTC comprado e parado".padEnd(34)} ` + refs.map((r, k) => `${desenho[k][0]} ${fmt(medida(r.btc, desenho[k][1], desenho[k][2]))}`).join(" · "));
+  console.log(`${"cesta das grandes, pesos iguais".padEnd(34)} ` + refs.map((r, k) => `${desenho[k][0]} ${fmt(medida(r.cesta, desenho[k][1], desenho[k][2]))}`).join(" · "));
+
+  // As variações.
+  const UNIVERSO_GRANDES = { volumeMinimo: 20e6, idadeMinimaDias: 14, capMinima: CAP };
+  const porVol = { minimo: 0.25, maximo: 2 };
+  const comprada = (janelaDias: number, extra: Partial<Perna> = {}): Perna => ({
+    lado: "long", janelaDias, k: 3, stop: 0.2, rastro: null, prazoH: 90 * 24, alavancagem: 3, ...extra,
+  });
+  const vendida = (janelaDias: number, extra: Partial<Perna> = {}): Perna => ({
+    lado: "short", janelaDias, k: 3, stop: 0.2, rastro: null, prazoH: 90 * 24, alavancagem: 2, ...extra,
+  });
+  const robo = (id: string, pernas: Perna[], tamanho = 0.1): Robo => ({
+    id: `grandes·${id}`,
+    nome: "Grandes",
+    descricao: id,
+    regras: { tamanho, ...UNIVERSO_GRANDES, pernas },
+  });
+  const variantes: [string, Robo][] = [["controle: o Momento publicado", { ...MOMENTO, id: "grandes·momento", regras: { ...MOMENTO.regras, capMinima: CAP } }]];
+  for (const N of [14, 30, 60]) {
+    for (const rastro of [null, 0.2]) {
+      const t: Partial<Perna> = { minimo: 0, saidaPosto: 6, porVolatilidade: porVol, rastro };
+      const r = rastro ? ", rastro 20%" : "";
+      variantes.push([`tendência L/S ${N} d${r}`, robo(`tendencia${N}${r}`, [comprada(N, t), vendida(N, t)])]);
+      variantes.push([`tendência só comprada ${N} d${r}`, robo(`so-comprada${N}${r}`, [comprada(N, t)])]);
+    }
+    const m: Partial<Perna> = { saidaPosto: 6, porVolatilidade: porVol };
+    variantes.push([`momento L/S ${N} d, sem limiar`, robo(`momento${N}`, [comprada(N, m), vendida(N, m)])]);
+  }
+  for (const N of [3, 7, 14]) {
+    const r: Partial<Perna> = { inverso: true, saidaPosto: 6, prazoH: 7 * 24, stop: 0.15, porVolatilidade: porVol };
+    variantes.push([`reversão L/S ${N} d`, robo(`reversao${N}`, [comprada(N, r), vendida(N, r)])]);
+  }
+  // RODADA 2, escrita depois de ler a 1ª: a tendência melhorou com a janela (14
+  // dias −1%, 30 −3%, 60 +26%), e o lucro veio da vendida — as altcoins grandes
+  // sangraram contra o BTC. O platô da janela (45, 90 e 120 ao lado dos 60), cinco
+  // moedas por perna em vez de três, e a vendida da tendência em PAR com ETH
+  // comprado do mesmo tamanho (o desenho do Fluxo: aposta que a fraca vai pior
+  // que o ETH, não que o mercado cai). ETH e não BTC: o BTC pede US$ 100 por
+  // ordem, e a 10% de uma conta de US$ 1.000 o lote de 0,001 BTC só passa disso
+  // com o BTC acima de US$ 100 mil.
+  const t3: Partial<Perna> = { minimo: 0, saidaPosto: 6, porVolatilidade: porVol };
+  for (const N of [45, 90, 120]) variantes.push([`tendência L/S ${N} d`, robo(`tendencia${N}`, [comprada(N, t3), vendida(N, t3)])]);
+  const t5: Partial<Perna> = { minimo: 0, k: 5, saidaPosto: 10, porVolatilidade: porVol };
+  for (const N of [45, 60, 90]) variantes.push([`tendência L/S ${N} d, 5 por perna`, robo(`tendencia${N}-k5`, [comprada(N, t5), vendida(N, t5)])]);
+  for (const N of [60, 90]) {
+    // O par não leva o tamanho pela volatilidade: o hedge tem o nocional da perna, e o Fluxo mediu que a regra piora o par.
+    const par: Partial<Perna> = { minimo: 0, saidaPosto: 6, hedge: { symbol: "ETHUSDT", alavancagem: 2 } };
+    variantes.push([`vendida da tendência ${N} d, par com ETH`, robo(`par${N}`, [vendida(N, par)])]);
+  }
+  // RODADA 4, a última, depois da bancada (a tendência POR MOEDA também não tem
+  // o que pegar: −10% a +12% nas janelas de 14 a 90 dias): o alvo de
+  // volatilidade do PATRIMÔNIO, a correção conhecida do momento e a peça que
+  // mais melhorou o Momento, com os valores dele (60% ao ano, 40 dias) — sem
+  // ajuste aqui —, nas duas candidatas, 45 e 60 dias.
+  for (const N of [45, 60]) {
+    const r = robo(`tendencia${N}-alvo`, [comprada(N, t3), vendida(N, t3)]);
+    variantes.push([`tendência L/S ${N} d, alvo de volatilidade`, { ...r, regras: { ...r.regras, alvoVolatilidade: MOMENTO.regras.alvoVolatilidade } }]);
+  }
+
+  // RODADA 3, A BANCADA (só para decidir se vale a regra no motor): a tendência
+  // POR MOEDA, como a dos fundos de tendência — cada grande do dia comprada se
+  // o retorno de N dias é positivo e vendida se é negativo, o peso pelo inverso
+  // do desvio de 45 dias, a soma dos pesos em módulo igual a 1 (sem
+  // alavancagem), refeita toda meia-noite e cobrando 0,2% por lado sobre o que
+  // girou (a régua do motor, 0,10%, mais o atraso, 0,10%). Contas diárias, sem
+  // stop, sem regra da corretora: não é o robô, é a pergunta "há o que pegar?".
+  if (args.includes("--bancada")) {
+    console.log("\n== BANCADA: a tendência por moeda nas grandes, pesos pelo inverso do desvio, refeita todo dia");
+    const fechamento = (s: Serie, i: number) => s.c[i - 1];
+    for (const N of [14, 30, 60, 90]) {
+      for (const lados of ["os dois lados", "só comprada", "só o BTC"] as const) {
+        const porJanela = desenho.map(([, de, ate]) => {
+          const [i0, i1] = horasDe(de, ate);
+          let pesos = new Map<string, number>();
+          let valor = CAPITAL_ROBO;
+          const curva: { t: number; patrimonio: number }[] = [{ t: de, patrimonio: valor }];
+          for (let i = i0; i <= i1; i++) {
+            const t = INICIO_DADOS + i * HORA;
+            if (t % DIA !== 0) continue;
+            // O dia que passou rende com os pesos da véspera.
+            let r = 0;
+            for (const [symbol, w] of pesos) {
+              const s = porSimbolo.get(symbol)!;
+              const a = fechamento(s, i - 24);
+              const b = fechamento(s, i);
+              if (a > 0 && b > 0) r += w * (b / a - 1);
+            }
+            // Os pesos novos, com o que se sabia na meia-noite.
+            const linhas = linhasDoDia(i, JANELA_VOLATILIDADE_DIAS, true).filter(
+              (l) => eGrande(l) && typeof l.retorno[N] === "number" && typeof l.vol === "number" && l.vol > 0 && (l.idadeDias === null || l.idadeDias >= 14),
+            );
+            const escolhidas = linhas.filter((l) => (lados === "só o BTC" ? l.symbol === "BTCUSDT" : lados === "só comprada" ? (l.retorno[N] as number) > 0 : true));
+            const brutos = new Map(escolhidas.map((l) => [l.symbol, Math.sign(l.retorno[N] as number) / (l.vol as number)]));
+            const soma = [...brutos.values()].reduce((a, w) => a + Math.abs(w), 0);
+            // Só comprada: o peso total é o das que sobem entre todas as grandes — sem nenhuma subindo, caixa.
+            const total = lados === "só comprada" ? [...brutos.values()].reduce((a, w) => a + Math.abs(w), 0) / Math.max(1e-12, linhas.reduce((a, l) => a + 1 / (l.vol as number), 0)) : 1;
+            const novos = new Map([...brutos].map(([s, w]) => [s, soma > 0 ? (w / soma) * total : 0]));
+            let giro = 0;
+            for (const s of new Set([...pesos.keys(), ...novos.keys()])) giro += Math.abs((novos.get(s) ?? 0) - (pesos.get(s) ?? 0));
+            valor *= 1 + r - 0.002 * giro;
+            pesos = novos;
+            curva.push({ t, patrimonio: valor });
+          }
+          return curva;
+        });
+        console.log(`${`${N} d, ${lados}`.padEnd(24)} ` + porJanela.map((c, k) => `${desenho[k][0]} ${fmt(medida(c, desenho[k][1], desenho[k][2]))}`).join(" · "));
+      }
+    }
+    return;
+  }
+
+  console.log(`\n== DESENHO (08/01/2024 a 31/03/2026) — ${variantes.length} variações; a reserva ainda não foi rodada`);
+  // O CRITÉRIO, escrito antes da rodada 4: entre as variações com as DUAS
+  // metades do desenho positivas, a de maior Sharpe no desenho. A escolha é do
+  // código, e é ela que vai a `docs/preregistro-grandes.md` antes da reserva.
+  const elegiveis: { nome: string; sharpe: number }[] = [];
+  for (const [nome, r] of variantes) {
+    const es = desenho.map(([, de, ate]) => simular(r, de, ate));
+    const ms = es.map((e, k) => medida(e.curva, desenho[k][1], desenho[k][2]));
+    if (ms[1].ret > 0 && ms[2].ret > 0) elegiveis.push({ nome, sharpe: ms[0].sharpe });
+    const moedas = [...porMoeda(es[0]).entries()].sort((a, b) => b[1] - a[1]);
+    const top5 = new Set(moedas.slice(0, 5).map(([s]) => s));
+    const s5 = simular(r, INICIO, FIM_DESENHO, top5);
+    const trades = es[0].fechadas;
+    const soma = (lado: LadoRobo) => trades.filter((t) => t.lado === lado).reduce((a, t) => a + t.resultado, 0);
+    const dias = trades.length > 0 ? trades.reduce((a, t) => a + (t.fechadaEm - t.abertaEm) / DIA, 0) / trades.length : 0;
+    const motivos = new Map<string, number>();
+    for (const t of trades) motivos.set(t.motivo, (motivos.get(t.motivo) ?? 0) + 1);
+    // O custo pago, aproximado: os dois lados pela régua, o atraso da entrada e o da saída por posto; o par paga em dobro.
+    const custo = trades.reduce(
+      (a, t) => a + t.nocional * (2 * (t.custoLado ?? 0) + CUSTO_ATRASO * (t.motivo === "posto" ? 2 : 1)) * (t.hedge ? 2 : 1),
+      0,
+    );
+    console.log(
+      `${nome.padEnd(34)} ` + ms.map((m, k) => `${desenho[k][0]} ${fmt(m)}`).join(" · ") +
+        ` · sem as 5 ${pct(s5.patrimonio / CAPITAL_ROBO - 1)} · ${trades.length} trades de ${dias.toFixed(1)} dias, comprada US$ ${soma("long").toFixed(0)}, vendida US$ ${soma("short").toFixed(0)}, custo US$ ${custo.toFixed(0)}` +
+        (es[0].recusadas ? ` · ${es[0].recusadas} recusadas` : "") +
+        ` · saídas: ${[...motivos.entries()].sort((a, b) => b[1] - a[1]).map(([m, n]) => `${m} ${n}`).join(", ")}` +
+        ` · melhores: ${moedas.slice(0, 3).map(([s, v]) => `${s.replace(/USDT$/, "")} ${v >= 0 ? "+" : ""}${v.toFixed(0)}`).join(", ")}`,
+    );
+  }
+  const escolhida = elegiveis.sort((a, b) => b.sharpe - a.sharpe)[0];
+  console.log(
+    escolhida
+      ? `\n${elegiveis.length} de ${variantes.length} com as duas metades positivas; escolhida pelo critério: ${escolhida.nome} (Sharpe ${escolhida.sharpe.toFixed(2)} no desenho)`
+      : "\nnenhuma variação tem as duas metades positivas",
+  );
 }
 
 /**

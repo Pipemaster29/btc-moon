@@ -499,6 +499,64 @@ export function nocionalAceito(nocional: number, preco: number, r: RegrasDaMoeda
   return n >= r.nocionalMinimo ? n : 0;
 }
 
+// ------------------------------------------------------------------ o market cap
+
+/** Uma moeda da lista de market cap da CoinMarketCap: o que o casamento com o perpétuo lê. */
+export interface MoedaDaLista {
+  symbol: string;
+  /** A etiqueta "stablecoin" da CoinMarketCap. */
+  estavel: boolean;
+  /** Dólares por unidade da MOEDA (não do perpétuo, que pode ser de 1.000 unidades). */
+  preco: number;
+  /** Dólares. */
+  marketCap: number;
+}
+
+/** O ouro tokenizado não é moeda — como as ações e os metais em perpétuo, fica fora. */
+export const OURO_TOKENIZADO: ReadonlySet<string> = new Set(["PAXG", "XAUT"]);
+
+/** Os prefixos com que a Binance lista a moeda de preço miúdo, e quantas unidades cada contrato tem. */
+const MULTIPLICADORES: readonly [string, number][] = [["", 1], ["1000", 1000], ["1000000", 1e6], ["1M", 1e6]];
+
+/**
+ * Casa a lista de market cap com os perpétuos da Binance PELO PREÇO e devolve,
+ * por perpétuo, quantas unidades DELE circulam — o market cap de qualquer hora
+ * é isso vezes o preço do perpétuo naquela hora.
+ *
+ * O símbolo da lista vira `XUSDT`, `1000XUSDT` ou `1000000XUSDT`, e só vale se o
+ * preço do perpétuo estiver entre 0,8 e 1,25 do preço da lista vezes o
+ * multiplicador — a armadilha nº 1, homônimo: a RAY da Binance está a 3,5% do
+ * preço da Raydium e é outra moeda. Perpétuo sem preço não casa (ainda não
+ * existia, ou a Binance não respondeu). Dois nomes da lista no mesmo perpétuo
+ * (a migração de um token): fica o de maior market cap. Stablecoin e ouro
+ * tokenizado ficam fora.
+ *
+ * A medição (`scripts/medir-robos.mts`) passa o fechamento do domingo do
+ * retrato; o ao vivo (`scripts/robos.mts`), o preço de agora.
+ */
+export function casarComPerpetuos(
+  lista: readonly MoedaDaLista[],
+  precoDe: (symbol: string) => number | undefined,
+): Map<string, { unidades: number; marketCap: number }> {
+  const out = new Map<string, { unidades: number; marketCap: number }>();
+  for (const m of lista) {
+    const simbolo = m.symbol.toUpperCase();
+    if (m.estavel || OURO_TOKENIZADO.has(simbolo)) continue;
+    if (!(m.preco > 0) || !Number.isFinite(m.preco) || !(m.marketCap > 0) || !Number.isFinite(m.marketCap)) continue;
+    for (const [prefixo, mult] of MULTIPLICADORES) {
+      const symbol = `${prefixo}${simbolo}USDT`;
+      const p = precoDe(symbol);
+      if (p === undefined || !(p > 0) || !Number.isFinite(p)) continue;
+      const razao = p / (m.preco * mult);
+      if (razao < 0.8 || razao > 1.25) continue;
+      const antes = out.get(symbol);
+      if (!antes || antes.marketCap < m.marketCap) out.set(symbol, { unidades: m.marketCap / (m.preco * mult), marketCap: m.marketCap });
+      break;
+    }
+  }
+  return out;
+}
+
 /**
  * A perna comprada de 07/10: as 5 que mais subiram em 30 dias, sem pirâmide.
  * É a do Caça-monstra (com k 3), onde nada do que veio depois passou.

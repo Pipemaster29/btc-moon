@@ -25,6 +25,7 @@ import {
   ROBOS,
   abrir,
   alavancagemSegura,
+  casarComPerpetuos,
   cobrar,
   custoPorLado,
   decidir,
@@ -46,6 +47,7 @@ import {
   type Degrau,
   type EstadoRobo,
   type LinhaRanking,
+  type MoedaDaLista,
   type Perna,
   type RegrasDaMoeda,
   type Robo,
@@ -243,6 +245,36 @@ function linha(symbol: string, r30: number | null, r14: number | null, volume = 
   confere("invertida: a vendida pega as que mais subiram", reversaoV.join() === "M0USDT,M1USDT", reversaoV.join());
   const reversaoLimiar = selecionar(ROBO.regras, { ...COMPRA, inverso: true, minimo: 0.05 }, linhas);
   confere("invertida com limiar: comprada só na que caiu de fato", reversaoLimiar.length === 0, `${reversaoLimiar.length}`);
+}
+{
+  // O casamento da lista de market cap com os perpétuos (`casarComPerpetuos`),
+  // pelo PREÇO: é a armadilha nº 1 (homônimo) no universo das grandes.
+  const precos = new Map([
+    ["AAAUSDT", 10.2],
+    ["1000PEPEUSDT", 0.012],
+    ["RAYUSDT", 0.07],
+    ["USDCUSDT", 1],
+    ["PAXGUSDT", 2500],
+    ["NOVOUSDT", 5],
+  ]);
+  const lista: MoedaDaLista[] = [
+    { symbol: "AAA", estavel: false, preco: 10, marketCap: 5e9 },
+    { symbol: "PEPE", estavel: false, preco: 0.000012, marketCap: 5e9 },
+    { symbol: "RAY", estavel: false, preco: 2, marketCap: 2.1e9 },
+    { symbol: "USDC", estavel: true, preco: 1, marketCap: 60e9 },
+    { symbol: "PAXG", estavel: false, preco: 2500, marketCap: 3e9 },
+    { symbol: "SEMPERP", estavel: false, preco: 3, marketCap: 9e9 },
+    { symbol: "NOVO", estavel: false, preco: 5, marketCap: 3e9 },
+    { symbol: "novo", estavel: false, preco: 5, marketCap: 4e9 },
+  ];
+  const m = casarComPerpetuos(lista, (s) => precos.get(s));
+  confere("casa pelo preço e guarda as unidades do perpétuo", perto(m.get("AAAUSDT")?.unidades ?? 0, 5e8), `${m.get("AAAUSDT")?.unidades}`);
+  const pepe = m.get("1000PEPEUSDT");
+  confere("moeda miúda casa com o perpétuo de 1.000 unidades", !!pepe && perto(pepe.unidades * 0.012, 5e9), `${pepe ? (pepe.unidades * 0.012).toExponential(3) : "—"}`);
+  confere("homônimo a 3,5% do preço não casa (a RAY)", !m.has("RAYUSDT"), m.has("RAYUSDT") ? "casou" : "fora");
+  confere("stablecoin e ouro tokenizado ficam fora", !m.has("USDCUSDT") && !m.has("PAXGUSDT"), [...m.keys()].join(","));
+  confere("dois nomes no mesmo perpétuo: fica o maior", perto(m.get("NOVOUSDT")?.marketCap ?? 0, 4e9), `${m.get("NOVOUSDT")?.marketCap}`);
+  confere("sem perpétuo, nada casa", m.size === 3, `${m.size} casadas`);
 }
 {
   // A mesma moeda é a que mais subiu em 30 dias E a que mais caiu em 14: a
