@@ -762,6 +762,190 @@ if (args.includes("--piramide")) {
   await estudarPiramide();
   process.exit(0);
 }
+if (args.includes("--placebo")) {
+  estudarPlacebo();
+  process.exit(0);
+}
+
+/** Um número em [0, 1) fixado por (semente, dia, janela, moeda): o mesmo sorteio sempre que a conta for refeita. */
+function sortear(semente: number, i: number, janela: number, symbol: string): number {
+  let h = 2_166_136_261 ^ semente;
+  for (const ch of `${i}:${janela}:${symbol}`) h = Math.imul(h ^ ch.charCodeAt(0), 16_777_619);
+  let t = (h + 0x6d2b79f5) | 0;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
+}
+
+/**
+ * O PLACEBO (13/10, a pergunta do usuário: "é lógica ou sorte?"). O Momento com
+ * a ESCOLHA sorteada e a gestão igual: a cada dia, a perna sorteada pega as k
+ * moedas ao acaso entre as MESMAS elegíveis (volume, idade, série que cubra a
+ * janela) — o retorno da janela de cada linha vira um número sorteado, fixado
+ * por (semente, dia, moeda) —, e todo o resto é o mesmo motor: stop, rastro,
+ * pirâmide, prazo, alvo de volatilidade, vendida pela volatilidade, custo e
+ * regras da corretora.
+ *
+ * Sem a saída por posto, dos dois lados da comparação: ela lê o ranking do
+ * momento, e numa moeda sorteada fecharia a posição no dia seguinte — seria
+ * outra gestão, não a mesma com outra escolha. A régua é o publicado sem ela
+ * (a `c45·v14·pir·alvo·vol` da grade); o publicado vai junto, para o registro.
+ *
+ * E A MESMA QUANTIDADE DE ENTRADAS, no mesmo dia: o momento repete as mesmas
+ * moedas por dias seguidos e abre poucas novas; o sorteio puro abriria cinco
+ * novas todo dia e seria outra exposição. A perna sorteada abre, a cada dia,
+ * tantas quantas o real abriu nela naquele dia, ao acaso entre as elegíveis
+ * que ainda não estão abertas.
+ *
+ * O critério, escrito antes de rodar: a escolha tem valor se o real fica acima
+ * de 95% dos sorteios na janela inteira E nas duas metades.
+ */
+function estudarPlacebo(): void {
+  const SEMENTES = 40;
+  const semPosto: Robo = {
+    ...MOMENTO,
+    id: "momento·sem-posto",
+    regras: {
+      ...MOMENTO.regras,
+      pernas: MOMENTO.regras.pernas.map((p) => {
+        const c = { ...p };
+        delete c.saidaPosto;
+        return c;
+      }),
+    },
+  };
+  const janelaDe = (lado: "long" | "short") => semPosto.regras.pernas.find((p) => p.lado === lado)!.janelaDias;
+  const ladoDaJanela = new Map(semPosto.regras.pernas.map((p) => [p.janelaDias, p.lado]));
+  const original = linhasDoDia;
+  // O sorteio da rodada e o robô que está rodando: a moeda já aberta vai para o
+  // fim do ranking sorteado (continua elegível, e a mediana do desvio da
+  // vendida não muda), para que as k entradas do dia sejam k moedas novas.
+  let sorteio: { semente: number; janelas: number[]; estado: EstadoRobo } | null = null;
+  linhasComOI = (i: number, janelaVol: number, comCorretora: boolean) => {
+    const linhas = original(i, janelaVol, comCorretora);
+    const s = sorteio;
+    if (!s) return linhas;
+    const abertas = new Set(s.estado.abertas.map((p) => p.symbol));
+    return linhas.map((l) => {
+      const retorno = { ...l.retorno };
+      for (const j of s.janelas) {
+        const r = retorno[j];
+        if (typeof r !== "number" || !Number.isFinite(r)) continue;
+        retorno[j] = abertas.has(l.symbol) ? (ladoDaJanela.get(j) === "long" ? -1 : 2) : sortear(s.semente, i, j, l.symbol);
+      }
+      return { ...l, retorno };
+    });
+  };
+
+  const periodos: [string, number, number][] = [
+    ["inteira", INICIO, FIM],
+    ["dentro (até 06/2025)", INICIO, CORTE],
+    ["fora (07/2025 em diante)", CORTE, FIM],
+  ];
+  /** O patrimônio no último ponto da curva até `t`. */
+  const valorEm = (e: EstadoRobo, t: number) => {
+    let v = e.curva[0].patrimonio;
+    for (const p of e.curva) {
+      if (p.t > t) break;
+      v = p.patrimonio;
+    }
+    return v;
+  };
+  const retornos = (e: EstadoRobo) => periodos.map(([, de, ate]) => valorEm(e, ate) / valorEm(e, de) - 1);
+
+  // A anatomia do publicado: quantas acerta, quanto ganha a que acerta, de onde vem o lucro.
+  const pub = simular(MOMENTO, INICIO, FIM);
+  const trades = pub.fechadas;
+  const ganhos = trades.filter((t) => t.resultado > 0);
+  const perdas = trades.filter((t) => t.resultado <= 0);
+  const soma = (ts: readonly TradeRobo[]) => ts.reduce((a, t) => a + t.resultado, 0);
+  const moedas = [...porMoeda(pub).entries()].sort((a, b) => b[1] - a[1]);
+  const total = moedas.reduce((a, [, v]) => a + v, 0);
+  const top5 = moedas.slice(0, 5).reduce((a, [, v]) => a + v, 0);
+  console.log(`\n== O PUBLICADO, 01/2024 a 09/2026: ${pct(pub.patrimonio / CAPITAL_ROBO - 1)}, Sharpe ${sharpeDe(pub.curva).toFixed(2)}`);
+  for (const lado of ["long", "short"] as const) {
+    const ts = trades.filter((t) => t.lado === lado);
+    const g = ts.filter((t) => t.resultado > 0);
+    const ordenados = ts.map((t) => t.resultado).sort((a, b) => a - b);
+    console.log(
+      `${lado === "long" ? "comprada" : "vendida "}: ${ts.length} trades, ${pct(g.length / Math.max(1, ts.length))} no lucro · ` +
+        `ganho médio US$ ${(soma(g) / Math.max(1, g.length)).toFixed(0)} · perda média US$ ${(soma(ts.filter((t) => t.resultado <= 0)) / Math.max(1, ts.length - g.length)).toFixed(0)} · ` +
+        `mediana US$ ${ordenados[Math.floor(ordenados.length / 2)]?.toFixed(0)} · soma US$ ${soma(ts).toFixed(0)}`,
+    );
+  }
+  console.log(
+    `no lucro: ${ganhos.length} de ${trades.length} (${pct(ganhos.length / trades.length)}); os 10 melhores trades fizeram US$ ${soma([...trades].sort((a, b) => b.resultado - a.resultado).slice(0, 10)).toFixed(0)} de US$ ${total.toFixed(0)}; ` +
+      `as 5 melhores moedas (${moedas.slice(0, 5).map(([s]) => s.replace(/USDT$/, "")).join(", ")}), US$ ${top5.toFixed(0)}; perdas somadas US$ ${soma(perdas).toFixed(0)}`,
+  );
+  // Quanto cinco dias dizem: as janelas de 5 dias seguidas do publicado.
+  const dias = diaria(pub);
+  for (const n of [5, 30]) {
+    const rs: number[] = [];
+    for (let k = n; k < dias.length; k++) rs.push(dias[k].patrimonio / dias[k - n].patrimonio - 1);
+    const o = [...rs].sort((a, b) => a - b);
+    console.log(
+      `janelas de ${n} dias: ${pct(rs.filter((r) => r < 0).length / rs.length)} no prejuízo · mediana ${pct(quantil(o, 0.5))} · ` +
+        `10% piores abaixo de ${pct(quantil(o, 0.1))} · 10% melhores acima de ${pct(quantil(o, 0.9))}`,
+    );
+  }
+
+  console.log(`\n== O PLACEBO: a mesma gestão, a escolha sorteada, ${SEMENTES} sorteios por configuração (sem a saída por posto)`);
+  const real = simular(semPosto, INICIO, FIM);
+  const rReal = retornos(real);
+  const entradasDe = (e: EstadoRobo) => [...e.fechadas, ...e.abertas];
+  // Quantas o real abriu em cada perna, em cada dia: o sorteio abre o mesmo número.
+  const contagem = new Map<string, number>();
+  for (const p of entradasDe(real)) contagem.set(`${p.lado}:${p.abertaEm}`, (contagem.get(`${p.lado}:${p.abertaEm}`) ?? 0) + 1);
+  console.log(`${"publicado".padEnd(22)} ${retornos(pub).map((r, k) => `${periodos[k][0]} ${pct(r)}`).join(" · ")}`);
+  console.log(
+    `${"publicado sem posto".padEnd(22)} ${rReal.map((r, k) => `${periodos[k][0]} ${pct(r)}`).join(" · ")} · Sharpe ${sharpeDe(real.curva).toFixed(2)} · ${entradasDe(real).length} entradas  ← a régua`,
+  );
+  const rodar = (janelas: number[], semente: number): EstadoRobo => {
+    const e = novoEstado({ ...semPosto, regras: { ...semPosto.regras } }, INICIO);
+    const ctx: Contexto = { janelaVol: JANELA_VOLATILIDADE_DIAS, comCorretora: true, hedges: hedgesDe(semPosto), extra: {} };
+    sorteio = { semente, janelas, estado: e };
+    const [i0, i1] = horasDe(INICIO, FIM);
+    for (let i = i0; i <= i1; i++) {
+      const t = INICIO_DADOS + i * HORA;
+      if (t % DIA === 0) {
+        e.regras = {
+          ...semPosto.regras,
+          pernas: semPosto.regras.pernas.map((p) => (janelas.includes(p.janelaDias) ? { ...p, k: contagem.get(`${p.lado}:${t}`) ?? 0 } : p)),
+        };
+      }
+      umaHora(e, i, ctx);
+    }
+    sorteio = null;
+    return e;
+  };
+  const configuracoes: [string, number[]][] = [
+    ["compra sorteada", [janelaDe("long")]],
+    ["venda sorteada", [janelaDe("short")]],
+    ["as duas sorteadas", [janelaDe("long"), janelaDe("short")]],
+  ];
+  for (const [nome, janelas] of configuracoes) {
+    const porPeriodo: number[][] = periodos.map(() => []);
+    const sharpes: number[] = [];
+    const entradas: number[] = [];
+    for (let s = 1; s <= SEMENTES; s++) {
+      const e = rodar(janelas, s);
+      retornos(e).forEach((r, k) => porPeriodo[k].push(r));
+      sharpes.push(sharpeDe(e.curva));
+      entradas.push(entradasDe(e).length);
+    }
+    const partes = porPeriodo.map((rs, k) => {
+      const o = [...rs].sort((a, b) => a - b);
+      const acima = rs.filter((r) => r >= rReal[k]).length;
+      return `${periodos[k][0]}: mediana ${pct(quantil(o, 0.5))} (5% a 95%: ${pct(quantil(o, 0.05))} a ${pct(quantil(o, 0.95))}), ${acima} de ${rs.length} no real ou acima, p = ${((1 + acima) / (1 + rs.length)).toFixed(3)}`;
+    });
+    const o = [...sharpes].sort((a, b) => a - b);
+    console.log(
+      `${nome.padEnd(22)} ${partes.join(" · ")} · Sharpe mediano ${quantil(o, 0.5).toFixed(2)}, o maior ${o[o.length - 1].toFixed(2)} · ` +
+        `entradas, mediana ${quantil([...entradas].sort((a, b) => a - b), 0.5)}`,
+    );
+  }
+  linhasComOI = original;
+}
 
 /** O robô com a parcela da pirâmide `P` vezes o tamanho normal (nas pernas que têm pirâmide) e o tamanho base ×L. */
 function comParcela(r: Robo, P: number, L: number): Robo {
