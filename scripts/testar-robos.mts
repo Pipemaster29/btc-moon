@@ -25,6 +25,7 @@ import {
   ROBOS,
   abrir,
   alavancagemSegura,
+  casarComPerpetuos,
   cobrar,
   custoPorLado,
   decidir,
@@ -46,6 +47,7 @@ import {
   type Degrau,
   type EstadoRobo,
   type LinhaRanking,
+  type MoedaDaLista,
   type Perna,
   type RegrasDaMoeda,
   type Robo,
@@ -219,6 +221,60 @@ function linha(symbol: string, r30: number | null, r14: number | null, volume = 
   const comOI = linhas.map((l) => ({ ...l, oi: { oi7: l.symbol === "M9USDT" ? -0.1 : l.symbol === "M8USDT" ? null : 0.2 } }));
   const filtro = selecionar(ROBO.regras, { ...COMPRA, filtroOI: { campo: "oi", janelaDias: 7 } }, comOI).map((l) => l.symbol);
   confere("filtro de OI: pula o OI caindo, deixa passar o sem leitura", filtro.join() === "M8USDT,M7USDT", filtro.join());
+  // O universo das grandes (`RegrasRobo.capMinima`): só entra quem tem market
+  // cap LIDO e acima do mínimo — sem leitura não é "grande", é "não sei".
+  const comCap = linhas.map((l, n) => ({ ...l, marketCap: n === 9 ? 1e9 : n === 8 ? null : 5e9 }));
+  const grandes = selecionar({ ...ROBO.regras, capMinima: 2e9 }, COMPRA, comCap).map((l) => l.symbol);
+  confere("market cap mínimo: a pequena e a sem leitura ficam fora", grandes.join() === "M7USDT,M6USDT", grandes.join());
+  const semCap = selecionar(ROBO.regras, COMPRA, comCap).map((l) => l.symbol);
+  confere("robô sem market cap mínimo ignora a leitura", semCap.join() === "M9USDT,M8USDT", semCap.join());
+  // O limiar da tendência (`Perna.minimo`): a comprada só pega quem subiu pelo
+  // menos isso, a vendida só quem caiu — e a régua dos 4k olha o universo.
+  const mistas = Array.from({ length: 10 }, (_, n) => linha(`T${n}USDT`, (n - 8) / 10, (n - 8) / 10));
+  const sobe = selecionar(ROBO.regras, { ...COMPRA, minimo: 0.05 }, mistas).map((l) => l.symbol);
+  confere("limiar: a comprada só pega a que subiu mais que ele", sobe.join() === "T9USDT", sobe.join());
+  const cai = selecionar(ROBO.regras, { ...VENDA, minimo: 0.05 }, mistas).map((l) => l.symbol);
+  confere("limiar: a vendida só pega as que caíram mais que ele", cai.join() === "T0USDT,T1USDT", cai.join());
+  const todasCaem = selecionar(ROBO.regras, { ...COMPRA, minimo: 0 }, linhas.map((l) => ({ ...l, retorno: { 30: -0.1, 14: -0.1 } })));
+  confere("limiar 0 num dia em que todas caem: a comprada não abre nada", todasCaem.length === 0, `${todasCaem.length}`);
+  // O ranking ao contrário (`Perna.inverso`): a comprada pega as que mais
+  // caíram, a vendida as que mais subiram.
+  const reversaoC = selecionar(ROBO.regras, { ...COMPRA, inverso: true }, linhas).map((l) => l.symbol);
+  confere("invertida: a comprada pega as que mais caíram", reversaoC.join() === "M0USDT,M1USDT", reversaoC.join());
+  const reversaoV = selecionar(ROBO.regras, { ...VENDA, inverso: true }, linhas).map((l) => l.symbol);
+  confere("invertida: a vendida pega as que mais subiram", reversaoV.join() === "M0USDT,M1USDT", reversaoV.join());
+  const reversaoLimiar = selecionar(ROBO.regras, { ...COMPRA, inverso: true, minimo: 0.05 }, linhas);
+  confere("invertida com limiar: comprada só na que caiu de fato", reversaoLimiar.length === 0, `${reversaoLimiar.length}`);
+}
+{
+  // O casamento da lista de market cap com os perpétuos (`casarComPerpetuos`),
+  // pelo PREÇO: é a armadilha nº 1 (homônimo) no universo das grandes.
+  const precos = new Map([
+    ["AAAUSDT", 10.2],
+    ["1000PEPEUSDT", 0.012],
+    ["RAYUSDT", 0.07],
+    ["USDCUSDT", 1],
+    ["PAXGUSDT", 2500],
+    ["NOVOUSDT", 5],
+  ]);
+  const lista: MoedaDaLista[] = [
+    { symbol: "AAA", estavel: false, preco: 10, marketCap: 5e9 },
+    { symbol: "PEPE", estavel: false, preco: 0.000012, marketCap: 5e9 },
+    { symbol: "RAY", estavel: false, preco: 2, marketCap: 2.1e9 },
+    { symbol: "USDC", estavel: true, preco: 1, marketCap: 60e9 },
+    { symbol: "PAXG", estavel: false, preco: 2500, marketCap: 3e9 },
+    { symbol: "SEMPERP", estavel: false, preco: 3, marketCap: 9e9 },
+    { symbol: "NOVO", estavel: false, preco: 5, marketCap: 3e9 },
+    { symbol: "novo", estavel: false, preco: 5, marketCap: 4e9 },
+  ];
+  const m = casarComPerpetuos(lista, (s) => precos.get(s));
+  confere("casa pelo preço e guarda as unidades do perpétuo", perto(m.get("AAAUSDT")?.unidades ?? 0, 5e8), `${m.get("AAAUSDT")?.unidades}`);
+  const pepe = m.get("1000PEPEUSDT");
+  confere("moeda miúda casa com o perpétuo de 1.000 unidades", !!pepe && perto(pepe.unidades * 0.012, 5e9), `${pepe ? (pepe.unidades * 0.012).toExponential(3) : "—"}`);
+  confere("homônimo a 3,5% do preço não casa (a RAY)", !m.has("RAYUSDT"), m.has("RAYUSDT") ? "casou" : "fora");
+  confere("stablecoin e ouro tokenizado ficam fora", !m.has("USDCUSDT") && !m.has("PAXGUSDT"), [...m.keys()].join(","));
+  confere("dois nomes no mesmo perpétuo: fica o maior", perto(m.get("NOVOUSDT")?.marketCap ?? 0, 4e9), `${m.get("NOVOUSDT")?.marketCap}`);
+  confere("sem perpétuo, nada casa", m.size === 3, `${m.size} casadas`);
 }
 {
   // A mesma moeda é a que mais subiu em 30 dias E a que mais caiu em 14: a
@@ -654,12 +710,16 @@ for (const r of ROBOS) {
   // A medição tem em média 25 posições abertas (máximo 38): a média precisa
   // caber no caixa com folga. No pico o turbo recusa algumas — a medição conta
   // e as recusas estão dentro do resultado dela.
-  // No par, as duas metades prendem margem.
+  // No par, as duas metades prendem margem. O robô das grandes não chega a 25:
+  // cada perna segura as que estão entre as `saidaPosto` primeiras de um
+  // universo de 22 a 42 moedas (o máximo medido está em `lib/robos.ts`).
+  const porPerna = (p: Perna) => (r.regras.capMinima !== undefined && p.saidaPosto ? p.saidaPosto : 25 / r.regras.pernas.length);
   const margemMedia = r.regras.pernas.reduce(
-    (s, p) => s + (25 / r.regras.pernas.length) * (r.regras.tamanho / p.alavancagem + (p.hedge ? r.regras.tamanho / p.hedge.alavancagem : 0)),
+    (s, p) => s + porPerna(p) * (r.regras.tamanho / p.alavancagem + (p.hedge ? r.regras.tamanho / p.hedge.alavancagem : 0)),
     0,
   );
-  confere(`${r.nome}: 25 posições cabem no caixa`, margemMedia < 0.8, `${(margemMedia * 100).toFixed(0)}% em margem`);
+  const posicoes = Math.round(r.regras.pernas.reduce((s, p) => s + porPerna(p), 0));
+  confere(`${r.nome}: ${posicoes} posições cabem no caixa`, margemMedia < 0.8, `${(margemMedia * 100).toFixed(0)}% em margem`);
 }
 
 {

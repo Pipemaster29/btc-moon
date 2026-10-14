@@ -36,6 +36,7 @@ import {
   REGRAS_PADRAO,
   ROBOS,
   TAXA,
+  casarComPerpetuos,
   decidir,
   desvioDiario,
   fechar,
@@ -232,9 +233,54 @@ for (const e of robos) {
 // ------------------------------------------------------------------ a seleção do dia
 
 const hoje = Math.floor(agora / DIA) * DIA;
-const decidem = robos.filter((e) => e.ultimaDecisao === null || e.ultimaDecisao < hoje);
+const queremDecidir = robos.filter((e) => e.ultimaDecisao === null || e.ultimaDecisao < hoje);
+const capMinima = Math.min(...queremDecidir.map((e) => e.regras.capMinima ?? Infinity));
+const unidadesGrandes = Number.isFinite(capMinima) ? await lerGrandes(capMinima) : null;
+// Sem o market cap, o robô das grandes espera a próxima rodada inteiro — a
+// seleção e a saída por posto, que leem o mesmo ranking —, e os outros seguem.
+const decidem = queremDecidir.filter((e) => e.regras.capMinima === undefined || unidadesGrandes !== null);
 let decidiu = false;
 const abertasAgora = new Map<string, number>();
+
+/**
+ * O MARKET CAP DE HOJE, para o robô das grandes (`RegrasRobo.capMinima`): a
+ * lista das 300 maiores da CoinMarketCap pelo endereço público e sem chave que
+ * a página deles usa — a mesma fonte dos retratos semanais da medição
+ * (`scripts/baixar-grandes.mts`) —, casada com os perpétuos pelo preço de
+ * agora (`casarComPerpetuos`). Na linha do ranking entra o número da medição:
+ * as unidades que circulam vezes o fechamento de ontem do perpétuo.
+ *
+ * "Não consegui" não vira "nenhuma é grande": sem a lista, ou com menos de 10
+ * grandes casadas — a medição, de 01/2024 a 09/2026, nunca teve menos de 23 num
+ * dia —, devolve nulo.
+ */
+async function lerGrandes(minimo: number): Promise<Map<string, { unidades: number; marketCap: number }> | null> {
+  type Bruta = { symbol: string; tags?: string[]; quotes?: { name?: string; price?: number; marketCap?: number }[] };
+  const endereco =
+    "https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=300&sortBy=market_cap&sortType=desc&convert=USD&cryptoType=all&tagType=all";
+  for (let k = 1; k <= 3; k++) {
+    try {
+      const res = await fetch(endereco, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(20_000) });
+      if (res.ok) {
+        const j = (await res.json()) as { data?: { cryptoCurrencyList?: Bruta[] } };
+        const lista = (j.data?.cryptoCurrencyList ?? []).map((d) => {
+          const q = d.quotes?.find((x) => x.name === "USD") ?? d.quotes?.[0];
+          return { symbol: d.symbol, estavel: (d.tags ?? []).includes("stablecoin"), preco: Number(q?.price), marketCap: Number(q?.marketCap) };
+        });
+        const casadas = casarComPerpetuos(lista, (s) => precos.get(s));
+        const grandes = [...casadas.values()].filter((x) => x.marketCap >= minimo).length;
+        if (grandes >= 10) return casadas;
+        console.log(`robôs: a lista da CoinMarketCap casou só ${grandes} grandes com perpétuo — o robô das grandes espera a próxima rodada`);
+        return null;
+      }
+    } catch {
+      // tenta de novo
+    }
+    await new Promise((r) => setTimeout(r, 1000 * k));
+  }
+  console.log("robôs: a CoinMarketCap não devolveu a lista de market cap — o robô das grandes espera a próxima rodada");
+  return null;
+}
 
 if (decidem.length > 0) {
   const janelas = [...new Set(decidem.flatMap((e) => e.regras.pernas.map((p) => p.janelaDias)))];
@@ -302,6 +348,7 @@ if (decidem.length > 0) {
         ...(fluxo ? { fluxo } : {}),
         ...(vol !== undefined ? { vol } : {}),
         ...(regrasDaCorretora ? { corretora: regrasDaCorretora.get(s.symbol) ?? REGRAS_PADRAO } : {}),
+        ...(unidadesGrandes ? { marketCap: unidadesGrandes.has(s.symbol) ? unidadesGrandes.get(s.symbol)!.unidades * c : null } : {}),
       });
     }),
   );

@@ -95,12 +95,24 @@
  * A MESA DE RISCO (10/10, `lib/quant.ts`) diz quanto disso é escolha. Na grade
  * das peças que a pesquisa mexeu — 144 variações do Momento —, a publicada é a
  * MELHOR (Sharpe 2,54; a mediana, 1,61; a pior, 1,01). O Sharpe sobrevive ao
- * deflacionado de 300 tentativas (93%) e o PBO é 0,13, mas quem escolhesse a
+ * deflacionado de 367 tentativas (92%; eram 93% com 326, antes das 41 do robô
+ * das grandes) e o PBO é 0,13, mas quem escolhesse a
  * cada trimestre pelos 365 dias anteriores, sem saber o que vinha, faria +977%
  * de 10/2024 a 09/2026, contra +6.126% desta regra nos mesmos dias: o número
  * da tabela de cima é o teto de quem escolheu depois de ver. E ele não cabe em
  * fundo grande: com o impacto de mercado pela raiz quadrada, US$ 1 milhão
  * baixa o Sharpe para 1,83 e US$ 20 milhões, para 0,70.
+ *
+ * O PLACEBO (13/10, `npm run medir-robos -- --placebo`) diz quanto é a ESCOLHA
+ * e quanto é a gestão. Com o mesmo stop, rastro, pirâmide, prazo, alvo, custo
+ * e regras da corretora, e a mesma quantidade de entradas por dia, escolher as
+ * moedas ao acaso perde 76% na mediana de 40 sorteios (Sharpe −0,66; o melhor,
+ * 0,32), contra +4.008% (2,31) deste livro sem a saída por posto — e nenhum
+ * sorteio passa dele em nenhuma metade. A gestão sozinha perde; quem ganha é o
+ * momento. Mas cada perna sozinha empata com o acaso numa metade: a comprada
+ * até 06/2025 (2 de 40 sorteios passam dela) e a vendida de 07/2025 em diante
+ * (3 de 40). E o erro frequente é o desenho: 26% das compras dão lucro, e os
+ * 10 melhores trades de 2.388 fazem mais que o lucro inteiro.
  *
  * O "Fluxo" é OUTRO LIVRO (`VENDA_FLUXO`, com a medição ao lado): vende as
  * moedas em que a venda a mercado dominou a semana, em par com ETH. Rende
@@ -201,6 +213,22 @@ export interface Perna {
    * filtro. Medido em 10/10 e só na medição — nenhum robô o usa.
    */
   filtroOI?: { campo: "oi" | "top"; janelaDias: number; /** Verdadeiro: só com o campo CAINDO (`docs/preregistro-oi-invertido.md`). */ caindo?: boolean };
+  /**
+   * O LIMIAR DA TENDÊNCIA: a perna só entra na moeda cujo retorno da janela
+   * está do lado que ela aposta, por pelo menos isto (fração de PREÇO). Com 0,
+   * a comprada só pega quem subiu e a vendida só quem caiu — o ranking escolhe
+   * entre elas, e num dia em que todas caem a comprada não abre nada. O limiar
+   * corta depois da régua de tamanho do ranking (4k elegíveis), não antes: ela
+   * é sobre o universo, não sobre a tendência. Só para o critério "retorno".
+   * Ausente: as k primeiras do ranking, subindo ou caindo.
+   */
+  minimo?: number;
+  /**
+   * O RANKING AO CONTRÁRIO: a comprada pega as que MAIS CAÍRAM e a vendida as
+   * que mais subiram — a aposta de reversão. A saída por posto lê o mesmo
+   * ranking invertido. Ausente: o momento.
+   */
+  inverso?: boolean;
 }
 
 /**
@@ -231,6 +259,13 @@ export interface RegrasRobo {
   idadeMinimaDias: number;
   pernas: Perna[];
   alvoVolatilidade?: AlvoVolatilidade;
+  /**
+   * O MARKET CAP MÍNIMO, em dólares: só entra no ranking a moeda com market cap
+   * lido e maior ou igual a isto naquele dia (`LinhaRanking.marketCap`). Moeda
+   * sem a leitura fica de fora — "não consegui ler" não vira "é grande". É o
+   * universo do robô "Grandes". Ausente: qualquer tamanho.
+   */
+  capMinima?: number;
 }
 
 export interface Robo {
@@ -465,6 +500,64 @@ export function nocionalAceito(nocional: number, preco: number, r: RegrasDaMoeda
   return n >= r.nocionalMinimo ? n : 0;
 }
 
+// ------------------------------------------------------------------ o market cap
+
+/** Uma moeda da lista de market cap da CoinMarketCap: o que o casamento com o perpétuo lê. */
+export interface MoedaDaLista {
+  symbol: string;
+  /** A etiqueta "stablecoin" da CoinMarketCap. */
+  estavel: boolean;
+  /** Dólares por unidade da MOEDA (não do perpétuo, que pode ser de 1.000 unidades). */
+  preco: number;
+  /** Dólares. */
+  marketCap: number;
+}
+
+/** O ouro tokenizado não é moeda — como as ações e os metais em perpétuo, fica fora. */
+export const OURO_TOKENIZADO: ReadonlySet<string> = new Set(["PAXG", "XAUT"]);
+
+/** Os prefixos com que a Binance lista a moeda de preço miúdo, e quantas unidades cada contrato tem. */
+const MULTIPLICADORES: readonly [string, number][] = [["", 1], ["1000", 1000], ["1000000", 1e6], ["1M", 1e6]];
+
+/**
+ * Casa a lista de market cap com os perpétuos da Binance PELO PREÇO e devolve,
+ * por perpétuo, quantas unidades DELE circulam — o market cap de qualquer hora
+ * é isso vezes o preço do perpétuo naquela hora.
+ *
+ * O símbolo da lista vira `XUSDT`, `1000XUSDT` ou `1000000XUSDT`, e só vale se o
+ * preço do perpétuo estiver entre 0,8 e 1,25 do preço da lista vezes o
+ * multiplicador — a armadilha nº 1, homônimo: a RAY da Binance está a 3,5% do
+ * preço da Raydium e é outra moeda. Perpétuo sem preço não casa (ainda não
+ * existia, ou a Binance não respondeu). Dois nomes da lista no mesmo perpétuo
+ * (a migração de um token): fica o de maior market cap. Stablecoin e ouro
+ * tokenizado ficam fora.
+ *
+ * A medição (`scripts/medir-robos.mts`) passa o fechamento do domingo do
+ * retrato; o ao vivo (`scripts/robos.mts`), o preço de agora.
+ */
+export function casarComPerpetuos(
+  lista: readonly MoedaDaLista[],
+  precoDe: (symbol: string) => number | undefined,
+): Map<string, { unidades: number; marketCap: number }> {
+  const out = new Map<string, { unidades: number; marketCap: number }>();
+  for (const m of lista) {
+    const simbolo = m.symbol.toUpperCase();
+    if (m.estavel || OURO_TOKENIZADO.has(simbolo)) continue;
+    if (!(m.preco > 0) || !Number.isFinite(m.preco) || !(m.marketCap > 0) || !Number.isFinite(m.marketCap)) continue;
+    for (const [prefixo, mult] of MULTIPLICADORES) {
+      const symbol = `${prefixo}${simbolo}USDT`;
+      const p = precoDe(symbol);
+      if (p === undefined || !(p > 0) || !Number.isFinite(p)) continue;
+      const razao = p / (m.preco * mult);
+      if (razao < 0.8 || razao > 1.25) continue;
+      const antes = out.get(symbol);
+      if (!antes || antes.marketCap < m.marketCap) out.set(symbol, { unidades: m.marketCap / (m.preco * mult), marketCap: m.marketCap });
+      break;
+    }
+  }
+  return out;
+}
+
 /**
  * A perna comprada de 07/10: as 5 que mais subiram em 30 dias, sem pirâmide.
  * É a do Caça-monstra (com k 3), onde nada do que veio depois passou.
@@ -525,6 +618,17 @@ const COMPRA_30: Perna = {
  * ou 90 dias (dentro piora); duas ou três parcelas (+30/+60%, +30/+60/+100%),
  * que na janela de 30 dias não melhoram o dentro sobre uma só (+107% e +109%
  * contra +110%) e aumentam a queda máxima (−45% e −49% contra −42%).
+ *
+ * A PARCELA MAIOR REPROVOU (rodada 3 do loop, 13/10, pré-registrada em
+ * `docs/preregistro-piramide.md`; `npm run medir-robos -- --piramide`). O lucro
+ * da perna mora mesmo nas posições que ganham a parcela — no turbo, as 190 de
+ * 756 compras com parcela fizeram US$ 55.598, e a perna inteira, US$ 20.093 —,
+ * mas parcela de 1,5x, 2x ou 3x é tamanho por outro caminho: na mesma queda,
+ * a menos de 0,3 ponto por mês da reta do tamanho puro, e o Sharpe cai a cada
+ * parcela maior (2,40 → 2,20 a 3x). A escolhida no desenho, 3x com o tamanho
+ * ×1,25 (13,9% ao mês contra 13,4% do turbo, queda −49,5%), passou na reserva
+ * e estourou o teto de 50% no ataque: −53,8% com o custo de entrada 4x e
+ * −52,2% com a escorregada dobrada.
  */
 const COMPRA_45: Perna = {
   ...COMPRA_30,
@@ -710,6 +814,12 @@ const VENDA_MOMENTO: Perna = { ...VENDA_14, porVolatilidade: { minimo: 0.25, max
  * antes das regras da corretora; com elas é pior ainda para o alvo: a 2% de
  * base o ETH do par fica abaixo do mínimo de US$ 20 sempre que o alvo encolhe
  * a aposta, e o fora cai para +37%.)
+ *
+ * E no FUNDO INTEIRO (os dois livros escalados juntos pela agitação do fundo,
+ * rodada 2 do loop, `docs/preregistro-alvo-fundo.md`) também não: com alvo de
+ * 40%, 60% e 80% ao ano o fundo vai de 8,0% para 8,4%, 9,4% e 9,4% ao mês no
+ * desenho, abaixo dos 13,4% do turbo — o caixa recusa 582 entradas a 80% — e
+ * não ganha do tamanho fixo na mesma queda (×1,5: 9,7% com −26,5%).
  */
 const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.25, maximo: 2 };
 
@@ -787,8 +897,8 @@ const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.2
  * seca e este não depende delas.
  *
  * E O QUE ELE AINDA NÃO DEMONSTROU (a mesa de risco, 10/10): o Sharpe de 1,60 é
- * o 4º de 108 variações da grade dele e NÃO sobrevive ao deflacionado de 300
- * tentativas (40%) — é o que a melhor de 300 ideias sem vantagem já mostraria —,
+ * o 4º de 108 variações da grade dele e NÃO sobrevive ao deflacionado de 367
+ * tentativas (37%) — é o que a melhor de 367 ideias sem vantagem já mostraria —,
  * com PBO de 0,37. A família inteira é positiva (a pior variação, 0,51) e o
  * walk-forward faz +188%: plausível, não demonstrado. É no fundo, junto do
  * Momento, que ele mais vale — ali ele dilui o risco mesmo que a vantagem seja
@@ -828,6 +938,73 @@ const VENDA_FLUXO: Perna = {
 const UNIVERSO = { volumeMinimo: 20e6, idadeMinimaDias: 14 };
 
 /**
+ * O ROBÔ DAS GRANDES (13/10, o pedido: "um bot usando só moeda grande, de US$ 2
+ * bi para cima, realista"; `docs/preregistro-grandes.md`). O universo é o de
+ * CADA DIA (`RegrasRobo.capMinima`): as moedas com US$ 2 bilhões ou mais de
+ * market cap naquela meia-noite, do retrato semanal da CoinMarketCap casado com
+ * o perpétuo pelo preço (`casarComPerpetuos`) — 22 a 42 por dia, conforme o
+ * trimestre. Escolher pelas grandes de hoje seria escolher as que deram certo.
+ *
+ * A regra é a TENDÊNCIA das duas pernas: compra as 3 grandes que mais subiram
+ * em 45 dias, SE subiram (`minimo` 0), e vende as 3 que mais caíram, SE caíram;
+ * sai quando deixam as 6 primeiras; o tamanho pela volatilidade de cada moeda
+ * (o BTC, menos agitado, entra maior) e o alvo de volatilidade do Momento no
+ * patrimônio. No mercado que só cai ela fica vendida; no que só sobe, comprada.
+ *
+ * ELA NÃO TEM VANTAGEM DEMONSTRADA, e foi escolhida sabendo disso. No desenho
+ * (08/01/2024 a 31/03/2026), 41 tentativas em quatro rodadas, com o mesmo
+ * motor e custo dos outros robôs (`npm run medir-robos -- --grandes`):
+ *
+ *   BTC parado                       +55,5%  Sharpe  0,65  queda −50%
+ *   cesta das grandes, pesos iguais  −43,3%  Sharpe  0,01  queda −78%
+ *   o Momento publicado nas grandes   +1,6%  Sharpe  0,24  queda −52%
+ *   tendência L/S 30 / 60 / 90 dias   −3,1% / +26,4% / +1,4%
+ *   só comprada, 14 a 60 dias        −5,9% a +4,1%
+ *   reversão, 3 a 14 dias            −62% a −67%: o custo come
+ *   tendência POR MOEDA (bancada)    −14% a +12%, de 14 a 90 dias
+ *   esta: 45 dias com o alvo         +33,7%  Sharpe  0,52  queda −39%
+ *                                    metades +11,8% e +20,3%; sem as 5, −8,8%
+ *
+ * Pico estreito e não platô, e abaixo do BTC parado em Sharpe. O critério que a
+ * escolheu (as duas metades positivas, o maior Sharpe) estava no código antes
+ * da última rodada, e a reserva de 04–09/2026 só rodou depois do pré-registro.
+ *
+ * REPROVADA, pelo critério escrito antes (`npm run medir-robos --
+ * --grandes-reserva`). Na reserva fez +48,7% (Sharpe 2,24, queda −19%), contra
+ * +22,5% do BTC parado e +32,3% da cesta — mas a reserva foi de alta para as
+ * grandes, e 25 das 28 outras variações também ganharam nela (só as três
+ * reversões perderam); e o +48,7% é todo de nove posições ainda abertas em
+ * 30/09, metade numa só (ZEC, +US$ 242) — as encerradas somam zero. O ataque
+ * reprova: com o custo de entrada 4x o desenho vai de +33,7% para −9,0% (a
+ * escorregada dobrada aguenta, +31,6%) — a vantagem medida é mais fina que o
+ * custo. Com 367 tentativas o Sharpe de 0,72 da janela inteira fica contra
+ * uma régua do acaso de 2,37: deflacionado 0,003. E em tempo real, escolhendo
+ * entre as 29 variações a cada trimestre pelo ano anterior, desde 10/2024:
+ * −51% (Sharpe −0,83), contra +105% desta nos mesmos dias. Ela entra no ao
+ * vivo como a resposta a "e se só moeda grande?", não como regra que passou.
+ *
+ * As vendidas chegam a 12 abertas ao mesmo tempo (as compradas, a 7), e não a
+ * 6: a moeda que cai abaixo de US$ 2 bi sai do ranking, e a posição dela fica
+ * até o stop ou o prazo — "fora do ranking" não é "caiu no ranking".
+ */
+const COMPRA_GRANDES: Perna = {
+  lado: "long",
+  janelaDias: 45,
+  k: 3,
+  // Vinte e não vinte e cinco: o desvio diário das grandes é de 3% a 5%, menos
+  // da metade do das manipuladas, e o stop só existe para a queda que o posto
+  // não pega a tempo. Não foi variado: é da regra, não do ajuste.
+  stop: 0.2,
+  rastro: null,
+  prazoH: 90 * 24,
+  alavancagem: 3,
+  minimo: 0,
+  saidaPosto: 6,
+  porVolatilidade: { minimo: 0.25, maximo: 2 },
+};
+const VENDA_GRANDES: Perna = { ...COMPRA_GRANDES, lado: "short", alavancagem: 2 };
+
+/**
  * O tamanho base do Momento, antes do alvo de volatilidade; o turbo usa 1,5x.
  * 4,25% e não 4%: com a vendida pela volatilidade (`VENDA_MOMENTO`) a queda
  * máxima a 4% caiu para −34%, e 4,25% a devolve aos −36% da regra anterior —
@@ -848,6 +1025,12 @@ export const ROBOS: Robo[] = [
     id: "turbo",
     nome: "Momento turbo",
     descricao: "O mesmo livro com 1,5x o tamanho — a resposta medida para \"e se arriscasse mais?\".",
+    // 1,5x é o tamanho de crescimento máximo dentro de 50% de queda — o teto
+    // do documento de objetivos do loop —, medido em `docs/preregistro-tamanho.md`
+    // (rodada 1, 11/10): no desenho 01/2024–03/2026, 13,4% ao mês com −46%;
+    // a 1,75x a queda vai a −50,1%. Na reserva (04–09/2026), 19,6% ao mês contra
+    // 16,8% do Momento; em tempo real, 11,7% ao mês. Nem o Fluxo nem o fundo
+    // passam dele em retorno dentro do teto: o caixa recusa entrada antes.
     regras: { tamanho: 1.5 * TAMANHO_MOMENTO, ...UNIVERSO, pernas: [COMPRA_MOMENTO, VENDA_MOMENTO], alvoVolatilidade: ALVO_MOMENTO },
   },
   {
@@ -879,6 +1062,23 @@ export const ROBOS: Robo[] = [
     // A 2,5%, 33 recusas e Sharpe 1,57. Sem o alvo de volatilidade do Momento, que aqui
     // NÃO passou (ver `ALVO_MOMENTO`).
     regras: { tamanho: 0.03, ...UNIVERSO, pernas: [VENDA_FLUXO] },
+  },
+  {
+    id: "grandes",
+    nome: "Grandes",
+    descricao:
+      "Só moedas de US$ 2 bi ou mais naquele dia: compra as 3 que mais subiram em 45 dias, se subiram, e vende as 3 que mais caíram, se caíram, saindo quando deixam as 6 primeiras. Reprovado no ataque de custo: está aqui como resposta, sem vantagem demonstrada.",
+    // 10% por posição é o tamanho em que as 41 tentativas foram medidas, e não
+    // foi variado. A ordem de BTC pede US$ 100 (`RegrasDaMoeda`): numa conta de
+    // US$ 1.000 é o tamanho que deixa a maior das grandes ao alcance do robô.
+    regras: {
+      tamanho: 0.1,
+      volumeMinimo: 20e6,
+      idadeMinimaDias: 14,
+      capMinima: 2e9,
+      pernas: [COMPRA_GRANDES, VENDA_GRANDES],
+      alvoVolatilidade: ALVO_MOMENTO,
+    },
   },
 ];
 
@@ -979,7 +1179,7 @@ export interface PosicaoRobo {
    * `n` primeiras. Mora na posição como o stop e o rastro — a que entrou antes
    * da regra não sai por ela. Ausente: sem saída por posto.
    */
-  posto?: { janelaDias: number; n: number; criterio?: "retorno" | "fluxo" };
+  posto?: { janelaDias: number; n: number; criterio?: "retorno" | "fluxo"; inverso?: boolean };
   /**
    * SÓ NO AO VIVO: quanto o livro de ofertas da Binance cobraria na hora da
    * entrada, por lado, em fração do nocional — meio spread mais o impacto de
@@ -1055,6 +1255,12 @@ export interface EstadoRobo {
   diasPerdidos: number;
   /** Seleções que não viraram posição por falta de caixa ou de preço. */
   recusadas: number;
+  /**
+   * A escorregada do stop desta conta, quando não é a medida
+   * (`ESCORREGADA_STOP`): só a medição a muda, no ataque de escorregada
+   * dobrada. O ao vivo nunca a grava.
+   */
+  escorregada?: number;
 }
 
 // ------------------------------------------------------------------ o mercado
@@ -1110,6 +1316,13 @@ export interface LinhaRanking {
    * dólares por ordem, o livro já está todo em `custoPorLado`.
    */
   impacto?: number;
+  /**
+   * O market cap da moeda naquele dia, em DÓLARES: na medição, o do retrato
+   * semanal da CoinMarketCap mais recente até a decisão (`scripts/baixar-grandes.mts`),
+   * casado com o perpétuo pelo preço; no ao vivo, o de hoje. Nulo sem leitura.
+   * Só o robô com `RegrasRobo.capMinima` lê.
+   */
+  marketCap?: number | null;
 }
 
 /**
@@ -1319,7 +1532,8 @@ export function percorrer(
       // No nível, ou na abertura se a vela saltou por cima dele — e então a
       // escorregada medida no minuto do disparo (`ESCORREGADA_STOP`).
       const nivel = comprado ? Math.min(v.o, ns) : Math.max(v.o, ns);
-      const preco = comprado ? nivel - ESCORREGADA_STOP * (nivel - v.l) : nivel + ESCORREGADA_STOP * (v.h - nivel);
+      const esc = e?.escorregada ?? ESCORREGADA_STOP;
+      const preco = comprado ? nivel - esc * (nivel - v.l) : nivel + esc * (v.h - nivel);
       const doRastro = comprado ? ns > p.stop : ns < p.stop;
       p.ultimaVela = v.t;
       return { preco, quando: v.t + HORA, motivo: doRastro ? "rastro" : "stop" };
@@ -1419,7 +1633,8 @@ function andarHedge(h: PernaHedge, v: VelaRobo | undefined, cobrancas: readonly 
 function acrescentar(e: EstadoRobo, p: PosicaoRobo, v: VelaRobo, gatilho: number): void {
   const comprado = p.lado === "long";
   const base = comprado ? Math.max(v.o, gatilho) : Math.min(v.o, gatilho);
-  const preco = comprado ? base + ESCORREGADA_STOP * (v.h - base) : base - ESCORREGADA_STOP * (base - v.l);
+  const esc = e.escorregada ?? ESCORREGADA_STOP;
+  const preco = comprado ? base + esc * (v.h - base) : base - esc * (base - v.l);
   const alavancagem = p.nocional / p.margem;
   const bruto = e.regras.tamanho * patrimonioA(e) * (p.piramide?.tamanho ?? 1) * escalaDoTamanho(e, v.t);
   const nocional = p.corretora && preco > 0 ? nocionalAceito(bruto, preco, p.corretora) : bruto;
@@ -1590,9 +1805,10 @@ function criterioDe(perna: Pick<Perna, "janelaDias" | "criterio">, l: LinhaRanki
  */
 export function ordenar(
   regras: RegrasRobo,
-  perna: Pick<Perna, "lado" | "janelaDias" | "criterio">,
+  perna: Pick<Perna, "lado" | "janelaDias" | "criterio" | "inverso">,
   linhas: readonly LinhaRanking[],
 ): LinhaRanking[] {
+  const capMinima = regras.capMinima;
   const elegiveis = linhas.filter((l) => {
     const r = criterioDe(perna, l);
     return (
@@ -1601,12 +1817,21 @@ export function ordenar(
       Number.isFinite(r) &&
       Number.isFinite(l.volume) &&
       l.volume >= regras.volumeMinimo &&
-      (l.idadeDias === null || l.idadeDias >= regras.idadeMinimaDias)
+      (l.idadeDias === null || l.idadeDias >= regras.idadeMinimaDias) &&
+      // Sem a leitura do market cap a moeda fica FORA do universo das grandes: "não consegui" não vira "é grande".
+      (capMinima === undefined || (typeof l.marketCap === "number" && Number.isFinite(l.marketCap) && l.marketCap >= capMinima))
     );
   });
   const ordem = elegiveis.sort((a, b) => (criterioDe(perna, a) as number) - (criterioDe(perna, b) as number));
-  return perna.lado === "long" ? ordem.reverse() : ordem;
+  // Comprada pega o topo, vendida o fundo; invertida, o contrário (`Perna.inverso`).
+  return (perna.lado === "long") !== !!perna.inverso ? ordem.reverse() : ordem;
 }
+
+/**
+ * O lado da régua para onde a perna aposta: +1 quando ela pega o TOPO do
+ * critério (comprada no momento, vendida na reversão), −1 quando pega o FUNDO.
+ */
+const sentidoDe = (perna: Pick<Perna, "lado" | "inverso">) => ((perna.lado === "long") !== !!perna.inverso ? 1 : -1);
 
 /**
  * As k moedas da perna num dia: as primeiras do ranking (`ordenar`).
@@ -1616,8 +1841,14 @@ export function ordenar(
  */
 export function selecionar(regras: RegrasRobo, perna: Perna, linhas: readonly LinhaRanking[]): LinhaRanking[] {
   // O símbolo do hedge não entra na própria perna: vender ETH contra ETH é zero.
-  const ordem = ordenar(regras, perna, linhas).filter((l) => l.symbol !== perna.hedge?.symbol);
+  let ordem = ordenar(regras, perna, linhas).filter((l) => l.symbol !== perna.hedge?.symbol);
   if (ordem.length < 4 * perna.k) return [];
+  // O limiar da tendência corta DEPOIS da régua de tamanho: ela é sobre o universo do dia, não sobre quem está subindo.
+  const minimo = perna.minimo;
+  if (minimo !== undefined) {
+    const s = sentidoDe(perna);
+    ordem = ordem.filter((l) => s * (criterioDe(perna, l) as number) >= minimo);
+  }
   const f = perna.filtroOI;
   if (f) {
     return ordem
@@ -1652,10 +1883,11 @@ export function sairPorPosto(
   const postos = new Map<string, Map<string, number>>();
   for (const p of [...e.abertas]) {
     if (!p.posto) continue;
-    const chave = `${p.lado}:${p.posto.janelaDias}`;
+    // O ranking guardado é o da perna inteira: lado, janela, critério e sentido — duas pernas do mesmo lado não dividem posto.
+    const chave = `${p.lado}:${p.posto.janelaDias}:${p.posto.criterio ?? "retorno"}:${p.posto.inverso ? "inverso" : ""}`;
     let posto = postos.get(chave);
     if (!posto) {
-      const ordem = ordenar(e.regras, { lado: p.lado, janelaDias: p.posto.janelaDias, criterio: p.posto.criterio }, linhas);
+      const ordem = ordenar(e.regras, { lado: p.lado, janelaDias: p.posto.janelaDias, criterio: p.posto.criterio, inverso: p.posto.inverso }, linhas);
       posto = new Map(ordem.length >= MINIMO_NO_RANKING ? ordem.map((l, k) => [l.symbol, k]) : []);
       postos.set(chave, posto);
     }
@@ -1757,7 +1989,14 @@ export function abrir(
     ...(custoExtra > 0 ? { custoExtra: custoExtra * (nocional + nocionalHedge) } : {}),
     ...(corretora ? { corretora } : {}),
     ...(perna.saidaPosto
-      ? { posto: { janelaDias: perna.janelaDias, n: perna.saidaPosto, ...(perna.criterio ? { criterio: perna.criterio } : {}) } }
+      ? {
+          posto: {
+            janelaDias: perna.janelaDias,
+            n: perna.saidaPosto,
+            ...(perna.criterio ? { criterio: perna.criterio } : {}),
+            ...(perna.inverso ? { inverso: true } : {}),
+          },
+        }
       : {}),
   };
   if (perna.hedge && hedge) {

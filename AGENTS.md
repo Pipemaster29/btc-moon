@@ -130,10 +130,10 @@ no código, com número:
   fundo pergunta antes de pôr dinheiro, medido com `lib/quant.ts` sobre o mesmo
   motor. **A publicada do Momento é a MELHOR de 144 variações** da grade das
   peças que a pesquisa mexeu (mediana 1,61 de Sharpe, a pior 1,01): o Sharpe
-  sobrevive ao deflacionado de 300 tentativas (93%) e o PBO é 0,13, mas
+  sobrevive ao deflacionado de 367 tentativas (92%) e o PBO é 0,13, mas
   escolhendo em tempo real (walk-forward de 365 dias) ele faz +977% de 10/2024
   a 09/2026 contra +6.126% da publicada nos mesmos dias — o +5.928% é o teto de
-  quem escolheu depois de ver. **O Fluxo reprova no deflacionado** (40%, PBO
+  quem escolheu depois de ver. **O Fluxo reprova no deflacionado** (37%, PBO
   0,37): plausível, não demonstrado. O bootstrap põe a queda do Momento entre
   −24% e −54%. A capacidade é pequena: com o impacto pela raiz quadrada e as
   regras da Binance, US$ 1 milhão dá Sharpe 1,83 e US$ 20 milhões, 0,70. E o
@@ -151,6 +151,48 @@ no código, com número:
   1,36–1,87 no desenho). O inverso, julgado só na reserva de 04–09/2026: +24%
   contra +155%. Na mesma reserva, o publicado sem as 5 melhores perde 67%.
   `npx tsx scripts/baixar-oi.mts` e `npm run medir-robos -- --oi`.
+
+- **O loop de melhoria (11/10), a pedido: 30% ao mês.** Roda a partir de um
+  documento de objetivos, uma hipótese por rodada, cada uma pré-registrada em
+  `docs/` antes de medir, com a reserva de 04–09/2026 só para a escolhida. A
+  rodada 1 (`--tamanho`) mediu o tamanho de crescimento máximo dentro de 50% de
+  queda: é o turbo de hoje (Momento ×1,5) — 13,4% ao mês no desenho, 19,6% na
+  reserva e 11,7% em tempo real. Tamanho não chega a 30%: o caixa recusa
+  entrada antes (o fundo a ×3 recusa 2.166). A rodada 2 (`--alvo-fundo`) pôs
+  o alvo de volatilidade no fundo inteiro: 9,4% ao mês no máximo, reprovada —
+  o caixa recusa do mesmo jeito. A rodada 3 (`--piramide`) aumentou a parcela
+  da pirâmide do Momento: a escolhida (3x, ×1,25) fez 13,9% no desenho e 24,0%
+  na reserva e passou do teto no ataque (−53,8% com custo 4x) — na mesma
+  queda, parcela maior rende o mesmo que tamanho puro. **O loop parou aí (13/10),
+  três rodadas sem melhora**: dentro de −50%, tudo cai na mesma reta, que acaba
+  em 13–14% ao mês; 30% pediria um livro novo com Sharpe próprio perto de 2,5.
+  `simularFundo` simula as subcontas lado a lado, para regras que olham o fundo
+  inteiro, e o ataque (`Extra.custoAtraso`, `EstadoRobo.escorregada`) fica na
+  medição para as próximas regras.
+
+- **É lógica, não sorte de escolha — e cada perna empata numa metade (13/10).**
+  O placebo (`--placebo`) roda o Momento com a escolha sorteada e a gestão
+  igual, na mesma quantidade de entradas por dia: as duas pernas sorteadas
+  perdem 76% na mediana de 40 sorteios (Sharpe −0,66; o maior, 0,32) contra
+  +4.008% (2,31) do publicado sem a saída por posto, e nenhum sorteio passa
+  dele em nenhuma metade. Sozinha, a compra pelo momento empata com o acaso
+  até 06/2025 (2 de 40 passam) e a venda, de 07/2025 em diante (3 de 40). 26%
+  das compras dão lucro e os 10 melhores trades de 2.388 fazem mais que o
+  lucro inteiro: o erro frequente é o desenho. A recompra logo depois da
+  saída (`--reentrada`) rende pior por trade e soma +US$ 26.544.
+
+- **Nas moedas grandes não há o que medir a favor — e o robô delas está na
+  arena reprovado (13/10), a pedido: "só moeda de US$ 2 bi para cima,
+  realista".** O universo é o de CADA DIA: o retrato semanal da CoinMarketCap
+  (`scripts/baixar-grandes.mts`, sem chave) casado com o perpétuo pelo preço
+  (`casarComPerpetuos`). No desenho, a cesta das grandes fez −43% e o BTC
+  parado +55%; 41 tentativas — só comprada, reversão, tendência por moeda,
+  janelas, pares —, e a melhor, a tendência das duas pernas em 45 dias com o
+  alvo de volatilidade, +33,7% (Sharpe 0,52), pico estreito. Pré-registrada
+  (`docs/preregistro-grandes.md`), fez +48,7% na reserva — todo de posições
+  abertas em 30/09, metade na ZEC — e reprovou no ataque: com a entrada a
+  0,4%, o desenho vira −9,0%. Deflacionado 0,003 com 367 tentativas; em tempo
+  real, −51%. `npm run medir-robos -- --grandes` e `-- --grandes-reserva`.
 
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
@@ -304,8 +346,10 @@ coisas que foram medidas e estão no código:
   receber, publicar no máximo uma vez por segundo, derrubar, religar, aba
   oculta, aba de volta, dormir. Onze casos, e ele sai com erro se algum falha.
 
-Quem consome: as células de preço e 24h da tabela (`PrecoVivo`) e a carteira
-(`CarteiraPanel`, que remarca as posições com `remarcar`). O número do retrato é
+Quem consome: as células de preço e 24h da tabela (`PrecoVivo`), a carteira
+(`CarteiraPanel`, que remarca as posições com `remarcar`) e os robôs
+(`useRobosMarcados`, de `components/robosVivo.ts`, que o ao vivo e a mesa de
+risco dividem). O número do retrato é
 sempre o ponto de partida e nunca some — se a rota não responder, a célula fica
 exatamente como estava.
 
@@ -317,6 +361,32 @@ diferença, na tela, marcada como atual.
 inteiro, as regras de saída e o caminho de velas — isso é do `npm run carteira`.
 Uma posição que já passou do stop aparece passada do stop, sinalizada, até o
 retrato seguinte fechá-la com a hora certa.
+
+### As abas (13/10)
+
+O site tem cinco abas, e **cada uma é uma rota, não estado**: Bitcoin (`/`),
+Radar (`/radar` e `/radar/[symbol]`), Robôs (`/robos`, com `/robos/medicao` e
+`/robos/mesa`), Carteira (`/carteira`) e Garimpo (`/garimpo`). Até 13/10 o radar
+era uma página só, com dez arquivos de `data/` pedidos para mostrar qualquer um
+deles e as posições dos robôs no fim de tudo.
+
+- **A barra mora no layout raiz** (`app/layout.tsx`, `AbasDoSite` de
+  `components/Abas.tsx`) e a aba ativa sai de `useSelectedLayoutSegment`. Aba
+  nova entra em `ABAS_DO_SITE`; parte de uma aba entra como rota embaixo dela,
+  com `SubAbas` no layout da aba — é o que `app/robos/layout.tsx` faz.
+- **Cada aba busca só o que mostra**, com `revalidate = 300` como o radar sempre
+  teve, e usa a moldura de `components/Pagina.tsx` (`Pagina`, `Cabeca`, `Secao`):
+  a mesma largura da barra (6xl) e o índice de âncoras das seções.
+- **O resumo do placar fica no Radar, acima das candidatas** (`PlacarResumo`), e
+  o placar inteiro na Carteira (`PlacarPanel`). Separar a página não podia levar
+  junto a razão de o placar vir antes das recomendações.
+- **O ao vivo dos robôs recebe só as curvas medidas** (a faixa de cada cartão),
+  não os ~300 KB de `robos-medicao.json`: o resto não precisa viajar até o
+  navegador.
+- **Celular**: a barra perde a marca abaixo de `sm` para as cinco abas caberem em
+  390 px, e tabela larga rola de lado dentro do cartão (`min-w-*` com
+  `whitespace-nowrap`) em vez de quebrar cada célula em três linhas. Conferido em
+  13/10 no Chromium, claro e escuro, em 390 e 1280 px: nenhuma aba rola de lado.
 
 ### Os módulos
 
@@ -337,6 +407,12 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
 | `components/vivo.ts` | a assinatura única da página: WebSocket da Binance para preço, essa rota para financiamento e como reserva |
+| `components/Abas.tsx` | a barra das abas do site (`AbasDoSite`, `ABAS_DO_SITE`) e o seletor de partes de uma aba (`SubAbas`) |
+| `components/Pagina.tsx` | a moldura de toda aba: largura, respiro, cabeçalho e o índice de âncoras |
+| `components/robosVivo.ts` | os robôs marcados agora (`useRobosMarcados`) e o fundo ao vivo (`fundoVivoDe`), para o ao vivo e a mesa dizerem o mesmo patrimônio |
+| `components/robosFormato.ts` | cor, nome curto e formatos de número dos robôs, iguais nas três partes da aba |
+| `components/RobosAoVivo.tsx`, `RobosMedidos.tsx`, `MesaAoVivo.tsx` | as três partes da aba Robôs; `MesaRobos.tsx` é a mesa em si |
+| `components/PlacarPanel.tsx` | o placar inteiro (aba Carteira) e o resumo de uma linha (Radar) |
 | `lib/sinais.ts` | o formato de `data/sinais.json` e a leitura dele pela página |
 | `lib/fluxo.ts` | `resumirFluxo`: soma o bruto do fluxo da Binance por moeda, com a cobertura de cada dia junto |
 | `lib/garimpo.ts` | peneira os 526 perpétuos atrás do padrão. **Carrega a tabela medida que ordena a lista** |
@@ -345,6 +421,7 @@ retrato seguinte fechá-la com a hora certa.
 | `lib/guardado.ts` | de onde a página lê `data/`. **A ordem depende do ambiente**: raw primeiro em produção (branch `dados`, depois `main`), disco primeiro no resto |
 | `lib/avisos.ts` | o que a carteira abriu ou fechou desde o retrato anterior, em texto para o Telegram. A memória do que já foi avisado viaja no `carteira.json` |
 | `scripts/dados.sh` | baixa e grava os dados do robô na branch `dados`; faz a transição do `main` sozinho |
+| `scripts/baixar-grandes.mts` | o retrato semanal das 300 maiores da CoinMarketCap, sem chave, em `.cache/grandes/` — o universo do robô das grandes. **O retrato de um domingo é o fechamento dele**: só vale da meia-noite seguinte. `npm run medir-robos` chama `baixarGrandes` sozinho |
 
 ### Os dados
 
@@ -489,10 +566,11 @@ código diferente de zero quando algum caso falha, então serve de portão.
 
 ## Os robôs
 
-Quatro carteiras fictícias que **não seguem o painel** (`lib/robos.ts`): operam
+Cinco carteiras fictícias que **não seguem o painel** (`lib/robos.ts`): operam
 qualquer perpétuo USDT da Binance com US$ 20 milhões de volume (o Caça-monstra
-aceita US$ 5 milhões), três escolhidos por momento e uma — o Fluxo — pelo fluxo
-vendedor, em par com ETH. A medição está no topo do arquivo
+aceita US$ 5 milhões; o das grandes, só moeda de US$ 2 bi ou mais naquele dia),
+quatro escolhidos por momento e uma — o Fluxo — pelo fluxo vendedor, em par com
+ETH. A medição está no topo do arquivo
 e no README; aqui fica o que não pode ser quebrado.
 
 - **Um motor só.** `npm run medir-robos` e `npm run robos` chamam as mesmas
@@ -566,6 +644,17 @@ e no README; aqui fica o que não pode ser quebrado.
 - **"Não consegui" não vira "não achei".** Sem lista de símbolos ou sem preço, a
   rodada não grava; sem velas ou financiamento de uma moeda, as posições dela
   esperam; com menos de 90% da praça no ranking, a seleção espera.
+- **O market cap é lido, e "sem leitura" não é "grande"** (`RegrasRobo.capMinima`,
+  `LinhaRanking.marketCap`). Na medição, as unidades do último retrato semanal
+  FECHADO antes da decisão (o de um domingo é o fechamento dele, 23:59 UTC, e
+  vale da meia-noite seguinte, por 8 dias) vezes o fechamento do perpétuo na
+  véspera; no ao vivo, a lista de agora (`lerGrandes`), com as mesmas unidades
+  vezes o fechamento de ontem. Os dois casam pela MESMA `casarComPerpetuos`.
+  Moeda sem leitura fica fora do universo; sem a lista, ou com menos de 10
+  grandes casadas (a medição nunca teve menos de 23 num dia), o robô das
+  grandes não decide na rodada — nem a seleção nem o posto —, e os outros
+  seguem. A vendida que cai abaixo de US$ 2 bi sai do ranking e FICA até o
+  stop ou o prazo: as vendidas chegam a 12 abertas, não a 6.
 - **Unidades**: `stop`, `rastro` e preços são de PREÇO; `nocional`, `margem`,
   `funding`, `custoExtra` e `resultado` são DÓLARES; `tamanho` é fração do
   PATRIMÔNIO (o base, antes do alvo de volatilidade); `CUSTO_ATRASO`,
@@ -573,7 +662,9 @@ e no README; aqui fica o que não pode ser quebrado.
   resto da vela além do nível; `AlvoVolatilidade.anual`, volatilidade ANUAL;
   `vol` (do ranking), desvio DIÁRIO de preço; `fluxo`, fração do VOLUME da
   janela; `Degrau.manutencao`, fração do NOCIONAL, e `Degrau.desconto`,
-  DÓLARES; `FOLGA_LIQUIDACAO`, PREÇO (fração da entrada). No par, `margem` e `resultado` do trade
+  DÓLARES; `FOLGA_LIQUIDACAO`, PREÇO (fração da entrada); `marketCap` e
+  `capMinima`, DÓLARES; `Perna.minimo`, PREÇO (o retorno da janela do lado
+  apostado). No par, `margem` e `resultado` do trade
   somam as duas metades; o `hedge` do trade guarda a parte do hedge.
 - **Tamanho escolhe o risco, não a vantagem — e tem teto.** Na regra de hoje o
   Sharpe fica em 2,53–2,54 de 3% a 4,25% e cai depois, porque o caixa começa a
@@ -599,7 +690,8 @@ e no README; aqui fica o que não pode ser quebrado.
 - **O deflacionado usa o maior entre o espalhamento dos Sharpes da grade e o do
   acaso** (`varianciaDoSharpeNulo`): grade de variações parecidas espalha pouco
   e daria uma régua baixa demais. E o N "da pesquisa" (`TENTATIVAS_DA_PESQUISA`,
-  300) é contado por baixo — regra nova medida soma tentativas.
+  367: 300 até 10/10, as 26 do loop e as 41 do robô das grandes) é contado por
+  baixo — regra nova medida soma tentativas.
 - **O fundo só transfere o caixa livre** (`caixaLivre` de `paridadeDeRisco`):
   margem de posição aberta não sai da subconta. O ao vivo (`fundoAoVivo`) é
   conta de cotas sobre as curvas dos robôs, sem essa trava — na medição ela

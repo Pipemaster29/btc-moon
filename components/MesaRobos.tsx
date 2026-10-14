@@ -8,7 +8,7 @@
  * A ORDEM É A DE UM COMITÊ DE INVESTIMENTO. Primeiro o produto — os dois livros
  * que passaram, juntos e repartidos por risco, como subcontas de um fundo —,
  * depois o risco de cada série com o intervalo do bootstrap ao lado, depois se
- * o resultado é sorte de quem testou ~300 ideias e publicou as melhores, e por
+ * o resultado é sorte de quem testou centenas de ideias e publicou as melhores, e por
  * fim quanto dinheiro cabe antes de o próprio tamanho comer o lucro.
  *
  * A FRASE QUE CONCLUI SAI DO NÚMERO. Quando o Sharpe deflacionado reprova, a
@@ -26,10 +26,11 @@ const NOME: Record<string, string> = {
   turbo: "Momento turbo",
   "caca-monstra": "Caça-monstra",
   fluxo: "Fluxo",
+  grandes: "Grandes",
   fundo: "Fundo (Momento + Fluxo)",
   btc: "BTC comprado",
 };
-const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo", fundo: "Fundo", btc: "BTC" };
+const CURTO: Record<string, string> = { momento: "Momento", turbo: "Turbo", "caca-monstra": "Caça", fluxo: "Fluxo", grandes: "Grandes", fundo: "Fundo", btc: "BTC" };
 const nome = (id: string) => NOME[id] ?? id;
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -63,6 +64,9 @@ const data = (t: number) => new Date(t).toLocaleDateString("pt-BR", { day: "2-di
 const th = "py-1 pr-3 font-normal";
 const linhaTabela = "border-t border-black/5 dark:border-white/5";
 const nota = "text-xs text-black/50 dark:text-white/50 mt-2";
+/** Cada pergunta da mesa é um cartão: na aba própria, uma rolagem de 600 linhas sem divisão era o que mais cansava. */
+const cartao = "rounded-xl border border-black/10 dark:border-white/10 p-5";
+const titulo = "font-semibold text-lg";
 
 function Intervalo({ v, de, ate, f }: { v: number; de: number; ate: number; f: (x: number) => string }) {
   return (
@@ -368,9 +372,8 @@ export default function MesaRobos({
   const retVivo = fundoVivo ? fundoVivo.patrimonio / CAPITAL_ROBO - 1 : 0;
 
   return (
-    <div className="mt-8 border-t border-black/10 dark:border-white/10 pt-6">
-      <h3 className="font-semibold">A mesa de risco</h3>
-      <p className="text-sm text-black/60 dark:text-white/60 mt-1">
+    <div className="flex flex-col gap-6">
+      <p className="text-sm text-black/60 dark:text-white/60">
         O que um fundo pergunta antes de pôr dinheiro numa estratégia, respondido pela mesma medição: quanto ela arrisca e
         com que intervalo, se o Sharpe sobrevive às ~{quant.tentativasDaPesquisa} ideias testadas até achá-la, se
         escolher a regra em tempo real teria funcionado, e quanto dinheiro cabe antes de o próprio tamanho comer o lucro.
@@ -378,8 +381,8 @@ export default function MesaRobos({
       </p>
 
       {f && fichaFundo && fichaMomento && fichaFluxo && (
-        <>
-          <h4 className="text-sm font-semibold mt-5">O fundo: Momento e Fluxo em subcontas, repartidos por risco</h4>
+        <section id="fundo" className={`${cartao} scroll-mt-20`}>
+          <h2 className={titulo}>O fundo: Momento e Fluxo em subcontas, repartidos por risco</h2>
           <p className="text-xs text-black/60 dark:text-white/60 mt-1">
             Todo dia 1º o capital é repartido pelo inverso da volatilidade de {f.janelaDias} dias de cada livro — o mais
             agitado recebe menos —, só com o que se sabia na véspera, e só com o caixa livre de cada subconta: dinheiro que é
@@ -521,10 +524,11 @@ export default function MesaRobos({
             <summary className="cursor-pointer text-xs text-black/55 dark:text-white/55">O fundo mês a mês</summary>
             <MesesDoFundo meses={fichaFundo.meses} />
           </details>
-        </>
+        </section>
       )}
 
-      <h4 className="text-sm font-semibold mt-6">A ficha de risco</h4>
+      <section id="ficha" className={`${cartao} scroll-mt-20`}>
+      <h2 className={titulo}>A ficha de risco</h2>
       {/* Aspas literais, e não `&ldquo;`: com a entidade no mesmo texto, o
           compilador comia o espaço logo depois do número ("20dias"), visto no
           HTML servido em 10/10. */}
@@ -557,10 +561,11 @@ export default function MesaRobos({
           )}
         </p>
       )}
+      </section>
 
       {vM && vF && (
-        <>
-          <h4 className="text-sm font-semibold mt-6">É sorte? O teste de sobreajuste</h4>
+        <section id="sobreajuste" className={`${cartao} scroll-mt-20`}>
+          <h2 className={titulo}>É sorte? O teste de sobreajuste</h2>
           <p className="text-xs text-black/60 dark:text-white/60 mt-1">
             Cada livro foi remedido numa grade das peças que a pesquisa de fato mexeu — o Momento em {vM.variantes} variações
             ({vM.grade}), o Fluxo em {vF.variantes} ({vF.grade}). O <strong>Sharpe deflacionado</strong> é a probabilidade de o
@@ -585,12 +590,12 @@ export default function MesaRobos({
             vantagem dele ainda não está demonstrada; o ao vivo é que vai dizer. Por isso o fundo, e não um livro só: no
             fundo, a parte do Fluxo dilui o risco do Momento mesmo que a vantagem dele seja menor do que a medida.
           </p>
-        </>
+        </section>
       )}
 
       {capM && capF && (
-        <>
-          <h4 className="text-sm font-semibold mt-6">Quanto dinheiro cabe</h4>
+        <section id="capacidade" className={`${cartao} scroll-mt-20`}>
+          <h2 className={titulo}>Quanto dinheiro cabe</h2>
           <p className="text-xs text-black/60 dark:text-white/60 mt-1">
             O mesmo livro começando com mais dinheiro, com o impacto de mercado pela lei da raiz quadrada — quem compra Q
             dólares de uma moeda que negocia V por dia paga perto de σ × √(Q/V), com σ o desvio diário dela — e as regras da
@@ -615,18 +620,18 @@ export default function MesaRobos({
             de custo já cobra a mais — num retrato do livro de ofertas de 08/10, ela cobrava de 3 a 7 vezes o que uma ordem
             destas custaria.
           </p>
-        </>
+        </section>
       )}
 
       {estresse.length > 0 && (
-        <>
-          <h4 className="text-sm font-semibold mt-6">Os piores dias do BTC</h4>
+        <section id="piores-dias" className={`${cartao} scroll-mt-20`}>
+          <h2 className={titulo}>Os piores dias do BTC</h2>
           <div className="overflow-x-auto mt-2">
             <table className="w-full text-xs tabular-nums">
               <thead className="text-black/40 dark:text-white/40">
                 <tr className="text-left">
                   <th className={th}>dia</th>
-                  {["btc", "momento", "fluxo", "fundo", "caca-monstra"].map((id) => (
+                  {["btc", "momento", "fluxo", "fundo", "caca-monstra", "grandes"].map((id) => (
                     <th key={id} className={`${th} text-right`}>
                       {CURTO[id]}
                     </th>
@@ -637,7 +642,7 @@ export default function MesaRobos({
                 {estresse.map((x) => (
                   <tr key={x.dia} className={linhaTabela}>
                     <td className="py-1 pr-3">{data(x.dia)}</td>
-                    {["btc", "momento", "fluxo", "fundo", "caca-monstra"].map((id) => (
+                    {["btc", "momento", "fluxo", "fundo", "caca-monstra", "grandes"].map((id) => (
                       <td key={id} className={`py-1 pr-3 text-right ${tom(x.retornos[id] ?? 0)}`}>
                         {pct(x.retornos[id] ?? NaN, 1)}
                       </td>
@@ -650,9 +655,9 @@ export default function MesaRobos({
           <p className={nota}>
             A vendida do Momento e o par do Fluxo pagam no pânico; o Caça-monstra, só comprado, cai junto. Correlação diária com
             o BTC: Momento {num(corr("momento", "btc"))}, Fluxo {num(corr("fluxo", "btc"))}, fundo {num(corr("fundo", "btc"))},
-            Caça-monstra {num(corr("caca-monstra", "btc"))}.
+            Caça-monstra {num(corr("caca-monstra", "btc"))}, Grandes {num(corr("grandes", "btc"))}.
           </p>
-        </>
+        </section>
       )}
       <p className={nota}>
         Medição de {new Date(medicao.geradoEm).toISOString().slice(0, 10)}, com as funções de <code className="text-[11px]">lib/quant.ts</code>:{" "}
