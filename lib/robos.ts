@@ -95,8 +95,8 @@
  * A MESA DE RISCO (10/10, `lib/quant.ts`) diz quanto disso é escolha. Na grade
  * das peças que a pesquisa mexeu — 144 variações do Momento —, a publicada é a
  * MELHOR (Sharpe 2,54; a mediana, 1,61; a pior, 1,01). O Sharpe sobrevive ao
- * deflacionado de 367 tentativas (92%; eram 93% com 326, antes das 41 do robô
- * das grandes) e o PBO é 0,13, mas quem escolhesse a
+ * deflacionado de 371 tentativas (92%; eram 93% com 326, antes das 41 do robô
+ * das grandes e das 4 do diversificado) e o PBO é 0,13, mas quem escolhesse a
  * cada trimestre pelos 365 dias anteriores, sem saber o que vinha, faria +977%
  * de 10/2024 a 09/2026, contra +6.126% desta regra nos mesmos dias: o número
  * da tabela de cima é o teto de quem escolheu depois de ver. E ele não cabe em
@@ -897,8 +897,8 @@ const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.2
  * seca e este não depende delas.
  *
  * E O QUE ELE AINDA NÃO DEMONSTROU (a mesa de risco, 10/10): o Sharpe de 1,60 é
- * o 4º de 108 variações da grade dele e NÃO sobrevive ao deflacionado de 367
- * tentativas (37%) — é o que a melhor de 367 ideias sem vantagem já mostraria —,
+ * o 4º de 108 variações da grade dele e NÃO sobrevive ao deflacionado de 371
+ * tentativas (37%) — é o que a melhor de 371 ideias sem vantagem já mostraria —,
  * com PBO de 0,37. A família inteira é positiva (a pior variação, 0,51) e o
  * walk-forward faz +188%: plausível, não demonstrado. É no fundo, junto do
  * Momento, que ele mais vale — ali ele dilui o risco mesmo que a vantagem seja

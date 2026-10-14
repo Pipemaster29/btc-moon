@@ -130,7 +130,7 @@ no código, com número:
   fundo pergunta antes de pôr dinheiro, medido com `lib/quant.ts` sobre o mesmo
   motor. **A publicada do Momento é a MELHOR de 144 variações** da grade das
   peças que a pesquisa mexeu (mediana 1,61 de Sharpe, a pior 1,01): o Sharpe
-  sobrevive ao deflacionado de 367 tentativas (92%) e o PBO é 0,13, mas
+  sobrevive ao deflacionado de 371 tentativas (92%) e o PBO é 0,13, mas
   escolhendo em tempo real (walk-forward de 365 dias) ele faz +977% de 10/2024
   a 09/2026 contra +6.126% da publicada nos mesmos dias — o +5.928% é o teto de
   quem escolheu depois de ver. **O Fluxo reprova no deflacionado** (37%, PBO

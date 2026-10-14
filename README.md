@@ -877,8 +877,8 @@ medir-robos` as roda sobre o mesmo motor e grava o resultado em `quant` de
 
 **O Sharpe é sorte?** As regras deste repositório saíram de ~240 variações escritas nos
 comentários de `lib/robos.ts` e de outras que a primeira bancada testou sem anotar — 300,
-contadas por baixo, 326 com as 26 variantes do loop de melhoria e 367 com as 41 do robô das
-grandes. Com 367 tentativas SEM vantagem nenhuma, a melhor delas mostraria em 997 dias um
+contadas por baixo, 326 com as 26 variantes do loop de melhoria 367 com as 41 do robô das
+grandes e 371 com as 4 do diversificado. Com 371 tentativas SEM vantagem nenhuma, a melhor delas mostraria em 997 dias um
 Sharpe anual de 1,79 só por acaso (Bailey e López de Prado, 2014). Cada livro
 foi remedido numa grade das peças que a pesquisa de fato mexeu: o Momento em 144
 variações (janela da compra 30/45/60 dias × da venda 7/14/21 × saída por posto ×
@@ -889,7 +889,7 @@ pirâmide × alvo de volatilidade × vendida pela volatilidade), o Fluxo em 108 
 | --- | --- | --- |
 | a publicada na grade, por Sharpe | **1ª de 144** | 4ª de 108 |
 | Sharpe: publicada · mediana da grade · pior | 2,54 · 1,61 · 1,01 | 1,60 · 1,13 · 0,51 |
-| Sharpe deflacionado, 367 tentativas | **92%** (passa no limite) | **37%** (reprova) |
+| Sharpe deflacionado, 371 tentativas | **92%** (passa no limite) | **37%** (reprova) |
 | PBO, 12.870 partições (0,5 é sorteio) | 0,13 | 0,37 |
 | escolhendo em tempo real, 10/2024–09/2026 | +977% (Sharpe 2,32) | +188% (1,96) |
 | a publicada nos mesmos dias | +6.126% (3,21) | +249% (2,00) |
@@ -902,7 +902,7 @@ positivas e escolher pelo passado ajuda (PBO baixo) — mas a publicada é a mel
 e quem a escolhesse às cegas faria +977% onde a medição mostra +6.126%, quase o mesmo da
 variação do meio da grade nos mesmos dias (+902%). O +5.928% da janela inteira é o teto
 de quem escolheu depois de ver. O Fluxo **não** sobrevive: o Sharpe 1,60 dele é o que a
-melhor de 367 ideias sem vantagem já mostraria. A família inteira é positiva e o
+melhor de 371 ideias sem vantagem já mostraria. A família inteira é positiva e o
 walk-forward faz +188%, então a vantagem é plausível — mas não está demonstrada.
 
 **A ficha de risco**, na curva de um ponto por dia, com o intervalo de 95% do bootstrap
