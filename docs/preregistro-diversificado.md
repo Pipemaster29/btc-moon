@@ -64,3 +64,36 @@ o custo de entrada 4x e, separado, com a escorregada do stop dobrada.
 **O que muda**: aprovada, vira um robô da arena, com a medição ao lado.
 Reprovada, fica escrita como reprovada — e a resposta ao usuário passa a ser
 que diversificar não salvou o momento.
+
+## O resultado (14/10, depois do pré-registro)
+
+`npm run medir-robos -- --diversificado`. Desenho com US$ 10.000; "guarda" é o
+lucro do desenho que sobra sem as 5 moedas que mais deram:
+
+    Momento publicado (5)   +1.875%  Sharpe 2,40  queda −36%  sem as 5 +435% (guarda 23%)
+    Momento, 10 por perna     +293%  Sharpe 1,54  queda −36%  sem as 5  +57% (guarda 19%)  → fora
+    Momento, 20 por perna      +23%  Sharpe 0,44  queda −44%  sem as 5  −26%               → fora
+    Fluxo publicado (5)       +227%  Sharpe 1,77  queda −22%  sem as 5 +198% (guarda 88%)
+    Fluxo, 10                  +84%  Sharpe 1,12  queda −24%  sem as 5  +66% (guarda 79%)  → elegível
+    Fluxo, 20                  +50%  Sharpe 0,92  queda −22%  sem as 5  +43% (guarda 87%)  → elegível
+
+**Diversificar não salva o momento — mata.** Com 10 moedas por perna o lucro
+cai de +1.875% para +293% e a parte que sobra sem as 5 melhores fica igual
+(19% contra 23%); com 20, sem as 5 ele perde. A vantagem do Momento não é um
+sinal espalhado por muitas moedas que a concentração amplifica: ela MORA nas
+poucas monstras, e repartir a aposta só a dilui.
+
+Escolhida pelo critério: o Fluxo com 10. **Reserva**: −1,4% (Sharpe 0,02), e
+−3,2% sem as 5 que mais deram nela → **REPROVADO** (o ataque aguentava: +50%
+com custo 4x, +81% com escorregada dobrada).
+
+Para o registro, na reserva: o Momento publicado +157%, e −68% sem as 5 dele
+(TUT, RAVE, BEAT, LAB, LSK); o Momento com 10 e com 20, +0,2% e +0,6%, e −52%
+e −34% sem as 5; o Fluxo com 20, −11,7%. **O único que ganhou na reserva sem
+as suas 5 melhores foi o Fluxo publicado**: +11,9%, e +3,7% sem elas.
+
+Com US$ 1.000, o Fluxo diversificado não abre um par sequer (o ETH pede US$
+20 por ordem) e o Momento com 20 tem 1.288 entradas recusadas: diversificar
+de verdade pede dezenas de milhares de dólares.
+
+O N da pesquisa vai a 371.

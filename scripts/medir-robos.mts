@@ -2333,9 +2333,10 @@ if (fluxoRobo) {
  * testou outras sem anotar: 300 até 10/10. O loop de melhoria somou as suas —
  * 14 variantes na rodada 1, 3 na 2 e 9 na 3 (`docs/preregistro-*.md`) —, e o N
  * do Sharpe deflacionado "da pesquisa" passou a 326. O robô das grandes somou
- * 41 (`docs/preregistro-grandes.md`): 367.
+ * 41 (`docs/preregistro-grandes.md`): 367; o diversificado, 4
+ * (`docs/preregistro-diversificado.md`): 371.
  */
-const TENTATIVAS_DA_PESQUISA = 300 + 14 + 3 + 9 + 41;
+const TENTATIVAS_DA_PESQUISA = 300 + 14 + 3 + 9 + 41 + 4;
 const SEMENTE = 20_261_010;
 const AMOSTRAS = 2000;
 /** Blocos de 20 dias em média: um mês de memória, o tamanho de uma alta de monstra. */

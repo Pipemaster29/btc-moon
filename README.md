@@ -1134,6 +1134,28 @@ ao vivo a "e se só moeda grande?", com o selo na tela. O ao vivo lê o market c
 na mesma CoinMarketCap (`lerGrandes` em `scripts/robos.mts`), casado pelo preço de agora;
 sem a lista, o robô das grandes espera a rodada seguinte e os outros seguem.
 
+### E se as monstras nunca surgirem? O diversificado (14/10)
+
+A pergunta veio de quem olha: acertar 5 moedas em 1.000 é loucura — e se elas pararem
+de aparecer? Pré-registrado (`docs/preregistro-diversificado.md`): o mesmo risco
+repartido em 10 ou 20 moedas por perna, sem a pirâmide, a US$ 10.000.
+
+| desenho, 01/2024–03/2026 | retorno | Sharpe | sem as 5 melhores |
+| --- | --- | --- | --- |
+| Momento publicado (5 por perna) | +1.875% | 2,40 | +435% |
+| Momento, 10 por perna | +293% | 1,54 | +57% |
+| Momento, 20 por perna | +23% | 0,44 | −26% |
+| Fluxo publicado (5) | +227% | 1,77 | +198% |
+| Fluxo, 10 | +84% | 1,12 | +66% |
+| Fluxo, 20 | +50% | 0,92 | +43% |
+
+**Diversificar não salva o momento — mata.** A vantagem dele mora nas poucas monstras;
+repartida, some. O escolhido pelo critério, o Fluxo com 10, perdeu 1,4% na reserva
+(04–09/2026) e −3,2% sem as 5 dela: reprovado. Na mesma reserva, o Momento publicado fez
++157% e **−68% sem as suas 5 melhores**; o único que ganhou sem elas foi o Fluxo
+publicado (+11,9%, e +3,7% sem as 5). Com US$ 1.000 o diversificado nem abre: as ordens
+ficam abaixo do mínimo da Binance.
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.

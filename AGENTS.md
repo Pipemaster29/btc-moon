@@ -194,6 +194,16 @@ no código, com número:
   0,4%, o desenho vira −9,0%. Deflacionado 0,003 com 367 tentativas; em tempo
   real, −51%. `npm run medir-robos -- --grandes` e `-- --grandes-reserva`.
 
+- **Diversificar não salva o momento — mata (14/10), a pergunta: "e se as 5
+  moedas nunca surgirem?".** Pré-registrado (`docs/preregistro-diversificado.md`):
+  o mesmo risco repartido em 10 ou 20 moedas por perna, sem a pirâmide, a US$
+  10.000. O Momento cai de +1.875% para +293% (10) e +23% (20) no desenho, e a
+  parte do lucro que sobra sem as 5 melhores não melhora (19% contra 23%): a
+  vantagem mora nas poucas monstras. O Fluxo com 10, o escolhido, perde 1,4% na
+  reserva (−3,2% sem as 5 dela) e reprova. O único que ganha na reserva sem as
+  suas 5 melhores é o Fluxo publicado: +11,9%, +3,7% sem elas. Com US$ 1.000 o
+  diversificado nem abre (mínimo de ordem). `npm run medir-robos -- --diversificado`.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -690,8 +700,8 @@ e no README; aqui fica o que não pode ser quebrado.
 - **O deflacionado usa o maior entre o espalhamento dos Sharpes da grade e o do
   acaso** (`varianciaDoSharpeNulo`): grade de variações parecidas espalha pouco
   e daria uma régua baixa demais. E o N "da pesquisa" (`TENTATIVAS_DA_PESQUISA`,
-  367: 300 até 10/10, as 26 do loop e as 41 do robô das grandes) é contado por
-  baixo — regra nova medida soma tentativas.
+  371: 300 até 10/10, as 26 do loop, as 41 do robô das grandes e as 4 do
+  diversificado) é contado por baixo — regra nova medida soma tentativas.
 - **O fundo só transfere o caixa livre** (`caixaLivre` de `paridadeDeRisco`):
   margem de posição aberta não sai da subconta. O ao vivo (`fundoAoVivo`) é
   conta de cotas sobre as curvas dos robôs, sem essa trava — na medição ela
