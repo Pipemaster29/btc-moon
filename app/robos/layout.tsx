@@ -25,7 +25,8 @@ export default function LayoutRobos({ children }: { children: React.ReactNode })
           Carteiras fictícias de {usd(CAPITAL_ROBO, 0)} que <strong>não seguem o radar</strong>: operam qualquer perpétuo
           da Binance com uma regra escolhida depois de medir dezenas de ideias em 676 perpétuos — os 152 deslistados
           inclusive — de 01/2024 a 09/2026. Três seguem o <strong>momento dos dois lados</strong>; o <strong>Fluxo</strong>{" "}
-          vende onde a venda a mercado domina, contra ETH. Não é recomendação: é a medição continuando ao vivo.
+          vende onde a venda a mercado domina, contra ETH; o <strong>Grandes</strong> segue a tendência só nas moedas de US$
+          2 bi ou mais, e está aqui reprovado, como resposta. Não é recomendação: é a medição continuando ao vivo.
         </p>
         <div className="pt-2">
           <SubAbas

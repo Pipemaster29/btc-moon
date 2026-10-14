@@ -83,6 +83,7 @@ export default function RobosMedidos({ arquivo, medicao }: { arquivo: ArquivoRob
   const corte = medidos[0]?.linhas.find((l) => l.janela.startsWith("fora"))?.de;
   const momento = medidos.find((m) => m.id === "momento");
   const fluxo = medidos.find((m) => m.id === "fluxo");
+  const grandes = medidos.find((m) => m.id === "grandes");
   // Quanto do resultado sobra sem as cinco moedas que mais deram: é a medida de concentração.
   const sobra = (m: MedicaoRobo | undefined) => (m?.semAs5 && m.linhas[0].retorno > 0 ? m.semAs5.retornos[0] / m.linhas[0].retorno : null);
   const real = medicao.realismo;
@@ -252,6 +253,22 @@ export default function RobosMedidos({ arquivo, medicao }: { arquivo: ArquivoRob
           saque), uma máquina que rode o robô toda hora — o GitHub Actions deste projeto já ficou horas parado — e uma subconta
           por robô.
         </Nota>
+        {grandes && (
+          <Nota titulo="Só moedas grandes?">
+            O robô das grandes responde a “e se só moeda de US$ 2 bi para cima?”: o universo de cada dia, do retrato semanal da
+            CoinMarketCap casado com o perpétuo pelo preço — de 22 a 42 moedas, conforme o trimestre. Em 41 tentativas no desenho
+            (01/2024–03/2026), comprar as que sobem perdeu, a reversão foi comida pelo custo, e a melhor — a tendência das duas
+            pernas em 45 dias — fez +34% em 27 meses, abaixo do BTC parado em Sharpe. Na reserva (04–09/2026), fechada até a
+            escolha, fez +49% contra +23% do BTC, mas todo esse ganho era de posições ainda abertas em 30/09, metade numa só
+            (ZEC), num semestre em que 25 de 28 variações também ganharam. E <strong>reprovou no ataque</strong>: com a entrada a
+            0,4% em vez de 0,1%, o desenho vira −9%. Escolhendo a melhor variação a cada trimestre pelo ano anterior, desde
+            10/2024 teria perdido 51%. Na janela inteira, {pct(grandes.linhas[0].retorno, 0)} com queda de{" "}
+            {pct(grandes.linhas[0].quedaMaxima, 0)} e Sharpe {grandes.linhas[0].sharpe.toFixed(2)}
+            {grandes.semAs5 && <> ({pct(grandes.semAs5.retornos[0], 0)} sem as cinco melhores moedas)</>}. Está na arena para a
+            pergunta ter resposta ao vivo, não porque passou:{" "}
+            <code className="text-[11px]">docs/preregistro-grandes.md</code>.
+          </Nota>
+        )}
         <Nota titulo="É lógica ou sorte?">
           Medido com o mesmo motor em 13/10 (<code className="text-[11px]">npm run medir-robos -- --placebo</code>): com o mesmo
           stop, rastro, pirâmide, custo e a mesma quantidade de entradas por dia, escolher as moedas ao acaso perde 76% na

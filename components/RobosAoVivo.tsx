@@ -186,7 +186,7 @@ export default function RobosAoVivo({
         )}
       </p>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {marcados.map(({ e, patrimonio }) => {
           const ret = patrimonio / CAPITAL_ROBO - 1;
           const compradas = e.abertas.filter((p) => p.lado === "long").length;
@@ -199,7 +199,7 @@ export default function RobosAoVivo({
           return (
             // O número em cima e a descrição embaixo: com ela em cima, o
             // patrimônio de cada cartão caía numa altura diferente, conforme o
-            // tamanho da descrição, e os quatro não se liam lado a lado.
+            // tamanho da descrição, e os cartões não se liam lado a lado.
             <div key={e.id} className="flex flex-col rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] p-4">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="font-semibold flex items-center gap-2">

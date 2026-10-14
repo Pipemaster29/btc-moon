@@ -749,7 +749,7 @@ aparecer, o Momento seca; o Fluxo não depende delas.
 
 ### A arena
 
-Quatro robôs com US$ 1.000 cada, ao lado da carteira do painel:
+Cinco robôs com US$ 1.000 cada, ao lado da carteira do painel:
 
 - **Momento** — o livro acima, a 4,25% por posição antes do alvo de volatilidade.
 - **Momento turbo** — o mesmo livro a 6,375% (1,5x): a resposta medida a "e se arriscasse
@@ -763,6 +763,9 @@ Quatro robôs com US$ 1.000 cada, ao lado da carteira do painel:
 - **Fluxo** — o livro acima: vende as 5 em que a venda a mercado mais dominou os
   últimos 7 dias, cada uma em par com ETH, por 14 dias, a 3% por posição e sem o
   alvo de volatilidade.
+- **Grandes** — só moedas de US$ 2 bi ou mais naquele dia: a tendência das duas
+  pernas em 45 dias, a 10% por posição. **Reprovado** no ataque de custo (13/10, abaixo):
+  está na arena como a resposta a "e se só moeda grande?", não porque passou.
 
 Cada posição sai pela regra com que entrou — stop, rastro, prazo, pirâmide e saída
 por posto moram nela —, e a regra nova vale para as entradas. O alvo de volatilidade
@@ -874,8 +877,9 @@ medir-robos` as roda sobre o mesmo motor e grava o resultado em `quant` de
 
 **O Sharpe é sorte?** As regras deste repositório saíram de ~240 variações escritas nos
 comentários de `lib/robos.ts` e de outras que a primeira bancada testou sem anotar — 300,
-contadas por baixo, e 326 com as 26 variantes do loop de melhoria. Com 326 tentativas SEM
-vantagem nenhuma, a melhor delas mostraria em 997 dias um Sharpe anual de 1,77 só por acaso (Bailey e López de Prado, 2014). Cada livro
+contadas por baixo, 326 com as 26 variantes do loop de melhoria e 367 com as 41 do robô das
+grandes. Com 367 tentativas SEM vantagem nenhuma, a melhor delas mostraria em 997 dias um
+Sharpe anual de 1,79 só por acaso (Bailey e López de Prado, 2014). Cada livro
 foi remedido numa grade das peças que a pesquisa de fato mexeu: o Momento em 144
 variações (janela da compra 30/45/60 dias × da venda 7/14/21 × saída por posto ×
 pirâmide × alvo de volatilidade × vendida pela volatilidade), o Fluxo em 108 (janela
@@ -885,7 +889,7 @@ pirâmide × alvo de volatilidade × vendida pela volatilidade), o Fluxo em 108 
 | --- | --- | --- |
 | a publicada na grade, por Sharpe | **1ª de 144** | 4ª de 108 |
 | Sharpe: publicada · mediana da grade · pior | 2,54 · 1,61 · 1,01 | 1,60 · 1,13 · 0,51 |
-| Sharpe deflacionado, 326 tentativas | **93%** (passa no limite) | **39%** (reprova) |
+| Sharpe deflacionado, 367 tentativas | **92%** (passa no limite) | **37%** (reprova) |
 | PBO, 12.870 partições (0,5 é sorteio) | 0,13 | 0,37 |
 | escolhendo em tempo real, 10/2024–09/2026 | +977% (Sharpe 2,32) | +188% (1,96) |
 | a publicada nos mesmos dias | +6.126% (3,21) | +249% (2,00) |
@@ -898,7 +902,7 @@ positivas e escolher pelo passado ajuda (PBO baixo) — mas a publicada é a mel
 e quem a escolhesse às cegas faria +977% onde a medição mostra +6.126%, quase o mesmo da
 variação do meio da grade nos mesmos dias (+902%). O +5.928% da janela inteira é o teto
 de quem escolheu depois de ver. O Fluxo **não** sobrevive: o Sharpe 1,60 dele é o que a
-melhor de 326 ideias sem vantagem já mostraria. A família inteira é positiva e o
+melhor de 367 ideias sem vantagem já mostraria. A família inteira é positiva e o
 walk-forward faz +188%, então a vantagem é plausível — mas não está demonstrada.
 
 **A ficha de risco**, na curva de um ponto por dia, com o intervalo de 95% do bootstrap
@@ -1062,6 +1066,73 @@ O que o placebo NÃO diz é que a vantagem continue. Ele mede que a escolha bate
 NESTES 33 meses, que tiveram as monstras. O gabarito — as regras escolhidas depois de
 ver — está na mesa de risco (em tempo real, +977% contra +6.126%), e a dependência de
 poucas moedas, no teste do open interest (sem as 5 melhores, a reserva perde 67%).
+
+### Só moedas grandes? O robô das grandes (13/10)
+
+O pedido: "dá pra criar um bot usando só moeda grande, de US$ 2 bi para cima? As regras
+você define e vai testando, mas deixa ele realista". O lucro dos outros robôs mora nas
+manipuladas; a pergunta é o que sobra onde ninguém empurra o preço.
+
+**O universo é o de cada dia, não o de hoje.** Escolher pelas grandes de hoje seria
+escolher as que deram certo. `scripts/baixar-grandes.mts` baixa o retrato semanal das 300
+maiores da CoinMarketCap — o endereço público da página de históricos, sem chave, 150
+domingos de 12/2023 a 10/2026 —, e cada moeda é casada com o perpétuo da Binance PELO
+PREÇO a cada domingo (`casarComPerpetuos`, a mesma função no ao vivo): `XUSDT`,
+`1000XUSDT` ou `1000000XUSDT`, valendo só com o preço entre 0,8 e 1,25 do da lista. Das
+6.667 moeda-semanas acima de US$ 2 bi, 4.957 casaram; o resto não tem perpétuo na Binance
+(LEO, CRO, OKB, MNT, os embrulhados e os de staking, PI) ou não o tinha naquela semana, e
+a RAY da Binance, a 3,5% do preço da Raydium, é outra moeda. O retrato de um domingo é o
+fechamento dele (conferido contra as velas: o BTC de 09/03/2025 está a US$ 80.601, o
+perpétuo fechou o dia em 80.689 e abriu em 86.185), e só vale da meia-noite seguinte. São
+22 a 42 moedas por dia, conforme o trimestre.
+
+**As referências do desenho (08/01/2024 a 31/03/2026)**: o BTC parado fez +55,5% (Sharpe
+0,65, queda −50%); a cesta das grandes em pesos iguais, **−43,3%**. As altcoins grandes
+sangraram.
+
+**Quatro rodadas, 41 tentativas, só no desenho** (`npm run medir-robos -- --grandes`;
+tabela inteira em `docs/preregistro-grandes.md`), com o mesmo motor, custo e regras da
+corretora dos outros robôs, a 10% por posição:
+
+| no desenho | retorno | Sharpe | queda |
+| --- | --- | --- | --- |
+| o Momento publicado, só nas grandes | +1,6% | 0,24 | −52% |
+| só comprada, as 3 que mais sobem, 14 a 60 dias | −5,9% a +4,1% | até 0,21 | |
+| reversão, 3 a 14 dias | −62% a −67% | −2 | o custo come |
+| tendência por moeda, como os fundos (bancada) | −14% a +12% | | ruído |
+| tendência das duas pernas, 30 · 45 · 60 · 90 · 120 dias | −3% · +24% · +26% · +1% · −24% | | pico estreito |
+| **a escolhida: 45 dias com o alvo de volatilidade** | **+33,7%** | **0,52** | −39% |
+
+A escolhida compra as 3 grandes que mais subiram em 45 dias, SE subiram, e vende as 3
+que mais caíram, SE caíram, saindo quando deixam as 6 primeiras, com o tamanho pela
+volatilidade de cada moeda e o alvo de volatilidade do Momento. O critério que a escolheu
+(as duas metades positivas, o maior Sharpe) estava no código antes da última rodada, e a
+reserva só rodou depois do pré-registro commitado.
+
+**Reprovada** (`npm run medir-robos -- --grandes-reserva`):
+
+| | retorno | Sharpe | queda |
+| --- | --- | --- | --- |
+| reserva (04–09/2026) | +48,7% | 2,24 | −19% |
+| BTC parado, mesma reserva | +22,5% | 1,25 | −29% |
+| cesta das grandes, mesma reserva | +32,3% | 1,32 | −32% |
+| desenho com a entrada a 0,4% (4x) | **−9,0%** | 0,13 | −47% |
+| desenho com a escorregada dobrada | +31,6% | 0,50 | −40% |
+| em tempo real (walk-forward entre as 29), desde 10/2024 | **−51,1%** | −0,83 | −62% |
+
+A reserva passou, mas o número se lê inteiro: as posições encerradas nela somam zero, e
+o +48,7% é de nove posições ainda abertas em 30/09 — metade numa só, ZEC (+US$ 242) —,
+num semestre de alta em que 25 das 28 outras variações também ganharam. O ataque de custo
+reprova: a vantagem do desenho é mais fina que 0,3% a mais por entrada. Com 367
+tentativas, o Sharpe de 0,72 da janela inteira fica contra uma régua do acaso de 2,37
+(deflacionado 0,003). E quem fizesse esta pesquisa ao vivo, trocando para a melhor
+variação de cada trimestre, teria perdido metade.
+
+**Nas grandes não há o que estes robôs acham nas manipuladas, e o realista é saber
+disso.** O robô entra na arena mesmo reprovado, como estava escrito antes: é a resposta
+ao vivo a "e se só moeda grande?", com o selo na tela. O ao vivo lê o market cap de hoje
+na mesma CoinMarketCap (`lerGrandes` em `scripts/robos.mts`), casado pelo preço de agora;
+sem a lista, o robô das grandes espera a rodada seguinte e os outros seguem.
 
 ## O ciclo, em quatro estágios
 
@@ -1416,7 +1487,8 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 | `npm run quarentena` | julga as linhas do histórico contra as velas de 1h do perpétuo e grava em `data/quarentena.json` as que não são o preço daquela hora, para o placar pular (à mão; o retrato já não grava linha assim) |
 | `npm run carteira` | mil dólares de mentira seguindo as calls, e o que sobrou |
 | `npm run robos` | os robôs ao vivo: percorre as velas das posições e, uma vez por dia UTC, faz a seleção (`data/robos.json`) |
-| `npm run medir-robos` | a medição dos robôs com o mesmo motor, sobre o Data Vision de 01/2024 em diante, deslistados inclusive, e a mesa de risco — ficha, sobreajuste nas grades, capacidade e o fundo (`data/robos-medicao.json`; ~430 MB na primeira vez, guardados em `.cache/robos/`; depois, ~6 minutos) |
+| `npm run medir-robos` | a medição dos robôs com o mesmo motor, sobre o Data Vision de 01/2024 em diante, deslistados inclusive, e a mesa de risco — ficha, sobreajuste nas grades, capacidade e o fundo (`data/robos-medicao.json`; ~430 MB na primeira vez, guardados em `.cache/robos/`; depois, ~6 minutos). Baixa sozinho os domingos que faltam do universo das grandes (`.cache/grandes/`); `-- --grandes` refaz a exploração do robô das grandes e `-- --grandes-reserva`, o julgamento |
+| `npx tsx scripts/baixar-grandes.mts` | o retrato semanal das 300 maiores da CoinMarketCap, sem chave, de 12/2023 até o último domingo fechado (`.cache/grandes/`) — o universo do robô das grandes |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
