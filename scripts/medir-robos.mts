@@ -858,6 +858,10 @@ if (args.includes("--reentrada")) {
   estudarReentrada();
   process.exit(0);
 }
+if (args.includes("--diversificado")) {
+  estudarDiversificado();
+  process.exit(0);
+}
 if (args.includes("--grandes-reserva")) {
   estudarGrandesReserva();
   process.exit(0);
@@ -1149,6 +1153,110 @@ function estudarGrandes(): void {
       ? `\n${elegiveis.length} de ${variantes.length} com as duas metades positivas; escolhida pelo critério: ${escolhida.nome} (Sharpe ${escolhida.sharpe.toFixed(2)} no desenho)`
       : "\nnenhuma variação tem as duas metades positivas",
   );
+}
+
+/**
+ * O ROBÔ DIVERSIFICADO (14/10, `docs/preregistro-diversificado.md`, escrito
+ * antes): o Momento e o Fluxo com 10 ou 20 moedas por perna em vez de 5, o
+ * mesmo risco total repartido, e o Momento sem a pirâmide — a peça que
+ * concentra o dinheiro nas monstras. A pergunta do usuário: "e se as 5 moedas
+ * nunca surgirem?". O critério principal é ganhar na reserva SEM as 5 moedas
+ * que mais deram nela. Medido com US$ 10.000: com US$ 1.000 as ordens caem
+ * abaixo do mínimo da Binance, e essa tabela sai depois, fora do critério.
+ */
+function estudarDiversificado(): void {
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  const desenho: [string, number, number][] = [
+    ["desenho", INICIO, FIM_DESENHO],
+    ["1ª metade", INICIO, CORTE],
+    ["2ª metade", CORTE, FIM_DESENHO],
+  ];
+  const comK = (r: Robo, k: number): Robo => ({
+    ...r,
+    id: `${r.id}-k${k}`,
+    regras: {
+      ...r.regras,
+      tamanho: (r.regras.tamanho * 5) / k,
+      pernas: r.regras.pernas.map((p) => {
+        const q: Perna = { ...p, k };
+        if (p.lado === "long" && p.piramide) {
+          delete q.piramide;
+          q.saidaPosto = 2 * k;
+        }
+        return q;
+      }),
+    },
+  });
+  const candidatas: [string, Robo][] = [
+    ["Momento, 10 por perna", comK(MOMENTO, 10)],
+    ["Momento, 20 por perna", comK(MOMENTO, 20)],
+    ["Fluxo, 10", comK(FLUXO, 10)],
+    ["Fluxo, 20", comK(FLUXO, 20)],
+  ];
+  const referencias: [string, Robo][] = [
+    ["Momento publicado (5)", MOMENTO],
+    ["Fluxo publicado (5)", FLUXO],
+  ];
+  const rodar = (r: Robo, de: number, ate: number, capital: number, excluir?: Set<string>, extra: Extra = {}) =>
+    simular(r, de, ate, excluir, undefined, JANELA_VOLATILIDADE_DIAS, true, { ...extra, capital });
+  const top5De = (e: EstadoRobo) => new Set([...porMoeda(e).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s));
+  const retDe = (e: EstadoRobo) => e.curva[e.curva.length - 1].patrimonio / e.curva[0].patrimonio - 1;
+
+  const elegiveis: { nome: string; robo: Robo; sharpe: number }[] = [];
+  for (const capital of [10_000, 1_000]) {
+    console.log(`\n== DESENHO (08/01/2024 a 31/03/2026), com US$ ${capital.toLocaleString("pt-BR")}${capital === 1_000 ? " — registro, fora do critério" : " — a reserva ainda não foi rodada"}`);
+    for (const [nome, r] of [...referencias, ...candidatas]) {
+      const es = desenho.map(([, de, ate]) => rodar(r, de, ate, capital));
+      const ms = es.map((e, k) => medidaDasGrandes(e.curva, desenho[k][1], desenho[k][2]));
+      const top5 = top5De(es[0]);
+      const s5 = retDe(rodar(r, INICIO, FIM_DESENHO, capital, top5));
+      const guarda = ms[0].ret > 0 ? s5 / ms[0].ret : NaN;
+      const candidata = candidatas.some(([n]) => n === nome);
+      const ok = ms[0].ret > 0 && ms[1].ret > 0 && ms[2].ret > 0 && ms[0].queda >= -0.4 && s5 >= 0.5 * ms[0].ret;
+      if (capital === 10_000 && candidata && ok) elegiveis.push({ nome, robo: r, sharpe: ms[0].sharpe });
+      console.log(
+        `${nome.padEnd(24)} ` + ms.map((m, k) => `${desenho[k][0]} ${fmtDasGrandes(m)}`).join(" · ") +
+          ` · sem as 5 (${[...top5].map((s) => s.replace(/USDT$/, "")).join(", ")}) ${pct(s5)}, guarda ${Number.isFinite(guarda) ? pct(guarda) : "—"} do lucro` +
+          ` · ${es[0].fechadas.length + es[0].abertas.length} trades, ${es[0].recusadas} recusadas` +
+          (capital === 10_000 && candidata ? (ok ? " → elegível" : " → fora") : ""),
+      );
+    }
+  }
+  const escolhida = elegiveis.sort((a, b) => b.sharpe - a.sharpe)[0];
+  console.log(escolhida ? `\nescolhida pelo critério: ${escolhida.nome} (Sharpe ${escolhida.sharpe.toFixed(2)} no desenho)` : "\nnenhuma variante é elegível: REPROVA sem chegar à reserva");
+
+  // A reserva: o retorno, e o retorno sem as 5 que mais deram NELA.
+  const naReserva = (r: Robo) => {
+    const e = rodar(r, FIM_DESENHO, FIM, 10_000);
+    const top5 = top5De(e);
+    const s5 = rodar(r, FIM_DESENHO, FIM, 10_000, top5);
+    return { m: medidaDasGrandes(e.curva, FIM_DESENHO, FIM), s5: retDe(s5), top5 };
+  };
+  const linhaReserva = (nome: string, x: ReturnType<typeof naReserva>) =>
+    `${nome.padEnd(24)} ${fmtDasGrandes(x.m)} · sem as 5 dela (${[...x.top5].map((s) => s.replace(/USDT$/, "")).join(", ")}) ${pct(x.s5)}`;
+  console.log("\n== RESERVA (01/04/2026 a 30/09/2026), US$ 10.000");
+  if (escolhida) {
+    const x = naReserva(escolhida.robo);
+    const passaReserva = x.m.ret > 0 && x.s5 > 0;
+    console.log(`${linhaReserva(escolhida.nome, x)} → ${passaReserva ? "passa" : "REPROVADA na reserva"}`);
+    let aguenta = true;
+    console.log("\n== O ATAQUE, no desenho");
+    for (const [rotulo, extra] of [
+      ["custo de entrada 4x", { custoAtraso: 4 * CUSTO_ATRASO }],
+      ["escorregada dobrada", { escorregada: 2 * ESCORREGADA_STOP }],
+    ] as [string, Extra][]) {
+      const e = rodar(escolhida.robo, INICIO, FIM_DESENHO, 10_000, undefined, extra);
+      const m = medidaDasGrandes(e.curva, INICIO, FIM_DESENHO);
+      aguenta &&= m.ret > 0;
+      console.log(`${rotulo.padEnd(22)} ${fmtDasGrandes(m)} → ${m.ret > 0 ? "aguenta" : "NÃO aguenta"}`);
+    }
+    console.log(`\n→ ${passaReserva && aguenta ? "APROVADA" : "REPROVADA"}`);
+  }
+  console.log("\n== RESERVA das outras (registro, depois da decisão)");
+  for (const [nome, r] of [...referencias, ...candidatas]) {
+    if (escolhida && nome === escolhida.nome) continue;
+    console.log(linhaReserva(nome, naReserva(r)));
+  }
 }
 
 /**
