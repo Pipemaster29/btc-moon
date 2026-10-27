@@ -1,9 +1,9 @@
 {
   "comecouEm": 1788379200000,
-  "atualizadoEm": 1793100262000,
+  "atualizadoEm": 1793102048000,
   "caixa": 918.0156672081185,
-  "patrimonio": 985.900572829314,
-  "retorno": -0.014099427170686019,
+  "patrimonio": 985.3486958453932,
+  "retorno": -0.014651304154606803,
   "abertas": [
     {
       "symbol": "CLO",
@@ -13,10 +13,10 @@
       "valor": 16.435546752102443,
       "forca": 2,
       "precoAtual": 0.05749,
-      "retorno": 0.38675086358751504,
-      "funding": 0.011400460000000001,
-      "ultimoFunding": 1793100262000,
-      "ultimaTaxa": 0.00020257,
+      "retorno": 0.38665551723334834,
+      "funding": 0.011495806354166667,
+      "ultimoFunding": 1793102048000,
+      "ultimaTaxa": 0.00025625,
       "horasFunding": 4,
       "precoLiquidacao": 0.03399976666666667,
       "risco": 0.013341165923567452,
@@ -31,10 +31,10 @@
       "precoEntrada": 0.1165,
       "valor": 16.41648105975991,
       "forca": 2,
-      "precoAtual": 0.1295,
-      "retorno": 0.3204661617374375,
-      "funding": 0.005297786760416665,
-      "ultimoFunding": 1793100262000,
+      "precoAtual": 0.1282,
+      "retorno": 0.28697116272098566,
+      "funding": 0.005316390927083332,
+      "ultimoFunding": 1793102048000,
       "ultimaTaxa": 0.00005,
       "horasFunding": 4,
       "precoLiquidacao": 0.07824916666666666,
@@ -51,9 +51,9 @@
       "valor": 23.64510686776069,
       "forca": 2,
       "precoAtual": 0.01341,
-      "retorno": -0.009711000000000001,
-      "funding": 0.0007109999999999999,
-      "ultimoFunding": 1793100262000,
+      "retorno": -0.009729604166666668,
+      "funding": 0.0007296041666666666,
+      "ultimoFunding": 1793102048000,
       "ultimaTaxa": 0.00005,
       "horasFunding": 4,
       "precoLiquidacao": 0.009007049999999999,
@@ -7699,10 +7699,10 @@
     },
     {
       "t": 1793100262000,
-      "patrimonio": 985.900572829314
+      "patrimonio": 985.3486958453932
     }
   ],
-  "foraDoPerpetuo": 675,
+  "foraDoPerpetuo": 677,
   "regras": {
     "stopComprado": 0.25,
     "stopVendido": 0.25,
@@ -7729,279 +7729,279 @@
     "riscoMaximo": 0.25,
     "confirmacaoEntradaH": null
   },
-  "freio": 0.946425920363693,
+  "freio": 0.9439369471408502,
   "riscoAberto": 0.044815923838274804,
   "comparacao": {
-    "meio": 1790739731000,
+    "meio": 1790740624000,
     "linhas": [
       {
         "nome": "publicado",
-        "retorno": -0.014099427170686019,
+        "retorno": -0.014651304154606803,
         "semAMelhor": {
           "ticker": "HEI",
-          "retorno": -0.051420472685856145
+          "retorno": -0.05197234966977704
         },
         "quedaMaxima": -0.1964333231776172,
         "encerradas": 234,
         "metades": [
-          0.03742277483592482,
-          -0.13156924897274402
+          0.03843702678217009,
+          -0.1198021035462834
         ],
         "maiorExposicao": 0.34931255076499923,
         "maiorRiscoAberto": 0.25000000000000006
       },
       {
         "nome": "anterior (até 23/09)",
-        "retorno": -0.2807668519017896,
+        "retorno": -0.28012892079230944,
         "semAMelhor": {
           "ticker": "HEI",
-          "retorno": -0.32327331602080245
+          "retorno": -0.3226808197907315
         },
         "quedaMaxima": -0.36542165380671,
         "encerradas": 166,
         "metades": [
-          -0.13491144610175687,
-          -0.28016909272563484
+          -0.133551412464201,
+          -0.27760382854108123
         ],
         "maiorExposicao": 0.36820426006986834,
         "maiorRiscoAberto": 0.25
       },
       {
         "nome": "sem a saída sem reação",
-        "retorno": -0.16130229468014423,
+        "retorno": -0.1615939832415133,
         "semAMelhor": {
           "ticker": "COLLECT",
-          "retorno": -0.19438666399381865
+          "retorno": -0.19467835255518773
         },
         "quedaMaxima": -0.26780328929527963,
         "encerradas": 167,
         "metades": [
-          -0.10919884483087727,
-          -0.18467075362930963
+          -0.10699350675874608,
+          -0.18509832571950757
         ],
         "maiorExposicao": 0.32628566965986944,
         "maiorRiscoAberto": 0.24999999999999994
       },
       {
         "nome": "com vendido a ¼",
-        "retorno": -0.06064241741257448,
+        "retorno": -0.06119808258878612,
         "semAMelhor": {
           "ticker": "US",
-          "retorno": -0.09826081277351395
+          "retorno": -0.09881647794972559
         },
         "quedaMaxima": -0.1906439527392546,
-        "encerradas": 341,
+        "encerradas": 342,
         "metades": [
-          -0.0038581424349779514,
-          -0.13904968241620141
+          -0.002744069264957627,
+          -0.13308674743726523
         ],
         "maiorExposicao": 0.34627790162071864,
         "maiorRiscoAberto": 0.25000000000000006
       },
       {
         "nome": "vendido com risco cheio",
-        "retorno": -0.11573579388098576,
+        "retorno": -0.11621746173638858,
         "semAMelhor": {
           "ticker": "US",
-          "retorno": -0.16392368266144097
+          "retorno": -0.1644053505168438
         },
         "quedaMaxima": -0.20532220546309332,
         "encerradas": 340,
         "metades": [
-          -0.12256362014531874,
-          -0.11000587221030333
+          -0.12147544770829688,
+          -0.14327008903630756
         ],
         "maiorExposicao": 0.3580908932668604,
         "maiorRiscoAberto": 0.25
       },
       {
         "nome": "sem queimar toda saída",
-        "retorno": -0.23739303782654453,
+        "retorno": -0.23744580272868276,
         "semAMelhor": {
           "ticker": "HEI",
-          "retorno": -0.2556408612047799
+          "retorno": -0.25570586460129785
         },
         "quedaMaxima": -0.33602580294318596,
         "encerradas": 360,
         "metades": [
-          -0.10924858074158583,
-          -0.17286574271734367
+          -0.10790112893830195,
+          -0.17280674354116554
         ],
         "maiorExposicao": 0.3712851800181178,
         "maiorRiscoAberto": 0.24999999999999997
       },
       {
         "nome": "sem freio de queda",
-        "retorno": -0.04027545168351365,
+        "retorno": -0.04030077592015002,
         "semAMelhor": {
           "ticker": "HEI",
-          "retorno": -0.07613399020868938
+          "retorno": -0.07615931444532575
         },
         "quedaMaxima": -0.22093218309701346,
-        "encerradas": 215,
+        "encerradas": 216,
         "metades": [
-          0.03742277483592482,
-          -0.16134982402250853
+          0.03843702678217009,
+          -0.14952133777695054
         ],
         "maiorExposicao": 0.3654034806191811,
         "maiorRiscoAberto": 0.25000000000000006
       },
       {
         "nome": "stop de 20%",
-        "retorno": 0.003351467426633503,
+        "retorno": 0.002720324524484896,
         "semAMelhor": {
           "ticker": "HEI",
-          "retorno": -0.048462364760196275
+          "retorno": -0.04909350766234488
         },
         "quedaMaxima": -0.21166211903653387,
         "encerradas": 236,
         "metades": [
-          0.03574073169040104,
-          -0.12987114823325197
+          0.0370343802237425,
+          -0.11752454762158626
         ],
         "maiorExposicao": 0.43437423442410483,
         "maiorRiscoAberto": 0.25
       },
       {
         "nome": "com stop móvel 20/15",
-        "retorno": -0.019546012197243723,
+        "retorno": -0.020109326489407997,
         "semAMelhor": {
           "ticker": "HEI",
-          "retorno": -0.05640105902292336
+          "retorno": -0.056964373315087635
         },
         "quedaMaxima": -0.19560224942400273,
         "encerradas": 237,
         "metades": [
-          0.03099448089061707,
-          -0.133151255317279
+          0.03178900367044846,
+          -0.12364009573707335
         ],
         "maiorExposicao": 0.335745637468381,
         "maiorRiscoAberto": 0.25000000000000006
       },
       {
         "nome": "sem confirmar a saída",
-        "retorno": -0.11769719829826375,
+        "retorno": -0.11829438258523817,
         "semAMelhor": {
           "ticker": "HEI",
-          "retorno": -0.137030835335749
+          "retorno": -0.13762801962272342
         },
         "quedaMaxima": -0.19656618740378595,
         "encerradas": 566,
         "metades": [
-          0.005002769863346579,
-          -0.17230991034521403
+          0.0061867426689510285,
+          -0.174358973584109
         ],
         "maiorExposicao": 0.3189254821201944,
         "maiorRiscoAberto": 0.2475413723975226
       },
       {
         "nome": "confirmar saída 1 h",
-        "retorno": -0.08643118186772103,
+        "retorno": -0.08709835225366624,
         "semAMelhor": {
           "ticker": "HEI",
-          "retorno": -0.10860392772266059
+          "retorno": -0.1092710981086058
         },
         "quedaMaxima": -0.20067489816748119,
         "encerradas": 350,
         "metades": [
-          0.012742347700418044,
-          -0.17287958178539242
+          0.01397345119324589,
+          -0.17310628910185055
         ],
         "maiorExposicao": 0.3334908106378764,
         "maiorRiscoAberto": 0.2481408032206425
       },
       {
         "nome": "confirmar saída 10 h",
-        "retorno": 0.007463869312851257,
+        "retorno": 0.0062445883558917,
         "semAMelhor": {
           "ticker": "US",
-          "retorno": -0.030679113430054472
+          "retorno": -0.03189839438701414
         },
         "quedaMaxima": -0.20131700400597352,
         "encerradas": 213,
         "metades": [
-          0.04596460554072723,
-          -0.12272206237322913
+          0.046969974124432046,
+          -0.12837392864297215
         ],
         "maiorExposicao": 0.3497961503339227,
         "maiorRiscoAberto": 0.25000000000000006
       },
       {
         "nome": "confirmar entrada 1 h",
-        "retorno": -0.04610379004929133,
+        "retorno": -0.046718559686464434,
         "semAMelhor": {
           "ticker": "VELVET",
-          "retorno": -0.07473435826684183
+          "retorno": -0.07534912790401493
         },
         "quedaMaxima": -0.1693961088732614,
         "encerradas": 189,
         "metades": [
-          0.007880547584370845,
-          -0.1324393451351038
+          0.008817585221472912,
+          -0.12640686436170712
         ],
         "maiorExposicao": 0.3513586790326282,
         "maiorRiscoAberto": 0.25000000000000006
       },
       {
         "nome": "filtro funding 0,015%",
-        "retorno": -0.053967371541960074,
+        "retorno": -0.054497658979694164,
         "semAMelhor": {
           "ticker": "HEI",
-          "retorno": -0.0911218718492407
+          "retorno": -0.09165215928697479
         },
         "quedaMaxima": -0.19721479674318676,
         "encerradas": 225,
         "metades": [
-          0.004788183826224257,
-          -0.18685414330667738
+          0.006122042518263093,
+          -0.18617885549517854
         ],
         "maiorExposicao": 0.3232601498530525,
         "maiorRiscoAberto": 0.2482179453784681
       },
       {
         "nome": "filtro varejo 3,5",
-        "retorno": 0.05064498140729712,
+        "retorno": 0.050044290743463726,
         "semAMelhor": {
           "ticker": "HEI",
-          "retorno": 0.0138002855238204
+          "retorno": 0.013199594859987007
         },
         "quedaMaxima": -0.18833022594144,
         "encerradas": 221,
         "metades": [
-          0.06299378827857982,
-          -0.07278501973455875
+          0.0635950888588277,
+          -0.07302592812680408
         ],
         "maiorExposicao": 0.3480321394710574,
         "maiorRiscoAberto": 0.24934318894542493
       },
       {
         "nome": "escala 1,5x",
-        "retorno": -0.09526188899646881,
+        "retorno": -0.09583324369904755,
         "semAMelhor": {
           "ticker": "VELVET",
-          "retorno": -0.14006120669395117
+          "retorno": -0.1406325613965299
         },
         "quedaMaxima": -0.22992432013755915,
-        "encerradas": 204,
+        "encerradas": 205,
         "metades": [
-          -0.028398109285873496,
-          -0.1713024984272098
+          -0.026364164353238073,
+          -0.16953109460119553
         ],
         "maiorExposicao": 0.355991152782213,
         "maiorRiscoAberto": 0.24980441224411076
       },
       {
         "nome": "escala 2x",
-        "retorno": -0.15867159476554515,
+        "retorno": -0.1590504402153754,
         "semAMelhor": {
           "ticker": "VELVET",
-          "retorno": -0.20171652313345922
+          "retorno": -0.20209536858328947
         },
         "quedaMaxima": -0.27115776206549536,
         "encerradas": 201,
         "metades": [
-          -0.07394195942719939,
-          -0.20215156331852724
+          -0.0699214324171692,
+          -0.17258764604470456
         ],
         "maiorExposicao": 0.3584360346502474,
         "maiorRiscoAberto": 0.24972727564327915
@@ -12330,7 +12330,7 @@
       },
       {
         "t": 1793100262000,
-        "patrimonio": 719.2331480982103
+        "patrimonio": 719.8710792076905
       }
     ]
   },
