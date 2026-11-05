@@ -36,11 +36,13 @@ import {
   lerRegrasDaCorretora,
   liquidacaoIsolada,
   marcar,
+  multiplicadorDoRegime,
   multiplicadorPelaVolatilidade,
   nocionalAceito,
   novoEstado,
   patrimonioA,
   percorrer,
+  regimeDoMercado,
   selecionar,
   valorDaPosicao,
   type Cobranca,
@@ -432,6 +434,90 @@ function ranking30(fora?: string): LinhaRanking[] {
   decidir(e, ranking30("AUSDT"), () => 100, T0 + DIA, undefined, CUSTO_ATRASO);
   const t = e.fechadas[0];
   confere("na medição a saída paga o atraso, como a entrada", t !== undefined && perto(t.resultado, -2 * t.nocional * custoPorLado(100e6) - CUSTO_ATRASO * t.nocional, 1e-9), `${t?.resultado.toFixed(4)}`);
+}
+
+// ------------------------------------------------------------------ a call queimada
+console.log("\na call queimada");
+const COMPRA_Q: Perna = { ...COMPRA, k: 3, queimada: {} };
+const ROBO_Q: Robo = { ...ROBO, regras: { ...ROBO.regras, pernas: [COMPRA_Q] } };
+{
+  // M29 é a que mais subiu: entra, estopa, e no dia seguinte continua no topo.
+  const e = novoEstado(ROBO_Q, T0);
+  decidir(e, ranking30(), () => 100, T0);
+  const p = e.abertas.find((x) => x.symbol === "M29USDT")!;
+  confere("a posição guarda a queima com que entrou", p.queima?.chave === "long:30:retorno:" && p.queima.janelaDias === 30, `${JSON.stringify(p.queima)}`);
+  fechar(e, p, { preco: 75, quando: T0 + 5 * HORA, motivo: "stop" });
+  confere("stop queima a moeda para a perna", e.queimadas?.length === 1 && e.queimadas[0].symbol === "M29USDT", `${e.queimadas?.map((q) => q.symbol).join() ?? "nenhuma"}`);
+  decidir(e, ranking30(), () => 100, T0 + DIA);
+  confere("queimada no topo no dia seguinte: não recompra", !e.abertas.some((x) => x.symbol === "M29USDT"), `${e.abertas.map((x) => x.symbol).join()}`);
+  confere("e não troca pela seguinte do ranking", !e.abertas.some((x) => x.symbol === "M26USDT") && e.recusadas === 0, `${e.abertas.length} abertas`);
+  // Lida fora das k primeiras: o sinal se renovou e a queima sai.
+  const caiu = ranking30().map((l) => (l.symbol === "M29USDT" ? { ...l, retorno: { 30: 0.05, 14: 0 } } : l));
+  decidir(e, caiu, () => 100, T0 + 2 * DIA);
+  confere("lida fora das k primeiras: a queima sai", (e.queimadas ?? []).length === 0, `${e.queimadas?.length ?? 0} queimadas`);
+  decidir(e, ranking30(), () => 100, T0 + 3 * DIA);
+  confere("e a volta ao topo é sinal novo: compra", e.abertas.some((x) => x.symbol === "M29USDT"), `${e.abertas.map((x) => x.symbol).join()}`);
+}
+{
+  // Sem leitura no ranking, continua queimada: "não consegui ler" não é "o sinal mudou".
+  const e = novoEstado(ROBO_Q, T0);
+  decidir(e, ranking30(), () => 100, T0);
+  fechar(e, e.abertas.find((x) => x.symbol === "M29USDT")!, { preco: 75, quando: T0 + HORA, motivo: "rastro" });
+  decidir(e, ranking30().filter((l) => l.symbol !== "M29USDT"), () => 100, T0 + DIA);
+  confere("rastro queima, e a moeda sem leitura continua queimada", e.queimadas?.length === 1, `${e.queimadas?.length ?? 0} queimadas`);
+  decidir(e, ranking30(), () => 100, T0 + 31 * DIA);
+  confere("depois da janela inteira a queima vence sozinha", e.abertas.some((x) => x.symbol === "M29USDT"), `${e.abertas.map((x) => x.symbol).join()}`);
+}
+{
+  const e = novoEstado(ROBO_Q, T0);
+  decidir(e, ranking30(), () => 100, T0);
+  fechar(e, e.abertas.find((x) => x.symbol === "M29USDT")!, { preco: 120, quando: T0 + HORA, motivo: "prazo" });
+  fechar(e, e.abertas.find((x) => x.symbol === "M28USDT")!, { preco: 120, quando: T0 + HORA, motivo: "posto" });
+  confere("prazo e posto não queimam", (e.queimadas ?? []).length === 0, `${e.queimadas?.length ?? 0} queimadas`);
+  const so: Robo = { ...ROBO, regras: { ...ROBO.regras, pernas: [{ ...COMPRA_Q, queimada: { soPrejuizo: true } }] } };
+  const e2 = novoEstado(so, T0);
+  decidir(e2, ranking30(), () => 100, T0);
+  fechar(e2, e2.abertas.find((x) => x.symbol === "M29USDT")!, { preco: 130, quando: T0 + HORA, motivo: "rastro" });
+  fechar(e2, e2.abertas.find((x) => x.symbol === "M28USDT")!, { preco: 80, quando: T0 + HORA, motivo: "rastro" });
+  confere("só no prejuízo: o rastro no lucro não queima, o no prejuízo sim", e2.queimadas?.length === 1 && e2.queimadas[0].symbol === "M28USDT", `${e2.queimadas?.map((q) => q.symbol).join() ?? "nenhuma"}`);
+  // A posição que entrou antes da regra não queima ao sair.
+  const e3 = novoEstado(ROBO_Q, T0);
+  const antiga = abrir(e3, COMPRA, "M29USDT", 100, T0, 100e6, false)!;
+  fechar(e3, antiga, { preco: 75, quando: T0 + HORA, motivo: "stop" });
+  confere("posição sem a regra (entrou antes) não queima", (e3.queimadas ?? []).length === 0, `${e3.queimadas?.length ?? 0} queimadas`);
+}
+
+// ------------------------------------------------------------------ o regime
+console.log("\no tamanho pelo regime");
+{
+  const r = regimeDoMercado([...Array(49).fill(100), 80], 20, [50, 30, 100]);
+  confere("BTC abaixo da média de 50: leitura negativa", perto(r.btcMedia?.[50] ?? NaN, 80 / ((49 * 100 + 80) / 50) - 1), `${r.btcMedia?.[50]?.toFixed(4)}`);
+  confere("média sem os dias todos fica sem leitura", r.btcMedia?.[100] === null, `${r.btcMedia?.[100]}`);
+  const furada = regimeDoMercado([...Array(48).fill(100), NaN, 80], 20, [50]);
+  confere("dia faltando na janela: sem leitura (NaN não passa)", furada.btcMedia?.[50] === null, `${furada.btcMedia?.[50]}`);
+  const medo: Perna = { ...COMPRA, regime: { campo: "medo", ate: 24, multiplicador: 0.5 } };
+  confere("medo extremo: o multiplicador da regra", multiplicadorDoRegime(medo, r) === 0.5, `${multiplicadorDoRegime(medo, r)}`);
+  confere("medo acima do limite: tamanho normal", multiplicadorDoRegime(medo, { ...r, medo: 25 }) === 1, `${multiplicadorDoRegime(medo, { ...r, medo: 25 })}`);
+  confere("sem a leitura do medo: tamanho normal (não vira veto)", multiplicadorDoRegime(medo, { ...r, medo: null }) === 1 && multiplicadorDoRegime(medo, undefined) === 1, "1");
+  const media: Perna = { ...COMPRA, regime: { campo: "btcMedia", janelaDias: 50, multiplicador: 0 } };
+  confere("BTC abaixo da média: o multiplicador da regra", multiplicadorDoRegime(media, r) === 0, `${multiplicadorDoRegime(media, r)}`);
+  confere("BTC acima da média: tamanho normal", multiplicadorDoRegime(media, { btcMedia: { 50: 0.01 } }) === 1, "1");
+
+  // Na decisão: metade do tamanho na entrada E na parcela da pirâmide; zero é perna fora do dia.
+  const meia: Robo = { ...ROBO, regras: { ...ROBO.regras, pernas: [{ ...COMPRA_P, regime: { campo: "medo", ate: 24, multiplicador: 0.5 } }] } };
+  const cheia: Robo = { ...ROBO, regras: { ...ROBO.regras, pernas: [COMPRA_P] } };
+  const em = novoEstado(meia, T0);
+  const ec = novoEstado(cheia, T0);
+  decidir(em, ranking30(), () => 100, T0, undefined, 0, { medo: 10 });
+  decidir(ec, ranking30(), () => 100, T0, undefined, 0, { medo: 10 });
+  const pm = em.abertas[0];
+  const pc = ec.abertas[0];
+  confere("no medo extremo a entrada sai com metade do nocional", perto(pm.nocional, pc.nocional / 2), `${pm.nocional.toFixed(2)} contra ${pc.nocional.toFixed(2)}`);
+  confere("e a parcela da pirâmide também", perto(pm.piramide?.tamanho ?? NaN, 0.5), `${pm.piramide?.tamanho}`);
+  const fora: Robo = { ...ROBO, regras: { ...ROBO.regras, pernas: [{ ...COMPRA, regime: { campo: "btcMedia", janelaDias: 50, multiplicador: 0 } }] } };
+  const ef = novoEstado(fora, T0);
+  decidir(ef, ranking30(), () => 100, T0, undefined, 0, { btcMedia: { 50: -0.05 } });
+  confere("multiplicador zero: a perna não abre, e não conta recusa", ef.abertas.length === 0 && ef.recusadas === 0, `${ef.abertas.length} abertas, ${ef.recusadas} recusadas`);
 }
 
 // ------------------------------------------------------------------ o alvo de volatilidade
