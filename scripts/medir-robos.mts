@@ -16,6 +16,10 @@
  *
  * Rode com: npm run medir-robos
  *           npm run medir-robos -- --simbolos BTCUSDT,MYXUSDT   (só para testar o caminho)
+ *           npm run medir-robos -- --ate 2026-10-01             (a medição termina nesse dia)
+ *           npm run medir-robos -- --regime                     (os robôs por regime de mercado, no desenho)
+ *           npm run medir-robos -- --regime-regras              (`docs/preregistro-regime.md`)
+ *           npm run medir-robos -- --conferir-ao-vivo data/robos.json  (o ao vivo contra o motor)
  */
 
 import { existsSync } from "node:fs";
@@ -43,6 +47,7 @@ import {
   margemTotal,
   novoEstado,
   percorrer,
+  regimeDoMercado,
   valorDaPosicao,
   type DegrausDaCorretora,
   type EstadoRobo,
@@ -51,6 +56,7 @@ import {
   type Medicao,
   type MedicaoRobo,
   type RegrasDaMoeda,
+  type RegimeDoMercado,
   type LadoRobo,
   type Perna,
   type Robo,
@@ -300,6 +306,14 @@ if (falhas > 0) {
 }
 let fim = 0;
 for (const s of series) for (let i = T - 1; i >= 0; i--) if (s.c[i] > 0) { fim = Math.max(fim, i); break; }
+// `--ate AAAA-MM-DD`: a medição termina na meia-noite desse dia. É para refazer
+// uma rodada com os dados que ela tinha — a de 13/10 terminava em 30/09/2026 —
+// sem o mês que chegou depois, que fica de fora até alguém o abrir de propósito.
+{
+  const k = args.indexOf("--ate");
+  const ate = k >= 0 ? Date.parse(`${args[k + 1]}T00:00:00Z`) : NaN;
+  if (Number.isFinite(ate)) fim = Math.min(fim, Math.floor((ate - INICIO_DADOS) / HORA) - 1);
+}
 const deslistadas = series.filter((s) => !negociando.has(s.symbol)).length;
 console.log(`${series.length} moedas com vela, ${deslistadas} já deslistadas · até ${new Date(INICIO_DADOS + fim * HORA).toISOString().slice(0, 13)}h`);
 
@@ -359,6 +373,21 @@ console.log(
   `regras da corretora de ${corretora.em}: ${regrasDaCorretora.size} símbolos com degraus; ` +
     `${series.filter((s) => !regrasDaCorretora.has(s.symbol)).length} das ${series.length} moedas medidas usam a tabela padrão`,
 );
+
+// ------------------------------------------------------------------ o medo
+
+/**
+ * O ÍNDICE DE MEDO E GANÂNCIA da alternative.me (`scripts/baixar-medo.mts`),
+ * que a perna com `Perna.regime` de campo "medo" lê, e o diagnóstico
+ * `--regime`. Sem ele, a medição de um robô que o usa PARA: medir a regra sem a
+ * leitura seria medir o robô sem a regra, em silêncio.
+ */
+const usaMedo = ROBOS.some((r) => r.regras.pernas.some((p) => p.regime?.campo === "medo")) || args.some((a) => a.startsWith("--regime"));
+const serieDoMedo: Record<string, number> | null = usaMedo ? await (await import("./baixar-medo.mjs")).baixarMedo() : null;
+if (usaMedo && !serieDoMedo) {
+  console.error("sem o índice de medo e ganância — a medição de uma regra que o lê não roda sem ele");
+  process.exit(1);
+}
 
 // ------------------------------------------------------------------ as grandes
 
@@ -596,6 +625,31 @@ function linhasDoDia(i: number, janelaVol: number, comCorretora: boolean): Linha
 /** A que `simular` chama: `linhasDoDia`, ou ela com o open interest junto no estudo `--oi`. */
 let linhasComOI = linhasDoDia;
 
+/** As janelas da média do BTC que o regime guarda: as que as regras de `--regime-regras` leem. */
+const JANELAS_DO_BTC = [30, 50, 100];
+const regimesGuardados = new Map<number, RegimeDoMercado>();
+/**
+ * O REGIME DO MERCADO na decisão da hora `i` (`regimeDoMercado`, a mesma conta
+ * do ao vivo): os fechamentos diários do BTC até a véspera e o índice de medo
+ * da véspera — o valor de um dia sai na meia-noite dele, e a decisão pode
+ * correr junto com a publicação (`scripts/baixar-medo.mts`).
+ */
+function regimeDoDia(i: number): RegimeDoMercado {
+  const g = regimesGuardados.get(i);
+  if (g) return g;
+  const btc = porSimbolo.get("BTCUSDT");
+  const n = Math.max(...JANELAS_DO_BTC);
+  const fechamentos: number[] = [];
+  for (let k = n - 1; k >= 0; k--) {
+    const h = i - 1 - 24 * k;
+    fechamentos.push(btc && h >= 0 && btc.c[h] > 0 ? btc.c[h] : NaN);
+  }
+  const vespera = new Date(INICIO_DADOS + i * HORA - DIA).toISOString().slice(0, 10);
+  const r = regimeDoMercado(fechamentos, serieDoMedo?.[vespera] ?? null, JANELAS_DO_BTC);
+  regimesGuardados.set(i, r);
+  return r;
+}
+
 /**
  * O volume diário MÉDIO dos 7 dias até a véspera da hora `i`, em dólar — a
  * régua do impacto. O de 24 h sozinho é o dia do pump, e é justo o dia em que
@@ -659,7 +713,7 @@ function umaHora(e: EstadoRobo, i: number, ctx: Contexto): void {
         return { ...l, impacto: coeficienteDeImpacto(y, typeof l.vol === "number" && l.vol > 0 ? l.vol : meio, Number.isFinite(v) && v > 0 ? v : l.volume) };
       });
     }
-    decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, ctx.extra.custoAtraso ?? CUSTO_ATRASO);
+    decidir(e, linhas, (symbol) => porSimbolo.get(symbol)?.o[i], t, painel ?? undefined, ctx.extra.custoAtraso ?? CUSTO_ATRASO, regimeDoDia(i));
   }
   for (const p of [...e.abertas]) {
     const s = porSimbolo.get(p.symbol)!;
@@ -834,6 +888,18 @@ const janelas: [string, number, number][] = [
   ["fora (07/2025 em diante)", CORTE, FIM],
 ];
 
+if (args.includes("--regime-regras")) {
+  await estudarRegimeRegras();
+  process.exit(0);
+}
+if (args.includes("--conferir-ao-vivo")) {
+  await conferirAoVivo(args[args.indexOf("--conferir-ao-vivo") + 1] ?? "data/robos.json");
+  process.exit(0);
+}
+if (args.includes("--regime")) {
+  await estudarRegime();
+  process.exit(0);
+}
 if (args.includes("--oi") || args.includes("--oi-invertido")) {
   await estudarOI(args.includes("--oi-invertido"));
   process.exit(0);
@@ -1265,6 +1331,362 @@ function estudarGrandesReserva(): void {
       `${pct(f.retorno)} (Sharpe ${f.sharpe.toFixed(2)}, queda diária ${pct(f.quedaMaxima)}) · o publicado nos mesmos dias ${pct(mesmo.retorno)} (Sharpe ${mesmo.sharpe.toFixed(2)})`,
   );
   console.log(`escolhas a cada trimestre: ${nomes.join(" · ")}`);
+}
+
+// ------------------------------------------------------------------ o regime
+
+/**
+ * O REGIME DO MERCADO numa decisão (a hora índice `i` da meia-noite UTC), só
+ * com o que se sabia nela: os fechamentos até a véspera e o índice de medo da
+ * véspera. Nulo é "não consegui ler", e o dia sai da conta daquele corte.
+ */
+interface RegimeDoDia {
+  /** O fechamento do BTC na véspera ÷ a média dos 50 fechamentos diários até ela, − 1 (PREÇO). */
+  btcMedia50: number | null;
+  /** O retorno do BTC nos 30 dias até a véspera (PREÇO). */
+  btc30: number | null;
+  /** A fração das moedas operáveis (US$ 20 mi, 14 dias, série de 30 dias) com retorno de 30 dias POSITIVO. */
+  amplitude30: number | null;
+  /** O índice de medo e ganância da alternative.me da véspera, de 0 a 100 (`scripts/baixar-medo.mts`). */
+  medo: number | null;
+}
+
+/** Os fechamentos diários do BTC até a véspera da decisão `i`, do mais novo ao mais velho; NaN onde falta. */
+function fechamentosBTC(i: number, n: number): number[] {
+  const s = porSimbolo.get("BTCUSDT");
+  const out: number[] = [];
+  for (let k = 0; k < n; k++) {
+    const h = i - 1 - 24 * k;
+    out.push(s && h >= 0 && s.c[h] > 0 ? s.c[h] : NaN);
+  }
+  return out;
+}
+
+/**
+ * Operável no ranking de qualquer robô de US$ 20 mi: o universo da amplitude e
+ * da cesta. Função e não constante: os estudos rodam antes desta linha do
+ * arquivo, e uma constante ainda não existiria.
+ */
+function operavel(l: LinhaRanking): boolean {
+  return l.volume >= 20e6 && (l.idadeDias === null || l.idadeDias >= 14);
+}
+
+function regimeEm(i: number): RegimeDoDia {
+  // A média e o medo são os da regra (`regimeDoDia`): o diagnóstico e a regra leem o mesmo número.
+  const r = regimeDoDia(i);
+  const btc30 = fechamentosBTC(i, 31);
+  const linhas = linhasDoDia(i, JANELA_VOLATILIDADE_DIAS, true).filter((l) => operavel(l) && typeof l.retorno[30] === "number" && Number.isFinite(l.retorno[30]));
+  return {
+    btcMedia50: r.btcMedia?.[50] ?? null,
+    btc30: btc30[0] > 0 && btc30[30] > 0 ? btc30[0] / btc30[30] - 1 : null,
+    // Com menos de 40 moedas operáveis a fração é de poucas: fica sem leitura.
+    amplitude30: linhas.length >= 40 ? linhas.filter((l) => (l.retorno[30] as number) > 0).length / linhas.length : null,
+    medo: r.medo ?? null,
+  };
+}
+
+/**
+ * O DIAGNÓSTICO POR REGIME (05/11/2026, o pedido: "os robôs não estão sendo
+ * bons, principalmente em períodos de queda de mercado ou mercado com medo").
+ * Descritivo e SÓ NO DESENHO (08/01/2024 a 31/03/2026): a reserva de 04–09/2026
+ * e outubro de 2026, o mês que nenhuma medição viu, ficam fechados até as
+ * regras que este diagnóstico sugerir estarem pré-registradas.
+ *
+ * Quatro cortes, cada um com o que se sabia na meia-noite da decisão: o BTC
+ * contra a média de 50 dias, o retorno de 30 dias do BTC, a AMPLITUDE (a
+ * fração das moedas operáveis que sobe em 30 dias) e o índice de medo e
+ * ganância da alternative.me da véspera. Para cada robô publicado, os dias de
+ * cada regime — retorno médio, Sharpe daqueles dias, o composto deles — e as
+ * entradas de cada perna pelo regime do dia em que abriram. Ao lado, a cesta
+ * das moedas operáveis em pesos iguais, sem custo: o que "queda" e "medo"
+ * foram para o mercado em cada corte.
+ */
+async function estudarRegime(): Promise<void> {
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  const desenho: [string, number, number][] = [
+    ["desenho", INICIO, FIM_DESENHO],
+    ["1ª metade", INICIO, CORTE],
+    ["2ª metade", CORTE, FIM_DESENHO],
+  ];
+
+  // O regime de cada meia-noite do desenho, e a cesta das operáveis no dia que ela abre.
+  const regimes = new Map<number, RegimeDoDia>();
+  const cesta = new Map<number, number>();
+  const [i0, i1] = horasDe(INICIO, FIM_DESENHO);
+  for (let i = i0; i <= i1; i++) {
+    const t = INICIO_DADOS + i * HORA;
+    if (t % DIA !== 0) continue;
+    regimes.set(t, regimeEm(i));
+    const rs: number[] = [];
+    for (const l of linhasDoDia(i, JANELA_VOLATILIDADE_DIAS, true)) {
+      if (!operavel(l)) continue;
+      const s = porSimbolo.get(l.symbol)!;
+      const a = s.c[i - 1];
+      const b = s.c[i + 23];
+      if (a > 0 && b > 0) rs.push(b / a - 1);
+    }
+    if (rs.length >= 40) cesta.set(t, rs.reduce((a, b) => a + b, 0) / rs.length);
+  }
+  const amplitudes = [...regimes.values()].map((r) => r.amplitude30).filter((x): x is number => x !== null);
+  const terco1 = quantil(amplitudes, 1 / 3);
+  const terco2 = quantil(amplitudes, 2 / 3);
+
+  type Corte = { nome: string; classes: string[]; classe: (r: RegimeDoDia) => string | null };
+  const cortes: Corte[] = [
+    { nome: "BTC × média de 50 dias", classes: ["abaixo", "acima"], classe: (r) => (r.btcMedia50 === null ? null : r.btcMedia50 < 0 ? "abaixo" : "acima") },
+    {
+      nome: "BTC em 30 dias",
+      classes: ["caiu 10%+", "entre", "subiu 10%+"],
+      classe: (r) => (r.btc30 === null ? null : r.btc30 <= -0.1 ? "caiu 10%+" : r.btc30 >= 0.1 ? "subiu 10%+" : "entre"),
+    },
+    {
+      nome: `amplitude das alts (terços: ${pct(terco1).replace("+", "")} e ${pct(terco2).replace("+", "")} sobem em 30 d)`,
+      classes: ["terço de baixo", "terço do meio", "terço de cima"],
+      classe: (r) => (r.amplitude30 === null ? null : r.amplitude30 < terco1 ? "terço de baixo" : r.amplitude30 < terco2 ? "terço do meio" : "terço de cima"),
+    },
+    {
+      nome: "medo e ganância da véspera",
+      classes: ["medo extremo", "medo", "neutro", "ganância", "ganância extrema"],
+      classe: (r) =>
+        r.medo === null ? null : r.medo <= 24 ? "medo extremo" : r.medo <= 44 ? "medo" : r.medo <= 55 ? "neutro" : r.medo <= 75 ? "ganância" : "ganância extrema",
+    },
+  ];
+
+  /** Os dias de uma série diária (datas = fim do dia) agrupados pelo regime da meia-noite que os abriu. */
+  const agrupar = (datas: readonly number[], r: readonly number[], corte: Corte, de: number, ate: number) => {
+    const grupos = new Map<string, number[]>(corte.classes.map((c) => [c, []]));
+    for (let k = 0; k < r.length; k++) {
+      const abre = datas[k] - DIA;
+      if (abre < de || datas[k] > ate) continue;
+      const g = regimes.get(abre);
+      const c = g ? corte.classe(g) : null;
+      if (c !== null) grupos.get(c)?.push(r[k]);
+    }
+    return grupos;
+  };
+  const resumo = (xs: readonly number[]) => {
+    if (xs.length < 2) return `${String(xs.length).padStart(4)} d`;
+    const { media, desvio } = momentos(xs);
+    const composto = xs.reduce((a, x) => a * (1 + x), 1) - 1;
+    return `${String(xs.length).padStart(4)} d, ${(media * 100).toFixed(2).padStart(6)}%/d, Sharpe ${((media / desvio) * Math.sqrt(365)).toFixed(2).padStart(5)}, composto ${pct(composto).padStart(8)}`;
+  };
+
+  console.log(`\n== O DIAGNÓSTICO POR REGIME, só no desenho (08/01/2024 a 31/03/2026); reserva e 10/2026 fechadas`);
+  console.log(`índice de medo lido em ${[...regimes.values()].filter((r) => r.medo !== null).length} de ${regimes.size} dias; amplitude em ${amplitudes.length}`);
+
+  // A cesta das operáveis: o que cada regime foi para o mercado.
+  const datasCesta = [...cesta.keys()].sort((a, b) => a - b);
+  const rCesta = datasCesta.map((t) => cesta.get(t)!);
+  const fimDoDia = datasCesta.map((t) => t + DIA);
+  for (const corte of cortes) {
+    console.log(`\n-- ${corte.nome}`);
+    for (const [nome, de, ate] of desenho) {
+      const g = agrupar(fimDoDia, rCesta, corte, de, ate);
+      console.log(`  cesta das alts, ${nome.padEnd(9)} ` + corte.classes.map((c) => `${c}: ${resumo(g.get(c)!)}`).join(" · "));
+    }
+  }
+
+  for (const robo of ROBOS) {
+    console.log(`\n==== ${robo.nome}`);
+    const es = desenho.map(([, de, ate]) => simular(robo, de, ate));
+    // A conferência de que os dados são os da rodada de 13/10: o Momento fez +1.864% no desenho, +216% e +444% nas metades.
+    console.log(es.map((e, k) => `${desenho[k][0]} ${pct(e.patrimonio / CAPITAL_ROBO - 1)} (queda ${pct(e.quedaMaxima)}, Sharpe ${sharpeDe(e.curva).toFixed(2)})`).join(" · "));
+    for (const corte of cortes) {
+      console.log(`-- ${corte.nome}`);
+      es.forEach((e, k) => {
+        const d = retornosDiarios(diaria(e));
+        const g = agrupar(d.datas, d.r, corte, desenho[k][1], desenho[k][2]);
+        console.log(`  ${desenho[k][0].padEnd(9)} ` + corte.classes.map((c) => `${c}: ${resumo(g.get(c)!)}`).join(" · "));
+      });
+      // As entradas pelo regime do dia em que abriram, por perna, no desenho inteiro.
+      const trades = es[0].fechadas;
+      for (const lado of ["long", "short"] as const) {
+        const ts = trades.filter((t) => t.lado === lado);
+        if (ts.length === 0) continue;
+        const partes = corte.classes.map((c) => {
+          const xs = ts.filter((t) => {
+            const g = regimes.get(Math.floor(t.abertaEm / DIA) * DIA);
+            return g && corte.classe(g) === c;
+          });
+          const rn = xs.map((t) => t.resultado / t.nocional);
+          const media = rn.length > 0 ? rn.reduce((a, b) => a + b, 0) / rn.length : NaN;
+          return `${c}: ${xs.length} entradas, ${pct(xs.filter((t) => t.resultado > 0).length / Math.max(1, xs.length)).replace("+", "")} no lucro, ${pct(media)} do nocional, US$ ${xs.reduce((a, t) => a + t.resultado, 0).toFixed(0)}`;
+        });
+        console.log(`  ${(lado === "long" ? "compras" : "vendas").padEnd(9)} ${partes.join(" · ")}`);
+      }
+    }
+  }
+}
+
+/**
+ * AS REGRAS PARA O MERCADO COM MEDO, como estão em `docs/preregistro-regime.md`
+ * (commitado antes desta função rodar): cinco candidatas no Momento e uma no
+ * Fluxo, julgadas no DESENHO contra o publicado do mesmo livro pelo critério
+ * fixado lá; a escolhida de cada livro vai à RESERVA (04–09/2026) e a
+ * OUTUBRO DE 2026, o mês que nenhuma medição tinha visto, e ao ataque de custo
+ * e de escorregada no desenho. As outras rodam na reserva e em outubro só
+ * depois da decisão, para o registro.
+ */
+async function estudarRegimeRegras(): Promise<void> {
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  const FIM_RESERVA = Date.parse("2026-10-01T00:00:00Z");
+  const FIM_MES = Date.parse("2026-11-01T00:00:00Z");
+  if (FIM < FIM_MES) {
+    console.log("os dados não chegam a 31/10/2026 — outubro não tem como ser julgado, e a rodada não roda pela metade");
+    return;
+  }
+  // As 367 da pesquisa até 13/10 e as 10 desta rodada (as 6 candidatas e as 4 vizinhas do platô).
+  const TENTATIVAS = 300 + 14 + 3 + 9 + 41 + 10;
+  const desenho: [string, number, number][] = [
+    ["desenho", INICIO, FIM_DESENHO],
+    ["1ª metade", INICIO, CORTE],
+    ["2ª metade", CORTE, FIM_DESENHO],
+  ];
+  type Medida = { ret: number; queda: number; sharpe: number };
+  const medida = (e: EstadoRobo): Medida => ({ ret: e.curva[e.curva.length - 1].patrimonio / e.curva[0].patrimonio - 1, queda: e.quedaMaxima, sharpe: sharpeDe(e.curva) });
+  const fmt = (m: Medida) => `${pct(m.ret).padStart(9)} (queda ${pct(m.queda)}, Sharpe ${m.sharpe.toFixed(2)})`;
+  const com = (r: Robo, id: string, f: (p: Perna) => Perna): Robo => ({ ...r, id: `${r.id}·${id}`, regras: { ...r.regras, pernas: r.regras.pernas.map(f) } });
+  const medo = (ate: number, multiplicador: number) => ({ campo: "medo" as const, ate, multiplicador });
+  const media = (janelaDias: number) => ({ campo: "btcMedia" as const, janelaDias, multiplicador: 0 });
+  type Candidata = { nome: string; robo: Robo; vizinhas?: [string, Robo][] };
+  const livros: { livro: Robo; candidatas: Candidata[] }[] = [
+    {
+      livro: MOMENTO,
+      candidatas: [
+        { nome: "queimada", robo: com(MOMENTO, "queimada", (p) => ({ ...p, queimada: {} })) },
+        { nome: "queimada só no prejuízo", robo: com(MOMENTO, "queimada-prejuizo", (p) => ({ ...p, queimada: { soPrejuizo: true } })) },
+        { nome: "queimada só na compra", robo: com(MOMENTO, "queimada-compra", (p) => (p.lado === "long" ? { ...p, queimada: {} } : p)) },
+        {
+          nome: "medo extremo (≤ 24): metade",
+          robo: com(MOMENTO, "medo24-meia", (p) => ({ ...p, regime: medo(24, 0.5) })),
+          vizinhas: [
+            ["medo ≤ 20: metade", com(MOMENTO, "medo20-meia", (p) => ({ ...p, regime: medo(20, 0.5) }))],
+            ["medo ≤ 30: metade", com(MOMENTO, "medo30-meia", (p) => ({ ...p, regime: medo(30, 0.5) }))],
+          ],
+        },
+        { nome: "medo extremo (≤ 24): sem compra", robo: com(MOMENTO, "medo24-sem-compra", (p) => (p.lado === "long" ? { ...p, regime: medo(24, 0) } : p)) },
+      ],
+    },
+    {
+      livro: FLUXO,
+      candidatas: [
+        {
+          nome: "só abre com o BTC acima da média de 50 d",
+          robo: com(FLUXO, "btc50", (p) => ({ ...p, regime: media(50) })),
+          vizinhas: [
+            ["média de 30 d", com(FLUXO, "btc30", (p) => ({ ...p, regime: media(30) }))],
+            ["média de 100 d", com(FLUXO, "btc100", (p) => ({ ...p, regime: media(100) }))],
+          ],
+        },
+      ],
+    },
+  ];
+  const medicao = JSON.parse(await readFile("data/robos-medicao.json", "utf8")) as Medicao;
+
+  for (const { livro, candidatas } of livros) {
+    console.log(`\n==== ${livro.nome}: DESENHO (08/01/2024 a 31/03/2026) — a reserva e outubro ainda não foram rodados`);
+    const pubDesenho = simular(livro, INICIO, FIM_DESENHO);
+    const pub = desenho.map(([, de, ate]) => medida(simular(livro, de, ate)));
+    const pubTrades = pubDesenho.fechadas.length + pubDesenho.abertas.length;
+    const top5 = new Set([...porMoeda(pubDesenho).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s));
+    const pubSem5 = medida(simular(livro, INICIO, FIM_DESENHO, top5));
+    console.log(`${"publicado".padEnd(40)} ` + pub.map((m, k) => `${desenho[k][0]} ${fmt(m)}`).join(" · ") + ` · sem as 5 (${[...top5].map((s) => s.replace(/USDT$/, "")).join(", ")}) ${pct(pubSem5.ret)}`);
+    const aprovadas: { c: Candidata; sharpe: number }[] = [];
+    for (const c of candidatas) {
+      const es = desenho.map(([, de, ate]) => simular(c.robo, de, ate));
+      const ms = es.map(medida);
+      const sem5 = medida(simular(c.robo, INICIO, FIM_DESENHO, top5));
+      const trades = es[0].fechadas.length + es[0].abertas.length;
+      console.log(`${c.nome.padEnd(40)} ` + ms.map((m, k) => `${desenho[k][0]} ${fmt(m)}`).join(" · ") + ` · sem as 5 ${pct(sem5.ret)} · ${trades} trades (publicado ${pubTrades})`);
+      const criterios: [string, boolean][] = [
+        ["Sharpe do desenho maior", ms[0].sharpe > pub[0].sharpe],
+        ["nenhuma metade pior", ms[1].sharpe >= pub[1].sharpe && ms[2].sharpe >= pub[2].sharpe],
+        ["sem as 5 não pior", sem5.ret >= pubSem5.ret],
+      ];
+      for (const [nome, robo] of c.vizinhas ?? []) {
+        const m = medida(simular(robo, INICIO, FIM_DESENHO));
+        console.log(`${`  vizinha: ${nome}`.padEnd(40)} desenho ${fmt(m)}`);
+        criterios.push([`vizinha "${nome}" com Sharpe maior`, m.sharpe > pub[0].sharpe]);
+      }
+      console.log(`${"".padEnd(40)} ${criterios.map(([n, ok]) => `${ok ? "✓" : "✗"} ${n}`).join(" · ")}`);
+      if (criterios.every(([, ok]) => ok)) aprovadas.push({ c, sharpe: ms[0].sharpe });
+    }
+    const escolhida = aprovadas.sort((a, b) => b.sharpe - a.sharpe)[0]?.c;
+    console.log(escolhida ? `\nescolhida pelo critério: ${escolhida.nome}` : "\nnenhuma passou no desenho: o livro fica como está, sem chegar à reserva");
+
+    // A reserva e outubro: a escolhida primeiro, e só ela decide.
+    const naJanela = (r: Robo, de: number, ate: number) => medida(simular(r, de, ate));
+    const pubReserva = naJanela(livro, FIM_DESENHO, FIM_RESERVA);
+    const pubMes = naJanela(livro, FIM_RESERVA, FIM_MES);
+    console.log(`\n== ${livro.nome}: RESERVA (01/04 a 30/09/2026) e OUTUBRO DE 2026`);
+    console.log(`${"publicado".padEnd(40)} reserva ${fmt(pubReserva)} · outubro ${fmt(pubMes)}`);
+    if (escolhida) {
+      const r = naJanela(escolhida.robo, FIM_DESENHO, FIM_RESERVA);
+      const o = naJanela(escolhida.robo, FIM_RESERVA, FIM_MES);
+      const passaReserva = r.sharpe >= pubReserva.sharpe;
+      const passaMes = o.ret >= pubMes.ret;
+      console.log(`${escolhida.nome.padEnd(40)} reserva ${fmt(r)} · outubro ${fmt(o)} ← escolhida`);
+      console.log(`${"".padEnd(40)} ${passaReserva ? "✓" : "✗"} Sharpe na reserva não menor · ${passaMes ? "✓" : "✗"} retorno em outubro não menor`);
+      let aguenta = true;
+      if (passaReserva && passaMes) {
+        console.log("\n== O ATAQUE, no desenho: cada um contra o publicado no mesmo ataque");
+        const ataques: [string, Extra][] = [
+          ["custo de entrada 4x", { custoAtraso: 4 * CUSTO_ATRASO }],
+          ["escorregada dobrada", { escorregada: 2 * ESCORREGADA_STOP }],
+        ];
+        for (const [rotulo, extra] of ataques) {
+          const p = medida(simular(livro, INICIO, FIM_DESENHO, undefined, undefined, JANELA_VOLATILIDADE_DIAS, true, extra));
+          const v = medida(simular(escolhida.robo, INICIO, FIM_DESENHO, undefined, undefined, JANELA_VOLATILIDADE_DIAS, true, extra));
+          const ok = v.sharpe > p.sharpe;
+          aguenta &&= ok;
+          console.log(`${rotulo.padEnd(22)} publicado ${fmt(p)} · escolhida ${fmt(v)} → ${ok ? "aguenta" : "NÃO aguenta"}`);
+        }
+      }
+      console.log(`\n→ ${livro.nome}, ${escolhida.nome}: ${passaReserva && passaMes && aguenta ? "APROVADA" : "REPROVADA"}`);
+    }
+
+    // Depois da decisão, para o registro: as outras na reserva e em outubro, e o deflacionado da escolhida.
+    console.log(`\n== ${livro.nome}: depois da decisão, para o registro`);
+    for (const c of candidatas) {
+      if (c === escolhida) continue;
+      console.log(`${c.nome.padEnd(40)} reserva ${fmt(naJanela(c.robo, FIM_DESENHO, FIM_RESERVA))} · outubro ${fmt(naJanela(c.robo, FIM_RESERVA, FIM_MES))}`);
+    }
+    if (escolhida) {
+      const grade = medicao.quant?.validacao.find((v) => v.id === livro.id)?.desvioDosSharpes.grade ?? 0;
+      const { r } = retornosDiarios(diaria(simular(escolhida.robo, INICIO, FIM_RESERVA)));
+      const variancia = Math.max((grade / Math.sqrt(365)) ** 2, varianciaDoSharpeNulo(r.length));
+      console.log(
+        `deflacionado da escolhida, 01/2024 a 09/2026, ${TENTATIVAS} tentativas: Sharpe ${(sharpeDiario(r) * Math.sqrt(365)).toFixed(2)}, ` +
+          `régua ${(sharpeMaximoEsperado(TENTATIVAS, variancia) * Math.sqrt(365)).toFixed(2)}, DSR ${sharpeDeflacionado(r, TENTATIVAS, variancia).toFixed(4)}`,
+      );
+    }
+  }
+}
+
+/**
+ * O AO VIVO BATE COM A MEDIÇÃO? Cada robô do arquivo ao vivo (`data/robos.json`,
+ * que `npm run dados` traz da branch `dados`) contra o MESMO robô no motor da
+ * medição, do primeiro dia inteiro dele ao fim dos dados. A medição entra na
+ * meia-noite pagando o atraso medido; o ao vivo, no primeiro retrato depois
+ * dela. Diferença grande é implementação, e não a estratégia.
+ */
+async function conferirAoVivo(arquivo: string): Promise<void> {
+  const vivo = JSON.parse(await readFile(arquivo, "utf8")) as { robos: EstadoRobo[] };
+  console.log(`\n== o ao vivo (${arquivo}) contra o motor da medição, até ${new Date(FIM).toISOString().slice(0, 10)}`);
+  for (const e of vivo.robos) {
+    const robo = ROBOS.find((r) => r.id === e.id);
+    if (!robo) continue;
+    // O primeiro dia inteiro: a meia-noite seguinte ao começo, quando o robô já tinha decidido o dia.
+    const de = Math.floor(e.comecouEm / DIA) * DIA;
+    const naMedicao = simular(robo, de, FIM);
+    let fimVivo = e.curva[0].patrimonio;
+    for (const p of e.curva) if (p.t <= FIM) fimVivo = p.patrimonio;
+    const doLado = (ts: readonly TradeRobo[], lado: LadoRobo) => ts.filter((t) => t.lado === lado && t.fechadaEm <= FIM).reduce((a, t) => a + t.resultado, 0);
+    console.log(
+      `${robo.nome.padEnd(15)} desde ${new Date(de).toISOString().slice(0, 10)}: ao vivo ${pct(fimVivo / e.curva[0].patrimonio - 1)} · medição ${pct(naMedicao.patrimonio / CAPITAL_ROBO - 1)} (queda ${pct(naMedicao.quedaMaxima)}) · ` +
+        `encerradas, compra/venda: ao vivo US$ ${doLado(e.fechadas, "long").toFixed(0)}/${doLado(e.fechadas, "short").toFixed(0)}, medição US$ ${doLado(naMedicao.fechadas, "long").toFixed(0)}/${doLado(naMedicao.fechadas, "short").toFixed(0)}`,
+    );
+  }
 }
 
 /**
@@ -2225,9 +2647,12 @@ if (fluxoRobo) {
  * testou outras sem anotar: 300 até 10/10. O loop de melhoria somou as suas —
  * 14 variantes na rodada 1, 3 na 2 e 9 na 3 (`docs/preregistro-*.md`) —, e o N
  * do Sharpe deflacionado "da pesquisa" passou a 326. O robô das grandes somou
- * 41 (`docs/preregistro-grandes.md`): 367.
+ * 41 (`docs/preregistro-grandes.md`): 367. As regras para o mercado com medo,
+ * 10 — 6 candidatas e 4 vizinhas do platô (`docs/preregistro-regime.md`): 377.
+ * O `data/robos-medicao.json` de 13/10 foi gravado com 367; a próxima rodada
+ * inteira grava com este número.
  */
-const TENTATIVAS_DA_PESQUISA = 300 + 14 + 3 + 9 + 41;
+const TENTATIVAS_DA_PESQUISA = 300 + 14 + 3 + 9 + 41 + 10;
 const SEMENTE = 20_261_010;
 const AMOSTRAS = 2000;
 /** Blocos de 20 dias em média: um mês de memória, o tamanho de uma alta de monstra. */

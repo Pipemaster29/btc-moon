@@ -1134,6 +1134,62 @@ ao vivo a "e se só moeda grande?", com o selo na tela. O ao vivo lê o market c
 na mesma CoinMarketCap (`lerGrandes` em `scripts/robos.mts`), casado pelo preço de agora;
 sem a lista, o robô das grandes espera a rodada seguinte e os outros seguem.
 
+### No mercado em queda ou com medo (05/11)
+
+O pedido: "os bots não estão sendo bons, principalmente em períodos de queda de mercado
+ou mercado com medo". Ao vivo, de 08/10 a 05/11, com o BTC de US$ 85 mil a US$ 76 mil: o
+Momento em −4,0%, o turbo em −6,2%, o Caça-monstra em −10,2%, o Grandes em +0,3% e o
+Fluxo em +7,1%. A perna comprada do Momento perdeu US$ 278 em 48 compras recomprando a
+mesma manipulada depois de cada stop — a AGT nove vezes em 19 dias, oito delas no
+prejuízo —, porque a alta velha a mantém entre as 5 que mais subiram em 45 dias.
+
+**Primeiro: o ao vivo bate com o motor.** De 08/10 a 31/10 (`npm run medir-robos --
+--conferir-ao-vivo`), o Momento fez −10,6% ao vivo e −9,3% no motor; o turbo, −15,9% e
+−14,1%; o Caça-monstra, −9,5% e −7,9%. A perda é da estratégia, não da execução.
+
+**Segundo: o mercado em queda não é onde o Momento perde — é onde ele mais ganha.** O
+índice de medo e ganância da alternative.me (sem chave, `scripts/baixar-medo.mts`) e o
+BTC cortam os 33 meses de 01/2024 a 09/2026:
+
+| | meses | Momento positivo | o resultado do Momento neles |
+| --- | --- | --- | --- |
+| o BTC caiu 8% ou mais | 7 | **7** | de +2,3% a +82,2% |
+| medo médio até 35 | 10 | 8 | o patrimônio ×7,8 |
+| os 4 piores meses do Momento | | | 02/2024 −18,1% (BTC +43,8%) · 12/2025 −20,1% (BTC −3,0%) · 09/2026 −9,2% (BTC +6,4%) · 03/2024 −8,0% (BTC +16,6%) |
+
+E outubro de 2026 nem foi mês de medo: o índice ficou entre 30 e 74 (média 59), e o BTC
+caiu 7,2%, quase tudo na última semana. O que dói é a sequência: −9,2% em setembro e
+−10,6% em outubro, cerca de −19% somados, contra a queda máxima medida de −36%.
+
+Dia a dia, no desenho (`npm run medir-robos -- --regime`), o Momento ganha em todo regime
+menos no **medo extremo** (índice até 24): −0,02% por dia em 126 dias, com as compras
+rendendo −5,0% do nocional por entrada. O Fluxo faz todo o lucro do desenho com o BTC
+acima da média dos seus 50 fechamentos diários (+326% compostos nesses dias, −19,6%
+abaixo dela), nas duas metades.
+
+**Terceiro: as seis regras para isso, pré-registradas, reprovaram**
+(`docs/preregistro-regime.md`, `npm run medir-robos -- --regime-regras`):
+
+| | desenho (Sharpe) | reserva 04–09/2026 | outubro de 2026 | |
+| --- | --- | --- | --- | --- |
+| Momento publicado | +1.864% (2,40) | +154% (2,62) | −10,6% | |
+| a call queimada da carteira, 3 variantes | +802% a +854% (1,96–1,98) | +148% a +163% | −1,9% a −5,1% | reprova no desenho |
+| metade do tamanho no medo extremo | +2.134% (2,54), platô | **+109% (2,40)** | −10,6% | reprova na reserva |
+| sem compra no medo extremo | +2.173% (2,56) | +40% (1,32) | −10,6% | reprova no desenho |
+| Fluxo publicado | +225% (1,77) | +11,4% (0,85) | −2,6% | |
+| Fluxo só com o BTC acima da média de 50 d | +294% (2,51), platô | **−8,2% (−0,53)** | −1,2% | reprova na reserva |
+
+A call queimada é a que mais ensina. Desenhada para o defeito que outubro mostrou, ela
+conserta outubro e até a reserva — e corta o desenho pela metade: a recompra da moeda que
+acabou de estopar é o que pega a segunda perna das monstras de 2024–2025. Recomprar a AGT
+pela nona vez e recomprar a MYX depois de um tranco de 30% são a mesma decisão vista na
+hora. As regras de regime são o outro lado da mesma lição: cortes achados no histórico,
+que o histórico confirma e a reserva desmente — de abril a junho de 2026 o índice passou
+semanas entre 10 e 23, e foi aí que vieram as monstras do semestre.
+
+Nada muda nos robôs. As duas regras ficam no motor, desligadas e testadas
+(`Perna.queimada`, `Perna.regime`), e o único juiz limpo que sobra para elas é o tempo.
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.
@@ -1487,8 +1543,9 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 | `npm run quarentena` | julga as linhas do histórico contra as velas de 1h do perpétuo e grava em `data/quarentena.json` as que não são o preço daquela hora, para o placar pular (à mão; o retrato já não grava linha assim) |
 | `npm run carteira` | mil dólares de mentira seguindo as calls, e o que sobrou |
 | `npm run robos` | os robôs ao vivo: percorre as velas das posições e, uma vez por dia UTC, faz a seleção (`data/robos.json`) |
-| `npm run medir-robos` | a medição dos robôs com o mesmo motor, sobre o Data Vision de 01/2024 em diante, deslistados inclusive, e a mesa de risco — ficha, sobreajuste nas grades, capacidade e o fundo (`data/robos-medicao.json`; ~430 MB na primeira vez, guardados em `.cache/robos/`; depois, ~6 minutos). Baixa sozinho os domingos que faltam do universo das grandes (`.cache/grandes/`); `-- --grandes` refaz a exploração do robô das grandes e `-- --grandes-reserva`, o julgamento |
+| `npm run medir-robos` | a medição dos robôs com o mesmo motor, sobre o Data Vision de 01/2024 em diante, deslistados inclusive, e a mesa de risco — ficha, sobreajuste nas grades, capacidade e o fundo (`data/robos-medicao.json`; ~430 MB na primeira vez, guardados em `.cache/robos/`; depois, ~6 minutos). Baixa sozinho os domingos que faltam do universo das grandes (`.cache/grandes/`); `-- --grandes` refaz a exploração do robô das grandes e `-- --grandes-reserva`, o julgamento; `-- --regime` corta os robôs por regime de mercado no desenho, `-- --regime-regras` refaz o julgamento das regras para o mercado com medo, `-- --conferir-ao-vivo data/robos.json` põe o ao vivo ao lado do motor e `-- --ate AAAA-MM-DD` termina a medição nesse dia |
 | `npx tsx scripts/baixar-grandes.mts` | o retrato semanal das 300 maiores da CoinMarketCap, sem chave, de 12/2023 até o último domingo fechado (`.cache/grandes/`) — o universo do robô das grandes |
+| `npx tsx scripts/baixar-medo.mts` | o índice de medo e ganância da alternative.me, sem chave, de 02/2018 até hoje (`.cache/medo.json`) — o corte de "mercado com medo" da medição |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |

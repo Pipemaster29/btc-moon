@@ -229,6 +229,29 @@ export interface Perna {
    * ranking invertido. Ausente: o momento.
    */
   inverso?: boolean;
+  /**
+   * A CALL QUEIMADA, a regra que a carteira tem desde 04/09 (`lib/carteira.ts`):
+   * depois de uma saída por stop, rastro ou liquidação, a perna não volta à
+   * moeda até o sinal se RENOVAR — um dia em que ela foi lida no ranking da
+   * perna fora das `k` primeiras —, ou até passarem `janelaDias` dias da
+   * saída, quando a janela do ranking já é toda de depois dela. A moeda
+   * queimada é pulada, sem trocar pela seguinte do ranking, como a que já está
+   * aberta. Com `soPrejuizo`, só a saída com prejuízo queima. Saída por posto
+   * não queima: a moeda já saiu das primeiras. Ausente: recompra no dia
+   * seguinte. Medida em 05/11 (`docs/preregistro-regime.md`).
+   */
+  queimada?: { soPrejuizo?: boolean };
+  /**
+   * O TAMANHO PELO REGIME DO MERCADO (`RegimeDoMercado`): as entradas novas da
+   * perna saem com o tamanho × `multiplicador` no dia em que o regime da
+   * véspera está do lado ruim — o índice de medo até `ate` ("medo"), ou o BTC
+   * abaixo da média dos seus `janelaDias` fechamentos diários ("btcMedia"). A
+   * parcela da pirâmide da posição sai com o mesmo multiplicador da entrada:
+   * o gatilho foi decidido nela. Sem a leitura, o tamanho normal — falta de
+   * leitura não vira veto. Ausente: o mesmo tamanho em todo regime. Medida em
+   * 05/11 (`docs/preregistro-regime.md`).
+   */
+  regime?: { campo: "medo"; ate: number; multiplicador: number } | { campo: "btcMedia"; janelaDias: number; multiplicador: number };
 }
 
 /**
@@ -686,6 +709,23 @@ const COMPRA_45: Perna = {
  * (Sharpe 0,96) contra +155% (2,62). Subindo ou caindo, filtrar tira a monstra
  * junto. A mesma rodada mediu que, na reserva, o publicado SEM as 5 melhores
  * moedas perde 67%: os seis meses mais recentes são, inteiros, de cinco moedas.
+ *
+ * A CALL QUEIMADA E O MEDO EXTREMO REPROVARAM (05/11, o pedido: "os robôs não
+ * estão sendo bons no mercado em queda ou com medo"; `docs/preregistro-regime.md`,
+ * `npm run medir-robos -- --regime-regras`). Ao vivo, de 08/10 a 05/11, a
+ * perna comprada recomprou a mesma manipulada dia após dia — a AGT nove vezes
+ * em 19 dias, oito delas saindo no prejuízo —, porque a alta velha a mantém
+ * entre as 5 de 45 dias. A regra da carteira (`Perna.queimada`: depois de stop
+ * ou rastro, só volta quando o sinal se renova) conserta outubro (−1,9% a −5,1%
+ * contra −10,6%) e no desenho corta o livro pela metade em toda variante
+ * (+1.864% → +802% a +854%, Sharpe 2,40 → 1,96–1,98): é a recompra que pega a
+ * segunda perna das monstras. Metade do tamanho no medo extremo (o índice da
+ * véspera até 24, `Perna.regime`) passou no desenho com platô (Sharpe 2,54; com
+ * 20 e 30, 2,55 e 2,43) e reprovou na reserva (+109% contra +154%, Sharpe 2,40
+ * contra 2,62): as monstras de abril a junho de 2026 vieram no medo extremo.
+ * Sem compra no medo extremo, +40% na reserva. E o diagnóstico da mesma rodada
+ * desmente a premissa: nos 7 meses de 2024–2026 em que o BTC caiu 8% ou mais,
+ * este livro foi positivo em todos; os piores meses dele são de alta.
  */
 const COMPRA_MOMENTO: Perna = { ...COMPRA_45, saidaPosto: 10 };
 
@@ -912,6 +952,15 @@ const ALVO_MOMENTO: AlvoVolatilidade = { anual: 0.6, janelaDias: 40, minimo: 0.2
  * mediana dos 30 dias antes da entrada e 1,06 durante a posição (0,80 a 1,31
  * entre os quartis): o 1 para 1 já é o neutro, e o 1,25 da bancada (+298%
  * contra +271%) é ETH comprado a mais, que rendeu porque o ETH subiu no fora.
+ *
+ * O REGIME DO BTC REPROVOU (05/11, `docs/preregistro-regime.md`). No desenho
+ * (01/2024–03/2026) este livro faz todo o lucro com o BTC acima da média dos
+ * seus 50 fechamentos diários (+326% compostos nesses dias) e perde abaixo
+ * dela (−19,6%), nas duas metades; as vendas abertas abaixo dela rendem −0,8%
+ * do nocional, contra +7,3%. Só abrir com o BTC acima da média (`Perna.regime`)
+ * levou o Sharpe do desenho de 1,77 a 2,51, com platô (média de 30 d 2,25, de
+ * 100 d 2,34) — e na reserva perdeu 8,2% onde o publicado ganha 11,4% (Sharpe
+ * −0,53 contra 0,85). O corte achado no histórico não é regra.
  */
 const VENDA_FLUXO: Perna = {
   lado: "short",
@@ -1196,6 +1245,40 @@ export interface PosicaoRobo {
   corretora?: RegrasDaMoeda;
   /** A outra metade do par, quando a perna tem hedge. */
   hedge?: PernaHedge;
+  /**
+   * A call queimada com que a posição entrou (`Perna.queimada`): a chave do
+   * ranking da perna, a janela dele (o teto da queima, em DIAS) e se só o
+   * prejuízo queima. Mora na posição como o stop: a que entrou antes da regra
+   * não queima a moeda ao sair.
+   */
+  queima?: { chave: string; janelaDias: number; soPrejuizo: boolean };
+}
+
+/**
+ * Uma moeda queimada para uma perna (`Perna.queimada`): a chave do ranking da
+ * perna (`chaveDaPerna`), quando saiu e até quando fica queimada se o sinal
+ * não se renovar antes.
+ */
+export interface Queimada {
+  symbol: string;
+  chave: string;
+  desde: number;
+  ate: number;
+}
+
+/**
+ * O REGIME DO MERCADO na decisão do dia, só com o que se sabia nela: o que a
+ * regra de regime de uma perna lê (`Perna.regime`). Campo ausente ou nulo é
+ * "não consegui ler", e a regra não morde.
+ */
+export interface RegimeDoMercado {
+  /** O índice de medo e ganância da alternative.me da VÉSPERA, de 0 a 100. */
+  medo?: number | null;
+  /**
+   * O fechamento do BTC na véspera ÷ a média dos últimos n fechamentos diários
+   * até ela, − 1 (PREÇO), por n (dias): negativo é o BTC abaixo da média.
+   */
+  btcMedia?: Record<number, number | null>;
 }
 
 export interface TradeRobo {
@@ -1261,6 +1344,8 @@ export interface EstadoRobo {
    * dobrada. O ao vivo nunca a grava.
    */
   escorregada?: number;
+  /** As moedas queimadas de cada perna com `Perna.queimada`; ausente, nenhuma. */
+  queimadas?: Queimada[];
 }
 
 // ------------------------------------------------------------------ o mercado
@@ -1698,6 +1783,15 @@ export function fechar(
   const resultado = principal + (hedge?.resultado ?? 0);
   e.caixa += p.margem + margemHedge + resultado;
   e.abertas = e.abertas.filter((x) => x !== p);
+  // A call queimada (`Perna.queimada`): stop, rastro e liquidação queimam a moeda
+  // para a perna; posto, prazo e "sumiu" não — o sinal não morreu nelas.
+  if (p.queima && (s.motivo === "stop" || s.motivo === "rastro" || s.motivo === "liquidada") && (!p.queima.soPrejuizo || resultado < 0)) {
+    const q = p.queima;
+    e.queimadas = [
+      ...(e.queimadas ?? []).filter((x) => !(x.symbol === p.symbol && x.chave === q.chave)),
+      { symbol: p.symbol, chave: q.chave, desde: s.quando, ate: s.quando + q.janelaDias * DIA },
+    ];
+  }
   const t: TradeRobo = {
     symbol: p.symbol,
     lado: p.lado,
@@ -1925,6 +2019,8 @@ export function abrir(
   corretora?: RegrasDaMoeda,
   /** O coeficiente do impacto da moeda (`LinhaRanking.impacto`), só na medição de capacidade; 0 sem ele. */
   impacto = 0,
+  /** O multiplicador do regime do dia (`multiplicadorDoRegime`), que vale também para a parcela da pirâmide; 1 sem ele. */
+  regime = 1,
 ): PosicaoRobo | null {
   if (e.abertas.some((p) => p.symbol === symbol)) return null;
   if (!(preco > 0) || !Number.isFinite(preco)) {
@@ -1938,7 +2034,8 @@ export function abrir(
   }
   const pat = patrimonioA(e);
   const mult = Number.isFinite(multiplicador) && multiplicador > 0 ? multiplicador : 1;
-  const bruto = e.regras.tamanho * mult * pat * escalaDoTamanho(e, quando);
+  const mRegime = Number.isFinite(regime) && regime > 0 ? regime : 1;
+  const bruto = e.regras.tamanho * mult * mRegime * pat * escalaDoTamanho(e, quando);
   // Com as regras da corretora: a quantidade no passo dela, o mínimo dela, e a
   // margem que põe a liquidação depois do stop (`alavancagemSegura`).
   const nocional = corretora ? nocionalAceito(bruto, preco, corretora) : bruto;
@@ -1981,10 +2078,12 @@ export function abrir(
       ? {
           piramide: {
             precos: perna.piramide.niveis.map((n) => (comprado ? preco * (1 + n) : preco * (1 - n))),
-            tamanho: perna.piramide.tamanho,
+            // O regime da entrada vale para a parcela: o gatilho foi decidido nela.
+            tamanho: perna.piramide.tamanho * mRegime,
           },
         }
       : {}),
+    ...(perna.queimada ? { queima: { chave: chaveDaPerna(perna), janelaDias: perna.janelaDias, soPrejuizo: !!perna.queimada.soPrejuizo } } : {}),
     // O atraso da medição vale para as duas metades do par: as duas ordens esperam o retrato.
     ...(custoExtra > 0 ? { custoExtra: custoExtra * (nocional + nocionalHedge) } : {}),
     ...(corretora ? { corretora } : {}),
@@ -2049,24 +2148,92 @@ export function decidir(
   manipuladas?: ReadonlySet<string>,
   /** Ver `abrir`: o custo do atraso, só na medição. */
   custoExtra = 0,
+  /** O regime do mercado na decisão (`RegimeDoMercado`), para a perna com `Perna.regime`; sem ele, a regra não morde. */
+  regime?: RegimeDoMercado,
 ): PosicaoRobo[] {
   sairPorPosto(e, linhas, precoDe, quando, custoExtra);
+  // A queimada que o tempo soltou: depois da janela inteira, o ranking já é todo de depois da saída.
+  if (e.queimadas) e.queimadas = e.queimadas.filter((q) => q.ate > quando);
   const abertas: PosicaoRobo[] = [];
   const pernas = [...e.regras.pernas].sort((a, b) => a.janelaDias - b.janelaDias);
   for (const perna of pernas) {
+    const mRegime = multiplicadorDoRegime(perna, regime);
+    // Multiplicador zero é a perna fora do dia, e não entrada recusada por caixa.
+    if (!(mRegime > 0)) continue;
     // O preço e o volume do hedge saem do mesmo retrato; sem a linha dele, o par não abre.
     const linhaHedge = perna.hedge ? linhas.find((l) => l.symbol === perna.hedge?.symbol) : undefined;
     const hedge = perna.hedge
       ? { preco: precoDe(perna.hedge.symbol) ?? NaN, volume: linhaHedge?.volume ?? NaN, corretora: linhaHedge?.corretora, impacto: linhaHedge?.impacto }
       : undefined;
     const tamanhoDe = multiplicadorPelaVolatilidade(e.regras, perna, linhas);
+    const queimadas = perna.queimada ? renovarQueimadas(e, perna, linhas) : null;
     for (const l of selecionar(e.regras, perna, linhas)) {
-      const p = abrir(e, perna, l.symbol, precoDe(l.symbol) ?? NaN, quando, l.volume, manipuladas?.has(l.symbol) ?? false, custoExtra, hedge, tamanhoDe(l), l.corretora, l.impacto);
+      // A queimada é pulada sem trocar pela seguinte, como a que já está aberta.
+      if (queimadas?.has(l.symbol)) continue;
+      const p = abrir(e, perna, l.symbol, precoDe(l.symbol) ?? NaN, quando, l.volume, manipuladas?.has(l.symbol) ?? false, custoExtra, hedge, tamanhoDe(l), l.corretora, l.impacto, mRegime);
       if (p) abertas.push(p);
     }
   }
   e.ultimaDecisao = Math.floor(quando / DIA) * DIA;
   return abertas;
+}
+
+/** A chave do ranking de uma perna: lado, janela, critério e sentido — a mesma da saída por posto. */
+export function chaveDaPerna(perna: Pick<Perna, "lado" | "janelaDias" | "criterio" | "inverso">): string {
+  return `${perna.lado}:${perna.janelaDias}:${perna.criterio ?? "retorno"}:${perna.inverso ? "inverso" : ""}`;
+}
+
+/**
+ * As queimadas da perna que continuam queimadas hoje, depois de soltar as que
+ * o ranking renovou: a moeda LIDA no ranking da perna fora das `k` primeiras.
+ * A que não está no ranking (sem série, volume baixo, a Binance não
+ * respondeu) continua queimada — "não consegui ler" não é "o sinal mudou" —, e
+ * ranking com menos de 20 moedas não solta nenhuma, como na saída por posto.
+ */
+function renovarQueimadas(e: EstadoRobo, perna: Perna, linhas: readonly LinhaRanking[]): Set<string> {
+  const chave = chaveDaPerna(perna);
+  if (!e.queimadas?.some((q) => q.chave === chave)) return new Set();
+  const ordem = ordenar(e.regras, perna, linhas).filter((l) => l.symbol !== perna.hedge?.symbol);
+  const posto = ordem.length >= MINIMO_NO_RANKING ? new Map(ordem.map((l, k) => [l.symbol, k])) : null;
+  e.queimadas = e.queimadas.filter((q) => {
+    if (q.chave !== chave) return true;
+    const k = posto?.get(q.symbol);
+    return !(k !== undefined && k >= perna.k);
+  });
+  return new Set(e.queimadas.filter((q) => q.chave === chave).map((q) => q.symbol));
+}
+
+/**
+ * O multiplicador do tamanho de `Perna.regime` no dia: o da regra quando o
+ * regime da véspera está do lado ruim, 1 nos outros dias e sem a leitura.
+ */
+export function multiplicadorDoRegime(perna: Pick<Perna, "regime">, regime?: RegimeDoMercado): number {
+  const r = perna.regime;
+  if (!r || !regime) return 1;
+  if (r.campo === "medo") {
+    const m = regime.medo;
+    return typeof m === "number" && Number.isFinite(m) && m <= r.ate ? r.multiplicador : 1;
+  }
+  const b = regime.btcMedia?.[r.janelaDias];
+  return typeof b === "number" && Number.isFinite(b) && b < 0 ? r.multiplicador : 1;
+}
+
+/**
+ * O REGIME DO MERCADO de uma decisão, com o que se sabia nela — a mesma conta
+ * na medição e no ao vivo: os fechamentos diários do BTC do mais velho ao mais
+ * novo (o último é o da véspera; NaN onde falta), o índice de medo da véspera e
+ * as janelas da média que alguma perna lê. Média com algum dia faltando fica
+ * sem leitura: média de poucos dias não é a da regra.
+ */
+export function regimeDoMercado(fechamentosBTC: readonly number[], medoDaVespera: number | null | undefined, janelas: readonly number[]): RegimeDoMercado {
+  const btcMedia: Record<number, number | null> = {};
+  const ultimo = fechamentosBTC[fechamentosBTC.length - 1];
+  for (const n of janelas) {
+    const xs = fechamentosBTC.slice(-n);
+    const inteira = xs.length === n && xs.every((x) => x > 0 && Number.isFinite(x));
+    btcMedia[n] = inteira ? ultimo / (xs.reduce((a, b) => a + b, 0) / n) - 1 : null;
+  }
+  return { medo: typeof medoDaVespera === "number" && Number.isFinite(medoDaVespera) ? medoDaVespera : null, btcMedia };
 }
 
 /**

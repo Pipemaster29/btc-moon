@@ -194,6 +194,21 @@ no código, com número:
   0,4%, o desenho vira −9,0%. Deflacionado 0,003 com 367 tentativas; em tempo
   real, −51%. `npm run medir-robos -- --grandes` e `-- --grandes-reserva`.
 
+- **O mercado com medo não é onde os robôs perdem — e as seis regras para ele
+  reprovaram (05/11), a pedido: "não estão sendo bons em queda ou com medo".**
+  Ao vivo, de 08/10 a 05/11, o Momento caiu 4% recomprando a mesma manipulada
+  depois de cada stop (a AGT nove vezes em 19 dias), e o motor reproduz outubro
+  (−9,3% contra −10,6% ao vivo). Mas nos 7 meses de 2024–2026 com o BTC caindo
+  8% ou mais o Momento foi positivo em todos, e nos 10 de medo multiplicou o
+  patrimônio por 7,8; os piores meses dele são de alta. Pré-registradas
+  (`docs/preregistro-regime.md`): a call queimada da carteira nos robôs conserta
+  outubro e corta o desenho pela metade (+1.864% → +802% a +854%) — a recompra é
+  o que pega a segunda perna das monstras; metade do tamanho no medo extremo e
+  o Fluxo só com o BTC acima da média de 50 dias passaram no desenho com platô e
+  reprovaram na reserva (+109% contra +154%; −8,2% contra +11,4%). As duas regras
+  ficam no motor, desligadas (`Perna.queimada`, `Perna.regime`), e o diagnóstico
+  em `npm run medir-robos -- --regime`.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -422,6 +437,7 @@ deles e as posições dos robôs no fim de tudo.
 | `lib/avisos.ts` | o que a carteira abriu ou fechou desde o retrato anterior, em texto para o Telegram. A memória do que já foi avisado viaja no `carteira.json` |
 | `scripts/dados.sh` | baixa e grava os dados do robô na branch `dados`; faz a transição do `main` sozinho |
 | `scripts/baixar-grandes.mts` | o retrato semanal das 300 maiores da CoinMarketCap, sem chave, em `.cache/grandes/` — o universo do robô das grandes. **O retrato de um domingo é o fechamento dele**: só vale da meia-noite seguinte. `npm run medir-robos` chama `baixarGrandes` sozinho |
+| `scripts/baixar-medo.mts` | o índice de medo e ganância da alternative.me, sem chave, de 02/2018 até hoje, em `.cache/medo.json` — o corte de "mercado com medo" do diagnóstico `--regime` e da `Perna.regime`. **O valor de um dia sai na meia-noite dele**: a decisão lê o da véspera |
 
 ### Os dados
 
@@ -655,6 +671,19 @@ e no README; aqui fica o que não pode ser quebrado.
   grandes não decide na rodada — nem a seleção nem o posto —, e os outros
   seguem. A vendida que cai abaixo de US$ 2 bi sai do ranking e FICA até o
   stop ou o prazo: as vendidas chegam a 12 abertas, não a 6.
+- **A call queimada e o regime existem e estão DESLIGADOS** (`Perna.queimada`,
+  `Perna.regime`, 05/11, `docs/preregistro-regime.md`): nenhum robô publicado
+  os usa, como o filtro de open interest. A queima mora na posição (`queima`),
+  como o stop: stop, rastro e liquidação queimam; posto, prazo e "sumiu" não; a
+  moeda volta quando é LIDA no ranking da perna fora das k primeiras, ou depois
+  da janela — sem leitura, continua queimada. O regime da véspera sai da mesma
+  `regimeDoMercado` na medição (`regimeDoDia`) e no ao vivo, quando alguma
+  perna o usar: os fechamentos diários do BTC até ontem e o índice de medo da
+  alternative.me de ONTEM (`scripts/baixar-medo.mts`; o de hoje sai junto com
+  a decisão). Sem leitura, o tamanho normal; multiplicador zero é a perna fora
+  do dia, e não conta como recusa. Ligar uma delas pede a medição refeita E o
+  ao vivo (`scripts/robos.mts`) passando o regime a `decidir` — hoje ele não
+  passa, porque nenhum robô lê.
 - **Unidades**: `stop`, `rastro` e preços são de PREÇO; `nocional`, `margem`,
   `funding`, `custoExtra` e `resultado` são DÓLARES; `tamanho` é fração do
   PATRIMÔNIO (o base, antes do alvo de volatilidade); `CUSTO_ATRASO`,
@@ -690,8 +719,9 @@ e no README; aqui fica o que não pode ser quebrado.
 - **O deflacionado usa o maior entre o espalhamento dos Sharpes da grade e o do
   acaso** (`varianciaDoSharpeNulo`): grade de variações parecidas espalha pouco
   e daria uma régua baixa demais. E o N "da pesquisa" (`TENTATIVAS_DA_PESQUISA`,
-  367: 300 até 10/10, as 26 do loop e as 41 do robô das grandes) é contado por
-  baixo — regra nova medida soma tentativas.
+  377: 300 até 10/10, as 26 do loop, as 41 do robô das grandes e as 10 das
+  regras para o mercado com medo) é contado por baixo — regra nova medida soma
+  tentativas. O `robos-medicao.json` de 13/10 foi gravado com 367.
 - **O fundo só transfere o caixa livre** (`caixaLivre` de `paridadeDeRisco`):
   margem de posição aberta não sai da subconta. O ao vivo (`fundoAoVivo`) é
   conta de cotas sobre as curvas dos robôs, sem essa trava — na medição ela
