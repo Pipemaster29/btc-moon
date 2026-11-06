@@ -1,12 +1,6 @@
 {
- "geradoEm": 1793911863972,
+ "geradoEm": 1793934138737,
  "dias": [
-  {
-   "d": "2026-10-30",
-   "cobertura": 0.9997812500000003,
-   "falhas": 2,
-   "lacuna": false
-  },
   {
    "d": "2026-10-31",
    "cobertura": 0.9997135416666667,
@@ -39,13 +33,19 @@
   },
   {
    "d": "2026-11-05",
-   "cobertura": 0.997261375936781,
+   "cobertura": 0.99971875,
+   "falhas": 0,
+   "lacuna": false
+  },
+  {
+   "d": "2026-11-06",
+   "cobertura": 0.9820512185273309,
    "falhas": 0,
    "lacuna": false
   }
  ],
  "sentinela": {
-  "fracao": 0.541,
+  "fracao": 0.444,
   "conhecido": false
  },
  "moedas": [
@@ -53,16 +53,11 @@
    "s": "AINUSDT",
    "mcap": 43360520,
    "dex": 0,
-   "dep": 11134300,
-   "bruto": 11134300,
-   "depositantes": 185,
+   "dep": 11129845,
+   "bruto": 11129845,
+   "depositantes": 181,
    "saldo": 60850251,
    "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 4455
-    },
     {
      "d": "2026-10-31",
      "dex": 0,
@@ -71,45 +66,14 @@
    ]
   },
   {
-   "s": "ESPORTSUSDT",
-   "mcap": 1702246,
-   "dex": 0,
-   "dep": 101301,
-   "bruto": 101301,
-   "depositantes": 8,
-   "saldo": 2932670,
-   "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 91045
-    },
-    {
-     "d": "2026-10-31",
-     "dex": 0,
-     "dep": 4455
-    },
-    {
-     "d": "2026-11-01",
-     "dex": 0,
-     "dep": 5801
-    }
-   ]
-  },
-  {
    "s": "QUSDT",
    "mcap": 162786805,
    "dex": 0,
-   "dep": 3196295,
-   "bruto": 3196295,
-   "depositantes": 15,
+   "dep": 3146922,
+   "bruto": 3146922,
+   "depositantes": 9,
    "saldo": 9017257,
    "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 49373
-    },
     {
      "d": "2026-10-31",
      "dex": 0,
@@ -121,16 +85,11 @@
    "s": "DOSUSDT",
    "mcap": 7018355,
    "dex": 0,
-   "dep": 132091,
-   "bruto": 132091,
-   "depositantes": 19,
+   "dep": 87795,
+   "bruto": 87795,
+   "depositantes": 8,
    "saldo": 1611381,
    "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 44296
-    },
     {
      "d": "2026-10-31",
      "dex": 0,
@@ -160,60 +119,39 @@
    ]
   },
   {
+   "s": "ESPORTSUSDT",
+   "mcap": 1702246,
+   "dex": 0,
+   "dep": 10256,
+   "bruto": 10256,
+   "depositantes": 6,
+   "saldo": 2932670,
+   "porDia": [
+    {
+     "d": "2026-10-31",
+     "dex": 0,
+     "dep": 4455
+    },
+    {
+     "d": "2026-11-01",
+     "dex": 0,
+     "dep": 5801
+    }
+   ]
+  },
+  {
    "s": "USELESSUSDT",
    "mcap": 1636201,
    "dex": 0,
    "dep": 1775,
    "bruto": 1775,
-   "depositantes": 3,
+   "depositantes": 2,
    "saldo": 1031508,
    "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 0
-    },
     {
      "d": "2026-10-31",
      "dex": 0,
      "dep": 1775
-    }
-   ]
-  },
-  {
-   "s": "ONUSDT",
-   "mcap": 19884483,
-   "dex": 0,
-   "dep": 9263,
-   "bruto": 9263,
-   "depositantes": 4,
-   "saldo": 3868731,
-   "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 9263
-    }
-   ]
-  },
-  {
-   "s": "LIGHTUSDT",
-   "mcap": 10715362,
-   "dex": 0,
-   "dep": 4156,
-   "bruto": 4156,
-   "depositantes": 2,
-   "saldo": 2545930,
-   "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 2691
-    },
-    {
-     "d": "2026-10-31",
-     "dex": 0,
-     "dep": 1465
     }
    ]
   },
@@ -239,77 +177,14 @@
    ]
   },
   {
-   "s": "TAUSDT",
-   "mcap": 55826524,
-   "dex": 0,
-   "dep": 15067,
-   "bruto": 15067,
-   "depositantes": 3,
-   "saldo": 12029779,
-   "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 14975
-    },
-    {
-     "d": "2026-10-31",
-     "dex": 0,
-     "dep": 92
-    }
-   ]
-  },
-  {
-   "s": "哈基米USDT",
-   "mcap": 17832581,
-   "dex": 0,
-   "dep": 4329,
-   "bruto": 4329,
-   "depositantes": 5,
-   "saldo": 10191177,
-   "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 4147
-    },
-    {
-     "d": "2026-10-31",
-     "dex": 0,
-     "dep": 182
-    }
-   ]
-  },
-  {
-   "s": "B2USDT",
-   "mcap": 16622061,
-   "dex": 0,
-   "dep": 3859,
-   "bruto": 3859,
-   "depositantes": 1,
-   "saldo": 11842774,
-   "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 3859
-    }
-   ]
-  },
-  {
    "s": "EVAAUSDT",
    "mcap": 9003727,
    "dex": 0,
-   "dep": 1575,
-   "bruto": 1575,
-   "depositantes": 5,
+   "dep": 1542,
+   "bruto": 1542,
+   "depositantes": 4,
    "saldo": 4237090,
    "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 33
-    },
     {
      "d": "2026-10-31",
      "dex": 0,
@@ -319,6 +194,22 @@
      "d": "2026-11-01",
      "dex": 0,
      "dep": 684
+    }
+   ]
+  },
+  {
+   "s": "LIGHTUSDT",
+   "mcap": 10715362,
+   "dex": 0,
+   "dep": 1465,
+   "bruto": 1465,
+   "depositantes": 1,
+   "saldo": 2545930,
+   "porDia": [
+    {
+     "d": "2026-10-31",
+     "dex": 0,
+     "dep": 1465
     }
    ]
   },
@@ -342,16 +233,11 @@
    "s": "IDOLUSDT",
    "mcap": 50324987,
    "dex": 0,
-   "dep": 4635,
-   "bruto": 4635,
-   "depositantes": 2,
+   "dep": 2437,
+   "bruto": 2437,
+   "depositantes": 1,
    "saldo": 3100160,
    "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 2198
-    },
     {
      "d": "2026-10-31",
      "dex": 0,
@@ -360,56 +246,14 @@
    ]
   },
   {
-   "s": "AKEUSDT",
-   "mcap": 266002111,
-   "dex": 0,
-   "dep": 18998,
-   "bruto": 18998,
-   "depositantes": 7,
-   "saldo": 36971911,
-   "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 18525
-    },
-    {
-     "d": "2026-10-31",
-     "dex": 0,
-     "dep": 473
-    }
-   ]
-  },
-  {
-   "s": "4USDT",
-   "mcap": 11093056,
-   "dex": 0,
-   "dep": 517,
-   "bruto": 517,
-   "depositantes": 2,
-   "saldo": 4260212,
-   "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 517
-    }
-   ]
-  },
-  {
    "s": "BTWUSDT",
    "mcap": 2475090939,
    "dex": 0,
-   "dep": 75718,
-   "bruto": 75718,
-   "depositantes": 16,
+   "dep": 68425,
+   "bruto": 68425,
+   "depositantes": 10,
    "saldo": 4103835,
    "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 7293
-    },
     {
      "d": "2026-10-31",
      "dex": 0,
@@ -423,39 +267,130 @@
    ]
   },
   {
-   "s": "CROSSUSDT",
-   "mcap": 58652275,
+   "s": "哈基米USDT",
+   "mcap": 17832581,
    "dex": 0,
-   "dep": 1599,
-   "bruto": 1599,
-   "depositantes": 2,
-   "saldo": 664273,
+   "dep": 182,
+   "bruto": 182,
+   "depositantes": 1,
+   "saldo": 10191177,
    "porDia": [
-    {
-     "d": "2026-10-30",
-     "dex": 0,
-     "dep": 1578
-    },
     {
      "d": "2026-10-31",
      "dex": 0,
-     "dep": 21
+     "dep": 182
     }
    ]
   },
   {
-   "s": "龙虾USDT",
-   "mcap": 19741223,
+   "s": "MERLUSDT",
+   "mcap": 43211198,
    "dex": 0,
-   "dep": 512,
-   "bruto": 512,
-   "depositantes": 3,
-   "saldo": 5244295,
+   "dep": 373,
+   "bruto": 373,
+   "depositantes": 2,
+   "saldo": null,
    "porDia": [
     {
-     "d": "2026-10-30",
+     "d": "2026-10-31",
      "dex": 0,
-     "dep": 512
+     "dep": 373
+    }
+   ]
+  },
+  {
+   "s": "XPINUSDT",
+   "mcap": 36195926,
+   "dex": 0,
+   "dep": 165,
+   "bruto": 165,
+   "depositantes": 1,
+   "saldo": 3370775,
+   "porDia": [
+    {
+     "d": "2026-10-31",
+     "dex": 0,
+     "dep": 165
+    }
+   ]
+  },
+  {
+   "s": "AKEUSDT",
+   "mcap": 266002111,
+   "dex": 0,
+   "dep": 473,
+   "bruto": 473,
+   "depositantes": 4,
+   "saldo": 36971911,
+   "porDia": [
+    {
+     "d": "2026-10-31",
+     "dex": 0,
+     "dep": 473
+    }
+   ]
+  },
+  {
+   "s": "BASUSDT",
+   "mcap": 38625674,
+   "dex": 0,
+   "dep": 68,
+   "bruto": 68,
+   "depositantes": 1,
+   "saldo": 850706,
+   "porDia": [
+    {
+     "d": "2026-10-31",
+     "dex": 0,
+     "dep": 68
+    }
+   ]
+  },
+  {
+   "s": "TAUSDT",
+   "mcap": 55826524,
+   "dex": 0,
+   "dep": 92,
+   "bruto": 92,
+   "depositantes": 1,
+   "saldo": 12029779,
+   "porDia": [
+    {
+     "d": "2026-10-31",
+     "dex": 0,
+     "dep": 92
+    }
+   ]
+  },
+  {
+   "s": "CAPUSDT",
+   "mcap": 114895343,
+   "dex": 0,
+   "dep": 144,
+   "bruto": 144,
+   "depositantes": 1,
+   "saldo": 12480104,
+   "porDia": [
+    {
+     "d": "2026-10-31",
+     "dex": 0,
+     "dep": 144
+    }
+   ]
+  },
+  {
+   "s": "STARUSDT",
+   "mcap": 13847676,
+   "dex": 0,
+   "dep": 8,
+   "bruto": 8,
+   "depositantes": 2,
+   "saldo": 3839691,
+   "porDia": [
+    {
+     "d": "2026-10-31",
+     "dex": 0,
+     "dep": 8
     }
    ]
   }
