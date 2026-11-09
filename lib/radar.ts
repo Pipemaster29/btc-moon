@@ -26,6 +26,7 @@ import {
 import { depthOn, pairsOfToken, precoArbitrado, unidadesDoContrato } from "./dexscreener";
 import { precoBinance } from "./binance";
 import { findToken, labelOf, type WalletRole, type WatchedToken } from "./watchlist";
+import { comMarketMakers } from "./marketmakers";
 
 /** Abaixo disso a carteira não paga nem uma transferência. */
 const GAS_FLOOR = 0.001;
@@ -120,6 +121,7 @@ const ROLE_META: Record<WalletRole, { label: string; note: string }> = {
   treasury: { label: "Distribuidora", note: "de onde saem os repasses" },
   operational: { label: "Operacional", note: "ativa, com gás" },
   router: { label: "Roteamento", note: "carrega token até o livro" },
+  marketmaker: { label: "Market maker", note: "estoque de quem faz o livro" },
 };
 
 /**
@@ -132,7 +134,9 @@ export async function getRadar(symbol: string, dado?: WatchedToken): Promise<Rad
   if (!token?.contract) return null;
 
   const config = CHAINS[token.chain];
-  const addresses = token.wallets.map((w) => w.address);
+  // As carteiras dos market makers (`lib/marketmakers.ts`) valem para toda moeda da rede.
+  const carteiras = comMarketMakers(token.wallets, token.chain);
+  const addresses = carteiras.map((w) => w.address);
 
   const [info, head, pairs, balances, gasBalances, perpPrice] = await Promise.all([
     tokenInfo(token.chain, token.contract),
@@ -170,7 +174,7 @@ export async function getRadar(symbol: string, dado?: WatchedToken): Promise<Rad
 
   // Contrato não paga o próprio gás — quem o chama paga. O sinal de paralisia
   // só faz sentido para carteira comum, e `lock` é onde estão os contratos.
-  const wallets: WalletState[] = token.wallets.map((wallet) => {
+  const todas: WalletState[] = carteiras.map((wallet) => {
     const key = wallet.address.toLowerCase();
     const amount = toUnits(balances.get(key) ?? BigInt(0), info.decimals);
     const fuel = Number(gasBalances.get(key) ?? BigInt(0)) / 1e18;
@@ -189,6 +193,9 @@ export async function getRadar(symbol: string, dado?: WatchedToken): Promise<Rad
       armed: isEoa && wallet.role === "dormant" && amount > 0 && fuel >= GAS_FLOOR,
     };
   });
+  // Market maker sem saldo nesta moeda não entra no retrato: são 21 carteiras por
+  // rede, e a tabela viraria uma lista de zeros. Com saldo, entra como as outras.
+  const wallets = todas.filter((w) => w.role !== "marketmaker" || w.amount > 0);
 
   // ------------------------------------------------------ estrutura do supply
   const byRole = new Map<WalletRole, number>();
@@ -227,6 +234,9 @@ export async function getRadar(symbol: string, dado?: WatchedToken): Promise<Rad
     (byRole.get("treasury") ?? 0) +
     (byRole.get("operational") ?? 0) +
     (byRole.get("multisig") ?? 0) +
+    // O estoque do market maker é oferta pronta como a da corretora — antes de
+    // 09/11 ele caía em "não mapeado", que também conta; separado, não podia sumir daqui.
+    (byRole.get("marketmaker") ?? 0) +
     unmapped;
 
   // -------------------------------------------------- movimentação recente

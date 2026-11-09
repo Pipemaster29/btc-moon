@@ -29,8 +29,10 @@ import { precoBinance } from "../lib/binance";
 import { CARTEIRAS_CEX } from "../lib/lifecycle";
 import { currentMove } from "../lib/positioning";
 import { ATIVAS, labelOf, type WatchedToken } from "../lib/watchlist";
+import { MARKET_MAKERS, marketMakersNaRede, porFirma } from "../lib/marketmakers";
 import {
   detect,
+  detectarMarketMakers,
   QUIET_MINUTES,
   type Severity,
   type FloatCex,
@@ -89,6 +91,9 @@ interface State {
    * marco zero em vez de evento — que é o que ela é.
    */
   carteirasCex?: number;
+  /** O saldo de cada market maker por moeda, em fração do supply (`lib/marketmakers.ts`), e o tamanho da lista que o leu. */
+  mm?: Record<string, { time: number; porFirma: Record<string, number> }>;
+  carteirasMm?: number;
   /** fingerprint → quando foi enviado, em segundos. */
   fired: Record<string, number>;
   lastBlock: number;
@@ -193,9 +198,12 @@ if (listaCexMudou && state.carteirasCex !== undefined) {
   );
 }
 
+// A mesma regra para a lista dos market makers: mudou, a rodada é marco zero.
+const listaMmMudou = state.carteirasMm !== MARKET_MAKERS.length;
+
 const cexAlerts = await Promise.all(
   comContrato.map((token) =>
-    vigiarCorretoras(token, state, now, listaCexMudou).catch((error: Error) => {
+    vigiarCorretoras(token, state, now, listaCexMudou, listaMmMudou).catch((error: Error) => {
       console.error(`${token.symbol} (corretoras): ${error.message}`);
       return [] as Alert[];
     }),
@@ -203,6 +211,7 @@ const cexAlerts = await Promise.all(
 );
 
 state.carteirasCex = CARTEIRAS_CEX.length;
+state.carteirasMm = MARKET_MAKERS.length;
 
 for (const [i, alerts] of cexAlerts.entries()) {
   const explorer = CHAINS[comContrato[i].chain].explorer;
@@ -363,6 +372,7 @@ async function vigiarCorretoras(
   now: number,
   /** A lista de carteiras mudou desde a última execução? Então não há com que comparar. */
   listaMudou: boolean,
+  listaMmMudou: boolean,
 ): Promise<Alert[]> {
   const config = CHAINS[token.chain];
   if (config.endpoints.length === 0) return [];
@@ -382,10 +392,19 @@ async function vigiarCorretoras(
   const depth = depthOn(pairs, token.chain);
   const price = precoArbitrado(depth?.priceUsd, perpPrice, unidadesDoContrato(token.symbol)).preco;
 
-  const saldos = await balancesOf(token.chain, token.contract, CARTEIRAS_CEX);
+  // Os market makers da rede vão na MESMA leitura das corretoras: uma chamada só.
+  const mms = marketMakersNaRede(token.chain).map((m) => m.endereco);
+  const saldos = await balancesOf(token.chain, token.contract, [...CARTEIRAS_CEX, ...mms]);
   let emCorretora = 0;
-  for (const v of saldos.values()) emCorretora += toUnits(v, info.decimals);
+  for (const c of CARTEIRAS_CEX) emCorretora += toUnits(saldos.get(c.toLowerCase()) ?? BigInt(0), info.decimals);
   const agora = emCorretora / supply;
+
+  const mmAgora = porFirma(saldos, info.totalSupply, token.chain);
+  const mmAntes = listaMmMudou ? undefined : state.mm?.[token.symbol]?.porFirma;
+  state.mm = { ...state.mm, [token.symbol]: { time: now, porFirma: mmAgora } };
+  const alertasMm = mmAntes
+    ? detectarMarketMakers({ symbol: token.symbol.replace(/USDT$/, ""), antes: mmAntes, agora: mmAgora, supply, priceUsd: price })
+    : [];
 
   // Leitura tirada com outra lista de carteiras não é comparável com esta.
   const anterior = listaMudou ? undefined : state.floatCex?.[token.symbol];
@@ -441,7 +460,7 @@ async function vigiarCorretoras(
 
   state.floatCex = { ...state.floatCex, [token.symbol]: { time: now, fracao: agora } };
 
-  return detect({
+  return [...alertasMm, ...detect({
     symbol: token.symbol.replace(/USDT$/, ""),
     gasSymbol: config.gasSymbol,
     previous: {},
@@ -457,7 +476,7 @@ async function vigiarCorretoras(
       parcial,
       supply,
     },
-  }).filter((alert) => {
+  })].filter((alert) => {
     const last = state.fired[alert.fingerprint];
     return !last || now - last > QUIET_MINUTES[alert.kind] * 60;
   });

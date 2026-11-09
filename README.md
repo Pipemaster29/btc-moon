@@ -284,6 +284,127 @@ pinga.
 horizonte não tem emissão varrível ali, e a varredura grava esse limite em vez
 de devolver zero.
 
+## As baleias da Hyperliquid (09/11)
+
+O pedido: "um algoritmo melhor de on-chain, que pegue as carteiras grandes da
+Hyperliquid, baleias, o on-chain dos criadores e dos VCs, e o suporte — extenso e
+nosso". Esta é a primeira parte, e a aba nova do site, **Baleias**.
+
+**Por que a Hyperliquid.** O projeto já mediu o posicionamento dos maiores traders
+da Binance — que a corretora só publica agregado — e não achou nada (+0,39 p.p. em 7
+dias, p = 0,21). A Hyperliquid é uma corretora de perpétuos que é uma blockchain: a
+posição de CADA conta é pública, com tamanho, entrada, liquidação e lucro, pela API
+do próprio site, sem chave. Em 09/11/2026 eram 235 perpétuos e um ranking público de
+48 mil contas.
+
+**A leitura** (`npm run baleias`, de 4 em 4 horas, `lib/hyperliquid.ts`): as contas
+com US$ 5 milhões ou mais de patrimônio — 750 em 09/11 —, sem os market makers, e por
+moeda: quantas baleias compradas e vendidas, quanto dinheiro de cada lado, o
+**consenso** (comprado − vendido sobre o total, de −1 a +1), o das **espertas** (só as
+contas com lucro no mês), o **fluxo** desde a leitura anterior, o **custo médio** de
+cada lado e quanto o preço já anda a favor ou contra ele, o lucro aberto, e as
+**faixas de liquidação**: onde a corretora fecharia as posições à força, em faixas de
+2% do preço até 30% de distância. É o "suporte" e a "resistência" que as baleias
+criam — venda forçada se o preço chegar na faixa de baixo, compra forçada na de cima.
+
+A primeira leitura completa, em 09/11 às 16h56 UTC: das 750 contas, 132 são market
+makers e ficam fora; das 618 que sobram, só 108 tinham posição aberta — US$ 1,5
+bilhão em 82 moedas, 36 delas acima dos mínimos do consenso. A página de cada moeda
+no Radar mostra as baleias dela quando ela negocia na Hyperliquid: 5 das 73 da lista
+tinham baleia naquela hora (HEMI, MORPHO, CC, STABLE e VVV), e 2 negociavam lá sem
+nenhuma (ACE e BOME).
+
+**O market maker sai pelas execuções, e o giro do patrimônio não serve.** A primeira
+versão separava pelo volume do mês sobre o patrimônio, e reprovou na conferência: a
+conta que vendia US$ 156 milhões de BTC — e fazia sozinha o "consenso das baleias" do
+BTC — tinha US$ 182 milhões de patrimônio, girava 3,2x no mês e fazia 10 mil
+execuções num dia. A régua hoje é a das execuções: mais de 300 por dia nas 2.000 mais
+recentes é market maker, posição de estoque e não de opinião, e fica fora.
+
+**Seguir as baleias funciona? Ainda não está medido — e o porquê está escrito.** O
+critério foi fixado antes de qualquer dado (`docs/preregistro-baleias.md`): quatro
+sinais — o consenso, o das espertas, o fluxo de 3 dias e o preço voltando ao custo das
+baleias — contra o retorno de 7 dias da moeda menos a mediana do mercado, com |t| ≥
+2,5 e o mesmo lado nas duas metades. Medir para trás pede reconstruir a posição de
+cada conta em cada dia passado, e isso deu para fazer: cada execução traz a posição de
+antes dela, então a posição numa data é a de antes da primeira execução depois dela.
+Mas a API tem quatro armadilhas, e cada uma estava escondendo a outra:
+
+| o que parecia | o que é |
+| --- | --- |
+| a API só guarda as 10 mil execuções mais recentes | guarda mais; ler de abril para a frente parando em 10 mil deixava sem o trecho recente as contas ativas — 40% das moedas não fechavam com a posição de agora |
+| `userFills` traz todas as execuções | as de ordens TWAP vêm à parte (`userTwapSliceFills`); uma conta teve 2.000 fatias em 4 horas, nenhuma no fluxo comum |
+| o id da negociação ordena o mesmo milissegundo | não ordena (51.489…, 950.785…, 284.887… seguidos); a ordem é a do encadeamento, cada execução começando onde a anterior terminou |
+| as 2.000 mais recentes são recentes | numa conta eram de janeiro, e a posição que elas deixavam foi fechada em fevereiro, fora da janela lida |
+
+Corrigido, o método **fecha**: as 8 contas direcionais com execução que chegaram a
+baixar batem com a posição de agora, moeda por moeda. O que não coube foi o tempo: as
+contas de volume alto pedem ~12 páginas de 2.000 execuções cada contra o teto de
+1.200 de peso por minuto da API — **~14 horas** para as 1.560 contas do universo,
+num contêiner que não dura isso. Então o juiz passou a ser a **coleta para frente**
+(segunda emenda, escrita antes de qualquer número): a primeira leitura de cada dia
+UTC, gravada em `data/baleias-hl-AAAA-MM.jsonl`, que lê as posições
+direto, sem reconstruir nada e sem o viés de escolher as contas pelo ranking de hoje.
+`npx tsx scripts/medir-baleias-ao-vivo.mts` aplica o critério e diz "amostra
+insuficiente" até 90 dias de leituras, contados da primeira que o workflow do `main`
+gravar — o coletor só roda depois do merge, e a tela tira a data do dado
+(`historicoDesde`). A reconstrução fica
+pronta para uma rodada dedicada (`npx tsx scripts/baixar-baleias.mts`, que retoma de
+onde parou, e `npm run medir-baleias`).
+
+**O fluxo é das mesmas contas, ao mesmo preço** (terceira emenda, escrita com zero
+dias de leitura gravados). A primeira versão do juiz subtraía o líquido em dólares de
+duas leituras inteiras, e isso media outra coisa: uma moeda que sobe 10% sem ninguém
+negociar aumenta em 10% o líquido de quem está comprado — o "fluxo" seria o retorno
+passado com outro nome —, e a conta que cruza os US$ 5 milhões do ranking, baixado de
+novo todo dia, entraria como compra. Hoje as duas leituras guardam a posição de cada
+conta em unidades (`data/baleias-hl-contas-AAAA-MM.jsonl`, uma linha por dia), e o
+fluxo, o da tela e o do juiz, sai da mesma `fluxoEntre`: só as contas lidas nas duas,
+as duas posições ao preço de agora — como a reconstrução para trás já fazia.
+
+**Até lá, a aba é informação, não call**, e diz isso acima da tabela.
+
+## Os market makers (09/11)
+
+O pedido: "colocar principalmente baleias market maker como Wintermute e outras.
+Pesquise quais carteiras são e coloque elas". Estão em `lib/marketmakers.ts`: 21
+carteiras de 8 firmas — Wintermute, DWF Labs, GSR, Amber, Cumberland, Jump, Auros e
+Galaxy.
+
+**Nenhum endereço entrou de memória ou de notícia solta**, pela régua da armadilha
+nº 1. Um foi publicado pela própria firma: a DWF Labs anunciou no X, em 06/05/2025, a
+carteira que guarda o que ela compra no mercado secundário. Os outros 20 vêm da
+etiqueta pública do Etherscan, lida do conjunto aberto `dawsbot/eth-labels`, e ficam
+marcados como rótulo de terceiro. Flow Traders, B2C2, Keyrock, Selini e Kairon ficaram
+de fora: o que circula delas é "provável" de analista, sem etiqueta nem anúncio.
+
+**Conferidos on-chain no mesmo dia, nas três redes.** Todos existem; 20 são carteiras
+comuns com transações na Ethereum (de 23 a 415.741) e quase todas também na BNB Chain e
+na Base. Carteira comum é uma chave, e a mesma chave é dona do mesmo endereço em toda
+rede EVM — por isso o rótulo da Ethereum vale nas outras duas. A exceção é a
+"Wintermute 1", um contrato que só existe na Ethereum.
+
+**O que elas guardam: quase nada on-chain.** Nas 36 moedas do radar com contrato, 15
+tinham saldo nessas carteiras, e o maior era 0,197% do supply (Wintermute 4 na ZAMA).
+O estoque de um market maker mora na corretora; o que a cadeia mostra é o movimento.
+Então:
+
+- a página de cada moeda mostra as carteiras de market maker que têm saldo nela, com
+  o papel próprio — e esse saldo conta como oferta pronta, como o da corretora;
+- o monitor lê o saldo delas na mesma chamada que já lia as corretoras, nas 36 moedas,
+  e avisa quando uma firma recebe ou manda embora 0,05% do supply ou mais;
+- o retrato grava o saldo delas em cada linha do histórico (`mm`), porque "market
+  maker recebendo token antecede queda?" **ainda não tem medição nenhuma** — e sem o
+  histórico nunca vai ter. O aviso diz isso no próprio texto.
+
+**Na Hyperliquid nenhuma delas opera pelo mesmo endereço**: as 21 deram conta vazia.
+Lá os market makers são as 131 contas que o critério das execuções já tirava do
+consenso. A aba Baleias agora as mostra à parte: US$ 2,5 bilhões em posição em 09/11,
+75% vendido. É estoque e proteção de quem tem a moeda à vista ou faz arbitragem de
+financiamento, não aposta de queda, e a tela diz isso antes dos números. A única com
+nome é a que se chama "Auros" no ranking — nome que a própria conta escolheu, e o
+comportamento bate: 114 posições e mais de 300 execuções por dia.
+
 ## Mil dólares de mentira
 
 O placar mede se os vieses separam da referência em pontos percentuais. Não
@@ -1546,6 +1667,9 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 | `npm run medir-robos` | a medição dos robôs com o mesmo motor, sobre o Data Vision de 01/2024 em diante, deslistados inclusive, e a mesa de risco — ficha, sobreajuste nas grades, capacidade e o fundo (`data/robos-medicao.json`; ~430 MB na primeira vez, guardados em `.cache/robos/`; depois, ~6 minutos). Baixa sozinho os domingos que faltam do universo das grandes (`.cache/grandes/`); `-- --grandes` refaz a exploração do robô das grandes e `-- --grandes-reserva`, o julgamento; `-- --regime` corta os robôs por regime de mercado no desenho, `-- --regime-regras` refaz o julgamento das regras para o mercado com medo, `-- --conferir-ao-vivo data/robos.json` põe o ao vivo ao lado do motor e `-- --ate AAAA-MM-DD` termina a medição nesse dia |
 | `npx tsx scripts/baixar-grandes.mts` | o retrato semanal das 300 maiores da CoinMarketCap, sem chave, de 12/2023 até o último domingo fechado (`.cache/grandes/`) — o universo do robô das grandes |
 | `npx tsx scripts/baixar-medo.mts` | o índice de medo e ganância da alternative.me, sem chave, de 02/2018 até hoje (`.cache/medo.json`) — o corte de "mercado com medo" da medição |
+| `npm run baleias` | as baleias da Hyperliquid agora: as posições das ~750 contas de US$ 5 milhões ou mais do ranking público, sem os market makers, moeda a moeda, de 4 em 4 horas (`data/baleias-hl.json`; a primeira leitura de cada dia em `baleias-hl-AAAA-MM.jsonl` e, conta a conta, em `baleias-hl-contas-AAAA-MM.jsonl`; `-- --agora` ignora as 4 horas, `-- --limite N` lê só N contas, `-- --classificar N` classifica até N, `-- --semente` grava `data/baleias-classes.json`) |
+| `npx tsx scripts/baixar-baleias.mts` e `npm run medir-baleias` | a reconstrução para trás: o histórico das baleias (execuções comuns e fatias de TWAP, de hoje para trás, ~14 horas no teto da API para as 1.560 contas, retoma de onde parou, em `.cache/hl/`) e a medição dele (`-- --seco` confere o caminho sem imprimir resultado) |
+| `npx tsx scripts/medir-baleias-ao-vivo.mts` | o juiz das baleias, para frente: o critério de `docs/preregistro-baleias.md` sobre as leituras diárias do ao vivo; "amostra insuficiente" até 90 dias, e então grava `data/baleias-medicao.json` |
 | `npm run genese` | acha quem recebeu o supply no nascimento e quanto ainda tem |
 | `npm run vesting` | acha os contratos de alocação e mede se estão esvaziando |
 | `npm run descobrir` | acha o contrato certo de cada ticker, pelos dois testes |
@@ -1570,10 +1694,11 @@ vigia, e a página os lê de lá pelo GitHub raw; o `main` só recebe código.
 
 Nenhuma regra nova vai para o Telegram sem passar pelo `replay` antes.
 
-Quatro portões, que saem com erro quando algum caso falha: `npm run
+Cinco portões, que saem com erro quando algum caso falha: `npm run
 testar-carteira` (casos-limite da carteira, sem rede), `npm run testar-robos` (o
 motor dos robôs, sem rede), `npm run testar-quant` (a estatística da mesa de risco
-contra os valores conhecidos da normal e das fórmulas fechadas, sem rede) e `npm run testar-vivo`
+contra os valores conhecidos da normal e das fórmulas fechadas, sem rede), `npm run
+testar-baleias` (a regra para trás e a leitura das baleias, sem rede) e `npm run testar-vivo`
 (o preço ao vivo de ponta a ponta — WebSocket, queda, religação, aba oculta —
 contra a aplicação rodando: `npm run testar-vivo -- http://localhost:3000`).
 

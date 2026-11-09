@@ -13,6 +13,7 @@
  */
 
 import type { Chain } from "./onchain";
+import { marketMakersNaRede } from "./marketmakers";
 
 /**
  * O papel de uma carteira, que decide se o saldo dela conta como oferta.
@@ -41,7 +42,14 @@ export type WalletRole =
   /** Tem saldo mas nunca gastou e não tem gás: não consegue mover. */
   | "dormant"
   /** Carrega token entre as carteiras grandes e o livro das corretoras. */
-  | "router";
+  | "router"
+  /**
+   * Carteira de market maker (Wintermute, DWF Labs, GSR…), de `lib/marketmakers.ts`.
+   * Não é mapeada moeda a moeda: vale para toda moeda da rede, e o saldo dela é
+   * estoque de quem faz o livro — oferta pronta, como o da corretora, mas de uma
+   * firma que também compra.
+   */
+  | "marketmaker";
 
 export interface WatchedWallet {
   address: string;
@@ -1403,5 +1411,9 @@ export function labelOf(token: WatchedToken, address: string): string {
     (w) => w.address.toLowerCase() === address.toLowerCase(),
   );
   if (known) return known.label;
+  // As carteiras dos market makers valem para toda moeda da rede (`lib/marketmakers.ts`).
+  // Sem reticências no nome: os alertas leem "…" como endereço não identificado.
+  const mm = marketMakersNaRede(token.chain).find((m) => m.endereco === address.toLowerCase());
+  if (mm) return mm.rotulo.includes("…") ? `${mm.firma} ${mm.endereco.slice(0, 6)}` : mm.rotulo;
   return `${address.slice(0, 8)}…${address.slice(-4)}`;
 }

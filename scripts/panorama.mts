@@ -92,6 +92,12 @@ interface PontoHistorico {
    */
   regra?: string;
   floatCex: number | null;
+  /**
+   * Fração do supply nas carteiras conhecidas de market maker
+   * (`lib/marketmakers.ts`), desde 09/11 — para "market maker recebendo token
+   * antecede queda?" um dia ter medição. Ausente quando não foi lido.
+   */
+  mm?: number | null;
   /** Circulante ÷ supply total. */
   floatTk: number | null;
   /** Circulante × preço — o tamanho real da moeda. */
@@ -226,6 +232,7 @@ const pontos: PontoHistorico[] = comPreco.map((r) => ({
   floatCex: r.vida?.floatCex === null || r.vida?.floatCex === undefined
     ? null
     : Number(r.vida.floatCex.toFixed(5)),
+  ...(r.vida?.floatMm !== undefined ? { mm: r.vida.floatMm === null ? null : Number(r.vida.floatMm.toFixed(6)) } : {}),
   floatTk: r.vida?.floatToken == null ? null : Number(r.vida.floatToken.toFixed(4)),
   mcap: r.vida?.marketCap == null ? null : Math.round(r.vida.marketCap),
   unlock: (() => {

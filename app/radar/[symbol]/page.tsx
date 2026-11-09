@@ -12,6 +12,8 @@ import { getPositioning } from "@/lib/positioning";
 import { WATCHLIST } from "@/lib/watchlist";
 import { daLinha, getEmVista } from "@/lib/emvista";
 import { lerGuardado } from "@/lib/guardado";
+import { getBaleias } from "@/lib/hyperliquid";
+import { BaleiasDaMoeda } from "@/components/BaleiasPanel";
 import type { PanoramaRow } from "@/lib/overview";
 
 async function doRetrato(casa: (t: { symbol: string }) => boolean) {
@@ -59,6 +61,7 @@ const ROLE_COLOR: Record<string, string> = {
   operational: "bg-[#3B82F6]",
   router: "bg-[#EC4899]",
   multisig: "bg-[#F97316]",
+  marketmaker: "bg-[#14B8A6]",
   unmapped: "bg-black/25 dark:bg-white/25",
 };
 
@@ -672,11 +675,12 @@ export default async function Page({
   ]);
 
   const preco = snapshot?.priceUsd ?? perp?.price ?? 0;
-  const [vida, estudo, placar, vesting] = await Promise.all([
+  const [vida, estudo, placar, vesting, baleias] = await Promise.all([
     lerVida(token, preco).catch(() => null),
     lerEstudo(token.symbol),
     getPlacar(),
     vestingDe(token.symbol),
+    getBaleias().catch(() => null),
   ]);
   const meuPlacar = placar?.porMoeda?.[token.symbol] ?? null;
 
@@ -855,6 +859,7 @@ export default async function Page({
         )}
 
         {perp && <PositioningPanel snapshot={perp} />}
+        {baleias && <BaleiasDaMoeda b={baleias} symbol={token.symbol} />}
 
         <p className="text-xs text-black/40 dark:text-white/40">
           Leitura pública da rede e do DexScreener, sem chave de API. Rótulos

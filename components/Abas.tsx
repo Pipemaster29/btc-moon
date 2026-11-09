@@ -16,6 +16,7 @@
 
 import Link from "next/link";
 import { useSelectedLayoutSegment } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 export interface Aba {
   /** O segmento da rota um nível abaixo do layout; `null` é a rota do próprio layout. */
@@ -30,19 +31,33 @@ export const ABAS_DO_SITE: Aba[] = [
   { segmento: "robos", href: "/robos", rotulo: "Robôs" },
   { segmento: "carteira", href: "/carteira", rotulo: "Carteira" },
   { segmento: "garimpo", href: "/garimpo", rotulo: "Garimpo" },
+  // A sexta, de 09/11: no celular a barra rola de lado em vez de quebrar a linha.
+  { segmento: "baleias", href: "/baleias", rotulo: "Baleias" },
 ];
 
 /** A barra de cima: abas sublinhadas, que rolam de lado no celular em vez de quebrar a linha. */
 export function AbasDoSite() {
   const atual = useSelectedLayoutSegment();
+  // Com seis abas, a última passa da tela de 390 px: a barra rola até a ativa,
+  // senão quem está em Baleias no celular via "Bal" cortado na ponta.
+  const ativaRef = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    const el = ativaRef.current;
+    const barra = el?.parentElement;
+    if (!el || !barra) return;
+    const fora = el.offsetLeft + el.offsetWidth - (barra.scrollLeft + barra.clientWidth);
+    if (fora > 0) barra.scrollLeft += fora;
+    else if (el.offsetLeft < barra.scrollLeft) barra.scrollLeft = el.offsetLeft;
+  }, [atual]);
   return (
-    <nav aria-label="Seções" className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
+    <nav aria-label="Seções" className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
       {ABAS_DO_SITE.map((a) => {
         const ativa = a.segmento === atual;
         return (
           <Link
             key={a.href}
             href={a.href}
+            ref={ativa ? ativaRef : undefined}
             aria-current={ativa ? "page" : undefined}
             className={`whitespace-nowrap border-b-2 px-2 sm:px-3 py-3.5 text-sm transition-colors ${
               ativa
