@@ -209,6 +209,18 @@ no código, com número:
   ficam no motor, desligadas (`Perna.queimada`, `Perna.regime`), e o diagnóstico
   em `npm run medir-robos -- --regime`.
 
+- **As baleias da Hyperliquid estão na tela — e "seguir as baleias" ainda não
+  está medido, pelo motivo escrito (09/11), a pedido: "um algoritmo próprio de
+  on-chain".** Na Hyperliquid cada posição é pública; a aba Baleias mostra, por
+  moeda, o consenso das contas de US$ 5 mi ou mais, o das espertas, o fluxo, o
+  custo médio e as faixas de liquidação, sem os market makers — que saem pelas
+  execuções, porque o giro do patrimônio deixava passar a conta de US$ 156 mi
+  vendidos em BTC. O critério foi pré-registrado (`docs/preregistro-baleias.md`)
+  antes do dado. A reconstrução para trás funciona depois de quatro armadilhas da
+  API (ver "As baleias da Hyperliquid") — 8 de 8 contas ativas fecham —, mas pede
+  ~14 horas no teto da API; o juiz é a coleta para frente, lida a partir de
+  07/02/2027 (`scripts/medir-baleias-ao-vivo.mts`).
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -223,6 +235,8 @@ npm run panorama     # o retrato de todas as moedas → data/panorama.json
 npm run carteira     # a carteira fictícia → data/carteira.json
 npm run robos        # os robôs ao vivo → data/robos.json
 npm run medir-robos  # a medição dos robôs e a mesa de risco, com o mesmo motor → data/robos-medicao.json
+npm run baleias      # as baleias da Hyperliquid agora (de 4 em 4 h) → data/baleias-hl.json
+npm run medir-baleias # seguir as baleias funciona? (cache de scripts/baixar-baleias.mts) → data/baleias-medicao.json
 npm run dados        # traz para data/ os dados vivos do robô (branch `dados`)
 ```
 
@@ -231,7 +245,7 @@ que o robô grava moram na branch `dados`, não no `main`** (armadilha nº 10). 
 disco local eles só aparecem depois de `npm run dados`.
 
 O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` +
-`robos` + `garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
+`robos` + `baleias` + `garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
 commita o resultado **na branch `dados`** (`scripts/dados.sh`), que a Vercel não
 vigia. **O cron pede 48 execuções por dia e o GitHub entrega cerca
 de sete** — é limitação da plataforma, contornada pela DURAÇÃO de cada execução
@@ -379,9 +393,11 @@ retrato seguinte fechá-la com a hora certa.
 
 ### As abas (13/10)
 
-O site tem cinco abas, e **cada uma é uma rota, não estado**: Bitcoin (`/`),
+O site tem seis abas, e **cada uma é uma rota, não estado**: Bitcoin (`/`),
 Radar (`/radar` e `/radar/[symbol]`), Robôs (`/robos`, com `/robos/medicao` e
-`/robos/mesa`), Carteira (`/carteira`) e Garimpo (`/garimpo`). Até 13/10 o radar
+`/robos/mesa`), Carteira (`/carteira`), Garimpo (`/garimpo`) e, desde 09/11,
+Baleias (`/baleias`). Com a sexta, a barra passa de 390 px e rola de lado no
+celular — e rola sozinha até a aba ativa (`AbasDoSite`). Até 13/10 o radar
 era uma página só, com dez arquivos de `data/` pedidos para mostrar qualquer um
 deles e as posições dos robôs no fim de tudo.
 
@@ -418,6 +434,8 @@ deles e as posições dos robôs no fim de tudo.
 | `lib/placar.ts` | o painel acertou? Lê o histórico de emissões |
 | `lib/carteira.ts` | a carteira fictícia. **Não importa nada de `node:` no topo** — `remarcar` roda no navegador |
 | `lib/robos.ts` | os robôs: as regras (`ROBOS`), o motor puro (`percorrer`, `decidir`, `fechar`, `marcar`) e a leitura para a página. **O mesmo motor roda a medição e o ao vivo** — e também não importa nada de `node:` |
+| `lib/hyperliquid.ts` | as baleias da Hyperliquid: o ranking público, as execuções e a **regra para trás** (`posicoesEm`), a soma por moeda (`agregar`), a leitura ao vivo — consenso, espertas, fluxo, custo médio, faixas de liquidação (`lerMoedas`) — e o casamento com a Binance pelo preço (`casarComBinance`). **Puro e sem `node:`**: a página o importa |
+| `components/BaleiasPanel.tsx` | a aba Baleias: onde estão agora (`BaleiasAgora`) e o que foi medido (`BaleiasMedidas`); e o cartão da moeda na página dela no Radar (`BaleiasDaMoeda`), que separa "negocia na Hyperliquid sem baleia" de "não negocia lá" pelos `pares` da leitura. As cores do consenso são azul/vermelho, e não o verde/vermelho do resto do site — o par do site reprova na separação para daltonismo |
 | `lib/quant.ts` | a mesa de risco: a ficha (`fichaDe`), o Sharpe probabilístico e o deflacionado, a trilha mínima, o bootstrap estacionário, o PBO por CSCV, o walk-forward, a paridade de risco do fundo (`paridadeDeRisco`, e `fundoAoVivo` para a página). **Puro e sem `node:`**: a medição e a página usam as mesmas funções |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
@@ -437,6 +455,9 @@ deles e as posições dos robôs no fim de tudo.
 | `lib/avisos.ts` | o que a carteira abriu ou fechou desde o retrato anterior, em texto para o Telegram. A memória do que já foi avisado viaja no `carteira.json` |
 | `scripts/dados.sh` | baixa e grava os dados do robô na branch `dados`; faz a transição do `main` sozinho |
 | `scripts/baixar-grandes.mts` | o retrato semanal das 300 maiores da CoinMarketCap, sem chave, em `.cache/grandes/` — o universo do robô das grandes. **O retrato de um domingo é o fechamento dele**: só vale da meia-noite seguinte. `npm run medir-robos` chama `baixarGrandes` sozinho |
+| `scripts/baleias-hl.mts` | a leitura ao vivo das baleias, de 4 em 4 horas: as ~740 contas do ranking com US$ 5 mi ou mais, sem os market makers — classificados pelas execuções como na medição, com a classificação guardada 30 dias e semeada por `data/baleias-classes.json` —, um a dois minutos no teto da API. **Não grava** sem ranking, sem preços ou com mais de 10% das contas sem leitura. A primeira leitura completa de cada dia UTC vai para os dois jsonl do mês, o por moeda e o conta a conta |
+| `scripts/baixar-baleias.mts`, `scripts/medir-baleias.mts` | a reconstrução para trás: o histórico das baleias (execuções comuns e fatias de TWAP, de hoje para trás, em `.cache/hl/`, com o teto de peso da API — ~14 horas para as 1.560 contas, retoma de onde parou) e a medição dele. **O universo é o ranking congelado de 09/11** (`.cache/hl/ranking-2026-11-09.json`), conta que não fecha fica fora, e a medição só grava `data/baleias-reconstrucao.json` com todas as contas lidas — a página lê o juiz para frente |
+| `scripts/medir-baleias-ao-vivo.mts` | **o juiz** (segunda emenda do pré-registro): o mesmo critério sobre as leituras diárias do ao vivo. "Amostra insuficiente" até 90 dias de leituras (07/02/2027); depois grava `data/baleias-medicao.json`, que a aba mostra no lugar do aviso |
 | `scripts/baixar-medo.mts` | o índice de medo e ganância da alternative.me, sem chave, de 02/2018 até hoje, em `.cache/medo.json` — o corte de "mercado com medo" do diagnóstico `--regime` e da `Perna.regime`. **O valor de um dia sai na meia-noite dele**: a decisão lê o da véspera |
 
 ### Os dados
@@ -459,6 +480,11 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/carteira.json` | a carteira, com a tabela de regimes e a curva do regime anterior em `comparacao` — a tela desenha as duas | `npm run carteira` |
 | `data/robos.json` | **do robô, na branch `dados`**: o estado de cada robô — caixa, posições com o stop, o rastro e a saída por posto de cada uma, a metade de hedge dos pares do Fluxo (e o custo do livro de ofertas na entrada), encerradas, curva, último dia decidido. É estado incremental, não recálculo: perder o arquivo recomeça os robôs, e por isso o script **não grava** quando o arquivo existe e não se lê | `npm run robos` |
 | `data/robos-medicao.json` | a medição dos robôs de 01/2024 a 09/2026 — janelas, trimestres, sem a melhor e sem as 5 melhores, curva diária — e a mesa de risco (`quant`): fichas com intervalo, correlações, as grades com PBO, deflacionado e walk-forward, a capacidade e o fundo. Fica no `main`, gerado à mão | `npm run medir-robos` |
+| `data/baleias-hl.json` | **do robô, na branch `dados`**: a leitura das baleias de agora, moeda a moeda, com o universo de contas, as espertas e a posição de cada conta lida em unidades (`unidades`) — o fluxo da leitura seguinte compara só as contas lidas nas duas, ao preço de agora (`fluxoEntre`) | `npm run baleias` |
+| `data/baleias-hl-AAAA-MM.jsonl` | **do robô, na branch `dados`**: a primeira leitura de cada dia UTC, uma linha por moeda. **É o teste sem viés**: a medição de `medir-baleias` escolhe as contas pelo ranking de hoje, e este histórico não | idem |
+| `data/baleias-hl-contas-AAAA-MM.jsonl` | **do robô, na branch `dados`**: a mesma leitura diária CONTA A CONTA, uma linha por dia — a posição de cada conta lida em unidades, as espertas e o preço de cada moeda. É dela que o juiz tira o fluxo de 3 dias: o histórico por moeda soma o universo inteiro de cada dia e não sabe quem estava nas duas datas | idem |
+| `data/baleias-medicao.json` | a medição dos sinais das baleias (`docs/preregistro-baleias.md`), com o veredito de cada um. **Ainda não existe**: nasce do juiz para frente a partir de 07/02/2027, e até lá a aba mostra o porquê. Fica no `main`, gerado à mão | `npx tsx scripts/medir-baleias-ao-vivo.mts` |
+| `data/baleias-classes.json` | a classificação de market maker de cada conta grande (mais de 300 execuções por dia), a semente do ao vivo — que a guarda por 30 dias e reclassifica até 100 por rodada. Fica no `main` | `npm run baleias -- --agora --classificar 2000 --semente` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
 | `data/fluxo-binance.json` | o último bloco lido, a identificação de cada token (perpétuo e preço conferidos, última passagem) e a memória das em vista já anunciadas. **É daqui que sai o conjunto em vista** | idem |
@@ -737,6 +763,77 @@ e no README; aqui fica o que não pode ser quebrado.
   simulações de horas para ~6 minutos. Linha com janela a mais não muda nada —
   cada perna lê só a dela —, e foi conferido: as janelas, as curvas e os "sem
   as 5" dos cinco robôs medidos saíram iguais aos de antes, bit a bit.
+
+---
+
+## As baleias da Hyperliquid
+
+A primeira parte do "algoritmo próprio de on-chain" pedido em 09/11
+(`lib/hyperliquid.ts`, aba Baleias). Na Hyperliquid a corretora é uma
+blockchain: a posição de cada conta é pública pela API do site, sem chave
+(`api.hyperliquid.xyz/info`), e o ranking público lista ~48 mil contas.
+
+- **A regra para trás faz o passado sair exato — se o histórico estiver
+  inteiro** (`posicoesEm`): cada execução traz a posição de ANTES dela
+  (`startPosition`); a posição numa data é o `antes` da primeira execução depois
+  dela, ou a de agora. Antes do começo do histórico da conta
+  (`HistoricoDaConta.desde`) a resposta é NULO, não zero. Quatro coisas da API
+  que custaram uma tarde em 09/11, todas no `scripts/baixar-baleias.mts`:
+  - ela guarda MAIS que as 10 mil execuções mais recentes, e ler de 01/04 para a
+    frente parando em 10 mil deixava sem o trecho recente as contas ativas — o
+    histórico é lido de HOJE para trás;
+  - as fatias de TWAP NÃO estão em `userFills`: vêm de `userTwapSliceFills`, à
+    parte (uma conta teve 2.000 em quatro horas). Os dois fluxos entram;
+  - no mesmo milissegundo a ordem é a do ENCADEAMENTO (`encadear`), e não a do
+    `tid`, que não sobe com o tempo (51.489…, 950.785…, 284.887… seguidos);
+  - evento de antes do `desde` sai: as 2.000 fatias mais recentes de uma conta
+    eram de janeiro, e a posição que elas deixavam foi fechada em fevereiro por
+    execução comum, fora da janela lida.
+  E mesmo assim a API às vezes não entrega tudo (TWAP pesado): por isso **a conta
+  só entra se fechar** — a posição depois do último evento de cada moeda tem de
+  ser a de agora (`fecha` em `medir-baleias`). As que não fecham são contadas.
+- **O ranking é de hoje, e escolher por ele é escolher quem acertou.** Ele guarda
+  as contas que quebraram (518 das 925 com US$ 1 bi de volume na vida tinham menos
+  de US$ 10 mil em 09/11), então a medição escolhe pelo VOLUME da vida (universo A)
+  e mede as ricas de hoje (B) só para o registro. O juiz sem viés é o jsonl diário
+  do ao vivo, de 09/11 em diante.
+- **Market maker não é baleia, e o giro do patrimônio não o separa.** A posição
+  de quem faz centenas de execuções por dia é estoque, não opinião. A medição e o
+  ao vivo separam pelas EXECUÇÕES (mais de 300 por dia: fora). A primeira versão
+  do ao vivo usava o giro do mês do ranking e reprovou na conferência: a conta
+  de US$ 182 milhões que vendia US$ 156 milhões de BTC — e fazia o "consenso das
+  baleias" do BTC sozinha — girava 3,2x no mês e fazia 10 mil execuções num dia.
+  Conta sem classificação não entra: "não sei se é market maker" não vira baleia.
+- **"Não consegui" não vira "saiu".** O ao vivo não grava com mais de 10% das
+  contas sem leitura: uma conta não lida pareceria uma baleia saindo da moeda. E
+  uma conta com UMA posição ilegível é conta não lida (`lerPosicoes` devolve
+  nulo), não conta sem aquela posição.
+- **O fluxo é das mesmas contas, ao mesmo preço** (`fluxoEntre`, terceira emenda
+  do pré-registro). A leitura guarda a posição de cada conta lida em UNIDADES
+  (`unidades`; a lida sem posição fica `{}`, que não é o mesmo que ausente), e o
+  fluxo compara só as contas lidas nas duas leituras, ao preço de agora. A
+  primeira versão subtraía o líquido em dólares de duas leituras inteiras: o
+  preço andando virava fluxo, e a conta que cruzava os US$ 5 milhões do ranking
+  — baixado de novo todo dia — virava compra. O juiz tira o fluxo de 3 dias do
+  jsonl conta a conta pela MESMA função; não o refaça do jsonl por moeda.
+- **De quatro em quatro horas, e só as de US$ 5 milhões.** O teto da API é de
+  1.200 de peso por minuto por IP; a leitura de uma conta pesa 2 e a
+  classificação, 20 a 120. Com as ~740 contas do universo B a leitura leva um a
+  dois minutos; a de US$ 1 milhão seriam ~2.500 contas sem classificação nenhuma.
+  A reclassificação é de até 40 contas por rodada (até ~5 minutos), as sem
+  classificação primeiro: as 750 da semente vencem juntas em 30 dias e voltam em
+  ~3 dias de rodadas, valendo a classificação velha enquanto isso.
+  A medição gasta até 1.000 por minuto e espera o minuto virar; no 429, espera e
+  tenta de novo, sem marcar a conta como lida.
+- **A moeda da Hyperliquid casa com a Binance pelo preço** (`casarComBinance`):
+  "kPEPE" é o preço de mil PEPE, como "1000PEPEUSDT"; nome sem preço batendo
+  não casa (a armadilha nº 1).
+- **Unidades**: `tamanho` e os valores de `unidades` são em UNIDADES da moeda (negativo vendido); `nocional`,
+  `comprado`, `vendido`, `lucroAberto` e `openInterest`, DÓLARES; `consenso`,
+  `consensoEspertas` e `fluxo`, frações de −1 a +1 do total de baleia;
+  `distancia` das faixas, fração do PREÇO.
+
+`npm run testar-baleias` trava os casos-limite do módulo e sai com erro se algum falha.
 
 ---
 
