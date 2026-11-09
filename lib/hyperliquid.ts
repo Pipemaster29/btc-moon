@@ -535,6 +535,12 @@ export interface ArquivoBaleias {
   pares?: Record<string, string>;
   /** O dia (00:00 UTC, ms) da última linha gravada no histórico diário. */
   historicoAte?: number;
+  /**
+   * O dia (00:00 UTC, ms) da PRIMEIRA linha gravada: os 90 dias do juiz contam
+   * daqui. Sai do dado e não de uma data escrita, porque o coletor só roda no
+   * workflow do `main` — a coleta começa no merge, não no dia em que foi escrita.
+   */
+  historicoDesde?: number;
 }
 
 /**

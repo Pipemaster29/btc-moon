@@ -279,6 +279,7 @@ const moedas = lerMoedas(posicoes, espertas, precos, openInterest, fluxo, binanc
 
 const hoje = Math.floor(agora / DIA) * DIA;
 let historicoAte = anterior?.historicoAte;
+let historicoDesde = anterior?.historicoDesde;
 await mkdir("data", { recursive: true });
 if ((historicoAte === undefined || historicoAte < hoje) && fila.length === direcionais.length) {
   // A primeira leitura completa de cada dia UTC vira uma linha por moeda: é o histórico do teste sem viés.
@@ -306,6 +307,7 @@ if ((historicoAte === undefined || historicoAte < hoje) && fila.length === direc
   const doDia: LinhaDiariaDasContas = { t: agora, u: unidades, e: Object.keys(unidades).filter((c) => espertas.has(c)), p: Object.fromEntries(precos) };
   await appendFile(`data/baleias-hl-contas-${mes}.jsonl`, `${JSON.stringify(doDia)}\n`);
   historicoAte = hoje;
+  historicoDesde ??= hoje;
 }
 const saida: ArquivoBaleias = {
   geradoEm: agora,
@@ -323,6 +325,7 @@ const saida: ArquivoBaleias = {
   ...(fluxo && anterior ? { fluxoDesde: anterior.geradoEm } : {}),
   ...(binance ? { pares: Object.fromEntries(binance) } : {}),
   ...(historicoAte !== undefined ? { historicoAte } : {}),
+  ...(historicoDesde !== undefined ? { historicoDesde } : {}),
 };
 await writeFile(ARQUIVO, `${JSON.stringify(saida)}\n`);
 const total = moedas.reduce((s, m) => s + m.comprado + m.vendido, 0);

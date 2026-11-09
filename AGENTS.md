@@ -218,8 +218,9 @@ no código, com número:
   vendidos em BTC. O critério foi pré-registrado (`docs/preregistro-baleias.md`)
   antes do dado. A reconstrução para trás funciona depois de quatro armadilhas da
   API (ver "As baleias da Hyperliquid") — 8 de 8 contas ativas fecham —, mas pede
-  ~14 horas no teto da API; o juiz é a coleta para frente, lida a partir de
-  07/02/2027 (`scripts/medir-baleias-ao-vivo.mts`).
+  ~14 horas no teto da API; o juiz é a coleta para frente, lida com 90 dias de
+  leituras contados da primeira que o workflow do `main` gravar
+  (`scripts/medir-baleias-ao-vivo.mts`).
 
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
@@ -457,7 +458,7 @@ deles e as posições dos robôs no fim de tudo.
 | `scripts/baixar-grandes.mts` | o retrato semanal das 300 maiores da CoinMarketCap, sem chave, em `.cache/grandes/` — o universo do robô das grandes. **O retrato de um domingo é o fechamento dele**: só vale da meia-noite seguinte. `npm run medir-robos` chama `baixarGrandes` sozinho |
 | `scripts/baleias-hl.mts` | a leitura ao vivo das baleias, de 4 em 4 horas: as ~740 contas do ranking com US$ 5 mi ou mais, sem os market makers — classificados pelas execuções como na medição, com a classificação guardada 30 dias e semeada por `data/baleias-classes.json` —, um a dois minutos no teto da API. **Não grava** sem ranking, sem preços ou com mais de 10% das contas sem leitura. A primeira leitura completa de cada dia UTC vai para os dois jsonl do mês, o por moeda e o conta a conta |
 | `scripts/baixar-baleias.mts`, `scripts/medir-baleias.mts` | a reconstrução para trás: o histórico das baleias (execuções comuns e fatias de TWAP, de hoje para trás, em `.cache/hl/`, com o teto de peso da API — ~14 horas para as 1.560 contas, retoma de onde parou) e a medição dele. **O universo é o ranking congelado de 09/11** (`.cache/hl/ranking-2026-11-09.json`), conta que não fecha fica fora, e a medição só grava `data/baleias-reconstrucao.json` com todas as contas lidas — a página lê o juiz para frente |
-| `scripts/medir-baleias-ao-vivo.mts` | **o juiz** (segunda emenda do pré-registro): o mesmo critério sobre as leituras diárias do ao vivo. "Amostra insuficiente" até 90 dias de leituras (07/02/2027); depois grava `data/baleias-medicao.json`, que a aba mostra no lugar do aviso |
+| `scripts/medir-baleias-ao-vivo.mts` | **o juiz** (segunda emenda do pré-registro): o mesmo critério sobre as leituras diárias do ao vivo. "Amostra insuficiente" até 90 dias de leituras, contados da primeira gravada (`historicoDesde`, que a aba usa para dizer a data — o coletor só roda depois do merge no `main`); depois grava `data/baleias-medicao.json`, que a aba mostra no lugar do aviso |
 | `scripts/baixar-medo.mts` | o índice de medo e ganância da alternative.me, sem chave, de 02/2018 até hoje, em `.cache/medo.json` — o corte de "mercado com medo" do diagnóstico `--regime` e da `Perna.regime`. **O valor de um dia sai na meia-noite dele**: a decisão lê o da véspera |
 
 ### Os dados
@@ -483,7 +484,7 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/baleias-hl.json` | **do robô, na branch `dados`**: a leitura das baleias de agora, moeda a moeda, com o universo de contas, as espertas e a posição de cada conta lida em unidades (`unidades`) — o fluxo da leitura seguinte compara só as contas lidas nas duas, ao preço de agora (`fluxoEntre`) | `npm run baleias` |
 | `data/baleias-hl-AAAA-MM.jsonl` | **do robô, na branch `dados`**: a primeira leitura de cada dia UTC, uma linha por moeda. **É o teste sem viés**: a medição de `medir-baleias` escolhe as contas pelo ranking de hoje, e este histórico não | idem |
 | `data/baleias-hl-contas-AAAA-MM.jsonl` | **do robô, na branch `dados`**: a mesma leitura diária CONTA A CONTA, uma linha por dia — a posição de cada conta lida em unidades, as espertas e o preço de cada moeda. É dela que o juiz tira o fluxo de 3 dias: o histórico por moeda soma o universo inteiro de cada dia e não sabe quem estava nas duas datas | idem |
-| `data/baleias-medicao.json` | a medição dos sinais das baleias (`docs/preregistro-baleias.md`), com o veredito de cada um. **Ainda não existe**: nasce do juiz para frente a partir de 07/02/2027, e até lá a aba mostra o porquê. Fica no `main`, gerado à mão | `npx tsx scripts/medir-baleias-ao-vivo.mts` |
+| `data/baleias-medicao.json` | a medição dos sinais das baleias (`docs/preregistro-baleias.md`), com o veredito de cada um. **Ainda não existe**: nasce do juiz para frente com 90 dias de leituras, e até lá a aba mostra o porquê e a data em que ele pode ser lido. Fica no `main`, gerado à mão | `npx tsx scripts/medir-baleias-ao-vivo.mts` |
 | `data/baleias-classes.json` | a classificação de market maker de cada conta grande (mais de 300 execuções por dia), a semente do ao vivo — que a guarda por 30 dias e reclassifica até 100 por rodada. Fica no `main` | `npm run baleias -- --agora --classificar 2000 --semente` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |

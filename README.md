@@ -343,10 +343,12 @@ contas de volume alto pedem ~12 páginas de 2.000 execuções cada contra o teto
 1.200 de peso por minuto da API — **~14 horas** para as 1.560 contas do universo,
 num contêiner que não dura isso. Então o juiz passou a ser a **coleta para frente**
 (segunda emenda, escrita antes de qualquer número): a primeira leitura de cada dia
-UTC, gravada desde 09/11 em `data/baleias-hl-AAAA-MM.jsonl`, que lê as posições
+UTC, gravada em `data/baleias-hl-AAAA-MM.jsonl`, que lê as posições
 direto, sem reconstruir nada e sem o viés de escolher as contas pelo ranking de hoje.
 `npx tsx scripts/medir-baleias-ao-vivo.mts` aplica o critério e diz "amostra
-insuficiente" até 90 dias de leituras — a partir de 07/02/2027. A reconstrução fica
+insuficiente" até 90 dias de leituras, contados da primeira que o workflow do `main`
+gravar — o coletor só roda depois do merge, e a tela tira a data do dado
+(`historicoDesde`). A reconstrução fica
 pronta para uma rodada dedicada (`npx tsx scripts/baixar-baleias.mts`, que retoma de
 onde parou, e `npm run medir-baleias`).
 

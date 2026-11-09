@@ -31,7 +31,7 @@ export default async function Baleias() {
           leitura, a resposta medida para a pergunta que ela faz: seguir as baleias dá dinheiro?
         </p>
       </Cabeca>
-      <Secao id="medido">{m ? <BaleiasMedidas m={m} /> : <BaleiasSemMedicao />}</Secao>
+      <Secao id="medido">{m ? <BaleiasMedidas m={m} /> : <BaleiasSemMedicao desde={b?.historicoDesde} />}</Secao>
       {b && (
         <Secao id="agora">
           <BaleiasAgora b={b} />

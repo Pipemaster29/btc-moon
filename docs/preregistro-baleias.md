@@ -216,3 +216,11 @@ milhões do ranking, que é baixado de novo a cada dia, entrava como compra.
 
 O universo, os outros sinais, os mínimos, os horizontes, os 90 dias e as metades
 continuam os da segunda emenda.
+
+## Nota (09/11/2026, ~17h UTC), sem mudar nada do critério
+
+O coletor roda no workflow do `main`. A coleta — e a contagem dos 90 dias —
+começa na primeira leitura diária que ele gravar depois do merge deste trabalho,
+e não necessariamente em 09/11/2026, como o texto da segunda emenda dá a
+entender. O critério é o mesmo: 90 dias de leituras, as duas metades sendo as
+duas metades desses dias. A tela tira a data do dado (`historicoDesde`).

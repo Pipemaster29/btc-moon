@@ -1,7 +1,7 @@
 /**
  * O JUIZ DAS BALEIAS, PARA FRENTE (a segunda emenda de `docs/preregistro-baleias.md`):
  * os mesmos quatro sinais e o mesmo critério, sobre a primeira leitura completa de
- * cada dia UTC do ao vivo (`data/baleias-hl-AAAA-MM.jsonl`, desde 09/11/2026) — as
+ * cada dia UTC do ao vivo (`data/baleias-hl-AAAA-MM.jsonl`, desde a primeira gravada) — as
  * posições lidas direto, sem reconstrução e sem o viés do ranking.
  *
  * O retorno entra no FECHAMENTO do dia da leitura (a leitura sai de madrugada;
@@ -249,7 +249,7 @@ const medicao: MedicaoBaleias = {
   grupos: [
     {
       id: "VIVO",
-      nome: "ao vivo, desde 09/11/2026 (US$ 5 mi ou mais, sem market makers)",
+      nome: `ao vivo, desde ${new Date(dias[0]).toISOString().slice(0, 10)} (US$ 5 mi ou mais, sem market makers)`,
       contas: 0,
       coberturaMediana: 0,
       sinais: resultados,

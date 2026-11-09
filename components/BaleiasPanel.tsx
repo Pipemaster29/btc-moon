@@ -291,7 +291,7 @@ export function BaleiasDaMoeda({ b, symbol }: { b: ArquivoBaleias; symbol: strin
       </div>
       <p className="text-xs text-black/40 dark:text-white/40 mt-3">
         Quem está posicionado e onde, não call: seguir as baleias ainda não tem vantagem medida. O teste foi escrito antes
-        do dado e é lido com 90 dias de coleta, a partir de 07/02/2027.
+        do dado e é lido com 90 dias de coleta{quandoSeLe(b.historicoDesde)}.
       </p>
     </section>
   );
@@ -303,6 +303,16 @@ const NOME_DO_SINAL: Record<string, string> = {
   fluxo: "fluxo das baleias (3 dias)",
   suporte: "suporte no custo das compras",
 };
+
+/**
+ * Quando o juiz pode ser lido: 90 dias depois da primeira leitura diária gravada
+ * (`historicoDesde`). Sem ela, a frase diz de onde a contagem parte em vez de
+ * inventar uma data — o coletor só roda depois do merge no `main`.
+ */
+function quandoSeLe(desde: number | undefined): string {
+  if (desde === undefined) return ", contados da primeira leitura diária que o coletor gravar";
+  return `: a primeira foi gravada em ${dia(desde)}, então a partir de ${dia(desde + 90 * 86_400_000)}`;
+}
 
 /** A data com o ano: a janela do juiz atravessa a virada de 2026 para 2027. */
 function dia(t: number): string {
@@ -332,8 +342,8 @@ export function BaleiasMedidas({ m }: { m: MedicaoBaleias }) {
       <p className="text-sm text-black/60 dark:text-white/60 mt-1.5 max-w-4xl">
         {vivo ? (
           <>
-            Sobre a primeira leitura de cada dia desta aba, desde 09/11/2026: as posições lidas direto, sem reconstrução e
-            sem o viés do ranking.
+            Sobre a primeira leitura de cada dia desta aba, desde {dia(m.janela.de)}: as posições lidas direto, sem
+            reconstrução e sem o viés do ranking.
           </>
         ) : (
           <>
@@ -394,7 +404,7 @@ export function BaleiasMedidas({ m }: { m: MedicaoBaleias }) {
         {b && sete(b, "consenso")
           ? `As contas ricas de HOJE (${b.contas.toLocaleString("pt-BR")}), que o viés favorece, medem ${ic(sete(b, "consenso")!.icMedio)} no consenso — só para o registro.`
           : ""}{" "}
-        {vivo ? "" : "A coleta ao vivo grava a primeira leitura de cada dia desde 09/11/2026: é ela que vai dizer, sem o viés do ranking, se isto muda."}
+        {vivo ? "" : "A coleta ao vivo grava a primeira leitura de cada dia: é ela que vai dizer, sem o viés do ranking, se isto muda."}
       </p>
     </section>
   );
@@ -404,7 +414,7 @@ export function BaleiasMedidas({ m }: { m: MedicaoBaleias }) {
  * Enquanto não há medição: o que se sabe, o que não, e quando se vai saber. A
  * leitura de cima é informação sem vantagem medida, e a tela diz isso antes dela.
  */
-export function BaleiasSemMedicao() {
+export function BaleiasSemMedicao({ desde }: { desde?: number }) {
   return (
     <section className="rounded-xl border border-black/10 dark:border-white/10 p-5">
       <h2 className="font-semibold text-lg">Seguir as baleias funciona? Ainda não está medido</h2>
@@ -413,8 +423,8 @@ export function BaleiasSemMedicao() {
         retorno de 7 dias da moeda contra o mercado, com |t| ≥ 2,5 e o mesmo lado nas duas metades. Medir para trás pede
         reconstruir a posição de cada conta em cada dia pelas execuções dela — o método fecha, conferido conta a conta,
         mas as ~1.500 contas grandes pedem ~14 horas de download no teto da API da Hyperliquid. O juiz é a coleta desta
-        aba, para frente: a primeira leitura de cada dia desde 09/11/2026, sem reconstrução e sem o viés de escolher as
-        contas pelo ranking de hoje. O teste é lido com 90 dias de leituras: a partir de 07/02/2027.
+        aba, para frente: a primeira leitura de cada dia, sem reconstrução e sem o viés de escolher as contas pelo
+        ranking de hoje. O teste é lido com 90 dias de leituras{quandoSeLe(desde)}.
       </p>
       <p className="mt-2 text-xs text-black/45 dark:text-white/45 max-w-4xl">
         Até lá, a leitura abaixo é informação sobre quem está posicionado e onde — não call. No resto do projeto, o
