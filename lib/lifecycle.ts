@@ -27,6 +27,7 @@
 import { fetchCsv, monthlyKlineUrl, dailyKlineUrl, recentDays } from "./datavision";
 import { parseKlines } from "./derivatives";
 import { balancesOf, tokenInfo, toUnits, type Chain } from "./onchain";
+import { marketMakersNaRede } from "./marketmakers";
 import { circulante, velas, type Circulante } from "./binance";
 import { velasGate } from "./gate";
 import { lerTecnica, type Tecnica } from "./tecnica";
@@ -148,6 +149,8 @@ export interface Vida {
   dias: number;
   /** Fração do supply parada em carteira de corretora. Nulo quando não dá para afirmar. */
   floatCex: number | null;
+  /** Fração do supply nas carteiras conhecidas de market maker (`lib/marketmakers.ts`); nulo como o `floatCex`. */
+  floatMm?: number | null;
   /** O contrato lido representa a moeda inteira? Nulo quando não dá para saber. */
   contratoRepresenta: boolean | null;
   /**
@@ -353,6 +356,8 @@ const COERENTE_MIN = 0.9;
 export interface FloatOnChain {
   /** Fração do supply em corretora. Nulo quando não dá para afirmar. */
   fracao: number | null;
+  /** Fração do supply nas carteiras conhecidas de market maker (`lib/marketmakers.ts`), lida na mesma chamada. */
+  mm: number | null;
   supplyContrato: number;
   supplyCirculante: number | null;
   /** supply do contrato ÷ circulante. Longe de 1 = contrato é fragmento. */
@@ -369,15 +374,19 @@ async function floatEmCorretora(
     const supply = toUnits(info.totalSupply, info.decimals);
     if (!(supply > 0)) return null;
 
-    const saldos = await balancesOf(chain, contract, CARTEIRAS_CEX);
+    const mms = marketMakersNaRede(chain).map((m) => m.endereco);
+    const saldos = await balancesOf(chain, contract, [...CARTEIRAS_CEX, ...mms]);
     let total = 0;
-    for (const v of saldos.values()) total += toUnits(v, info.decimals);
+    for (const c of CARTEIRAS_CEX) total += toUnits(saldos.get(c.toLowerCase()) ?? BigInt(0), info.decimals);
+    let mm = 0;
+    for (const e of mms) mm += toUnits(saldos.get(e) ?? BigInt(0), info.decimals);
 
     const coerencia = circ && circ.atual > 0 ? supply / circ.atual : null;
     const representa = coerencia === null || coerencia >= COERENTE_MIN;
 
     return {
       fracao: representa ? total / supply : null,
+      mm: representa ? mm / supply : null,
       supplyContrato: supply,
       supplyCirculante: circ?.atual ?? null,
       coerencia,
@@ -457,6 +466,7 @@ export async function lerVida(
     preco,
     dias: barras.length,
     floatCex,
+    floatMm: onchain?.mm ?? null,
     contratoRepresenta:
       onchain?.coerencia == null ? null : onchain.fracao !== null,
     coberturaContrato: onchain?.coerencia ?? null,

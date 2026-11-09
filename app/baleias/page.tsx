@@ -1,5 +1,7 @@
 import { getBaleias, getMedicaoBaleias } from "@/lib/hyperliquid";
-import { BaleiasAgora, BaleiasMedidas, BaleiasSemMedicao } from "@/components/BaleiasPanel";
+import { BaleiasAgora, BaleiasMedidas, BaleiasSemMedicao, MarketMakers, type MarketMakerOnChain } from "@/components/BaleiasPanel";
+import { lerGuardado } from "@/lib/guardado";
+import type { PanoramaRow } from "@/lib/overview";
 import { Cabeca, Pagina, Secao } from "@/components/Pagina";
 
 export const revalidate = 300;
@@ -18,12 +20,29 @@ export const metadata = {
  * candidatas no Radar.
  */
 export default async function Baleias() {
-  const [b, m] = await Promise.all([getBaleias(), getMedicaoBaleias()]);
+  // O retrato guardado direto, e não `getSnapshot`: este só precisa do saldo dos market makers
+  // (`vida.floatMm`), e `getSnapshot` refaz a camada viva — duas requisições por moeda — quando o retrato envelhece.
+  const [b, m, guardado] = await Promise.all([
+    getBaleias(),
+    getMedicaoBaleias(),
+    lerGuardado<{ moedas: PanoramaRow[]; geradoEm: number }>("panorama.json", (d) => (Array.isArray((d as { moedas?: unknown })?.moedas) ? (d as { moedas: PanoramaRow[]; geradoEm: number }) : null), 300).catch(() => null),
+  ]);
+  const retrato = guardado?.dado ?? null;
+  // Retrato de antes de 09/11 não tem o saldo dos market makers: aí a tela diz que ele vem no próximo.
+  const linhas = retrato?.moedas ?? [];
+  const leram = linhas.filter((r) => r.vida?.floatMm !== undefined);
+  const onchain: MarketMakerOnChain[] | null =
+    leram.length === 0
+      ? null
+      : leram
+          .filter((r) => (r.vida?.floatMm ?? 0) > 0)
+          .map((r) => ({ symbol: r.symbol, fracao: r.vida?.floatMm as number }))
+          .sort((x, y) => y.fracao - x.fracao);
   return (
     <Pagina>
       <Cabeca
         titulo="Baleias"
-        secoes={[{ id: "medido", rotulo: m ? "O que foi medido" : "Funciona?" }, ...(b ? [{ id: "agora", rotulo: "Onde estão agora" }] : [])]}
+        secoes={[{ id: "medido", rotulo: m ? "O que foi medido" : "Funciona?" }, ...(b ? [{ id: "agora", rotulo: "Onde estão agora" }] : []), { id: "market-makers", rotulo: "Market makers" }]}
       >
         <p className="text-black/60 dark:text-white/60 max-w-3xl">
           Na Hyperliquid, a corretora é uma blockchain: a posição de cada conta é pública. Aqui estão as contas grandes —
@@ -37,6 +56,9 @@ export default async function Baleias() {
           <BaleiasAgora b={b} />
         </Secao>
       )}
+      <Secao id="market-makers">
+        <MarketMakers b={b} onchain={onchain} retratoEm={retrato?.geradoEm ?? null} />
+      </Secao>
       {!b && (
         <p className="text-sm text-black/45 dark:text-white/45">
           A leitura das baleias ainda não foi gravada: <code>npm run baleias</code>.

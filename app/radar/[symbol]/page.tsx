@@ -61,6 +61,7 @@ const ROLE_COLOR: Record<string, string> = {
   operational: "bg-[#3B82F6]",
   router: "bg-[#EC4899]",
   multisig: "bg-[#F97316]",
+  marketmaker: "bg-[#14B8A6]",
   unmapped: "bg-black/25 dark:bg-white/25",
 };
 

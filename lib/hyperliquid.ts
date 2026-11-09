@@ -37,6 +37,8 @@ export interface ContaDoRanking {
   volumeMes: number;
   lucroMes: number;
   lucroVida: number;
+  /** O nome que a PRÓPRIA conta escolheu no ranking (`displayName`), quando escolheu. Não é verificação de nada. */
+  nome?: string;
 }
 
 /**
@@ -48,7 +50,7 @@ export function lerRanking(bruto: unknown): ContaDoRanking[] {
   const linhas = (bruto as { leaderboardRows?: unknown[] })?.leaderboardRows;
   if (!Array.isArray(linhas)) return [];
   const out: ContaDoRanking[] = [];
-  for (const l of linhas as { ethAddress?: string; accountValue?: string; windowPerformances?: [string, { pnl?: string; vlm?: string }][] }[]) {
+  for (const l of linhas as { ethAddress?: string; accountValue?: string; displayName?: string | null; windowPerformances?: [string, { pnl?: string; vlm?: string }][] }[]) {
     if (typeof l?.ethAddress !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(l.ethAddress)) continue;
     const janelas = new Map(Array.isArray(l.windowPerformances) ? l.windowPerformances : []);
     const conta: ContaDoRanking = {
@@ -60,6 +62,7 @@ export function lerRanking(bruto: unknown): ContaDoRanking[] {
       lucroVida: Number(janelas.get("allTime")?.pnl),
     };
     if (![conta.patrimonio, conta.volumeVida, conta.volumeMes, conta.lucroMes, conta.lucroVida].every(Number.isFinite)) continue;
+    if (typeof l.displayName === "string" && l.displayName.trim()) conta.nome = l.displayName.trim().slice(0, 40);
     out.push(conta);
   }
   return out;
@@ -506,6 +509,63 @@ export function lerMoedas(
 
 // ------------------------------------------------------------------ os arquivos
 
+/**
+ * Os MARKET MAKERS de uma moeda: as contas que o critério das execuções tira do
+ * consenso (mais de 300 por dia), somadas à parte. A posição delas é ESTOQUE —
+ * compram de quem vende e vendem para quem compra —, e por isso não entra no
+ * consenso das baleias; aqui ela aparece pelo que é. Pedido do usuário em 09/11:
+ * "colocar principalmente baleias market maker como Wintermute e outras".
+ * Dólares, salvo onde diz; posição abaixo de `MINIMOS.posicao` não conta.
+ */
+export interface LeituraDosMarketMakers {
+  moeda: string;
+  symbol: string | null;
+  preco: number;
+  comprado: number;
+  vendido: number;
+  compradas: number;
+  vendidas: number;
+  /** (comprado − vendido) ÷ (comprado + vendido): para que lado o estoque pende, de −1 a +1. */
+  saldo: number;
+  /** As maiores posições, com o nome que a conta se deu no ranking, quando deu. */
+  maiores: { conta: string; nome?: string; nocional: number }[];
+}
+
+/** Soma as posições dos market makers por moeda, da que tem mais dinheiro para a que tem menos. */
+export function lerMarketMakers(
+  posicoes: readonly PosicaoAoVivo[],
+  precos: ReadonlyMap<string, number>,
+  nomes: Readonly<Record<string, string>> = {},
+  binance?: ReadonlyMap<string, string>,
+): LeituraDosMarketMakers[] {
+  const porMoeda = new Map<string, PosicaoAoVivo[]>();
+  for (const p of posicoes) if (p.nocional >= MINIMOS.posicao) porMoeda.set(p.moeda, [...(porMoeda.get(p.moeda) ?? []), p]);
+  const out: LeituraDosMarketMakers[] = [];
+  for (const [moeda, ps] of porMoeda) {
+    const preco = precos.get(moeda);
+    if (preco === undefined || !(preco > 0)) continue;
+    const longas = ps.filter((p) => p.tamanho > 0);
+    const curtas = ps.filter((p) => p.tamanho < 0);
+    const comprado = longas.reduce((s, p) => s + p.nocional, 0);
+    const vendido = curtas.reduce((s, p) => s + p.nocional, 0);
+    out.push({
+      moeda,
+      symbol: binance?.get(moeda) ?? null,
+      preco,
+      comprado,
+      vendido,
+      compradas: new Set(longas.map((p) => p.conta)).size,
+      vendidas: new Set(curtas.map((p) => p.conta)).size,
+      saldo: (comprado - vendido) / (comprado + vendido),
+      maiores: [...ps]
+        .sort((x, y) => y.nocional - x.nocional)
+        .slice(0, 3)
+        .map((p) => ({ conta: p.conta, ...(nomes[p.conta] ? { nome: nomes[p.conta] } : {}), nocional: Math.sign(p.tamanho) * p.nocional })),
+    });
+  }
+  return out.sort((x, y) => y.comprado + y.vendido - (x.comprado + x.vendido));
+}
+
 /** O que `scripts/baleias-hl.mts` grava em `data/baleias-hl.json` (na branch `dados`). */
 export interface ArquivoBaleias {
   geradoEm: number;
@@ -533,6 +593,12 @@ export interface ArquivoBaleias {
    * na Hyperliquid e nenhuma baleia está nela" de "não negocia lá".
    */
   pares?: Record<string, string>;
+  /** Os market makers da Hyperliquid, à parte do consenso (`lerMarketMakers`), e quantas contas deles foram lidas. */
+  doMercado?: LeituraDosMarketMakers[];
+  mmLidas?: number;
+  mmSemLeitura?: number;
+  /** O nome que cada conta do universo se deu no ranking, quando deu. */
+  nomes?: Record<string, string>;
   /** O dia (00:00 UTC, ms) da última linha gravada no histórico diário. */
   historicoAte?: number;
   /**

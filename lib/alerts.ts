@@ -66,6 +66,9 @@ export const QUIET_MINUTES: Record<AlertKind, number> = {
   "cex-inflow": 240,
   // Salto do float: estado, e o estado novo vale enquanto durar.
   "float-jump": 180,
+  // Saldo de market maker: por saldo, mas o estado novo vale horas — a firma
+  // que recebeu 0,3% do supply não deixa de tê-lo no ciclo seguinte.
+  "mm-move": 180,
   // Por saldo — curta, para não calar movimento novo.
   "exchange-inflow": 45,
   "exchange-outflow": 45,
@@ -89,7 +92,8 @@ export type AlertKind =
   | "unwind"
   | "whale-exit"
   | "cex-inflow"
-  | "float-jump";
+  | "float-jump"
+  | "mm-move";
 
 export type Severity = "critical" | "high" | "medium";
 
@@ -830,4 +834,54 @@ export function detect(input: DetectInput): Alert[] {
   return enxutos.sort(
     (a, b) => rank[a.severity] - rank[b.severity] || b.valueUsd - a.valueUsd,
   );
+}
+
+// ------------------------------------------------------------ market makers
+
+/** A partir daqui o saldo de uma firma mudou de verdade: 0,05% do supply, a mesma régua do salto do float. */
+export const LIMIAR_MARKET_MAKER = 0.0005;
+
+/**
+ * O saldo das carteiras conhecidas de cada market maker (`lib/marketmakers.ts`)
+ * mudou desde o ciclo anterior? `antes` e `agora` são fração do SUPPLY por
+ * firma; firma ausente é zero. Um alerta por firma que andou
+ * `LIMIAR_MARKET_MAKER` ou mais.
+ *
+ * Os dois sentidos contam e dizem coisas diferentes. Chegando, é o projeto
+ * emprestando ou vendendo ao market maker, ou a firma comprando; saindo, é o
+ * caminho da corretora. NENHUM DOS DOIS TEM MEDIÇÃO de que anteceda alta ou
+ * queda nestas moedas, e o texto diz isso — o saldo entra no histórico
+ * (`mm`) justamente para um dia medir.
+ */
+export function detectarMarketMakers(e: {
+  symbol: string;
+  antes: Readonly<Record<string, number>>;
+  agora: Readonly<Record<string, number>>;
+  /** Supply em unidades da moeda, para o valor em dólar. */
+  supply: number;
+  priceUsd: number;
+}): Alert[] {
+  const alerts: Alert[] = [];
+  for (const firma of new Set([...Object.keys(e.antes), ...Object.keys(e.agora)])) {
+    const delta = (e.agora[firma] ?? 0) - (e.antes[firma] ?? 0);
+    if (!Number.isFinite(delta) || Math.abs(delta) < LIMIAR_MARKET_MAKER) continue;
+    const valor = Math.abs(delta) * e.supply * e.priceUsd;
+    const pct = `${(Math.abs(delta) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}% do supply`;
+    const chegou = delta > 0;
+    alerts.push({
+      kind: "mm-move",
+      severity: "high",
+      fingerprint: `mm:${e.symbol}:${firma}:${chegou ? "+" : "-"}:${magnitude(valor)}`,
+      title: chegou ? `🤝 ${e.symbol} · ${firma} recebeu ${pct}` : `📤 ${e.symbol} · ${firma} mandou embora ${pct}`,
+      detail:
+        (chegou
+          ? `${money(valor)} chegaram às carteiras conhecidas da ${firma}, que agora seguram ${((e.agora[firma] ?? 0) * 100).toFixed(2)}% do supply. ` +
+            `Market maker recebendo token é empréstimo ou venda do projeto, ou compra da firma.`
+          : `${money(valor)} saíram das carteiras conhecidas da ${firma}. O destino costuma ser a corretora.`) +
+        ` Sem medição de que isto anteceda alta ou queda nestas moedas.`,
+      valueUsd: valor,
+      addresses: [],
+    });
+  }
+  return alerts;
 }

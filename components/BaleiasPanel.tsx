@@ -13,7 +13,8 @@
  */
 
 import Link from "next/link";
-import type { ArquivoBaleias, LeituraDaMoeda, MedicaoBaleias, SinalMedido } from "@/lib/hyperliquid";
+import type { ArquivoBaleias, LeituraDaMoeda, LeituraDosMarketMakers, MedicaoBaleias, SinalMedido } from "@/lib/hyperliquid";
+import { MARKET_MAKERS } from "@/lib/marketmakers";
 import { dataHora, pct, tom } from "@/components/robosFormato";
 
 /** As duas cores, como variáveis: o claro e o escuro trocam num lugar só. */
@@ -200,6 +201,129 @@ export function BaleiasAgora({ b }: { b: ArquivoBaleias }) {
         de liquidação são de 2% do preço, até 30% de distância: é onde a corretora fecharia as posições à força — o
         “suporte” e a “resistência” que as baleias criam.
       </p>
+    </section>
+  );
+}
+
+/** A barra do saldo do estoque dos market makers: a mesma régua do consenso, com outro nome. */
+function BarraSaldo({ m }: { m: LeituraDosMarketMakers }) {
+  const k = m.saldo;
+  return (
+    <span className="inline-flex items-center gap-2" title={`comprado ${dolares(m.comprado)} · vendido ${dolares(m.vendido)}`}>
+      <span className="relative inline-block h-1.5 w-20 rounded-full bg-black/5 dark:bg-white/10" aria-hidden>
+        <span className="absolute left-1/2 top-[-3px] h-3 w-px bg-black/25 dark:bg-white/25" />
+        {k > 0 && <span className="absolute left-1/2 top-0 h-1.5 rounded-r bg-[var(--comprado)]" style={{ width: `${k * 50}%` }} />}
+        {k < 0 && <span className="absolute right-1/2 top-0 h-1.5 rounded-l bg-[var(--vendido)]" style={{ width: `${-k * 50}%` }} />}
+      </span>
+      <span className="w-10 text-right">{consensoTexto(k)}</span>
+    </span>
+  );
+}
+
+/** Uma moeda do radar com saldo nas carteiras conhecidas de market maker, do retrato. */
+export interface MarketMakerOnChain {
+  symbol: string;
+  /** Fração do supply. */
+  fracao: number;
+}
+
+/**
+ * OS MARKET MAKERS, os dois lados: na Hyperliquid (as contas que o critério das
+ * execuções tira do consenso, somadas à parte) e on-chain (as carteiras de
+ * Wintermute, DWF Labs, GSR e as outras de `lib/marketmakers.ts`, nas moedas do
+ * radar). Pedido do usuário em 09/11. A tela diz o que a posição deles é —
+ * estoque e proteção — antes dos números.
+ */
+export function MarketMakers({ b, onchain, retratoEm }: { b: ArquivoBaleias | null; onchain: MarketMakerOnChain[] | null; retratoEm: number | null }) {
+  const hl = b?.doMercado ?? [];
+  const total = hl.reduce((s, m) => s + m.comprado + m.vendido, 0);
+  const vendido = hl.reduce((s, m) => s + m.vendido, 0);
+  const firmas = [...new Set(MARKET_MAKERS.map((m) => m.firma))];
+  return (
+    <section className={`rounded-xl border border-black/10 dark:border-white/10 p-5 ${CORES}`}>
+      <h2 className="font-semibold text-lg">Os market makers</h2>
+      <p className="text-sm text-black/60 dark:text-white/60 mt-1.5 max-w-4xl">
+        Quem faz o livro compra de quem vende e vende para quem compra: a posição dele é estoque, e por isso fica fora do
+        consenso das baleias. Aqui ela aparece pelo que é. Vendido no perpétuo, em boa parte, é a proteção de quem tem a
+        moeda à vista ou faz arbitragem de financiamento — não aposta de queda. Nada disto tem vantagem medida.
+      </p>
+
+      <h3 className="font-medium mt-4">Na Hyperliquid</h3>
+      {b && hl.length > 0 ? (
+        <>
+          <p className="text-xs text-black/50 dark:text-white/50 mt-1 max-w-4xl tabular-nums">
+            {b.mmLidas} contas com mais de 300 execuções por dia, lidas em {dataHora(b.geradoEm)} UTC
+            {b.mmSemLeitura ? ` (${b.mmSemLeitura} sem leitura)` : ""}: {dolares(total)} em posição, {Math.round((vendido / total) * 100)}%
+            vendido. São anônimas — as carteiras on-chain das firmas abaixo não operam aqui pelo mesmo endereço (conferido em
+            09/11), e o nome ao lado de uma conta é o que ela mesma escolheu no ranking.
+          </p>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full min-w-[44rem] whitespace-nowrap text-xs tabular-nums">
+              <thead className="text-black/40 dark:text-white/40">
+                <tr className="text-left">
+                  <th className="py-1 pr-3 font-normal">moeda</th>
+                  <th className="py-1 pr-3 font-normal text-right">comprado</th>
+                  <th className="py-1 pr-3 font-normal text-right">vendido</th>
+                  <th className="py-1 pr-3 font-normal">para onde o estoque pende</th>
+                  <th className="py-1 font-normal">maiores contas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hl.slice(0, 20).map((m) => (
+                  <tr key={m.moeda} className="border-t border-black/5 dark:border-white/5 align-top">
+                    <td className="py-1.5 pr-3 font-medium">{m.moeda}</td>
+                    <td className="py-1.5 pr-3 text-right">{lado(m.comprado, m.compradas)}</td>
+                    <td className="py-1.5 pr-3 text-right">{lado(m.vendido, m.vendidas)}</td>
+                    <td className="py-1.5 pr-3">
+                      <BarraSaldo m={m} />
+                    </td>
+                    <td className="py-1.5 text-black/60 dark:text-white/60">
+                      {m.maiores.map((x) => `${x.nome ? `“${x.nome}”` : `${x.conta.slice(0, 6)}…${x.conta.slice(-4)}`} ${dolares(x.nocional)}`).join(" · ")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-black/50 dark:text-white/50 mt-1">A leitura dos market makers sai com a próxima rodada do coletor.</p>
+      )}
+
+      <h3 className="font-medium mt-5">On-chain, nas moedas do radar</h3>
+      <p className="text-xs text-black/50 dark:text-white/50 mt-1 max-w-4xl">
+        {MARKET_MAKERS.length} carteiras de {firmas.length} firmas — {firmas.join(", ")} —, conferidas on-chain em 09/11: uma
+        publicada pela própria firma (a DWF Labs) e as outras pela etiqueta pública do Etherscan. Elas guardam pouco: o
+        estoque de um market maker mora na corretora, e o que a cadeia mostra é o movimento — o monitor avisa quando uma
+        firma recebe ou manda embora 0,05% do supply ou mais. A divisão por firma está na página de cada moeda.
+      </p>
+      {onchain === null ? (
+        <p className="text-xs text-black/50 dark:text-white/50 mt-2">O saldo dos market makers entra no retrato a partir da próxima rodada do panorama.</p>
+      ) : onchain.length === 0 ? (
+        <p className="text-xs text-black/50 dark:text-white/50 mt-2">Nenhuma moeda do radar com saldo nessas carteiras no retrato de {retratoEm ? dataHora(retratoEm) : "agora"}.</p>
+      ) : (
+        <p className="text-sm mt-2 tabular-nums">
+          {onchain.map((x, i) => (
+            <span key={x.symbol}>
+              {i > 0 ? " · " : ""}
+              <Link href={`/radar/${x.symbol}`} className="hover:underline">
+                {x.symbol.replace(/USDT$/, "")}
+              </Link>{" "}
+              <span className="text-black/50 dark:text-white/50">{(x.fracao * 100).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}%</span>
+            </span>
+          ))}
+        </p>
+      )}
+      <details className="mt-3 text-xs text-black/55 dark:text-white/55">
+        <summary className="cursor-pointer">As {MARKET_MAKERS.length} carteiras e de onde vem cada uma</summary>
+        <ul className="mt-2 space-y-0.5 font-mono">
+          {MARKET_MAKERS.map((m) => (
+            <li key={m.endereco}>
+              {m.endereco} <span className="font-sans">· {m.rotulo} · {m.fonte === "oficial" ? "publicada pela firma" : "etiqueta do Etherscan"}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
     </section>
   );
 }

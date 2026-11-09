@@ -364,6 +364,47 @@ as duas posições ao preço de agora — como a reconstrução para trás já f
 
 **Até lá, a aba é informação, não call**, e diz isso acima da tabela.
 
+## Os market makers (09/11)
+
+O pedido: "colocar principalmente baleias market maker como Wintermute e outras.
+Pesquise quais carteiras são e coloque elas". Estão em `lib/marketmakers.ts`: 21
+carteiras de 8 firmas — Wintermute, DWF Labs, GSR, Amber, Cumberland, Jump, Auros e
+Galaxy.
+
+**Nenhum endereço entrou de memória ou de notícia solta**, pela régua da armadilha
+nº 1. Um foi publicado pela própria firma: a DWF Labs anunciou no X, em 06/05/2025, a
+carteira que guarda o que ela compra no mercado secundário. Os outros 20 vêm da
+etiqueta pública do Etherscan, lida do conjunto aberto `dawsbot/eth-labels`, e ficam
+marcados como rótulo de terceiro. Flow Traders, B2C2, Keyrock, Selini e Kairon ficaram
+de fora: o que circula delas é "provável" de analista, sem etiqueta nem anúncio.
+
+**Conferidos on-chain no mesmo dia, nas três redes.** Todos existem; 20 são carteiras
+comuns com transações na Ethereum (de 23 a 415.741) e quase todas também na BNB Chain e
+na Base. Carteira comum é uma chave, e a mesma chave é dona do mesmo endereço em toda
+rede EVM — por isso o rótulo da Ethereum vale nas outras duas. A exceção é a
+"Wintermute 1", um contrato que só existe na Ethereum.
+
+**O que elas guardam: quase nada on-chain.** Nas 36 moedas do radar com contrato, 15
+tinham saldo nessas carteiras, e o maior era 0,197% do supply (Wintermute 4 na ZAMA).
+O estoque de um market maker mora na corretora; o que a cadeia mostra é o movimento.
+Então:
+
+- a página de cada moeda mostra as carteiras de market maker que têm saldo nela, com
+  o papel próprio — e esse saldo conta como oferta pronta, como o da corretora;
+- o monitor lê o saldo delas na mesma chamada que já lia as corretoras, nas 36 moedas,
+  e avisa quando uma firma recebe ou manda embora 0,05% do supply ou mais;
+- o retrato grava o saldo delas em cada linha do histórico (`mm`), porque "market
+  maker recebendo token antecede queda?" **ainda não tem medição nenhuma** — e sem o
+  histórico nunca vai ter. O aviso diz isso no próprio texto.
+
+**Na Hyperliquid nenhuma delas opera pelo mesmo endereço**: as 21 deram conta vazia.
+Lá os market makers são as 131 contas que o critério das execuções já tirava do
+consenso. A aba Baleias agora as mostra à parte: US$ 2,5 bilhões em posição em 09/11,
+75% vendido. É estoque e proteção de quem tem a moeda à vista ou faz arbitragem de
+financiamento, não aposta de queda, e a tela diz isso antes dos números. A única com
+nome é a que se chama "Auros" no ranking — nome que a própria conta escolheu, e o
+comportamento bate: 114 posições e mais de 300 execuções por dia.
+
 ## Mil dólares de mentira
 
 O placar mede se os vieses separam da referência em pontos percentuais. Não

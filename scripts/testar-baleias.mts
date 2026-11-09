@@ -13,6 +13,7 @@ import {
   casarComBinance,
   fluxoEntre,
   lerExecucoes,
+  lerMarketMakers,
   lerMoedas,
   lerPosicoes,
   lerRanking,
@@ -22,6 +23,9 @@ import {
   type HistoricoDaConta,
   type PosicaoAoVivo,
 } from "../lib/hyperliquid";
+
+import { comMarketMakers, firmaDe, MARKET_MAKERS, marketMakersNaRede, porFirma } from "../lib/marketmakers";
+import { detectarMarketMakers, LIMIAR_MARKET_MAKER } from "../lib/alerts";
 
 let falhas = 0;
 function confere(nome: string, ok: boolean, obtido: string): void {
@@ -214,6 +218,38 @@ console.log("\no fluxo entre duas leituras (fluxoEntre)");
   // Vendido: a conta 2 vira vendida de 3 BTC — o líquido cai US$ 600 mil.
   const virou = fluxoEntre(antes, { "1": { BTC: 5 }, "2": { BTC: -3 }, "3": { BTC: 2 } }, preco);
   confere("comprada que vira vendida conta as duas pernas", perto(virou.get("BTC") ?? NaN, -600_000 / 1_000_000), `${virou.get("BTC")?.toFixed(4)}`);
+}
+
+console.log("\nos market makers (lib/marketmakers.ts, lerMarketMakers, detectarMarketMakers)");
+{
+  const unicos = new Set(MARKET_MAKERS.map((m) => m.endereco));
+  confere("endereços válidos, minúsculos e sem repetição", unicos.size === MARKET_MAKERS.length && MARKET_MAKERS.every((m) => /^0x[0-9a-f]{40}$/.test(m.endereco)), `${unicos.size} de ${MARKET_MAKERS.length}`);
+  confere("só a DWF Labs é oficial; o resto é etiqueta de terceiro", MARKET_MAKERS.filter((m) => m.fonte === "oficial").every((m) => m.firma === "DWF Labs"), `${MARKET_MAKERS.filter((m) => m.fonte === "oficial").length} oficial`);
+  const w1 = "0x0000006daea1723962647b7e189d311d757fb793";
+  confere("o contrato da Wintermute 1 só vale na Ethereum", !marketMakersNaRede("bsc").some((m) => m.endereco === w1) && marketMakersNaRede("ethereum").some((m) => m.endereco === w1), "ethereum");
+  confere("firmaDe não liga para maiúsculas", firmaDe("0xF0984860f1F31a784c0FF0bb4d1322e377f97631") === "DWF Labs" && firmaDe(A) === null, `${firmaDe("0xF0984860f1F31a784c0FF0bb4d1322e377f97631")}`);
+  const mapeada = { address: "0xF8191d98ae98d2f7abdfb63a9b0b812b93c873aa", label: "MM do projeto", role: "operational" as const, verified: true };
+  const junto = comMarketMakers([mapeada], "bsc");
+  confere("carteira já mapeada na moeda fica com o rótulo da moeda", junto.filter((w) => w.address.toLowerCase() === mapeada.address.toLowerCase()).length === 1 && junto[0].label === "MM do projeto", `${junto.length} carteiras`);
+  confere("as de market maker entram com o papel e a verificação certos", junto.slice(1).every((w) => w.role === "marketmaker") && junto.find((w) => w.address === "0xf0984860f1f31a784c0ff0bb4d1322e377f97631")?.verified === true, "marketmaker");
+  const supply = BigInt("1000000000000000000000000000"); // 10^9 tokens de 18 casas
+  const saldos = new Map([
+    ["0xf8191d98ae98d2f7abdfb63a9b0b812b93c873aa", supply / BigInt(500)],
+    ["0xdbf5e9c5206d0db70a90108bf936da60221dc080", supply / BigInt(1000)],
+    ["0xd8d6ffe342210057bf4dcc31da28d006f253cef0", BigInt(0)],
+  ]);
+  const pf = porFirma(saldos, supply, "bsc");
+  confere("porFirma soma as carteiras da mesma firma, em fração do supply", perto(pf.Wintermute ?? NaN, 0.003) && !("GSR" in pf), JSON.stringify(pf));
+  confere("supply zero não divide", Object.keys(porFirma(saldos, BigInt(0), "bsc")).length === 0, "{}");
+
+  const al = detectarMarketMakers({ symbol: "XYZ", antes: { Wintermute: 0.001, GSR: 0.002 }, agora: { Wintermute: 0.004, DWF: LIMIAR_MARKET_MAKER / 2 }, supply: 1e9, priceUsd: 0.1 });
+  confere("alerta na firma que recebeu e na que zerou; abaixo do limiar, nada", al.length === 2 && al.some((a) => a.title.includes("Wintermute recebeu")) && al.some((a) => a.title.includes("GSR mandou embora")), al.map((a) => a.title.split("·")[1]?.trim()).join(" | "));
+  confere("o valor em dólar sai da fração vezes o supply e o preço", perto(al.find((a) => a.title.includes("Wintermute"))?.valueUsd ?? NaN, 0.003 * 1e9 * 0.1), `${al[0]?.valueUsd}`);
+  confere("o texto diz que não há medição", al.every((a) => a.detail.includes("Sem medição")), "sim");
+
+  const p = (conta: string, moeda: string, tamanho: number, nocional: number): PosicaoAoVivo => ({ conta, moeda, tamanho, nocional, entrada: 1, liquidacao: null, alavancagem: 1, lucroAberto: 0 });
+  const [btc] = lerMarketMakers([p("1", "BTC", -2, 200_000), p("2", "BTC", 1, 100_000), p("3", "BTC", 0.1, 10_000)], new Map([["BTC", 100_000]]), { "1": "Auros" });
+  confere("estoque dos market makers: saldo, contas e o nome que a conta se deu", perto(btc.saldo, -1 / 3) && btc.vendidas === 1 && btc.compradas === 1 && btc.maiores[0].nome === "Auros" && btc.maiores[0].nocional === -200_000, `${btc.saldo.toFixed(3)} · ${btc.maiores[0].nome}`);
 }
 
 console.log(falhas === 0 ? "\ntodos os casos passaram" : `\n${falhas} caso(s) FALHARAM`);

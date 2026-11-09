@@ -222,6 +222,15 @@ no código, com número:
   leituras contados da primeira que o workflow do `main` gravar
   (`scripts/medir-baleias-ao-vivo.mts`).
 
+- **Os market makers estão na tela e no monitor — e "market maker recebendo
+  token" não tem medição (09/11), a pedido: "colocar baleias market maker como
+  Wintermute".** 21 carteiras de 8 firmas (`lib/marketmakers.ts`), uma publicada
+  pela DWF Labs e 20 pela etiqueta do Etherscan, conferidas nas três redes. Guardam
+  quase nada on-chain (o maior: 0,197% da ZAMA); o monitor vigia o movimento e o
+  histórico grava o saldo (`mm`) para um dia medir. Na Hyperliquid elas não operam
+  pelo mesmo endereço; as 131 contas de market maker de lá aparecem à parte na aba
+  Baleias, 75% vendidas — estoque e proteção, não aposta.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -437,6 +446,7 @@ deles e as posições dos robôs no fim de tudo.
 | `lib/robos.ts` | os robôs: as regras (`ROBOS`), o motor puro (`percorrer`, `decidir`, `fechar`, `marcar`) e a leitura para a página. **O mesmo motor roda a medição e o ao vivo** — e também não importa nada de `node:` |
 | `lib/hyperliquid.ts` | as baleias da Hyperliquid: o ranking público, as execuções e a **regra para trás** (`posicoesEm`), a soma por moeda (`agregar`), a leitura ao vivo — consenso, espertas, fluxo, custo médio, faixas de liquidação (`lerMoedas`) — e o casamento com a Binance pelo preço (`casarComBinance`). **Puro e sem `node:`**: a página o importa |
 | `components/BaleiasPanel.tsx` | a aba Baleias: onde estão agora (`BaleiasAgora`) e o que foi medido (`BaleiasMedidas`); e o cartão da moeda na página dela no Radar (`BaleiasDaMoeda`), que separa "negocia na Hyperliquid sem baleia" de "não negocia lá" pelos `pares` da leitura. As cores do consenso são azul/vermelho, e não o verde/vermelho do resto do site — o par do site reprova na separação para daltonismo |
+| `lib/marketmakers.ts` | as carteiras dos market makers (Wintermute, DWF Labs, GSR, Amber, Cumberland, Jump, Auros, Galaxy), **cada uma com a fonte** — `oficial` (a firma publicou) ou `etherscan` (etiqueta pública, rótulo de terceiro) — e as redes em que vale. Entram em toda moeda da rede com o papel `marketmaker` (`comMarketMakers`, no radar), no monitor e no histórico. **Puro e sem `node:`** |
 | `lib/quant.ts` | a mesa de risco: a ficha (`fichaDe`), o Sharpe probabilístico e o deflacionado, a trilha mínima, o bootstrap estacionário, o PBO por CSCV, o walk-forward, a paridade de risco do fundo (`paridadeDeRisco`, e `fundoAoVivo` para a página). **Puro e sem `node:`**: a medição e a página usam as mesmas funções |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
@@ -471,7 +481,7 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | arquivo | o que é | quem grava |
 |---|---|---|
 | `data/panorama.json` | o retrato completo, ~70 moedas | `npm run panorama` |
-| `data/historico-AAAA-MM.jsonl` e, desde outubro, `historico-AAAA-MM-1.jsonl`/`-2` | uma linha por moeda por retrato, um arquivo por quinzena (`lib/historico.ts`). Desde 24/09 grava também o motor (`mot`), para o placar medir se motor cheio sobe mais, e desde 28/09 a regra que decidiu a leitura (`regra`, o título cortado em 40), para cada trava de `lerVies` ter placar próprio. **É a memória do projeto** | idem |
+| `data/historico-AAAA-MM.jsonl` e, desde outubro, `historico-AAAA-MM-1.jsonl`/`-2` | uma linha por moeda por retrato, um arquivo por quinzena (`lib/historico.ts`). Desde 24/09 grava também o motor (`mot`), para o placar medir se motor cheio sobe mais, e desde 28/09 a regra que decidiu a leitura (`regra`, o título cortado em 40), para cada trava de `lerVies` ter placar próprio. Desde 09/11, a fração do supply nas carteiras conhecidas de market maker (`mm`). **É a memória do projeto** | idem |
 | `data/detentores.json` | concentração por moeda. **17 medidas de 37 com contrato**, todas de Ethereum e Base. As 20 da BSC não têm fonte de log: 15 de 16 varridas em 06/09 perderam as 41 faixas da janela | `npm run genese` |
 | `data/vesting.json` | emissão por moeda | `npm run vesting` |
 | `data/estudos.json` | estudo por moeda, **as em vista incluídas**: sem ele a trava de "a moeda continua o movimento" não roda nelas (8 de 70 da lista, 6 de 39 em vista) | `npm run estudar` (`-- --em-vista` só para elas) |
@@ -835,6 +845,25 @@ blockchain: a posição de cada conta é pública pela API do site, sem chave
   `distancia` das faixas, fração do PREÇO.
 
 `npm run testar-baleias` trava os casos-limite do módulo e sai com erro se algum falha.
+
+### Os market makers (`lib/marketmakers.ts`)
+
+- **Endereço novo só com fonte**: a firma publicou (`oficial`, `verified: true`)
+  ou há etiqueta pública (`etherscan`, `verified: false`). Notícia de "provável
+  carteira da firma" não entra — a armadilha nº 1 em outra roupa.
+- **Carteira comum vale em toda rede EVM; contrato, só na rede em que foi
+  rotulado** (`redes`). Conferido em 09/11 pelo `eth_getCode` e pelo número de
+  transações de cada endereço nas três redes.
+- **O estoque de market maker é oferta pronta** e entra no `sellable` do radar,
+  como o da corretora. Sem saldo na moeda, a carteira não entra no retrato (são
+  21 por rede).
+- **O monitor lê o saldo na mesma chamada das corretoras** (`vigiarCorretoras`)
+  e avisa a partir de `LIMIAR_MARKET_MAKER` (0,05% do supply) por firma. Lista
+  mudou (`carteirasMm`), a rodada é marco zero, sem aviso.
+- **O texto do aviso diz que não há medição**, e o histórico grava `mm` para que
+  um dia haja. Não transforme o aviso em call antes disso.
+- **`labelOf` dá nome a elas sem reticências**: os alertas leem "…" como
+  endereço não identificado.
 
 ---
 

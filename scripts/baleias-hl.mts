@@ -45,6 +45,7 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import {
   casarComBinance,
   fluxoEntre,
+  lerMarketMakers,
   lerMoedas,
   lerPosicoes,
   lerRanking,
@@ -134,6 +135,7 @@ async function pedir<T>(corpo: object, peso: number, porItem = 0): Promise<T | n
 let contas = anterior?.contas ?? [];
 let espertas = new Set(anterior?.espertas ?? []);
 let rankingEm = anterior?.rankingEm ?? 0;
+let nomes: Record<string, string> = anterior?.nomes ?? {};
 if (agora - rankingEm >= DIA || contas.length === 0) {
   try {
     const res = await fetch(RANKING, { signal: AbortSignal.timeout(120_000) });
@@ -143,6 +145,7 @@ if (agora - rankingEm >= DIA || contas.length === 0) {
     if (grandes.length < 200) throw new Error(`só ${grandes.length} contas grandes no ranking`);
     contas = grandes.map((c) => c.endereco);
     espertas = new Set(grandes.filter((c) => c.lucroMes > 0).map((c) => c.endereco));
+    nomes = Object.fromEntries(grandes.filter((c) => c.nome).map((c) => [c.endereco, c.nome as string]));
     rankingEm = agora;
     console.log(`ranking: ${ranking.length} contas, ${contas.length} com US$ 5 mi ou mais, ${espertas.size} delas com lucro no mês`);
   } catch (e) {
@@ -275,6 +278,34 @@ if (semLeitura > 0.1 * fila.length) {
 const fluxo = anterior?.unidades ? fluxoEntre(anterior.unidades, unidades, precos) : undefined;
 const moedas = lerMoedas(posicoes, espertas, precos, openInterest, fluxo, binance);
 
+// OS MARKET MAKERS, à parte: as mesmas contas que ficaram fora do consenso, lidas
+// para a tela mostrar o estoque delas (`lerMarketMakers`). 132 contas a 2 de peso
+// cada — menos de um terço de minuto do teto. Conta deles sem leitura só fica
+// fora desta seção: o consenso e o histórico não dependem dela.
+const posicoesMm: PosicaoAoVivo[] = [];
+let mmLidas = 0;
+let mmSemLeitura = 0;
+if (fila.length === direcionais.length) {
+  const mmALer = contas.filter((e) => classes[e]?.af);
+  await Promise.all(
+    Array.from({ length: 6 }, async () => {
+      for (;;) {
+        const conta = mmALer.shift();
+        if (!conta) return;
+        const estado = await pedir<unknown>({ type: "clearinghouseState", user: conta }, 2);
+        const ps = estado ? lerPosicoes(conta, estado) : null;
+        if (!ps) {
+          mmSemLeitura++;
+          continue;
+        }
+        mmLidas++;
+        posicoesMm.push(...ps);
+      }
+    }),
+  );
+}
+const doMercado = lerMarketMakers(posicoesMm, precos, nomes, binance);
+
 // ------------------------------------------------------------------ a gravação
 
 const hoje = Math.floor(agora / DIA) * DIA;
@@ -319,6 +350,8 @@ const saida: ArquivoBaleias = {
   semClasse,
   lidas,
   semLeitura,
+  ...(mmLidas > 0 ? { doMercado, mmLidas, mmSemLeitura } : {}),
+  ...(Object.keys(nomes).length > 0 ? { nomes } : {}),
   comPosicao,
   moedas,
   unidades,
@@ -331,7 +364,7 @@ await writeFile(ARQUIVO, `${JSON.stringify(saida)}\n`);
 const total = moedas.reduce((s, m) => s + m.comprado + m.vendido, 0);
 console.log(
   `baleias: ${contas.length} contas no universo — ${mms} market makers fora, ${semClasse} sem classificação (${classificadas} classificadas nesta rodada) · ` +
-    `${lidas} lidas (${semLeitura} sem leitura), ${comPosicao} com posição, US$ ${(total / 1e6).toFixed(0)} mi em ${moedas.length} moedas · ` +
+    `${lidas} lidas (${semLeitura} sem leitura), ${comPosicao} com posição · market makers: ${mmLidas} lidos, US$ ${(doMercado.reduce((s, m) => s + m.comprado + m.vendido, 0) / 1e6).toFixed(0)} mi · US$ ${(total / 1e6).toFixed(0)} mi em ${moedas.length} moedas · ` +
     moedas
       .slice(0, 8)
       .map((m) => `${m.moeda} ${m.consenso === null ? "—" : (m.consenso >= 0 ? "+" : "") + m.consenso.toFixed(2)}`)
