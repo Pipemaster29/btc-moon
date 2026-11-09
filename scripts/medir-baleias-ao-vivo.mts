@@ -17,6 +17,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { fluxoEntre, type LinhaDiariaDasContas, type MedicaoBaleias, type SinalMedido } from "../lib/hyperliquid";
+import { media, naoSobrepostos, spearman, tDe, vereditoDoSinal, vereditoDoSuporte } from "../lib/juizBaleias";
 
 const DIA = 86_400_000;
 const DIAS_MINIMOS = 90;
@@ -91,8 +92,17 @@ for (const moeda of todas) {
 }
 const fechamento = (m: string, d: number) => velas.get(m)?.get(d)?.[0];
 
-/** O retorno de h dias a partir do fechamento do dia `d`, menos a mediana das moedas com US$ 1 mi de volume nele. */
+/** O retorno de h dias a partir do fechamento do dia `d`, menos a mediana das moedas com US$ 1 mi de volume nele — calculado uma vez por (d, h). */
+const jaCalculados = new Map<string, Map<string, number>>();
 function relativos(d: number, h: number): Map<string, number> {
+  const chave = `${d}:${h}`;
+  const pronto = jaCalculados.get(chave);
+  if (pronto) return pronto;
+  const r = calcularRelativos(d, h);
+  jaCalculados.set(chave, r);
+  return r;
+}
+function calcularRelativos(d: number, h: number): Map<string, number> {
   const brutos = new Map<string, number>();
   for (const [m, vs] of velas) {
     const v = vs.get(d);
@@ -130,42 +140,6 @@ for (const d of dias) {
 
 // ------------------------------------------------------------------ a estatística (a mesma de `medir-baleias`)
 
-function postos(xs: number[]): number[] {
-  const ordem = xs.map((x, i) => [x, i] as const).sort((p, q) => p[0] - q[0]);
-  const r = new Array<number>(xs.length);
-  for (let i = 0; i < ordem.length; ) {
-    let j = i;
-    while (j + 1 < ordem.length && ordem[j + 1][0] === ordem[i][0]) j++;
-    for (let k = i; k <= j; k++) r[ordem[k][1]] = (i + j) / 2 + 1;
-    i = j + 1;
-  }
-  return r;
-}
-function spearman(x: number[], y: number[]): number {
-  const rx = postos(x);
-  const ry = postos(y);
-  const n = x.length;
-  const mx = rx.reduce((s, v) => s + v, 0) / n;
-  const my = ry.reduce((s, v) => s + v, 0) / n;
-  let num = 0;
-  let dx = 0;
-  let dy = 0;
-  for (let i = 0; i < n; i++) {
-    num += (rx[i] - mx) * (ry[i] - my);
-    dx += (rx[i] - mx) ** 2;
-    dy += (ry[i] - my) ** 2;
-  }
-  return dx > 0 && dy > 0 ? num / Math.sqrt(dx * dy) : NaN;
-}
-const media = (xs: number[]) => xs.reduce((s, v) => s + v, 0) / xs.length;
-const desvio = (xs: number[]) => Math.sqrt(xs.reduce((s, v) => s + (v - media(xs)) ** 2, 0) / (xs.length - 1));
-const tDe = (xs: number[]) => (xs.length > 2 ? (media(xs) / desvio(xs)) * Math.sqrt(xs.length) : NaN);
-/** Os dias que não se sobrepõem num horizonte de h dias: o primeiro e, daí em diante, cada um a h dias ou mais do último escolhido — dia sem leitura não encurta o passo. */
-function naoSobrepostos<T extends { d: number }>(xs: T[], h: number): T[] {
-  const out: T[] = [];
-  for (const x of xs) if (out.length === 0 || x.d - out[out.length - 1].d >= h * DIA) out.push(x);
-  return out;
-}
 const corte = dias[Math.floor(dias.length / 2)];
 
 const resultados: SinalMedido[] = [];
@@ -204,8 +178,7 @@ for (const s of ["consenso", "espertas", "fluxo"] as const) {
     };
     resultados.push(r);
     if (h === 7) {
-      const ok = Math.abs(r.t) >= 2.5 && Math.sign(r.icMetades[0]) === Math.sign(r.icMetades[1]) && Math.sign(r.quintosMetades[0]) === Math.sign(r.quintosMetades[1]) && Math.sign(r.quintosMetades[0]) === Math.sign(r.icMedio);
-      vereditos.push({ sinal: s, passa: ok, texto: ok ? `tem vantagem, ${r.icMedio > 0 ? "a favor das baleias" : "ao contrário das baleias"}` : "sem vantagem medida" });
+      vereditos.push({ sinal: s, ...vereditoDoSinal(r) });
     }
     console.log(`${s} ${h} d: IC ${r.icMedio.toFixed(3)} (t ${r.t.toFixed(2)}, ${r.dias} dias) · metades ${r.icMetades.map((x) => x.toFixed(3)).join(" e ")} · quintos ${(r.quintos * 100).toFixed(2)} p.p.`);
   }
@@ -238,8 +211,7 @@ const rs = eventos.map((e) => e.r);
 const sa = eventos.filter((e) => e.d < corte).map((e) => e.r);
 const sb = eventos.filter((e) => e.d >= corte).map((e) => e.r);
 const nMoedas = new Set(eventos.map((e) => e.m)).size;
-const okSup = Math.abs(tDe(rs)) >= 2.5 && Math.sign(media(sa)) === Math.sign(media(sb)) && rs.length >= 30 && nMoedas >= 10;
-vereditos.push({ sinal: "suporte", passa: okSup, texto: rs.length < 30 || nMoedas < 10 ? "amostra insuficiente" : okSup ? (media(rs) > 0 ? "tem vantagem: segura como suporte" : "tem vantagem ao contrário: o preço rompe") : "sem vantagem medida" });
+vereditos.push({ sinal: "suporte", ...vereditoDoSuporte({ t: tDe(rs), media: rs.length ? media(rs) : NaN, metades: [sa.length ? media(sa) : NaN, sb.length ? media(sb) : NaN], eventos: rs.length, moedas: nMoedas }) });
 console.log(`suporte 7 d: ${rs.length} eventos em ${nMoedas} moedas, média ${rs.length ? (media(rs) * 100).toFixed(2) : "—"} p.p. (t ${tDe(rs).toFixed(2)})`);
 
 const medicao: MedicaoBaleias = {

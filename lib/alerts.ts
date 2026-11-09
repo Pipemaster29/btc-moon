@@ -865,19 +865,23 @@ export function detectarMarketMakers(e: {
   for (const firma of new Set([...Object.keys(e.antes), ...Object.keys(e.agora)])) {
     const delta = (e.agora[firma] ?? 0) - (e.antes[firma] ?? 0);
     if (!Number.isFinite(delta) || Math.abs(delta) < LIMIAR_MARKET_MAKER) continue;
-    const valor = Math.abs(delta) * e.supply * e.priceUsd;
+    // Sem preço (moeda sem pool e sem perpétuo respondendo) o aviso sai em fração do
+    // supply, sem dólar: "US$ 0 chegaram" era o buraco que `vigiarCorretoras` já fechou.
+    const comPreco = e.priceUsd > 0 && Number.isFinite(e.priceUsd) && e.supply > 0;
+    const valor = comPreco ? Math.abs(delta) * e.supply * e.priceUsd : 0;
+    const quanto = comPreco ? money(valor) : "Tokens";
     const pct = `${(Math.abs(delta) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}% do supply`;
     const chegou = delta > 0;
     alerts.push({
       kind: "mm-move",
       severity: "high",
-      fingerprint: `mm:${e.symbol}:${firma}:${chegou ? "+" : "-"}:${magnitude(valor)}`,
+      fingerprint: `mm:${e.symbol}:${firma}:${chegou ? "+" : "-"}:${comPreco ? magnitude(valor) : `f${Math.round(Math.log10(Math.abs(delta)))}`}`,
       title: chegou ? `🤝 ${e.symbol} · ${firma} recebeu ${pct}` : `📤 ${e.symbol} · ${firma} mandou embora ${pct}`,
       detail:
         (chegou
-          ? `${money(valor)} chegaram às carteiras conhecidas da ${firma}, que agora seguram ${((e.agora[firma] ?? 0) * 100).toFixed(2)}% do supply. ` +
+          ? `${quanto} chegaram às carteiras conhecidas da ${firma}, que agora seguram ${((e.agora[firma] ?? 0) * 100).toFixed(2)}% do supply. ` +
             `Market maker recebendo token é empréstimo ou venda do projeto, ou compra da firma.`
-          : `${money(valor)} saíram das carteiras conhecidas da ${firma}. O destino costuma ser a corretora.`) +
+          : `${quanto} saíram das carteiras conhecidas da ${firma}. O destino costuma ser a corretora.`) +
         ` Sem medição de que isto anteceda alta ou queda nestas moedas.`,
       valueUsd: valor,
       addresses: [],

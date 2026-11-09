@@ -36,7 +36,7 @@
  * baleia saindo da moeda.
  *
  * Rode com: npm run baleias  (`-- --agora` ignora as quatro horas; `-- --limite N` lê só N contas;
- *           `-- --classificar N` classifica até N contas na rodada, em vez de 100;
+ *           `-- --classificar N` classifica até N contas na rodada, em vez de 40;
  *           `-- --semente` grava a classificação em data/baleias-classes.json)
  */
 
@@ -54,8 +54,8 @@ import {
   type PosicaoAoVivo,
   type UnidadesPorConta,
 } from "../lib/hyperliquid";
+import { criarPedidor } from "./hl-api.mjs";
 
-const API = "https://api.hyperliquid.xyz/info";
 const RANKING = "https://stats-data.hyperliquid.xyz/Mainnet/leaderboard";
 const ARQUIVO = "data/baleias-hl.json";
 const SEMENTE = "data/baleias-classes.json";
@@ -92,43 +92,8 @@ if (anterior && agora - anterior.geradoEm < INTERVALO && !process.argv.includes(
 
 // ------------------------------------------------------------------ o teto de peso
 
-let gasto = 0;
-let inicioDoMinuto = Date.now();
-async function pagar(peso: number): Promise<void> {
-  for (;;) {
-    const t = Date.now();
-    if (t - inicioDoMinuto >= 60_000) {
-      inicioDoMinuto = t;
-      gasto = 0;
-    }
-    if (gasto + peso <= 1000) {
-      gasto += peso;
-      return;
-    }
-    await new Promise((r) => setTimeout(r, 60_000 - (t - inicioDoMinuto) + 50));
-  }
-}
-async function pedir<T>(corpo: object, peso: number, porItem = 0): Promise<T | null> {
-  for (let tentativa = 1; tentativa <= 4; tentativa++) {
-    await pagar(peso);
-    try {
-      const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(30_000) });
-      if (res.status === 429) {
-        gasto = 1000;
-        continue;
-      }
-      if (res.ok) {
-        const j = (await res.json()) as T;
-        if (porItem > 0 && Array.isArray(j)) await pagar(Math.floor(j.length / porItem));
-        return j;
-      }
-    } catch {
-      // tenta de novo
-    }
-    await new Promise((r) => setTimeout(r, 1000 * tentativa));
-  }
-  return null;
-}
+// O pedido com o teto de peso mora em `hl-api.mts`, o mesmo do download da medição.
+const { pedir } = criarPedidor({ tentativas: 4, tempoLimiteMs: 30_000 });
 
 // ------------------------------------------------------------------ o universo
 
@@ -239,40 +204,54 @@ try {
 
 // ------------------------------------------------------------------ as contas
 
-const posicoes: PosicaoAoVivo[] = [];
-/** A posição de cada conta lida, em unidades; a lida sem posição fica com `{}`. */
-const unidades: UnidadesPorConta = {};
-let lidas = 0;
-let semLeitura = 0;
-let comPosicao = 0;
-// `--limite N`: só as N primeiras contas, para conferir o caminho sem gastar o teto da API.
-const limite = process.argv.includes("--limite") ? Number(process.argv[process.argv.indexOf("--limite") + 1]) : Infinity;
-const fila = direcionais.slice(0, Number.isFinite(limite) && limite > 0 ? limite : direcionais.length);
-if (fila.length < direcionais.length) console.log(`baleias: --limite ${fila.length} — leitura parcial, só para conferir o caminho`);
-const aLer = [...fila];
-await Promise.all(
-  Array.from({ length: 6 }, async () => {
-    for (;;) {
-      const conta = aLer.shift();
-      if (!conta) return;
-      const estado = await pedir<unknown>({ type: "clearinghouseState", user: conta }, 2);
-      // Resposta sem as posições, ou com uma ilegível, é conta não lida — não conta sem posição.
-      const ps = estado ? lerPosicoes(conta, estado) : null;
-      if (!ps) {
-        semLeitura++;
-        continue;
+/**
+ * Lê as posições de uma lista de contas, seis em paralelo. Resposta sem as
+ * posições, ou com uma ilegível, é conta NÃO LIDA — não conta sem posição.
+ * A mesma função lê as baleias e os market makers, para a regra não divergir.
+ */
+async function lerContas(lista: readonly string[]): Promise<{ posicoes: PosicaoAoVivo[]; unidades: UnidadesPorConta; lidas: number; semLeitura: number; comPosicao: number }> {
+  const r = { posicoes: [] as PosicaoAoVivo[], unidades: {} as UnidadesPorConta, lidas: 0, semLeitura: 0, comPosicao: 0 };
+  const aLer = [...lista];
+  await Promise.all(
+    Array.from({ length: 6 }, async () => {
+      for (;;) {
+        const conta = aLer.shift();
+        if (!conta) return;
+        const estado = await pedir<unknown>({ type: "clearinghouseState", user: conta }, 2);
+        const ps = estado ? lerPosicoes(conta, estado) : null;
+        if (!ps) {
+          r.semLeitura++;
+          continue;
+        }
+        r.lidas++;
+        if (ps.length > 0) r.comPosicao++;
+        r.posicoes.push(...ps);
+        r.unidades[conta] = Object.fromEntries(ps.map((p) => [p.moeda, p.tamanho]));
       }
-      lidas++;
-      if (ps.length > 0) comPosicao++;
-      posicoes.push(...ps);
-      unidades[conta] = Object.fromEntries(ps.map((p) => [p.moeda, p.tamanho]));
-    }
-  }),
-);
+    }),
+  );
+  return r;
+}
+
+// `--limite N`: só as N primeiras contas, para conferir o caminho sem gastar o teto da API.
+// Leitura parcial NÃO grava nada: gravada, ela viraria a leitura da página por quatro horas.
+const limite = process.argv.includes("--limite") ? Number(process.argv[process.argv.indexOf("--limite") + 1]) : Infinity;
+const parcial = Number.isFinite(limite) && limite > 0 && limite < direcionais.length;
+const fila = parcial ? direcionais.slice(0, limite) : direcionais;
+if (parcial) console.log(`baleias: --limite ${fila.length} — leitura parcial, só para conferir o caminho; nada será gravado`);
+const { posicoes, unidades, lidas, semLeitura, comPosicao } = await lerContas(fila);
 if (semLeitura > 0.1 * fila.length) {
   console.log(`baleias: ${semLeitura} de ${fila.length} contas sem leitura — nada gravado, para conta não lida não parecer baleia saindo`);
   process.exit(0);
 }
+/**
+ * A leitura vale como o DIA do juiz só se o universo estiver classificado: com
+ * mais de 5% das contas sem classificação (semente perdida, o ranking trazendo
+ * centenas de contas novas de uma vez, a 40 por rodada), ela leria uma fração
+ * do universo — e um dia vazio contaria como dia de leitura e começaria a
+ * contagem dos 90 dias.
+ */
+const completa = !parcial && direcionais.length > 0 && semClasse <= 0.05 * contas.length;
 
 // O fluxo só existe contra uma leitura que guardou as posições conta a conta (`fluxoEntre`).
 const fluxo = anterior?.unidades ? fluxoEntre(anterior.unidades, unidades, precos) : undefined;
@@ -282,29 +261,15 @@ const moedas = lerMoedas(posicoes, espertas, precos, openInterest, fluxo, binanc
 // para a tela mostrar o estoque delas (`lerMarketMakers`). 132 contas a 2 de peso
 // cada — menos de um terço de minuto do teto. Conta deles sem leitura só fica
 // fora desta seção: o consenso e o histórico não dependem dela.
-const posicoesMm: PosicaoAoVivo[] = [];
-let mmLidas = 0;
-let mmSemLeitura = 0;
-if (fila.length === direcionais.length) {
-  const mmALer = contas.filter((e) => classes[e]?.af);
-  await Promise.all(
-    Array.from({ length: 6 }, async () => {
-      for (;;) {
-        const conta = mmALer.shift();
-        if (!conta) return;
-        const estado = await pedir<unknown>({ type: "clearinghouseState", user: conta }, 2);
-        const ps = estado ? lerPosicoes(conta, estado) : null;
-        if (!ps) {
-          mmSemLeitura++;
-          continue;
-        }
-        mmLidas++;
-        posicoesMm.push(...ps);
-      }
-    }),
-  );
+const mm = parcial ? null : await lerContas(contas.filter((e) => classes[e]?.af));
+const mmLidas = mm?.lidas ?? 0;
+const mmSemLeitura = mm?.semLeitura ?? 0;
+const doMercado = lerMarketMakers(mm?.posicoes ?? [], precos, nomes, binance);
+
+if (parcial) {
+  console.log(`baleias (parcial): ${lidas} lidas, ${semLeitura} sem leitura, ${comPosicao} com posição, ${moedas.length} moedas — nada gravado`);
+  process.exit(0);
 }
-const doMercado = lerMarketMakers(posicoesMm, precos, nomes, binance);
 
 // ------------------------------------------------------------------ a gravação
 
@@ -312,7 +277,7 @@ const hoje = Math.floor(agora / DIA) * DIA;
 let historicoAte = anterior?.historicoAte;
 let historicoDesde = anterior?.historicoDesde;
 await mkdir("data", { recursive: true });
-if ((historicoAte === undefined || historicoAte < hoje) && fila.length === direcionais.length) {
+if ((historicoAte === undefined || historicoAte < hoje) && completa) {
   // A primeira leitura completa de cada dia UTC vira uma linha por moeda: é o histórico do teste sem viés.
   const mes = new Date(hoje).toISOString().slice(0, 7);
   const linhas = moedas.map((m) =>

@@ -26,6 +26,7 @@ import {
 
 import { comMarketMakers, firmaDe, MARKET_MAKERS, marketMakersNaRede, porFirma } from "../lib/marketmakers";
 import { detectarMarketMakers, LIMIAR_MARKET_MAKER } from "../lib/alerts";
+import { naoSobrepostos, spearman, vereditoDoSinal, vereditoDoSuporte } from "../lib/juizBaleias";
 
 let falhas = 0;
 function confere(nome: string, ok: boolean, obtido: string): void {
@@ -250,6 +251,21 @@ console.log("\nos market makers (lib/marketmakers.ts, lerMarketMakers, detectarM
   const p = (conta: string, moeda: string, tamanho: number, nocional: number): PosicaoAoVivo => ({ conta, moeda, tamanho, nocional, entrada: 1, liquidacao: null, alavancagem: 1, lucroAberto: 0 });
   const [btc] = lerMarketMakers([p("1", "BTC", -2, 200_000), p("2", "BTC", 1, 100_000), p("3", "BTC", 0.1, 10_000)], new Map([["BTC", 100_000]]), { "1": "Auros" });
   confere("estoque dos market makers: saldo, contas e o nome que a conta se deu", perto(btc.saldo, -1 / 3) && btc.vendidas === 1 && btc.compradas === 1 && btc.maiores[0].nome === "Auros" && btc.maiores[0].nocional === -200_000, `${btc.saldo.toFixed(3)} · ${btc.maiores[0].nome}`);
+}
+
+console.log("\na régua dos juízes (lib/juizBaleias.ts)");
+{
+  const D = 86_400_000;
+  const dias = [0, 1, 2, 4, 9, 10, 16].map((k) => ({ d: k * D }));
+  confere("dias que não se sobrepõem são escolhidos pela data", naoSobrepostos(dias, 7).map((x) => x.d / D).join(",") === "0,9,16", naoSobrepostos(dias, 7).map((x) => x.d / D).join(","));
+  confere("Spearman: ordem igual dá 1, série constante dá NaN", perto(spearman([1, 2, 3], [10, 20, 30]), 1) && Number.isNaN(spearman([1, 1, 1], [1, 2, 3])), "1 · NaN");
+  const base = { t: 3, icMedio: 0.05, icMetades: [0.04, 0.06] as [number, number], quintosMetades: [0.01, 0.02] as [number, number] };
+  confere("passa com |t| ≥ 2,5 e tudo do mesmo lado", vereditoDoSinal(base).passa && vereditoDoSinal(base).texto.includes("a favor"), vereditoDoSinal(base).texto);
+  confere("reprova com uma metade do outro lado", !vereditoDoSinal({ ...base, icMetades: [0.04, -0.01] }).passa, "sem vantagem");
+  confere("reprova com o quinto contra a correlação", !vereditoDoSinal({ ...base, quintosMetades: [-0.01, -0.02] }).passa, "sem vantagem");
+  confere("suporte com 29 eventos é amostra insuficiente", vereditoDoSuporte({ t: 5, media: 0.02, metades: [0.01, 0.03], eventos: 29, moedas: 12 }).texto === "amostra insuficiente", "insuficiente");
+  const semPreco = detectarMarketMakers({ symbol: "XYZ", antes: {}, agora: { GSR: 0.001 }, supply: 1e9, priceUsd: 0 });
+  confere("aviso de market maker sem preço não diz US$ 0", semPreco.length === 1 && !semPreco[0].detail.includes("US$ 0") && semPreco[0].valueUsd === 0, semPreco[0]?.detail.slice(0, 40) ?? "");
 }
 
 console.log(falhas === 0 ? "\ntodos os casos passaram" : `\n${falhas} caso(s) FALHARAM`);

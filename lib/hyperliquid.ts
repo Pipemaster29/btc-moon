@@ -145,7 +145,11 @@ function encadear(xs: Execucao[]): Execucao[] {
     }
     // Dentro do milissegundo, moeda por moeda (moedas diferentes não se encadeiam).
     const porMoeda = new Map<string, Execucao[]>();
-    for (let k = i; k <= j; k++) porMoeda.set(xs[k].moeda, [...(porMoeda.get(xs[k].moeda) ?? []), xs[k]]);
+    for (let k = i; k <= j; k++) {
+      const g = porMoeda.get(xs[k].moeda);
+      if (g) g.push(xs[k]);
+      else porMoeda.set(xs[k].moeda, [xs[k]]);
+    }
     for (const grupo of porMoeda.values()) {
       if (grupo.length === 1) {
         out.push(grupo[0]);
@@ -447,7 +451,11 @@ export function lerMoedas(
 ): LeituraDaMoeda[] {
   const grandes = posicoes.filter((p) => p.nocional >= MINIMOS.posicao);
   const porMoeda = new Map<string, PosicaoAoVivo[]>();
-  for (const p of grandes) porMoeda.set(p.moeda, [...(porMoeda.get(p.moeda) ?? []), p]);
+  for (const p of grandes) {
+    const xs = porMoeda.get(p.moeda);
+    if (xs) xs.push(p);
+    else porMoeda.set(p.moeda, [p]);
+  }
   const todas = agregar(grandes.map((p) => ({ conta: p.conta, moeda: p.moeda, nocional: Math.sign(p.tamanho) * p.nocional })));
   const dasEspertas = agregar(grandes.filter((p) => espertas.has(p.conta)).map((p) => ({ conta: p.conta, moeda: p.moeda, nocional: Math.sign(p.tamanho) * p.nocional })));
   const out: LeituraDaMoeda[] = [];
@@ -539,7 +547,12 @@ export function lerMarketMakers(
   binance?: ReadonlyMap<string, string>,
 ): LeituraDosMarketMakers[] {
   const porMoeda = new Map<string, PosicaoAoVivo[]>();
-  for (const p of posicoes) if (p.nocional >= MINIMOS.posicao) porMoeda.set(p.moeda, [...(porMoeda.get(p.moeda) ?? []), p]);
+  for (const p of posicoes) {
+    if (p.nocional < MINIMOS.posicao) continue;
+    const xs = porMoeda.get(p.moeda);
+    if (xs) xs.push(p);
+    else porMoeda.set(p.moeda, [p]);
+  }
   const out: LeituraDosMarketMakers[] = [];
   for (const [moeda, ps] of porMoeda) {
     const preco = precos.get(moeda);

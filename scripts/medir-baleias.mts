@@ -14,6 +14,7 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { agregar, depois, MINIMOS, type HistoricoDaConta, type MedicaoBaleias, type PosicaoDeBaleia, type SinalMedido } from "../lib/hyperliquid";
+import { media, naoSobrepostos, spearman, tDe, vereditoDoSinal, vereditoDoSuporte } from "../lib/juizBaleias";
 import { INICIO_HISTORICO, universo, type VelaDiaria } from "./baixar-baleias.mjs";
 
 const DIA = 86_400_000;
@@ -302,39 +303,6 @@ for (const h of HORIZONTES) {
 
 // ------------------------------------------------------------------ a estatística
 
-function postos(xs: number[]): number[] {
-  const ordem = xs.map((x, i) => [x, i] as const).sort((p, q) => p[0] - q[0]);
-  const r = new Array<number>(xs.length);
-  for (let i = 0; i < ordem.length; ) {
-    let j = i;
-    while (j + 1 < ordem.length && ordem[j + 1][0] === ordem[i][0]) j++;
-    for (let k = i; k <= j; k++) r[ordem[k][1]] = (i + j) / 2 + 1;
-    i = j + 1;
-  }
-  return r;
-}
-function spearman(x: number[], y: number[]): number {
-  const rx = postos(x);
-  const ry = postos(y);
-  const n = x.length;
-  const mx = rx.reduce((s, v) => s + v, 0) / n;
-  const my = ry.reduce((s, v) => s + v, 0) / n;
-  let num = 0;
-  let dx = 0;
-  let dy = 0;
-  for (let i = 0; i < n; i++) {
-    num += (rx[i] - mx) * (ry[i] - my);
-    dx += (rx[i] - mx) ** 2;
-    dy += (ry[i] - my) ** 2;
-  }
-  return dx > 0 && dy > 0 ? num / Math.sqrt(dx * dy) : NaN;
-}
-const media = (xs: number[]) => xs.reduce((s, v) => s + v, 0) / xs.length;
-const desvio = (xs: number[]) => {
-  const m = media(xs);
-  return Math.sqrt(xs.reduce((s, v) => s + (v - m) ** 2, 0) / (xs.length - 1));
-};
-const tDe = (xs: number[]) => (xs.length > 2 ? (media(xs) / desvio(xs)) * Math.sqrt(xs.length) : NaN);
 const pp = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)} p.p.`;
 
 interface Resultado {
@@ -366,21 +334,14 @@ function medirSinal(sinal: Sinal, h: number): Resultado | null {
     moedas += pares.length;
   }
   if (ics.length < 3) return null;
-  // O t sobre os dias que não se sobrepõem: o primeiro e, daí em diante, cada um a h
-  // dias ou mais do último escolhido — dia sem sinal não encurta o passo.
-  const naoSobrepostos: number[] = [];
-  let ultimoDia = -Infinity;
-  for (const x of ics) {
-    if (x.d - ultimoDia < h * DIA) continue;
-    naoSobrepostos.push(x.ic);
-    ultimoDia = x.d;
-  }
+  // O t sobre os dias que não se sobrepõem (`lib/juizBaleias.ts`).
+  const separados = naoSobrepostos(ics, h).map((x) => x.ic);
   const antes = ics.filter((x) => x.d < CORTE);
   const depois = ics.filter((x) => x.d >= CORTE);
   return {
     dias: ics.length,
     icMedio: media(ics.map((x) => x.ic)),
-    t: tDe(naoSobrepostos),
+    t: tDe(separados),
     icMetades: [media(antes.map((x) => x.ic)), media(depois.map((x) => x.ic))],
     quintos: media(ics.map((x) => x.q)),
     quintosMetades: [media(antes.map((x) => x.q)), media(depois.map((x) => x.q))],
@@ -472,13 +433,8 @@ for (const [id, nome, grupo] of grupos) {
       sinais.push({ sinal: chave, horizonte: h, ...r });
       let passa = "";
       if (h === 7 && id === "A") {
-        // O critério do pré-registro: |t| ≥ 2,5, o IC e o quinto do mesmo lado nas duas metades.
-        const ok =
-          Math.abs(r.t) >= 2.5 &&
-          Math.sign(r.icMetades[0]) === Math.sign(r.icMetades[1]) &&
-          Math.sign(r.quintosMetades[0]) === Math.sign(r.quintosMetades[1]) &&
-          Math.sign(r.quintosMetades[0]) === Math.sign(r.icMedio);
-        const texto = ok ? `tem vantagem, ${r.icMedio > 0 ? "a favor das baleias" : "ao contrário das baleias"}` : "sem vantagem medida";
+        // O critério do pré-registro, o mesmo do juiz para frente (`lib/juizBaleias.ts`).
+        const { passa: ok, texto } = vereditoDoSinal(r);
         medicao.vereditos.push({ sinal: chave, passa: ok, texto });
         passa = ` → ${texto.toUpperCase()}`;
       }
@@ -491,8 +447,7 @@ for (const [id, nome, grupo] of grupos) {
   const sup = medirSuporte(s.custo);
   let passaSup = "";
   if (id === "A") {
-    const ok = Math.abs(sup.t) >= 2.5 && Math.sign(sup.metades[0]) === Math.sign(sup.metades[1]) && sup.n >= 30 && sup.moedas >= 10;
-    const texto = ok ? (sup.media > 0 ? "tem vantagem: segura como suporte" : "tem vantagem ao contrário: o preço rompe") : sup.n < 30 || sup.moedas < 10 ? "amostra insuficiente" : "sem vantagem medida";
+    const { passa: ok, texto } = vereditoDoSuporte({ ...sup, eventos: sup.n });
     medicao.vereditos.push({ sinal: "suporte", passa: ok, texto });
     passaSup = ` → ${texto.toUpperCase()}`;
   }

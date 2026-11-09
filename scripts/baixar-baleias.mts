@@ -24,8 +24,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { lerExecucoes, lerRanking, type HistoricoDaConta } from "../lib/hyperliquid";
+import { criarPedidor } from "./hl-api.mjs";
 
-const API = "https://api.hyperliquid.xyz/info";
 const CACHE = ".cache/hl";
 const RANKING = `${CACHE}/ranking-2026-11-09.json`;
 /** 40 dias antes da primeira decisão (11/05): os 30 dias do lucro e do custo das baleias, mais folga. */
@@ -42,49 +42,9 @@ const TETO_POR_FLUXO = 10_000;
 
 // ------------------------------------------------------------------ o teto de peso
 
-const ORCAMENTO_POR_MINUTO = 1000;
-let gasto = 0;
-let inicioDoMinuto = Date.now();
-async function pagar(peso: number): Promise<void> {
-  for (;;) {
-    const agora = Date.now();
-    if (agora - inicioDoMinuto >= 60_000) {
-      inicioDoMinuto = agora;
-      gasto = 0;
-    }
-    if (gasto + peso <= ORCAMENTO_POR_MINUTO) {
-      gasto += peso;
-      return;
-    }
-    await new Promise((r) => setTimeout(r, 60_000 - (agora - inicioDoMinuto) + 50));
-  }
-}
-
-let falhas = 0;
-/** POST na API com o peso pago antes; o peso a mais pelo tamanho da resposta é pago depois. */
-async function pedir<T>(corpo: object, peso: number, porItem = 0): Promise<T | null> {
-  for (let tentativa = 1; tentativa <= 6; tentativa++) {
-    await pagar(peso);
-    try {
-      const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(120_000) });
-      if (res.status === 429) {
-        // O teto foi batido mesmo com a conta: espera o minuto inteiro.
-        gasto = ORCAMENTO_POR_MINUTO;
-        await new Promise((r) => setTimeout(r, 60_000));
-        continue;
-      }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const j = (await res.json()) as T;
-      if (porItem > 0 && Array.isArray(j)) await pagar(Math.floor(j.length / porItem));
-      return j;
-    } catch (e) {
-      if (process.env.DEPURAR) console.error(`pedido ${(corpo as { type?: string }).type} falhou (tentativa ${tentativa}): ${(e as Error).message}`);
-      await new Promise((r) => setTimeout(r, 2000 * tentativa));
-    }
-  }
-  falhas++;
-  return null;
-}
+// O pedido com o teto de peso mora em `hl-api.mts`, o mesmo do coletor ao vivo.
+const api = criarPedidor({ tentativas: 6, tempoLimiteMs: 120_000 });
+const pedir = api.pedir;
 
 // ------------------------------------------------------------------ o universo
 
@@ -290,7 +250,7 @@ async function main(): Promise<void> {
       }
     }),
   );
-  console.log(`fim: ${feitas} contas lidas, ${semLeitura} sem leitura (rode de novo para tentar), ${falhas} pedidos que falharam depois de 6 tentativas`);
+  console.log(`fim: ${feitas} contas lidas, ${semLeitura} sem leitura (rode de novo para tentar), ${api.falhas()} pedidos que falharam depois de 6 tentativas`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) await main();

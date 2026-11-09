@@ -435,7 +435,8 @@ const NOME_DO_SINAL: Record<string, string> = {
  */
 function quandoSeLe(desde: number | undefined): string {
   if (desde === undefined) return ", contados da primeira leitura diária que o coletor gravar";
-  return `: a primeira foi gravada em ${dia(desde)}, então a partir de ${dia(desde + 90 * 86_400_000)}`;
+  // O juiz conta DIAS COM LEITURA, não dias de calendário: dia sem leitura completa empurra a data.
+  return `: a primeira foi gravada em ${dia(desde)}, então no mais cedo em ${dia(desde + 89 * 86_400_000)} — cada dia sem leitura completa empurra a data`;
 }
 
 /** A data com o ano: a janela do juiz atravessa a virada de 2026 para 2027. */
