@@ -14,6 +14,8 @@ import { daLinha, getEmVista } from "@/lib/emvista";
 import { lerGuardado } from "@/lib/guardado";
 import { getBaleias } from "@/lib/hyperliquid";
 import { BaleiasDaMoeda } from "@/components/BaleiasPanel";
+import { getInsiders, getMedicaoInsiders } from "@/lib/insiders";
+import { InsidersDaMoeda } from "@/components/InsidersPanel";
 import type { PanoramaRow } from "@/lib/overview";
 
 async function doRetrato(casa: (t: { symbol: string }) => boolean) {
@@ -675,12 +677,14 @@ export default async function Page({
   ]);
 
   const preco = snapshot?.priceUsd ?? perp?.price ?? 0;
-  const [vida, estudo, placar, vesting, baleias] = await Promise.all([
+  const [vida, estudo, placar, vesting, baleias, insiders, medicaoInsiders] = await Promise.all([
     lerVida(token, preco).catch(() => null),
     lerEstudo(token.symbol),
     getPlacar(),
     vestingDe(token.symbol),
     getBaleias().catch(() => null),
+    getInsiders().catch(() => null),
+    getMedicaoInsiders().catch(() => null),
   ]);
   const meuPlacar = placar?.porMoeda?.[token.symbol] ?? null;
 
@@ -718,6 +722,7 @@ export default async function Page({
         <CyclePanel leitura={lerCiclo(snapshot, perp?.live ?? null)} />
 
         {vesting && <VestingPanel v={vesting} preco={preco} />}
+        {insiders && <InsidersDaMoeda a={insiders} m={medicaoInsiders} symbol={token.symbol} />}
         {estudo && <EstudoPanel estudo={estudo} />}
         {meuPlacar && placar && (
           <PlacarDaMoeda placar={placar} meu={meuPlacar} ticker={token.symbol.replace(/USDT$/, "")} />

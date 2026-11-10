@@ -405,6 +405,71 @@ financiamento, não aposta de queda, e a tela diz isso antes dos números. A ún
 nome é a que se chama "Auros" no ranking — nome que a própria conta escolheu, e o
 comportamento bate: 114 posições e mais de 300 execuções por dia.
 
+## Os criadores e os VCs (10/11)
+
+O pedido: "ver o on-chain dos criadores e VC". O projeto já sabia QUEM recebeu o
+supply na criação de cada moeda (`data/detentores.json`) e se os cofres estão
+pingando (`data/vesting.json`). Faltava o passo que decide o preço: **o que saiu foi
+para onde?** Token que vai do cofre para outra carteira do time continua fora do
+mercado; o que cai num endereço de depósito de corretora está a um clique de virar
+venda.
+
+**Como se lê** (`lib/insiders.ts`, `npm run insiders`). Insider é relação, não nome:
+o nível 0 são os donos da gênese, e o nível 1, quem recebeu deles 0,1% do supply ou
+mais. O destino de cada transferência é classificado em duas etapas:
+
+- **pela etiqueta pública**: 26.667 endereços de 53 corretoras
+  (`data/corretoras-rotuladas.json`, do conjunto aberto `dawsbot/eth-labels`), só os
+  que são custódia — carteiras quentes, frias e ~24 mil endereços de depósito da
+  Binance e da Bitget. A lista confirma por fora 14 das 17 carteiras de corretora que
+  o projeto tinha achado uma a uma pelo saldo;
+- **pelo comportamento**, porque ninguém deposita na carteira fria: o endereço sem
+  etiqueta que repassa 80% ou mais do que recebe a uma corretora é endereço de
+  depósito. E quem distribui a mais de 50 destinos é infraestrutura — ponte, staking,
+  airdrop — e não é seguido.
+
+**Pelos nós públicos, não pelo explorador.** O Blockscout tem cota de dez requisições
+por ~40 minutos; os nós de arquivo da Ethereum respondem o log filtrado pelo remetente
+em faixas de 10 mil blocos. A vida inteira de uma moeda sai em 2 a 14 minutos (JCT
+156 s, MORPHO 813 s), e as 11 moedas foram lidas sem nenhuma faixa perdida — depois
+de três releituras, porque nó público falha em rajada e faixa perdida não pode virar
+"dia sem depósito".
+
+**O que apareceu**, em fração do supply:
+
+| moeda | para corretora | o que mais |
+| --- | --- | --- |
+| EPIC | 59,8% | é a troca do token antigo pelo novo, feita pelas corretoras — não é venda, e a leitura não separa |
+| HEMI | 11,1% | depósitos mensais no MESMO endereço da Binance, o último em 19/10; 81% ainda em contrato de distribuição |
+| PORTAL | 6,8% | Binance, Kraken e KuCoin |
+| MORPHO | 3,7% | 18 endereços de depósito; 0,11% para market maker |
+| RE | 2,6% | 0,30% para market maker |
+| BASED, CAP, ZAMA | 1,6%, 1,3%, 0,9% | |
+| DOS, POWER | 0,3%, 0,09% | |
+| JCT | 0% | 13,5% do supply saíram dos donos por um contrato que queima na Ethereum: é a ponte para a BNB Chain, onde a moeda negocia e a leitura não alcança |
+
+**"Depósito de insider antecede queda?" — medido, e a resposta é que não dá para
+dizer.** O critério foi escrito antes de ler qualquer transferência
+(`docs/preregistro-insiders.md`): o dia em que os insiders mandam 0,1% do supply ou
+mais para corretora, contra o retorno de 7 dias do perpétuo menos a mediana de todos
+os perpétuos; 30 eventos em 8 moedas, |t| ≥ 2,5, o mesmo lado nas duas metades e sem
+a moeda com mais eventos. Foram 39 episódios, 31 com retorno medido — mas em **5
+moedas**, e 13 deles são da EPIC. O veredito é **amostra insuficiente**. E o que há
+não aponta para lado nenhum: média de +2,04 p.p. em 7 dias (t 0,43), mediana de −4,02,
+as metades de sinais opostos (+7,89 e −3,43) e −4,97 sem a EPIC. A leitura comum —
+"o time está despejando, vai cair" — não tem medição que a sustente nestas moedas.
+
+**O que entrou.** A página de cada moeda mostra o cartão com os quatro números, os
+últimos fluxos para corretora ou market maker com o link da transação, e o veredito
+ao lado. O workflow roda `npm run insiders -- --rodada` de 4 em 4 horas: anda a
+leitura só para frente (uma faixa de log por moeda, segundos), olha de novo os
+destinos que ainda não tinham mandado nada adiante — o depósito só é reconhecido
+quando a corretora varre o endereço — e avisa no Telegram depósito novo de 0,1% do
+supply ou mais, dizendo no próprio texto que não há medição. **Só a Ethereum**: a BNB
+Chain não tem log antigo gratuito e o Blockscout da Base respondia com desafio do
+Cloudflare; as moedas de fora aparecem com o porquê, que é "não consegui", não "não
+há".
+
 ## Mil dólares de mentira
 
 O placar mede se os vieses separam da referência em pontos percentuais. Não
