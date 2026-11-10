@@ -470,6 +470,64 @@ Chain não tem log antigo gratuito e o Blockscout da Base respondia com desafio 
 Cloudflare; as moedas de fora aparecem com o porquê, que é "não consegui", não "não
 há".
 
+## O algoritmo de previsão (10/11)
+
+O pedido: "com esse tanto de informação, não existe um algoritmo, estilo gráfico,
+que tente ver quais moedas vão subir, e para onde o BTC vai? Um algoritmo de
+investimento". Existe — está na aba **Previsão** —, e foi medido antes de ir para a
+tela, com o critério escrito antes dos números (`docs/preregistro-previsao.md`). O
+resultado tem três partes, e só uma é boa notícia.
+
+**O que ele é** (`lib/previsao.ts`). Uma nota por moeda: oito entradas que o projeto
+já tinha medido uma a uma — os retornos de 1, 7, 14 e 45 dias, o fluxo comprador, a
+agitação, o financiamento e o surto de volume —, cada uma virando a posição da moeda
+dentro do universo do dia, somadas com oito pesos. Os pesos saem de uma regressão
+ajustada uma vez sobre 03/2024–06/2025 (71.542 moeda-dias), e o teste é sobre o que
+veio depois: 480 dias, ~131 moedas por dia.
+
+**1. Quais ficam acima do mercado: isso ele sabe dizer.** Fora do desenho, a
+correlação entre a nota e o retorno relativo de 7 dias é 0,19 (t 11,3), positiva na
+validação e na reserva. Por décimo da nota, a fração das vezes em que a moeda ficou
+acima da mediana do mercado sobe degrau a degrau:
+
+| décimo da nota | mais baixo | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | mais alto |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| acima da mediana | 38% | 41% | 40% | 44% | 46% | 51% | 53% | 57% | 62% | 67% |
+
+**Mas o que ele aprendeu é uma coisa só: moeda grande e calma cai menos que moeda
+agitada.** A correlação é toda da entrada da agitação — 0,203 só com ela, −0,011 sem
+ela. As 10 de nota mais alta são quase sempre as mesmas (TRX em 96% dos dias, BTC em
+88%, PAXG, BNB, ETH), e em retorno absoluto renderam **−0,02% por semana**: não
+subiram, caíram menos que a mediana, que perdeu 2,53% por semana. No período só 39,5%
+das moedas subiram em 7 dias.
+
+**2. Quais vão subir: isso ele não sabe dizer.** O teste que responde a pergunta do
+usuário foi escrito depois de ver o primeiro (e está dito no pré-registro): as sete
+entradas restantes, com tudo em posto DENTRO do terço de agitação do dia, para "calma
+bate agitada" não entrar na conta. No desenho a correlação é 0,058; fora dele,
+**0,009 (t 0,22)**, com as 10 de cima acima da mediana do próprio terço em 49,2% das
+vezes e −0,89% por semana em retorno absoluto. Cara ou coroa.
+
+**3. Para onde vai o BTC: o modelo não acrescenta nada.** De 01/2020 a 10/2026 o BTC
+estava mais alto 30 dias depois em **55,4%** das 2.474 janelas. Um modelo com cinco
+entradas (preço ÷ média de 200 dias, retornos de 30 e 90 dias, queda desde a máxima,
+índice de medo), refeito a cada virada de ano só com o passado, erra **15% MAIS** que
+quem só repete essa taxa (intervalo de 95%: −31% a −0,4%), e perde nas duas metades.
+Quando ele dizia "menos de 40% de chance de alta", o BTC subiu em 54,6% das vezes;
+quando dizia "50 a 60%", em 55,6%. A tela mostra a taxa histórica e não mostra a
+previsão dele como previsão.
+
+**O que isso diz sobre "algoritmo de investimento".** Prever a moeda que sobe, com o
+dado público, não funcionou — e é coerente com o resto do projeto: o robô Momento
+ganha dinheiro acertando 26% das compras, porque corta a que erra e deixa correr a
+rara que dispara. O que rende aqui é a gestão, não a previsão. O ranking serve para o
+lado oposto, e esse é medido: o décimo de nota mais baixa — as moedas mais agitadas,
+que são as que este radar vigia — fica atrás do mercado em 62% das semanas.
+
+`npm run previsao` (uma vez por dia no workflow) calcula a nota de hoje com os pesos
+medidos; `npm run medir-previsao` refaz a medição. Custo, financiamento e escorregada
+não estão na conta: é um ranking, não uma carteira.
+
 ## Mil dólares de mentira
 
 O placar mede se os vieses separam da referência em pontos percentuais. Não

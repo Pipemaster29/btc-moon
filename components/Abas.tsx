@@ -33,6 +33,7 @@ export const ABAS_DO_SITE: Aba[] = [
   { segmento: "garimpo", href: "/garimpo", rotulo: "Garimpo" },
   // A sexta, de 09/11: no celular a barra rola de lado em vez de quebrar a linha.
   { segmento: "baleias", href: "/baleias", rotulo: "Baleias" },
+  { segmento: "previsao", href: "/previsao", rotulo: "Previsão" },
 ];
 
 /** A barra de cima: abas sublinhadas, que rolam de lado no celular em vez de quebrar a linha. */

@@ -242,6 +242,17 @@ no código, com número:
   com retorno em 5 moedas — o critério pede 8 —, média +2,04 p.p. em 7 dias (t
   0,43), metades de sinais opostos. O aviso do monitor diz isso.
 
+- **O algoritmo de previsão existe, e não prevê quem sobe (10/11), a pedido: "um
+  algoritmo que veja quais moedas vão subir e para onde o BTC vai".** Oito
+  entradas em posto, oito pesos ajustados no desenho (`lib/previsao.ts`,
+  `docs/preregistro-previsao.md`). Fora dele a nota ordena as moedas pela chance
+  de ficar ACIMA DA MEDIANA (correlação 0,19, t 11,3; décimo de cima 67%, de
+  baixo 38%) — mas é tudo da agitação (−0,011 sem ela), e as 10 de cima (TRX,
+  BTC, BNB, ETH) renderam −0,02% por semana: caíram menos, não subiram. Dentro do
+  terço de agitação o modelo não escolhe (0,009, t 0,22). No BTC, a logística de
+  cinco entradas erra 15% mais que a taxa-base de 55,4%. A aba Previsão diz as
+  três coisas antes do ranking.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -260,6 +271,8 @@ npm run baleias      # as baleias da Hyperliquid agora (de 4 em 4 h) → data/ba
 npm run medir-baleias # seguir as baleias funciona? (cache de scripts/baixar-baleias.mts) → data/baleias-medicao.json
 npm run insiders     # criadores e VCs: para onde foi o supply da gênese (vida inteira; `-- --rodada` só anda para frente) → data/insiders.json
 npm run medir-insiders # depósito de insider em corretora antecede queda? → data/insiders-medicao.json
+npm run previsao     # a nota de hoje de cada moeda, com os pesos medidos (uma vez por dia) → data/previsao.json
+npm run medir-previsao # o algoritmo de previsão funciona? → data/previsao-medicao.json
 npm run dados        # traz para data/ os dados vivos do robô (branch `dados`)
 ```
 
@@ -268,7 +281,7 @@ que o robô grava moram na branch `dados`, não no `main`** (armadilha nº 10). 
 disco local eles só aparecem depois de `npm run dados`.
 
 O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` +
-`robos` + `baleias` + `insiders` + `garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
+`robos` + `baleias` + `insiders` + `previsao` + `garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
 commita o resultado **na branch `dados`** (`scripts/dados.sh`), que a Vercel não
 vigia. **O cron pede 48 execuções por dia e o GitHub entrega cerca
 de sete** — é limitação da plataforma, contornada pela DURAÇÃO de cada execução
@@ -416,7 +429,7 @@ retrato seguinte fechá-la com a hora certa.
 
 ### As abas (13/10)
 
-O site tem seis abas, e **cada uma é uma rota, não estado**: Bitcoin (`/`),
+O site tem sete abas (a sétima, Previsão, `/previsao`, de 10/11), e **cada uma é uma rota, não estado**: Bitcoin (`/`),
 Radar (`/radar` e `/radar/[symbol]`), Robôs (`/robos`, com `/robos/medicao` e
 `/robos/mesa`), Carteira (`/carteira`), Garimpo (`/garimpo`) e, desde 09/11,
 Baleias (`/baleias`). Com a sexta, a barra passa de 390 px e rola de lado no
@@ -466,6 +479,9 @@ deles e as posições dos robôs no fim de tudo.
 | `scripts/insiders.mts` | a leitura: três passadas de `eth_getLogs` filtrado pelo remetente nos nós públicos da Ethereum (o Blockscout dá dez requisições por ~40 min). **Dois ritmos**: a vida inteira (2 a 14 min por moeda, à mão ou uma por rodada quando passa de 7 dias) e `--rodada`, de 4 em 4 h no workflow, que só anda para frente e avisa depósito novo. Faixa perdida na rodada e a moeda não avança |
 | `scripts/medir-insiders.mts` | a medição do pré-registro: o retorno relativo de 1, 3 e 7 dias depois de cada evento, contra a mediana dos perpétuos (velas de `.cache/robos/`) |
 | `scripts/corretoras-rotuladas.mts` | gera `data/corretoras-rotuladas.json` do conjunto aberto `dawsbot/eth-labels`: só o que é custódia (o filtro é pelo fim do nome da etiqueta), de todas as redes num conjunto só |
+| `lib/previsao.ts` | o algoritmo de previsão: as oito entradas de uma moeda só com o passado (`entradasDaMoeda`), o posto dentro do universo do dia, a nota, a regressão dos pesos; e o BTC (`entradasDoBtc`, a logística). **Um motor só**: a medição e o ao vivo chamam as mesmas funções, e o ao vivo não ajusta nada — lê os pesos medidos. **Puro e sem `node:`** |
+| `scripts/medir-previsao.mts`, `scripts/previsao.mts` | a medição (soma as velas de `.cache/robos/` em dias, ajusta no desenho, testa na validação e na reserva, e o BTC contra a taxa-base) e a nota de hoje, uma vez por dia UTC no workflow |
+| `components/PrevisaoPanel.tsx` | a aba Previsão: os três vereditos antes do ranking, o gráfico dos décimos, o ranking de hoje, o BTC e os pesos. A palavra da nota é "acima do mercado", nunca "vai subir" |
 | `lib/quant.ts` | a mesa de risco: a ficha (`fichaDe`), o Sharpe probabilístico e o deflacionado, a trilha mínima, o bootstrap estacionário, o PBO por CSCV, o walk-forward, a paridade de risco do fundo (`paridadeDeRisco`, e `fundoAoVivo` para a página). **Puro e sem `node:`**: a medição e a página usam as mesmas funções |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
@@ -519,6 +535,8 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/insiders-semente.json` | a mesma leitura feita à mão, no `main`: o ponto de partida da primeira rodada do robô e o que a página mostra até ele gravar | `npm run insiders` e depois `npm run insiders -- --semente` |
 | `data/insiders-medicao.json` | a medição dos dois eventos (`docs/preregistro-insiders.md`), com o veredito. Fica no `main`, gerada à mão | `npm run medir-insiders` |
 | `data/corretoras-rotuladas.json` | 26.667 endereços de 53 corretoras com etiqueta pública de custódia (carteiras quentes, frias e de depósito). Rótulo de terceiro. Fica no `main` | `npx tsx scripts/corretoras-rotuladas.mts <accounts.csv> <commit>` |
+| `data/previsao.json` | **do robô, na branch `dados`**: a nota de hoje de cada moeda do universo, com as entradas e a contribuição de cada uma, e a leitura do BTC | `npm run previsao` |
+| `data/previsao-medicao.json` | os pesos, as janelas, os décimos, o diagnóstico, a parte 3 e o teste do BTC — e o modelo do BTC que o ao vivo usa. Fica no `main`, gerada à mão | `npm run medir-previsao` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
 | `data/fluxo-binance.json` | o último bloco lido, a identificação de cada token (perpétuo e preço conferidos, última passagem) e a memória das em vista já anunciadas. **É daqui que sai o conjunto em vista** | idem |
@@ -921,6 +939,32 @@ blockchain: a posição de cada conta é pública pela API do site, sem chave
   BLOCOS.
 
 `npm run testar-insiders` trava os casos-limite e sai com erro se algum falha.
+
+### O algoritmo de previsão (`lib/previsao.ts`)
+
+- **A entrada de um dia só lê até o fechamento da véspera** (`entradasDaMoeda`):
+  o teste trava que mexer no dia da decisão e nos seguintes não muda nada. Olhar
+  o futuro é o defeito que faz qualquer modelo parecer bom.
+- **Tudo em posto dentro do universo do dia**, e a moeda sem uma entrada fica no
+  meio (0), não num extremo. Sem vela na janela a moeda fica FORA; o
+  financiamento é a única entrada que pode faltar.
+- **O ao vivo não ajusta nada**: lê `pesos` e `btc.modelo` de
+  `data/previsao-medicao.json`. Mudou uma entrada? A medição é refeita e o
+  pré-registro ganha uma emenda — a parte 3 já é a segunda tentativa sobre o
+  mesmo dado.
+- **"Acima do mercado" não é "vai subir"**, e a tela não pode trocar uma pela
+  outra: as 10 de nota mais alta renderam −0,02% por semana enquanto a mediana
+  caía 2,53%. A coluna do ranking é a fração MEDIDA do décimo daquela nota.
+- **O BTC não tem previsão na tela**: o modelo perde para a taxa-base. O `p30`
+  fica gravado só para o registro.
+- **Com menos de 90% dos perpétuos respondendo, o ao vivo não grava**: o posto é
+  contra o universo, e meio universo dá outro ranking.
+- **Unidades**: `x` das moedas são frações (retornos, fluxo, agitação diária,
+  financiamento por dia) e uma razão (o surto); `p` e `nota`, postos e soma de
+  postos; `volume`, DÓLARES por dia; `dia`, MILISSEGUNDOS; `d` e `d0`, DIAS
+  desde 1970.
+
+`npm run testar-previsao` trava os casos-limite e sai com erro se algum falha.
 
 ---
 

@@ -151,6 +151,10 @@ jobs:
           # corretora; nas outras rodadas sai na hora. Quando a leitura da vida
           # inteira de uma moeda passa de 7 dias, relê UMA (2 a 8 minutos).
           npm run insiders -- --rodada || echo "insiders falharam, seguindo"
+          # A PREVISÃO (`scripts/previsao.mts`): uma vez por dia UTC, a nota de cada
+          # moeda com os pesos medidos — uma vela diária por perpétuo, ~20 segundos.
+          # Nas outras rodadas sai na hora.
+          npm run previsao || echo "previsão falhou, seguindo"
           # OS SINAIS CLÁSSICOS, UMA VEZ POR DIA. `--diario` sai na hora se o
           # `sinais.json` tem menos de 20 horas; senão coleta os 528 perpétuos
           # em ritmo abaixo dos tetos da Binance (medido: ver o script) e grava.
@@ -232,6 +236,7 @@ jobs:
                 npm run robos || echo "robôs falharam, seguindo"
                 npm run baleias || echo "baleias falharam, seguindo"
                 npm run insiders -- --rodada || echo "insiders falharam, seguindo"
+                npm run previsao || echo "previsão falhou, seguindo"
                 bash scripts/dados.sh gravar "Retrato do panorama $(date -u +%Y-%m-%dT%H:%MZ)"
               ) || echo "retrato intermediário falhou, seguindo"
             fi
@@ -274,6 +279,7 @@ jobs:
             npm run robos || echo "robôs falharam, seguindo"
             npm run baleias || echo "baleias falharam, seguindo"
             npm run insiders -- --rodada || echo "insiders falharam, seguindo"
+            npm run previsao || echo "previsão falhou, seguindo"
             # O garimpo peneira os 526 perpétuos da Binance atrás de moeda que
             # se pareça com o objeto de estudo, para a lista deixar de ser só o
             # que alguém lembrou de apontar. Roda SÓ no retrato de fechamento e
