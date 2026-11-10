@@ -231,6 +231,17 @@ no código, com número:
   pelo mesmo endereço; as 131 contas de market maker de lá aparecem à parte na aba
   Baleias, 75% vendidas — estoque e proteção, não aposta.
 
+- **Os criadores e os VCs estão na tela — e "depósito de insider antecede queda"
+  não tem amostra (10/11), a pedido: "ver o on-chain dos criadores e VC".** Os
+  donos da gênese e quem recebeu deles 0,1% do supply (`lib/insiders.ts`), com o
+  destino de cada saída classificado pela etiqueta pública de 26.667 endereços
+  de corretora e pelo comportamento (endereço de depósito = repassa 80% a
+  corretora). 11 moedas da Ethereum lidas sem faixa perdida: HEMI 11,1% do supply
+  para a Binance em depósitos mensais, PORTAL 6,8%, MORPHO 3,7%; na JCT, 13,5%
+  saíram pela ponte. Pré-registrado (`docs/preregistro-insiders.md`): 31 eventos
+  com retorno em 5 moedas — o critério pede 8 —, média +2,04 p.p. em 7 dias (t
+  0,43), metades de sinais opostos. O aviso do monitor diz isso.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -247,6 +258,8 @@ npm run robos        # os robôs ao vivo → data/robos.json
 npm run medir-robos  # a medição dos robôs e a mesa de risco, com o mesmo motor → data/robos-medicao.json
 npm run baleias      # as baleias da Hyperliquid agora (de 4 em 4 h) → data/baleias-hl.json
 npm run medir-baleias # seguir as baleias funciona? (cache de scripts/baixar-baleias.mts) → data/baleias-medicao.json
+npm run insiders     # criadores e VCs: para onde foi o supply da gênese (vida inteira; `-- --rodada` só anda para frente) → data/insiders.json
+npm run medir-insiders # depósito de insider em corretora antecede queda? → data/insiders-medicao.json
 npm run dados        # traz para data/ os dados vivos do robô (branch `dados`)
 ```
 
@@ -255,7 +268,7 @@ que o robô grava moram na branch `dados`, não no `main`** (armadilha nº 10). 
 disco local eles só aparecem depois de `npm run dados`.
 
 O GitHub Actions (`.github/workflows/monitor.yml`) roda `panorama` + `carteira` +
-`robos` + `baleias` + `garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
+`robos` + `baleias` + `insiders` + `garimpar` + `placar` + `fluxo-binance`, e `medir-sinais` uma vez por dia, e
 commita o resultado **na branch `dados`** (`scripts/dados.sh`), que a Vercel não
 vigia. **O cron pede 48 execuções por dia e o GitHub entrega cerca
 de sete** — é limitação da plataforma, contornada pela DURAÇÃO de cada execução
@@ -449,6 +462,10 @@ deles e as posições dos robôs no fim de tudo.
 | `lib/juizBaleias.ts` | **a régua dos dois juízes das baleias**: Spearman, t, os dias que não se sobrepõem e o veredito do pré-registro (`vereditoDoSinal`, `vereditoDoSuporte`). A reconstrução e a coleta para frente usam estas funções — mudar o critério é mudar aqui, e a mudança vale para os dois |
 | `scripts/hl-api.mts` | o pedido à API da Hyperliquid com o teto de peso (1.000 por minuto, o minuto inteiro de espera no 429), o mesmo para o download e para o coletor ao vivo |
 | `lib/marketmakers.ts` | as carteiras dos market makers (Wintermute, DWF Labs, GSR, Amber, Cumberland, Jump, Auros, Galaxy), **cada uma com a fonte** — `oficial` (a firma publicou) ou `etherscan` (etiqueta pública, rótulo de terceiro) — e as redes em que vale. Entram em toda moeda da rede com o papel `marketmaker` (`comMarketMakers`, no radar), no monitor e no histórico. **Puro e sem `node:`** |
+| `lib/insiders.ts` | os criadores e os VCs: para onde vai o supply da gênese. Os dois níveis de insider, a classe do destino pela etiqueta e **pelo comportamento** (endereço de depósito = repassa 80% ou mais a corretora com etiqueta; mais de 50 destinos = infraestrutura), os eventos do pré-registro (`eventosDe`), o resumo da tela e o texto do aviso. **Puro e sem `node:`** |
+| `scripts/insiders.mts` | a leitura: três passadas de `eth_getLogs` filtrado pelo remetente nos nós públicos da Ethereum (o Blockscout dá dez requisições por ~40 min). **Dois ritmos**: a vida inteira (2 a 14 min por moeda, à mão ou uma por rodada quando passa de 7 dias) e `--rodada`, de 4 em 4 h no workflow, que só anda para frente e avisa depósito novo. Faixa perdida na rodada e a moeda não avança |
+| `scripts/medir-insiders.mts` | a medição do pré-registro: o retorno relativo de 1, 3 e 7 dias depois de cada evento, contra a mediana dos perpétuos (velas de `.cache/robos/`) |
+| `scripts/corretoras-rotuladas.mts` | gera `data/corretoras-rotuladas.json` do conjunto aberto `dawsbot/eth-labels`: só o que é custódia (o filtro é pelo fim do nome da etiqueta), de todas as redes num conjunto só |
 | `lib/quant.ts` | a mesa de risco: a ficha (`fichaDe`), o Sharpe probabilístico e o deflacionado, a trilha mínima, o bootstrap estacionário, o PBO por CSCV, o walk-forward, a paridade de risco do fundo (`paridadeDeRisco`, e `fundoAoVivo` para a página). **Puro e sem `node:`**: a medição e a página usam as mesmas funções |
 | `lib/overview.ts` | junta tudo numa linha por moeda |
 | `app/api/vivo/route.ts` | preço, 24h e financiamento de todas as moedas, em duas requisições |
@@ -498,6 +515,10 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/baleias-hl-contas-AAAA-MM.jsonl` | **do robô, na branch `dados`**: a mesma leitura diária CONTA A CONTA, uma linha por dia — a posição de cada conta lida em unidades, as espertas e o preço de cada moeda. É dela que o juiz tira o fluxo de 3 dias: o histórico por moeda soma o universo inteiro de cada dia e não sabe quem estava nas duas datas | idem |
 | `data/baleias-medicao.json` | a medição dos sinais das baleias (`docs/preregistro-baleias.md`), com o veredito de cada um. **Ainda não existe**: nasce do juiz para frente com 90 dias de leituras, e até lá a aba mostra o porquê e a data em que ele pode ser lido. Fica no `main`, gerado à mão | `npx tsx scripts/medir-baleias-ao-vivo.mts` |
 | `data/baleias-classes.json` | a classificação de market maker de cada conta grande (mais de 300 execuções por dia), a semente do ao vivo — que a guarda por 30 dias e reclassifica até 40 por rodada. Fica no `main` | `npm run baleias -- --agora --classificar 2000 --semente` |
+| `data/insiders.json` | **do robô, na branch `dados`**: por moeda, os insiders (nível 0 e 1), os endereços de depósito reconhecidos, os fluxos de 0,02% do supply ou mais com a classe do destino, os eventos e o resumo; e `fora`, as moedas que a leitura não alcança, com o porquê | `npm run insiders -- --rodada` |
+| `data/insiders-semente.json` | a mesma leitura feita à mão, no `main`: o ponto de partida da primeira rodada do robô e o que a página mostra até ele gravar | `npm run insiders` e depois `npm run insiders -- --semente` |
+| `data/insiders-medicao.json` | a medição dos dois eventos (`docs/preregistro-insiders.md`), com o veredito. Fica no `main`, gerada à mão | `npm run medir-insiders` |
+| `data/corretoras-rotuladas.json` | 26.667 endereços de 53 corretoras com etiqueta pública de custódia (carteiras quentes, frias e de depósito). Rótulo de terceiro. Fica no `main` | `npx tsx scripts/corretoras-rotuladas.mts <accounts.csv> <commit>` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
 | `data/fluxo-binance.json` | o último bloco lido, a identificação de cada token (perpétuo e preço conferidos, última passagem) e a memória das em vista já anunciadas. **É daqui que sai o conjunto em vista** | idem |
@@ -866,6 +887,40 @@ blockchain: a posição de cada conta é pública pela API do site, sem chave
   um dia haja. Não transforme o aviso em call antes disso.
 - **`labelOf` dá nome a elas sem reticências**: os alertas leem "…" como
   endereço não identificado.
+
+### Os criadores e os VCs (`lib/insiders.ts`)
+
+- **Insider é relação, não nome.** Nível 0: os donos da gênese
+  (`data/detentores.json`). Nível 1: quem recebeu deles 0,1% do supply ou mais.
+  A cadeia não diz quem é time e quem é VC, e a tela também não.
+- **O endereço de depósito é reconhecido pelo comportamento**, porque ninguém
+  deposita na carteira fria: 80% ou mais do que ele mandou adiante foi para
+  corretora com etiqueta. E **"não mandou nada adiante" não é "não é
+  depósito"** — o destino fica em `pendentes` e a rodada o olha de novo por 7
+  dias, até a corretora varrer. O fluxo antigo que muda de classe vira aviso.
+- **Quem distribui a mais de 50 destinos é infraestrutura** (ponte, staking,
+  airdrop, carteira quente sem etiqueta) e não é seguido: seguir a ponte
+  contaria como "depósito do time" todo usuário que sacou dela.
+- **Queima e ponte são a mesma coisa para esta leitura**: o token saiu da rede.
+  Na JCT, 13,5% do supply saíram dos donos por um contrato que queima na
+  Ethereum — é a ponte para a BNB Chain, onde a moeda negocia e onde não há log
+  antigo. A tela diz "saiu da rede", não "queimado".
+- **Faixa perdida não é "sem depósito"**: `faixasPerdidas` acima de zero tira a
+  moeda da medição, e na rodada a moeda não avança de bloco. A faixa que não vem
+  é partida até 4 blocos na segunda chance — no dia do lançamento um contrato
+  de distribuição manda mais transferências em 500 blocos do que o nó devolve.
+- **Só a Ethereum.** A BNB Chain não tem log antigo gratuito; o Blockscout da
+  Base respondia com desafio do Cloudflare em 09/11. As de fora vão em `fora`,
+  com o porquê, e a página o mostra.
+- **Migração de token parece depósito.** Na EPIC, 59,8% do supply foram do dono
+  da gênese para corretoras: é a troca do token antigo pelo novo, feita pelas
+  próprias corretoras, e não venda. A leitura não separa os dois; o critério
+  "sem a moeda com mais eventos" existe para isso.
+- **Unidades**: `fracao` é fração do SUPPLY; `t` dos fluxos, SEGUNDOS; `dia`
+  dos eventos, `lidaEm` e `completaEm`, MILISSEGUNDOS; `ate` e `pendentes`,
+  BLOCOS.
+
+`npm run testar-insiders` trava os casos-limite e sai com erro se algum falha.
 
 ---
 
