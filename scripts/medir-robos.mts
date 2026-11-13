@@ -1679,8 +1679,9 @@ async function estudarRegimeRegras(): Promise<void> {
 async function estudarRecompra(): Promise<void> {
   const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
   const FIM_RESERVA = Date.parse("2026-10-01T00:00:00Z");
-  if (FIM < Date.parse("2026-11-12T00:00:00Z")) {
-    console.log("os dados não chegam a 12/11/2026 — a janela que motivou a hipótese não tem como ser julgada");
+  // Emenda de 13/11: o Data Vision só publica mês fechado, e a janela recente é outubro.
+  if (FIM < Date.parse("2026-11-01T00:00:00Z")) {
+    console.log("os dados não chegam a 31/10/2026 — a janela que motivou a hipótese não tem como ser julgada");
     return;
   }
   // As 377 da pesquisa até 05/11 e as 3 desta rodada.

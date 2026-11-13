@@ -71,3 +71,11 @@ O +5.928% medido é o teto de quem escolheu depois de ver (em tempo real, +977%
 contra +6.126%), o lucro é de cauda (sem as 5 melhores a reserva perde 67%) e
 cinco semanas de −15% cabem na queda que o bootstrap dá ao livro (−24% a −54%).
 Uma regra de recompra não transforma isso em outra coisa.
+
+## Emenda (13/11/2026, antes de rodar)
+
+O Data Vision só publica o mês fechado: a medição alcança 31/10/2026, e não
+12/11. A janela recente do critério passa a ser 01/10 a 31/10/2026. Nela o
+motor reproduz o ao vivo (`--conferir-ao-vivo`, desde 08/10): Momento −10,6% ao
+vivo e −11,8% no motor; turbo −15,9% e −17,8%; Caça-monstra −9,5% e −10,9%;
+Fluxo +1,6% e +1,0%; Grandes −1,1% e −2,0%. Nada mais muda.
