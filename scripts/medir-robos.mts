@@ -2762,7 +2762,8 @@ if (fluxoRobo) {
  * O `data/robos-medicao.json` de 13/10 foi gravado com 367; a próxima rodada
  * inteira grava com este número.
  */
-const TENTATIVAS_DA_PESQUISA = 300 + 14 + 3 + 9 + 41 + 10;
+// As 3 últimas são as da recompra solta na máxima nova (13/11, `docs/preregistro-recompra.md`).
+const TENTATIVAS_DA_PESQUISA = 300 + 14 + 3 + 9 + 41 + 10 + 3;
 const SEMENTE = 20_261_010;
 const AMOSTRAS = 2000;
 /** Blocos de 20 dias em média: um mês de memória, o tamanho de uma alta de monstra. */

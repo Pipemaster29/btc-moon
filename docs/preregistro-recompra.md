@@ -79,3 +79,44 @@ O Data Vision só publica o mês fechado: a medição alcança 31/10/2026, e nã
 motor reproduz o ao vivo (`--conferir-ao-vivo`, desde 08/10): Momento −10,6% ao
 vivo e −11,8% no motor; turbo −15,9% e −17,8%; Caça-monstra −9,5% e −10,9%;
 Fluxo +1,6% e +1,0%; Grandes −1,1% e −2,0%. Nada mais muda.
+
+---
+
+## Resultado (13/11/2026, `npm run medir-robos -- --recompra`)
+
+677 moedas com vela, 155 deslistadas, até 31/10/2026. O publicado reproduz a
+rodada de 13/10 no desenho (+1.863,9%).
+
+| | desenho | 1ª metade | 2ª metade | sem as 5 | trades |
+| --- | --- | --- | --- | --- | --- |
+| **publicado** | +1.863,9% (queda −35,8%, Sharpe 2,40) | +216,1% (1,56) | +443,9% (3,65) | +431,9% | 1.818 |
+| extremo, nas duas pernas | +966,8% (−36,9%, 2,07) | +163,6% (1,46) | +265,9% (2,91) | +298,7% | 1.574 |
+| extremo, só na compra | +955,2% (−37,9%, 2,06) | +164,9% (1,46) | +260,1% (2,87) | +288,1% | 1.589 |
+| extremo, só na compra e no prejuízo | +882,2% (−37,2%, 1,98) | +157,4% (1,43) | +244,8% (2,71) | +232,5% | 1.647 |
+
+**As três reprovam nos três critérios do desenho. O Momento fica como está, e a
+reserva não escolheu nada.** Depois da decisão, para o registro:
+
+| | reserva (04–09/2026) | outubro de 2026 |
+| --- | --- | --- |
+| **publicado** | +154,4% (queda −30,0%, Sharpe 2,62) | −13,0% (−17,6%) |
+| extremo, nas duas pernas | +133,5% (−33,1%, 2,51) | −3,3% (−8,3%) |
+| extremo, só na compra | +141,4% (−33,8%, 2,59) | −1,7% (−9,3%) |
+| extremo, só na compra e no prejuízo | +125,8% (−29,5%, 2,41) | −2,7% (−9,6%) |
+| queimada de 05/11, só na compra | +151,0% (−32,6%, 2,67) | −1,7% (−9,3%) |
+
+O que isso diz:
+
+- **A soltura na máxima nova recupera pouco**: +830% (a queimada de 05/11) →
+  +955% no desenho, contra +1.864% do publicado. A hipótese estava errada no
+  mecanismo: a segunda perna que o Momento pega recomprando NÃO espera a máxima
+  nova. A recompra que dá dinheiro é a de logo depois do stop, ainda abaixo do
+  pico — a moeda que sacudiu a posição e voltou a subir.
+- **Outubro é consertado por qualquer forma de queima** (−13,0% → −1,7% a
+  −3,3%) e isso continua não sendo motivo: é a janela que motivou a regra, e
+  em 27 meses de desenho a mesma regra custa metade do resultado.
+- A perda de outubro e novembro é o preço do desenho do livro, não um defeito
+  dele: 26% das compras dão lucro (`--placebo`, 13/10), e os meses sem monstra
+  são feitos só dos outros 74%.
+
+São 380 tentativas na conta da pesquisa (`TENTATIVAS_DA_PESQUISA`).

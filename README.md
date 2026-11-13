@@ -1434,6 +1434,37 @@ semanas entre 10 e 23, e foi aí que vieram as monstras do semestre.
 Nada muda nos robôs. As duas regras ficam no motor, desligadas e testadas
 (`Perna.queimada`, `Perna.regime`), e o único juiz limpo que sobra para elas é o tempo.
 
+### 13/11: "os bots estão muito ruins, a carteira melhorou — e se arriscasse mais?"
+
+Duas rodadas, as duas pré-registradas antes de medir, e nenhuma regra nova.
+
+**Os robôs.** Ao vivo, de 07/10 a 13/11: Momento −15,3%, turbo −22,3%,
+Caça-monstra −13,8%, Grandes −1,1%, Fluxo +0,8%. O motor da medição reproduz
+(Momento −11,8% contra −10,6% ao vivo até 31/10), então não é defeito de
+implementação: é a perna comprada recomprando AGT (12 vezes), JCT (10), BTW (8),
+Q e AIN — −US$ 242 nas cinco. A hipótese (`docs/preregistro-recompra.md`):
+queimar a moeda depois do stop e soltar quando ela faz máxima nova, porque a
+segunda perna de uma monstra faz e a manipulada despejando não.
+
+| Momento | desenho (Sharpe) | reserva | outubro |
+| --- | --- | --- | --- |
+| publicado | +1.864% (2,40) | +154% | −13,0% |
+| queimada de 05/11, só na compra | +830% (1,98) | +151% | −1,7% |
+| solta na máxima nova, 3 formas | +882% a +967% (1,98–2,07) | +126% a +141% | −1,7% a −3,3% |
+
+A máxima nova devolve um oitavo do que a queima tira. A recompra que paga é a
+de logo depois do stop, abaixo do pico — e ela é indistinguível, na hora, da
+recompra da AGT.
+
+**A carteira** (`docs/preregistro-carteira.md`, `npm run medir-carteira`):
++4,1% desde 02/09, sem as 3 melhores moedas −5,8%, e começando do zero em 29/09,
+−3,0%. Vinte variantes; a que responde ao pedido é o risco na força 2, a única
+força que deu lucro: 2,5% → +2,1%, 3% → −3,1%, 4% → −5,2%, com a queda indo de
+−19,6% a −27,0%. Trocar o alvo de +40% por rastro ("deixar correr") piora nas
+cinco formas. O filtro de varejo 3,5, pico em 28/09, reprovou no dado que veio
+depois. A AKE, que subiu 162% horas depois de a carteira sair dela por "sem
+reação", é um caso contra 130: sem essa saída a carteira estaria em −15,0%.
+
 ## O ciclo, em quatro estágios
 
 Tirado de dois ciclos completos — o LAB, que topou em 02/06, e a BTW, em 19/08.

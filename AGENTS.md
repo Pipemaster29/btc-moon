@@ -253,6 +253,20 @@ no código, com número:
   cinco entradas erra 15% mais que a taxa-base de 55,4%. A aba Previsão diz as
   três coisas antes do ranking.
 
+- **A recompra solta só na máxima nova reprovou — a segunda perna não espera
+  a máxima (13/11), a pedido: "as estratégias dos bots estão muito ruins".** Ao
+  vivo, de 07/10 a 13/11, o Momento em −15,3% e o turbo em −22,3%; cinco moedas
+  recompradas depois de cada stop (AGT 12 vezes, JCT 10, BTW 8, Q 6, AIN 5)
+  somam −US$ 242, e o motor reproduz (−11,8% contra −10,6% ao vivo até 31/10).
+  Pré-registrada (`docs/preregistro-recompra.md`): queimar como em 05/11 e
+  soltar quando o preço passa do melhor da posição queimada
+  (`Perna.queimada.ateExtremo`). Nas três formas o desenho cai de +1.864% para
+  +882% a +967% (Sharpe 2,40 → 1,98–2,07), pior nas duas metades e sem as 5; a
+  queimada de 05/11 fazia +830%. Outubro melhora (−13,0% → −1,7%), e é a janela
+  que motivou a regra. A regra fica no motor, desligada. E a carteira, na mesma
+  data, não aceitou nenhuma de 20 variantes de gestão — ver "A carteira
+  fictícia". `npm run medir-robos -- --recompra`.
+
 Se você for propor algo novo, meça primeiro. Se não der para medir, escreva que
 não deu.
 
@@ -763,6 +777,10 @@ e no README; aqui fica o que não pode ser quebrado.
   grandes não decide na rodada — nem a seleção nem o posto —, e os outros
   seguem. A vendida que cai abaixo de US$ 2 bi sai do ranking e FICA até o
   stop ou o prazo: as vendidas chegam a 12 abertas, não a 6.
+- **`Perna.queimada.ateExtremo` também está DESLIGADO** (13/11,
+  `docs/preregistro-recompra.md`): o nível mora na queima (`Queimada.extremo`,
+  o `melhor` da posição que saiu, em PREÇO), e sem preço lido a moeda continua
+  queimada.
 - **A call queimada e o regime existem e estão DESLIGADOS** (`Perna.queimada`,
   `Perna.regime`, 05/11, `docs/preregistro-regime.md`): nenhum robô publicado
   os usa, como o filtro de open interest. A queima mora na posição (`queima`),
@@ -811,8 +829,8 @@ e no README; aqui fica o que não pode ser quebrado.
 - **O deflacionado usa o maior entre o espalhamento dos Sharpes da grade e o do
   acaso** (`varianciaDoSharpeNulo`): grade de variações parecidas espalha pouco
   e daria uma régua baixa demais. E o N "da pesquisa" (`TENTATIVAS_DA_PESQUISA`,
-  377: 300 até 10/10, as 26 do loop, as 41 do robô das grandes e as 10 das
-  regras para o mercado com medo) é contado por baixo — regra nova medida soma
+  380: 300 até 10/10, as 26 do loop, as 41 do robô das grandes, as 10 das
+  regras para o mercado com medo e as 3 da recompra de 13/11) é contado por baixo — regra nova medida soma
   tentativas. O `robos-medicao.json` de 13/10 foi gravado com 367.
 - **O fundo só transfere o caixa livre** (`caixaLivre` de `paridadeDeRisco`):
   margem de posição aberta não sai da subconta. O ao vivo (`fundoAoVivo`) é
