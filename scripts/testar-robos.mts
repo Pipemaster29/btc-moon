@@ -487,6 +487,29 @@ const ROBO_Q: Robo = { ...ROBO, regras: { ...ROBO.regras, pernas: [COMPRA_Q] } }
   confere("posição sem a regra (entrou antes) não queima", (e3.queimadas ?? []).length === 0, `${e3.queimadas?.length ?? 0} queimadas`);
 }
 
+{
+  // `ateExtremo`: a queima também sai quando o preço passa do melhor da posição queimada.
+  const ext: Robo = { ...ROBO, regras: { ...ROBO.regras, pernas: [{ ...COMPRA_Q, queimada: { ateExtremo: true } }] } };
+  const e = novoEstado(ext, T0);
+  decidir(e, ranking30(), () => 100, T0);
+  const p = e.abertas.find((x) => x.symbol === "M29USDT")!;
+  p.melhor = 140;
+  fechar(e, p, { preco: 98, quando: T0 + 5 * HORA, motivo: "rastro" });
+  confere("a queima guarda o melhor preço e o lado", e.queimadas?.[0]?.extremo?.preco === 140 && e.queimadas[0].extremo.lado === "long", `${JSON.stringify(e.queimadas?.[0]?.extremo)}`);
+  decidir(e, ranking30(), () => 139, T0 + DIA);
+  confere("abaixo da máxima da posição queimada: não recompra", !e.abertas.some((x) => x.symbol === "M29USDT"), `${e.abertas.map((x) => x.symbol).join()}`);
+  decidir(e, ranking30(), (s) => (s === "M29USDT" ? undefined : 100), T0 + 2 * DIA);
+  confere("sem preço lido continua queimada", e.queimadas?.length === 1 && !e.abertas.some((x) => x.symbol === "M29USDT"), `${e.queimadas?.length ?? 0} queimadas`);
+  decidir(e, ranking30(), () => 141, T0 + 3 * DIA);
+  confere("máxima nova: a queima sai e a perna recompra no mesmo dia", (e.queimadas ?? []).length === 0 && e.abertas.some((x) => x.symbol === "M29USDT"), `${e.abertas.map((x) => x.symbol).join()}`);
+  // Sem `ateExtremo`, a queima não guarda preço e a máxima nova não solta.
+  const e2 = novoEstado(ROBO_Q, T0);
+  decidir(e2, ranking30(), () => 100, T0);
+  fechar(e2, e2.abertas.find((x) => x.symbol === "M29USDT")!, { preco: 75, quando: T0 + HORA, motivo: "stop" });
+  decidir(e2, ranking30(), () => 500, T0 + DIA);
+  confere("sem a opção, a máxima nova não solta", e2.queimadas?.[0]?.extremo === undefined && !e2.abertas.some((x) => x.symbol === "M29USDT"), `${e2.abertas.map((x) => x.symbol).join()}`);
+}
+
 // ------------------------------------------------------------------ o regime
 console.log("\no tamanho pelo regime");
 {

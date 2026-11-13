@@ -239,8 +239,14 @@ export interface Perna {
    * aberta. Com `soPrejuizo`, só a saída com prejuízo queima. Saída por posto
    * não queima: a moeda já saiu das primeiras. Ausente: recompra no dia
    * seguinte. Medida em 05/11 (`docs/preregistro-regime.md`).
+   *
+   * Com `ateExtremo`, a queima também sai quando o PREÇO da decisão passa do
+   * melhor preço que a posição queimada viu (acima da máxima dela, na
+   * comprada; abaixo da mínima, na vendida): a segunda perna de uma monstra
+   * faz máxima nova, a manipulada despejando não faz. Sem preço lido,
+   * continua queimada. Medida em 13/11 (`docs/preregistro-recompra.md`).
    */
-  queimada?: { soPrejuizo?: boolean };
+  queimada?: { soPrejuizo?: boolean; ateExtremo?: boolean };
   /**
    * O TAMANHO PELO REGIME DO MERCADO (`RegimeDoMercado`): as entradas novas da
    * perna saem com o tamanho × `multiplicador` no dia em que o regime da
@@ -1251,7 +1257,7 @@ export interface PosicaoRobo {
    * prejuízo queima. Mora na posição como o stop: a que entrou antes da regra
    * não queima a moeda ao sair.
    */
-  queima?: { chave: string; janelaDias: number; soPrejuizo: boolean };
+  queima?: { chave: string; janelaDias: number; soPrejuizo: boolean; ateExtremo?: boolean };
 }
 
 /**
@@ -1264,6 +1270,11 @@ export interface Queimada {
   chave: string;
   desde: number;
   ate: number;
+  /**
+   * Só com `ateExtremo`: o melhor PREÇO que a posição queimada viu e o lado
+   * dela. A queima sai quando o preço da decisão passa dele.
+   */
+  extremo?: { preco: number; lado: LadoRobo };
 }
 
 /**
@@ -1789,7 +1800,13 @@ export function fechar(
     const q = p.queima;
     e.queimadas = [
       ...(e.queimadas ?? []).filter((x) => !(x.symbol === p.symbol && x.chave === q.chave)),
-      { symbol: p.symbol, chave: q.chave, desde: s.quando, ate: s.quando + q.janelaDias * DIA },
+      {
+        symbol: p.symbol,
+        chave: q.chave,
+        desde: s.quando,
+        ate: s.quando + q.janelaDias * DIA,
+        ...(q.ateExtremo && Number.isFinite(p.melhor) ? { extremo: { preco: p.melhor, lado: p.lado } } : {}),
+      },
     ];
   }
   const t: TradeRobo = {
@@ -2083,7 +2100,7 @@ export function abrir(
           },
         }
       : {}),
-    ...(perna.queimada ? { queima: { chave: chaveDaPerna(perna), janelaDias: perna.janelaDias, soPrejuizo: !!perna.queimada.soPrejuizo } } : {}),
+    ...(perna.queimada ? { queima: { chave: chaveDaPerna(perna), janelaDias: perna.janelaDias, soPrejuizo: !!perna.queimada.soPrejuizo, ...(perna.queimada.ateExtremo ? { ateExtremo: true } : {}) } } : {}),
     // O atraso da medição vale para as duas metades do par: as duas ordens esperam o retrato.
     ...(custoExtra > 0 ? { custoExtra: custoExtra * (nocional + nocionalHedge) } : {}),
     ...(corretora ? { corretora } : {}),
@@ -2166,7 +2183,7 @@ export function decidir(
       ? { preco: precoDe(perna.hedge.symbol) ?? NaN, volume: linhaHedge?.volume ?? NaN, corretora: linhaHedge?.corretora, impacto: linhaHedge?.impacto }
       : undefined;
     const tamanhoDe = multiplicadorPelaVolatilidade(e.regras, perna, linhas);
-    const queimadas = perna.queimada ? renovarQueimadas(e, perna, linhas) : null;
+    const queimadas = perna.queimada ? renovarQueimadas(e, perna, linhas, precoDe) : null;
     for (const l of selecionar(e.regras, perna, linhas)) {
       // A queimada é pulada sem trocar pela seguinte, como a que já está aberta.
       if (queimadas?.has(l.symbol)) continue;
@@ -2190,7 +2207,12 @@ export function chaveDaPerna(perna: Pick<Perna, "lado" | "janelaDias" | "criteri
  * respondeu) continua queimada — "não consegui ler" não é "o sinal mudou" —, e
  * ranking com menos de 20 moedas não solta nenhuma, como na saída por posto.
  */
-function renovarQueimadas(e: EstadoRobo, perna: Perna, linhas: readonly LinhaRanking[]): Set<string> {
+function renovarQueimadas(
+  e: EstadoRobo,
+  perna: Perna,
+  linhas: readonly LinhaRanking[],
+  precoDe: (symbol: string) => number | undefined,
+): Set<string> {
   const chave = chaveDaPerna(perna);
   if (!e.queimadas?.some((q) => q.chave === chave)) return new Set();
   const ordem = ordenar(e.regras, perna, linhas).filter((l) => l.symbol !== perna.hedge?.symbol);
@@ -2198,7 +2220,14 @@ function renovarQueimadas(e: EstadoRobo, perna: Perna, linhas: readonly LinhaRan
   e.queimadas = e.queimadas.filter((q) => {
     if (q.chave !== chave) return true;
     const k = posto?.get(q.symbol);
-    return !(k !== undefined && k >= perna.k);
+    if (k !== undefined && k >= perna.k) return false;
+    // `ateExtremo`: o preço da decisão além do melhor que a posição queimada
+    // viu. Preço não lido não solta — `NaN > x` é falso, e é o que se quer.
+    if (q.extremo) {
+      const preco = precoDe(q.symbol) ?? NaN;
+      if (q.extremo.lado === "long" ? preco > q.extremo.preco : preco < q.extremo.preco) return false;
+    }
+    return true;
   });
   return new Set(e.queimadas.filter((q) => q.chave === chave).map((q) => q.symbol));
 }
