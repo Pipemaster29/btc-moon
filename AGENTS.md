@@ -265,6 +265,7 @@ npm install
 npm run dev          # a aplicação
 npm run panorama     # o retrato de todas as moedas → data/panorama.json
 npm run carteira     # a carteira fictícia → data/carteira.json
+npm run medir-carteira # a bancada da gestão: variantes, vizinhos, "sem as 3 melhores" e a janela posterior (não grava em data/)
 npm run robos        # os robôs ao vivo → data/robos.json
 npm run medir-robos  # a medição dos robôs e a mesa de risco, com o mesmo motor → data/robos-medicao.json
 npm run baleias      # as baleias da Hyperliquid agora (de 4 em 4 h) → data/baleias-hl.json
@@ -587,6 +588,19 @@ maior ou menor e mais tamanho na força 1. Nenhuma melhora as quatro colunas num
 platô; as quatro primeiras ficam no motor, desligadas (`fundingMaxEntrada`,
 `varejoMaxEntrada`, `confirmacaoEntradaH`, `riscoMaximo`), e a tabela segue
 medindo três delas a cada retrato. Os números moram no comentário de `REGRAS`.
+
+**Em 13/11, a pedido — "se arriscasse um pouco mais" —, a gestão foi refeita
+com dois meses a mais e nada entrou** (`docs/preregistro-carteira.md`, escrito
+antes; `npm run medir-carteira`). Vinte variantes em seis grupos, com duas
+colunas novas: "sem as 3 melhores" e a janela POSTERIOR (a carteira do zero em
+29/09, dado que as ideias de setembro não viram). O publicado: +4,1%, sem as 3
+melhores −5,8%, posterior −3,0%. Mais risco na força 2, a única que deu lucro,
+piora em linha reta (2,5% → +2,1%, 3% → −3,1%, 4% → −5,2%, queda até −27%);
+trocar o alvo por rastro piora nas cinco formas; o filtro de varejo 3,5 passa
+nas quatro colunas e reprova na posterior (−3,2% contra −3,0%, os vizinhos em
+−5,8% a −7,8%); o stop de 20% é pico (15% dá −7,5%); confirmar a entrada 30 min
+piora a 1ª metade. A saída "sem reação" de 2 dias empata com a de 3 com queda
+menor (−14,8%): o 3 virou borda do platô, e fica anotado para a próxima rodada.
 
 **Em 25/09, sem o vendido e com a confirmação de 6 h**, sobre as mesmas calls:
 o publicado em **+4,5%** (queda máxima −8,5%, sem a melhor moeda +1,2%, metades

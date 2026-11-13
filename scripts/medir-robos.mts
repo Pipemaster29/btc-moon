@@ -19,6 +19,7 @@
  *           npm run medir-robos -- --ate 2026-10-01             (a medição termina nesse dia)
  *           npm run medir-robos -- --regime                     (os robôs por regime de mercado, no desenho)
  *           npm run medir-robos -- --regime-regras              (`docs/preregistro-regime.md`)
+ *           npm run medir-robos -- --recompra                   (`docs/preregistro-recompra.md`)
  *           npm run medir-robos -- --conferir-ao-vivo data/robos.json  (o ao vivo contra o motor)
  */
 
@@ -892,6 +893,10 @@ if (args.includes("--regime-regras")) {
   await estudarRegimeRegras();
   process.exit(0);
 }
+if (args.includes("--recompra")) {
+  await estudarRecompra();
+  process.exit(0);
+}
 if (args.includes("--conferir-ao-vivo")) {
   await conferirAoVivo(args[args.indexOf("--conferir-ao-vivo") + 1] ?? "data/robos.json");
   process.exit(0);
@@ -1661,6 +1666,110 @@ async function estudarRegimeRegras(): Promise<void> {
       );
     }
   }
+}
+
+/**
+ * A RECOMPRA SOLTA SÓ NA MÁXIMA NOVA, como está em `docs/preregistro-recompra.md`
+ * (commitado antes desta função rodar): três formas de `Perna.queimada` com
+ * `ateExtremo` no Momento, julgadas no DESENHO pelo critério de 05/11; a
+ * escolhida vai à RESERVA (04–09/2026), à janela de 01/10 em diante — a que
+ * motivou a hipótese, e por isso só reprova — e ao ataque de custo e de
+ * escorregada. Sem escolhida, as três rodam na reserva só para o registro.
+ */
+async function estudarRecompra(): Promise<void> {
+  const FIM_DESENHO = Date.parse("2026-04-01T00:00:00Z");
+  const FIM_RESERVA = Date.parse("2026-10-01T00:00:00Z");
+  if (FIM < Date.parse("2026-11-12T00:00:00Z")) {
+    console.log("os dados não chegam a 12/11/2026 — a janela que motivou a hipótese não tem como ser julgada");
+    return;
+  }
+  // As 377 da pesquisa até 05/11 e as 3 desta rodada.
+  const TENTATIVAS = 377 + 3;
+  const desenho: [string, number, number][] = [
+    ["desenho", INICIO, FIM_DESENHO],
+    ["1ª metade", INICIO, CORTE],
+    ["2ª metade", CORTE, FIM_DESENHO],
+  ];
+  type Medida = { ret: number; queda: number; sharpe: number };
+  const medida = (e: EstadoRobo): Medida => ({ ret: e.curva[e.curva.length - 1].patrimonio / e.curva[0].patrimonio - 1, queda: e.quedaMaxima, sharpe: sharpeDe(e.curva) });
+  const fmt = (m: Medida) => `${pct(m.ret).padStart(9)} (queda ${pct(m.queda)}, Sharpe ${m.sharpe.toFixed(2)})`;
+  const com = (id: string, f: (p: Perna) => Perna): Robo => ({ ...MOMENTO, id: `${MOMENTO.id}·${id}`, regras: { ...MOMENTO.regras, pernas: MOMENTO.regras.pernas.map(f) } });
+  const candidatas: { nome: string; robo: Robo }[] = [
+    { nome: "extremo, nas duas pernas", robo: com("extremo", (p) => ({ ...p, queimada: { ateExtremo: true } })) },
+    { nome: "extremo, só na compra", robo: com("extremo-compra", (p) => (p.lado === "long" ? { ...p, queimada: { ateExtremo: true } } : p)) },
+    { nome: "extremo, só na compra e no prejuízo", robo: com("extremo-compra-prejuizo", (p) => (p.lado === "long" ? { ...p, queimada: { ateExtremo: true, soPrejuizo: true } } : p)) },
+  ];
+  const medicao = JSON.parse(await readFile("data/robos-medicao.json", "utf8")) as Medicao;
+
+  console.log(`\n==== Momento: DESENHO (08/01/2024 a 31/03/2026) — a reserva e 10–11/2026 ainda não foram rodados`);
+  const pubDesenho = simular(MOMENTO, INICIO, FIM_DESENHO);
+  const pub = desenho.map(([, de, ate]) => medida(simular(MOMENTO, de, ate)));
+  const pubTrades = pubDesenho.fechadas.length + pubDesenho.abertas.length;
+  const top5 = new Set([...porMoeda(pubDesenho).entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s));
+  const pubSem5 = medida(simular(MOMENTO, INICIO, FIM_DESENHO, top5));
+  console.log(`${"publicado".padEnd(38)} ` + pub.map((m, k) => `${desenho[k][0]} ${fmt(m)}`).join(" · ") + ` · sem as 5 (${[...top5].map((s) => s.replace(/USDT$/, "")).join(", ")}) ${pct(pubSem5.ret)}`);
+  const aprovadas: { c: (typeof candidatas)[number]; sharpe: number }[] = [];
+  for (const c of candidatas) {
+    const es = desenho.map(([, de, ate]) => simular(c.robo, de, ate));
+    const ms = es.map(medida);
+    const sem5 = medida(simular(c.robo, INICIO, FIM_DESENHO, top5));
+    const trades = es[0].fechadas.length + es[0].abertas.length;
+    console.log(`${c.nome.padEnd(38)} ` + ms.map((m, k) => `${desenho[k][0]} ${fmt(m)}`).join(" · ") + ` · sem as 5 ${pct(sem5.ret)} · ${trades} trades (publicado ${pubTrades})`);
+    const criterios: [string, boolean][] = [
+      ["Sharpe do desenho maior", ms[0].sharpe > pub[0].sharpe],
+      ["nenhuma metade pior", ms[1].sharpe >= pub[1].sharpe && ms[2].sharpe >= pub[2].sharpe],
+      ["sem as 5 não pior", sem5.ret >= pubSem5.ret],
+    ];
+    console.log(`${"".padEnd(38)} ${criterios.map(([n, ok]) => `${ok ? "✓" : "✗"} ${n}`).join(" · ")}`);
+    if (criterios.every(([, ok]) => ok)) aprovadas.push({ c, sharpe: ms[0].sharpe });
+  }
+  const escolhida = aprovadas.sort((a, b) => b.sharpe - a.sharpe)[0]?.c;
+  console.log(escolhida ? `\nescolhida pelo critério: ${escolhida.nome}` : "\nnenhuma passou no desenho: o livro fica como está, e a reserva não escolhe nada");
+
+  const naJanela = (r: Robo, de: number, ate: number) => medida(simular(r, de, ate));
+  const pubReserva = naJanela(MOMENTO, FIM_DESENHO, FIM_RESERVA);
+  const pubVivo = naJanela(MOMENTO, FIM_RESERVA, FIM);
+  console.log(`\n== RESERVA (01/04 a 30/09/2026) e de 01/10 a ${new Date(FIM - HORA).toISOString().slice(0, 10)}`);
+  console.log(`${"publicado".padEnd(38)} reserva ${fmt(pubReserva)} · 10–11/2026 ${fmt(pubVivo)}`);
+  if (escolhida) {
+    const r = naJanela(escolhida.robo, FIM_DESENHO, FIM_RESERVA);
+    const o = naJanela(escolhida.robo, FIM_RESERVA, FIM);
+    const passaReserva = r.sharpe >= pubReserva.sharpe;
+    const passaVivo = o.ret >= pubVivo.ret;
+    console.log(`${escolhida.nome.padEnd(38)} reserva ${fmt(r)} · 10–11/2026 ${fmt(o)} ← escolhida`);
+    console.log(`${"".padEnd(38)} ${passaReserva ? "✓" : "✗"} Sharpe na reserva não menor · ${passaVivo ? "✓" : "✗"} retorno em 10–11/2026 não menor`);
+    let aguenta = true;
+    if (passaReserva && passaVivo) {
+      console.log("\n== O ATAQUE, no desenho: cada um contra o publicado no mesmo ataque");
+      const ataques: [string, Extra][] = [
+        ["custo de entrada 4x", { custoAtraso: 4 * CUSTO_ATRASO }],
+        ["escorregada dobrada", { escorregada: 2 * ESCORREGADA_STOP }],
+      ];
+      for (const [rotulo, extra] of ataques) {
+        const p = medida(simular(MOMENTO, INICIO, FIM_DESENHO, undefined, undefined, JANELA_VOLATILIDADE_DIAS, true, extra));
+        const v = medida(simular(escolhida.robo, INICIO, FIM_DESENHO, undefined, undefined, JANELA_VOLATILIDADE_DIAS, true, extra));
+        const ok = v.sharpe > p.sharpe;
+        aguenta &&= ok;
+        console.log(`${rotulo.padEnd(22)} publicado ${fmt(p)} · escolhida ${fmt(v)} → ${ok ? "aguenta" : "NÃO aguenta"}`);
+      }
+    }
+    console.log(`\n→ Momento, ${escolhida.nome}: ${passaReserva && passaVivo && aguenta ? "APROVADA" : "REPROVADA"}`);
+    const grade = medicao.quant?.validacao.find((v) => v.id === MOMENTO.id)?.desvioDosSharpes.grade ?? 0;
+    const { r: rs } = retornosDiarios(diaria(simular(escolhida.robo, INICIO, FIM_RESERVA)));
+    const variancia = Math.max((grade / Math.sqrt(365)) ** 2, varianciaDoSharpeNulo(rs.length));
+    console.log(
+      `deflacionado da escolhida, 01/2024 a 09/2026, ${TENTATIVAS} tentativas: Sharpe ${(sharpeDiario(rs) * Math.sqrt(365)).toFixed(2)}, ` +
+        `régua ${(sharpeMaximoEsperado(TENTATIVAS, variancia) * Math.sqrt(365)).toFixed(2)}, DSR ${sharpeDeflacionado(rs, TENTATIVAS, variancia).toFixed(4)}`,
+    );
+  }
+  console.log(`\n== depois da decisão, para o registro`);
+  for (const c of candidatas) {
+    if (c === escolhida) continue;
+    console.log(`${c.nome.padEnd(38)} reserva ${fmt(naJanela(c.robo, FIM_DESENHO, FIM_RESERVA))} · 10–11/2026 ${fmt(naJanela(c.robo, FIM_RESERVA, FIM))}`);
+  }
+  // A queimada de 05/11, sem a soltura, na mesma janela: o que a hipótese nova tinha de bater.
+  const velha: Robo = com("queimada-compra", (p) => (p.lado === "long" ? { ...p, queimada: {} } : p));
+  console.log(`${"queimada de 05/11, só na compra".padEnd(38)} desenho ${fmt(naJanela(velha, INICIO, FIM_DESENHO))} · reserva ${fmt(naJanela(velha, FIM_DESENHO, FIM_RESERVA))} · 10–11/2026 ${fmt(naJanela(velha, FIM_RESERVA, FIM))}`);
 }
 
 /**
