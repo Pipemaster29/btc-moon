@@ -1,0 +1,347 @@
+/**
+ * O padrão dos 1.064 / 364 dias do BTC — o post do 4chan de 12/12/2023 —, na
+ * versão literal e numa versão que se corrige pelo preço. Pedido em 24/11/2026:
+ * "coloque esse padrão no algoritmo [...] crie um que vai ajustando essas datas
+ * [...] uma carteira ficcional lá do começo comprar e vender nessas datas".
+ *
+ * O post:   fundo 2015 → topo 2017 = 1.064 d;  topo 2017 → fundo 2018 = 364 d;
+ *           fundo 2018 → topo 2021 = 1.064 d;  topo 2021 → fundo 2022 = 364 d;
+ *           "o padrão imprime o topo deste ciclo em 06/10/2025".
+ *
+ * Conferido na Bitstamp (fechamentos e extremos diários), o padrão é melhor E
+ * pior do que o post diz:
+ *
+ * - a previsão de 2023 acertou: o topo foi em 06/10/2025, a US$ 126.272. Pelos
+ *   extremos reais, o fundo de 21/11/2022 + 1.064 dava 20/10/2025 — catorze
+ *   dias de erro, dois anos antes;
+ * - os números do post são arredondados: 2015→2017 foram 1.068 dias,
+ *   2018→2021, 1.061, e 2021→2022 foram 376, não 364;
+ * - o post começa em 2015 de propósito. O ciclo de 2011–2013 não cabe (fundo de
+ *   11/2011 ao topo de 11/2013 são ~740 dias), e o urso de 2013–2015 durou 410;
+ * - e o 364 de 2025 errou: 06/10/2026 fechou a US$ 85.554, e o fundo até
+ *   aqui é o de 21/11/2026, a US$ 55.081 — 411 dias depois do topo.
+ *
+ * SÃO TRÊS CICLOS. Três compras e três vendas não demonstram nada, por melhor
+ * que seja o resultado, e o padrão foi escrito depois de ver dois deles. O que
+ * isto faz é pôr a ideia na tela de um jeito que não olha o futuro — cada
+ * decisão só com os fechamentos até aquele dia — e com a carteira ao lado do
+ * "comprar e segurar" no mesmo dia e com o mesmo dinheiro.
+ *
+ * A VERSÃO QUE SE CORRIGE, e o que ela faz com a data:
+ *
+ * - depois de um topo, a busca do fundo ABRE em topo + 364 dias. Daí em diante
+ *   o fundo candidato é a menor mínima desde a abertura — ele anda para frente
+ *   cada vez que o preço faz mínima nova, que é o "não era ali, fomos para
+ *   novembro" do pedido;
+ * - o fundo só é CONFIRMADO quando o fechamento sobe `subidaConfirma` acima
+ *   dele. A compra é nesse fechamento, não no fundo: ninguém sabe que era o
+ *   fundo no dia do fundo;
+ * - comprado, se o fechamento perde o fundo confirmado, o fundo era falso: a
+ *   carteira vende e a busca recomeça daquele dia;
+ * - depois de um fundo, a busca do topo ABRE em fundo + 1.064 dias, e é o
+ *   espelho: o topo candidato é a maior máxima desde a abertura, a venda é o
+ *   fechamento `quedaConfirma` abaixo dele, e o fechamento acima do topo
+ *   confirmado recompra.
+ *
+ * A data de cada ciclo é a do extremo CONFIRMADO do anterior, e não a do
+ * calendário: o erro de um ciclo não se soma ao do seguinte.
+ *
+ * Unidades: `t` em SEGUNDOS desde 1970 (UTC), como as velas da Bitstamp;
+ * preços em DÓLARES; `subidaConfirma`, `quedaConfirma` e `custo` são frações
+ * (do PREÇO os dois primeiros, do VALOR negociado por lado o último); dias são
+ * DIAS de calendário.
+ */
+
+export interface DiaBtc {
+  /** Início do dia, em segundos desde 1970, UTC. */
+  t: number;
+  alta: number;
+  baixa: number;
+  fecho: number;
+}
+
+export interface RegrasCiclo {
+  /** Do topo até a busca do fundo abrir. O post: 364. */
+  diasAteFundo: number;
+  /** Do fundo até a busca do topo abrir. O post: 1.064. */
+  diasAteTopo: number;
+  /** Quanto antes da data a busca abre. 0 é a data do post, sem folga. */
+  antecedencia: number;
+  /** Fração do PREÇO acima do fundo candidato que o confirma (e compra). */
+  subidaConfirma: number;
+  /** Fração do PREÇO abaixo do topo candidato que o confirma (e vende). */
+  quedaConfirma: number;
+  /** Fração do valor negociado, por lado. */
+  custo: number;
+}
+
+/**
+ * As regras publicadas. A data é a do post, sem antecedência, e os dois
+ * gatilhos são o mesmo 20% — um número redondo, escolhido antes da grade de
+ * `scripts/medir-ciclo.mts` e não por ela. A grade está na tela inteira, para
+ * se ver que a escolha não é a melhor de 64.
+ */
+export const REGRAS_CICLO: RegrasCiclo = {
+  diasAteFundo: 364,
+  diasAteTopo: 1064,
+  antecedencia: 0,
+  subidaConfirma: 0.2,
+  quedaConfirma: 0.2,
+  custo: 0.001,
+};
+
+/**
+ * A semente: o topo de 30/11/2013 (máxima diária de US$ 1.163 na Bitstamp).
+ * Escolhida à mão, e é a única coisa escolhida à mão: daí em diante cada data
+ * sai da regra. Começar no fundo de 2015, como o post, daria ao algoritmo a
+ * primeira compra perfeita de graça.
+ */
+export const SEMENTE = { t: Date.UTC(2013, 10, 30) / 1000, preco: 1163 };
+
+export const CAPITAL_INICIAL = 10_000;
+
+const DIA = 86_400;
+
+export type TipoMarca = "compra" | "venda" | "fundo falso" | "topo falso";
+
+export interface Marca {
+  t: number;
+  tipo: TipoMarca;
+  /** Preço do fechamento em que a carteira operou. */
+  preco: number;
+  /** Patrimônio depois da operação, em dólares. */
+  patrimonio: number;
+}
+
+export interface Extremo {
+  tipo: "fundo" | "topo";
+  /** O dia do extremo (mínima ou máxima diária). */
+  t: number;
+  preco: number;
+  /** O dia em que a regra o confirmou. */
+  confirmadoEm: number;
+  /** Quantos dias depois do extremo anterior. */
+  dias: number;
+  /** A data que o calendário do post dava para este extremo. */
+  previsto: number;
+}
+
+export interface EstadoAtual {
+  /** O que a regra procura agora. */
+  procurando: "fundo" | "topo";
+  comprado: boolean;
+  /** O extremo confirmado de que a contagem parte. */
+  ancora: { t: number; preco: number; tipo: "fundo" | "topo" };
+  /** Quando a busca abre (ou abriu). */
+  abre: number;
+  /** O candidato desde a abertura, ou nulo se a busca ainda não abriu. */
+  candidato: { t: number; preco: number } | null;
+  /** O fechamento que confirma o candidato, ou nulo se a busca não abriu. */
+  gatilho: number | null;
+  /** O fechamento que desfaz o último extremo confirmado (o "falso"). */
+  desfaz: number;
+  /** A próxima data do calendário depois desta: venda estimada se procura fundo, etc. */
+  depois: number;
+}
+
+export interface Resultado {
+  marcas: Marca[];
+  extremos: Extremo[];
+  curva: { t: number; patrimonio: number }[];
+  estado: EstadoAtual;
+  final: number;
+}
+
+/**
+ * A versão que se corrige. Decide no fechamento de cada dia, só com os dias
+ * até ele, e opera nesse mesmo fechamento.
+ */
+export function simularAdaptativo(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_CICLO, semente = SEMENTE): Resultado {
+  let caixa = CAPITAL_INICIAL;
+  let btc = 0;
+  const marcas: Marca[] = [];
+  const extremos: Extremo[] = [];
+  const curva: Resultado["curva"] = [];
+
+  let procurando: "fundo" | "topo" = "fundo";
+  let ancora = { t: semente.t, preco: semente.preco, tipo: "topo" as "fundo" | "topo" };
+  let abre = semente.t + (regras.diasAteFundo - regras.antecedencia) * DIA;
+  let candidato: { t: number; preco: number } | null = null;
+
+  const operar = (d: DiaBtc, tipo: TipoMarca, compra: boolean) => {
+    if (compra) {
+      btc = (caixa * (1 - regras.custo)) / d.fecho;
+      caixa = 0;
+    } else {
+      caixa = btc * d.fecho * (1 - regras.custo);
+      btc = 0;
+    }
+    marcas.push({ t: d.t, tipo, preco: d.fecho, patrimonio: caixa + btc * d.fecho });
+  };
+
+  for (const d of dias) {
+    if (d.t < semente.t || !Number.isFinite(d.fecho) || d.fecho <= 0) continue;
+    const comprado = btc > 0;
+
+    // O extremo confirmado foi desfeito: o fundo perdido com a carteira
+    // comprada, ou o topo superado com ela vendida. A busca do mesmo extremo
+    // recomeça HOJE — é o candidato andando para frente.
+    if (ancora.tipo === "fundo" && procurando === "topo" && comprado && d.fecho < ancora.preco) {
+      operar(d, "fundo falso", false);
+      extremos.pop();
+      const anterior = extremos.at(-1);
+      ancora = anterior ? { t: anterior.t, preco: anterior.preco, tipo: "topo" } : { ...semente, tipo: "topo" };
+      procurando = "fundo";
+      abre = d.t;
+      candidato = { t: d.t, preco: d.baixa };
+    } else if (ancora.tipo === "topo" && procurando === "fundo" && !comprado && extremos.length > 0 && d.fecho > ancora.preco) {
+      operar(d, "topo falso", true);
+      extremos.pop();
+      const anterior = extremos.at(-1)!;
+      ancora = { t: anterior.t, preco: anterior.preco, tipo: "fundo" };
+      procurando = "topo";
+      abre = d.t;
+      candidato = { t: d.t, preco: d.alta };
+    } else if (d.t >= abre) {
+      if (procurando === "fundo") {
+        if (!candidato || d.baixa < candidato.preco) candidato = { t: d.t, preco: d.baixa };
+        if (d.fecho >= candidato.preco * (1 + regras.subidaConfirma)) {
+          operar(d, "compra", true);
+          extremos.push({
+            tipo: "fundo",
+            t: candidato.t,
+            preco: candidato.preco,
+            confirmadoEm: d.t,
+            dias: Math.round((candidato.t - ancora.t) / DIA),
+            previsto: ancora.t + regras.diasAteFundo * DIA,
+          });
+          ancora = { t: candidato.t, preco: candidato.preco, tipo: "fundo" };
+          procurando = "topo";
+          abre = candidato.t + (regras.diasAteTopo - regras.antecedencia) * DIA;
+          candidato = null;
+        }
+      } else {
+        if (!candidato || d.alta > candidato.preco) candidato = { t: d.t, preco: d.alta };
+        if (d.fecho <= candidato.preco * (1 - regras.quedaConfirma)) {
+          if (btc > 0) operar(d, "venda", false);
+          extremos.push({
+            tipo: "topo",
+            t: candidato.t,
+            preco: candidato.preco,
+            confirmadoEm: d.t,
+            dias: Math.round((candidato.t - ancora.t) / DIA),
+            previsto: ancora.t + regras.diasAteTopo * DIA,
+          });
+          ancora = { t: candidato.t, preco: candidato.preco, tipo: "topo" };
+          procurando = "fundo";
+          abre = candidato.t + (regras.diasAteFundo - regras.antecedencia) * DIA;
+          candidato = null;
+        }
+      }
+    }
+    curva.push({ t: d.t, patrimonio: caixa + btc * d.fecho });
+  }
+
+  const ultimo = dias.at(-1)!;
+  const aberta = ultimo.t >= abre && candidato;
+  const estado: EstadoAtual = {
+    procurando,
+    comprado: btc > 0,
+    ancora,
+    abre,
+    candidato: aberta ? candidato : null,
+    gatilho: aberta && candidato ? candidato.preco * (procurando === "fundo" ? 1 + regras.subidaConfirma : 1 - regras.quedaConfirma) : null,
+    desfaz: ancora.preco,
+    // Procurando fundo, a venda seguinte é o fundo (ainda por vir) + 1.064; sem
+    // fundo confirmado, a melhor estimativa é contar do candidato de hoje.
+    depois:
+      procurando === "fundo"
+        ? (aberta && candidato ? candidato.t : abre) + regras.diasAteTopo * DIA
+        : abre + regras.antecedencia * DIA + regras.diasAteFundo * DIA,
+  };
+  return { marcas, extremos, curva, estado, final: caixa + btc * ultimo.fecho };
+}
+
+/**
+ * O post ao pé da letra: a partir da semente, compra em +364 dias, vende em
+ * +1.064 dias depois da compra, e assim por diante — só calendário, sem olhar
+ * o preço. É a régua que mostra o que a correção pelo preço acrescenta.
+ */
+export function simularCalendario(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_CICLO, semente = SEMENTE): Resultado {
+  let caixa = CAPITAL_INICIAL;
+  let btc = 0;
+  const marcas: Marca[] = [];
+  const curva: Resultado["curva"] = [];
+  let proxima = semente.t + regras.diasAteFundo * DIA;
+  let compra = true;
+  for (const d of dias) {
+    if (d.t < semente.t || !Number.isFinite(d.fecho) || d.fecho <= 0) continue;
+    if (d.t >= proxima) {
+      if (compra) {
+        btc = (caixa * (1 - regras.custo)) / d.fecho;
+        caixa = 0;
+      } else {
+        caixa = btc * d.fecho * (1 - regras.custo);
+        btc = 0;
+      }
+      marcas.push({ t: d.t, tipo: compra ? "compra" : "venda", preco: d.fecho, patrimonio: caixa + btc * d.fecho });
+      proxima += (compra ? regras.diasAteTopo : regras.diasAteFundo) * DIA;
+      compra = !compra;
+    }
+    curva.push({ t: d.t, patrimonio: caixa + btc * d.fecho });
+  }
+  const ultimo = dias.at(-1)!;
+  return {
+    marcas,
+    extremos: [],
+    curva,
+    estado: {
+      procurando: compra ? "fundo" : "topo",
+      comprado: btc > 0,
+      ancora: { t: marcas.at(-1)?.t ?? semente.t, preco: marcas.at(-1)?.preco ?? semente.preco, tipo: compra ? "topo" : "fundo" },
+      abre: proxima,
+      candidato: null,
+      gatilho: null,
+      desfaz: NaN,
+      depois: proxima + (compra ? regras.diasAteTopo : regras.diasAteFundo) * DIA,
+    },
+    final: caixa + btc * ultimo.fecho,
+  };
+}
+
+/** Comprar na semente e não vender nunca: a régua que as duas precisam bater. */
+export function simularSegurar(dias: DiaBtc[], custo = REGRAS_CICLO.custo, semente = SEMENTE): Resultado["curva"] {
+  const primeiro = dias.find((d) => d.t >= semente.t && Number.isFinite(d.fecho) && d.fecho > 0);
+  if (!primeiro) return [];
+  const btc = (CAPITAL_INICIAL * (1 - custo)) / primeiro.fecho;
+  return dias.filter((d) => d.t >= primeiro.t && Number.isFinite(d.fecho) && d.fecho > 0).map((d) => ({ t: d.t, patrimonio: btc * d.fecho }));
+}
+
+/** A maior queda do patrimônio, de pico a vale, em fração (negativa). */
+export function quedaMaxima(curva: { patrimonio: number }[]): number {
+  let pico = -Infinity;
+  let pior = 0;
+  for (const p of curva) {
+    if (p.patrimonio > pico) pico = p.patrimonio;
+    const q = p.patrimonio / pico - 1;
+    if (q < pior) pior = q;
+  }
+  return pior;
+}
+
+/** Os dias de velas da Bitstamp, no formato deste módulo. */
+export function diasDasVelas(velas: { time: number; high: number; low: number; close: number }[]): DiaBtc[] {
+  return velas.map((v) => ({ t: v.time, alta: v.high, baixa: v.low, fecho: v.close }));
+}
+
+/** Os retornos de cada perna (compra → venda) do resultado, em fração. */
+export function pernas(marcas: Marca[]): { de: Marca; ate: Marca | null; retorno: number }[] {
+  const saida: { de: Marca; ate: Marca | null; retorno: number }[] = [];
+  for (let i = 0; i < marcas.length; i++) {
+    const m = marcas[i];
+    if (m.tipo !== "compra" && m.tipo !== "topo falso") continue;
+    const ate = marcas[i + 1] ?? null;
+    saida.push({ de: m, ate, retorno: ate ? ate.patrimonio / m.patrimonio - 1 : NaN });
+  }
+  return saida;
+}

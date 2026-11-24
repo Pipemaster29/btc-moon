@@ -1,0 +1,197 @@
+/**
+ * O padrão dos 1.064 / 364 dias na aba Bitcoin: o que a regra espera agora, a
+ * carteira de US$ 10.000 desde 2013 e o que isso prova — que é pouco, e a
+ * página diz por quê antes de qualquer número grande.
+ */
+import CurvaCiclo, { type SerieCiclo } from "./CurvaCiclo";
+import type { Extremo, Marca, Resultado } from "@/lib/cicloBtc";
+
+export interface MedicaoCiclo {
+  grade: { variacoes: number; posicao: number; mediana: number; pior: number; melhor: number; batemSegurar: number };
+}
+
+const usd = (v: number) => `US$ ${Math.round(v).toLocaleString("pt-BR")}`;
+const usdCurto = (v: number) =>
+  v >= 1e6 ? `US$ ${(v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi` : v >= 1e3 ? `US$ ${(v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} mil` : usd(v);
+const data = (t: number) => new Date(t * 1000).toLocaleDateString("pt-BR", { timeZone: "UTC" });
+const vezes = (v: number) => `${(v / 10_000).toLocaleString("pt-BR", { maximumFractionDigits: v >= 1e6 ? 0 : 1 })}x`;
+const pct = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%`;
+
+/** 12/12/2023, o dia do post. */
+const POST = Date.UTC(2023, 11, 12) / 1000;
+/** A máxima diária do topo de 06/10/2025, na Bitstamp. */
+const TOPO_2025 = 126_272;
+
+const ROTULO: Record<Marca["tipo"], string> = {
+  compra: "Compra — fundo confirmado",
+  venda: "Venda — topo confirmado",
+  "fundo falso": "Venda — o fundo foi perdido",
+  "topo falso": "Recompra — o topo foi superado",
+};
+
+function Tile({ titulo, valor, linha, destaque }: { titulo: string; valor: string; linha: string; destaque?: boolean }) {
+  return (
+    <div className={`rounded-xl border p-4 ${destaque ? "border-[#2a78d6]/40 dark:border-[#3987e5]/40" : "border-black/10 dark:border-white/10"}`}>
+      <p className="text-xs text-black/55 dark:text-white/55">{titulo}</p>
+      <p className="text-2xl font-semibold mt-1 tabular-nums">{valor}</p>
+      <p className="text-xs text-black/45 dark:text-white/45 mt-1">{linha}</p>
+    </div>
+  );
+}
+
+export default function CicloPanel({
+  adaptativo,
+  calendario,
+  segurar,
+  series,
+  precoAgora,
+  medicao,
+}: {
+  adaptativo: Resultado & { quedaMax: number };
+  calendario: Resultado & { quedaMax: number };
+  segurar: { final: number; quedaMax: number };
+  series: SerieCiclo[];
+  precoAgora: number;
+  medicao: MedicaoCiclo | null;
+}) {
+  const e = adaptativo.estado;
+  const extremoDe = (m: Marca): Extremo | undefined => adaptativo.extremos.find((x) => x.confirmadoEm === m.t);
+  const ultimaCal = calendario.marcas.at(-1);
+  const calComprado = calendario.estado.comprado && ultimaCal;
+  // O post é de 12/12/2023: a primeira venda depois dele é a única decisão que ele não viu.
+  const vendaFora = adaptativo.marcas.find((m) => m.t > POST && m.tipo === "venda");
+
+  return (
+    <section className="rounded-xl border border-black/10 dark:border-white/10 p-5 flex flex-col gap-5">
+      <div>
+        <h2 className="text-lg font-semibold">O padrão dos 1.064 / 364 dias</h2>
+        <p className="text-sm text-black/60 dark:text-white/60 mt-1 max-w-3xl">
+          Um post anônimo de 12/12/2023: do fundo ao topo, 1.064 dias; do topo ao fundo, 364 — e o topo deste ciclo em 06/10/2025. O topo veio
+          em 06/10/2025, a US$ 126.272. O fundo que o 364 marcava, 05/10/2026, não veio: o BTC fechou a US$ 85 mil e foi a US$ 55 mil em 21/11.
+          Por isso existem duas versões: o <b>calendário</b>, ao pé da letra, e a que <b>se corrige pelo preço</b> — a data abre a busca, o fundo
+          anda para frente a cada mínima nova, e só vale quando o preço sobe 20% acima dele.
+        </p>
+      </div>
+
+      {/* Agora: o que a regra está esperando. */}
+      <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.04] p-4 text-sm flex flex-col gap-2">
+        <p className="text-[10px] tracking-widest uppercase text-black/45 dark:text-white/45">Agora</p>
+        {e.procurando === "fundo" ? (
+          <>
+            <p>
+              <b>Em caixa, procurando o fundo.</b> O topo confirmado é o de {data(e.ancora.t)} ({usd(e.ancora.preco)}); a busca abriu em{" "}
+              {data(e.abre)}, 364 dias depois.
+            </p>
+            {e.candidato && e.gatilho !== null ? (
+              <p>
+                Fundo candidato: <b>{data(e.candidato.t)}, a {usd(e.candidato.preco)}</b>. A compra é no fechamento acima de{" "}
+                <b>{usd(e.gatilho)}</b> — {precoAgora < e.gatilho ? `faltam ${pct(e.gatilho / precoAgora - 1)} do preço de agora` : "o preço de agora já passa: confirma no fechamento do dia"}
+                . Mínima nova abaixo de {usd(e.candidato.preco)} empurra o fundo — e a data — para frente.
+              </p>
+            ) : (
+              <p>A busca ainda não abriu.</p>
+            )}
+            <p className="text-black/60 dark:text-white/60">
+              Se este fundo se confirmar, a busca do topo abre em <b>{data(e.depois)}</b> (fundo + 1.064 dias), e a venda é quando o preço cair 20%
+              da máxima depois disso. É uma data de calendário com três exemplos, não uma previsão.
+            </p>
+          </>
+        ) : (
+          <p>
+            <b>Comprado desde o fundo de {data(e.ancora.t)}</b> ({usd(e.ancora.preco)}). A busca do topo abre em {data(e.abre)}; abaixo de{" "}
+            {usd(e.desfaz)} o fundo era falso e a carteira vende.
+          </p>
+        )}
+        {calComprado && ultimaCal && (
+          <p className="text-black/60 dark:text-white/60">
+            O calendário literal comprou em {data(ultimaCal.t)} a {usd(ultimaCal.preco)} e está {pct(precoAgora / ultimaCal.preco - 1)} — o
+            “outubro não era o fundo” do pedido, em número.
+          </p>
+        )}
+      </div>
+
+      {/* A carteira. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Tile
+          destaque
+          titulo="Se corrige pelo preço"
+          valor={usdCurto(adaptativo.final)}
+          linha={`${vezes(adaptativo.final)} · queda máxima ${pct(adaptativo.quedaMax)} · ${adaptativo.marcas.length} operações`}
+        />
+        <Tile titulo="Calendário do post" valor={usdCurto(calendario.final)} linha={`${vezes(calendario.final)} · queda máxima ${pct(calendario.quedaMax)}`} />
+        <Tile titulo="Comprar e segurar" valor={usdCurto(segurar.final)} linha={`${vezes(segurar.final)} · queda máxima ${pct(segurar.quedaMax)}`} />
+      </div>
+      <p className="text-xs text-black/45 dark:text-white/45 -mt-3">
+        US$ 10.000 em 30/11/2013, o topo daquele ciclo — a única data escolhida à mão; daí em diante cada data sai da regra. Opera no fechamento
+        do dia, com 0,1% por lado; em caixa, rende zero.
+      </p>
+
+      <CurvaCiclo series={series} capital={10_000} />
+
+      {/* As operações. */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm whitespace-nowrap">
+          <thead>
+            <tr className="text-left text-xs text-black/45 dark:text-white/45">
+              <th className="py-1.5 pr-3 font-normal">operou em</th>
+              <th className="py-1.5 pr-3 font-normal">o quê</th>
+              <th className="py-1.5 pr-3 font-normal text-right">preço</th>
+              <th className="py-1.5 pr-3 font-normal">extremo (dias depois do anterior)</th>
+              <th className="py-1.5 pr-3 font-normal">calendário dava</th>
+              <th className="py-1.5 font-normal text-right">patrimônio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {adaptativo.marcas.map((m) => {
+              const x = extremoDe(m);
+              return (
+                <tr key={m.t} className="border-t border-black/5 dark:border-white/10">
+                  <td className="py-1.5 pr-3 tabular-nums">{data(m.t)}</td>
+                  <td className="py-1.5 pr-3">{ROTULO[m.tipo]}</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">{usd(m.preco)}</td>
+                  <td className="py-1.5 pr-3 tabular-nums">{x ? `${x.tipo} ${data(x.t)} a ${usd(x.preco)} (${x.dias} d)` : "—"}</td>
+                  <td className="py-1.5 pr-3 tabular-nums">{x ? data(x.previsto) : "—"}</td>
+                  <td className="py-1.5 text-right tabular-nums font-medium">{usd(m.patrimonio)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Fica top? */}
+      <div className="rounded-lg border border-black/10 dark:border-white/10 p-4 text-sm flex flex-col gap-2">
+        <p className="font-semibold">Fica top? No papel, sim. Demonstrado, não.</p>
+        <ul className="list-disc pl-5 flex flex-col gap-1.5 text-black/70 dark:text-white/70">
+          <li>
+            <b>São três ciclos.</b> Três compras e três vendas. E os 1.064 e 364 dias foram tirados de 2015–2022 — as duas primeiras voltas da
+            carteira são o padrão medindo a si mesmo.
+          </li>
+          {vendaFora && (
+            <li>
+              <b>Fora da amostra há uma venda só</b>: a regra vendeu em {data(vendaFora.t)} a {usd(vendaFora.preco)},{" "}
+              {pct(vendaFora.preco / TOPO_2025 - 1)} do topo — a busca abriu em 20/10/2025, duas semanas depois do topo real, e o “topo” que ela
+              marcou é a máxima desde ali. Desde a venda o BTC fez {pct(precoAgora / vendaFora.preco - 1)}. Foi a decisão certa, e é uma.
+            </li>
+          )}
+          {medicao && (
+            <li>
+              <b>A regra publicada é a {medicao.grade.posicao}ª de {medicao.grade.variacoes}</b> na grade das peças que ela tem (abrir a busca 0, 30,
+              60 ou 90 dias antes; confirmar com 10%, 20%, 30% ou 50%). Escolhida antes da grade — a data do post e 20% —, mas perto do teto: a
+              mediana das variações é {usdCurto(medicao.grade.mediana)}, a pior {usdCurto(medicao.grade.pior)}. As {medicao.grade.batemSegurar} batem
+              o segurar, porque sair de três ursos de −75% a −85% bate o segurar com quase qualquer data.
+            </li>
+          )}
+          <li>
+            O ciclo de 2011–2013 não cabe no padrão (~740 dias de fundo a topo), e é por isso que o post começa em 2015. Ciclo de quatro anos é
+            leitura de três halvings; o quarto pode simplesmente não repetir.
+          </li>
+        </ul>
+        <p className="text-xs text-black/45 dark:text-white/45">
+          A regra está congelada em <code>REGRAS_CICLO</code> (<code>lib/cicloBtc.ts</code>) e o juiz é o ciclo que vem:{" "}
+          <code>docs/preregistro-ciclo.md</code>. Não é recomendação.
+        </p>
+      </div>
+    </section>
+  );
+}
