@@ -260,7 +260,7 @@ no código, com número:
   US$ 55 mil, 411 dias). A versão que se corrige (`lib/cicloBtc.ts`) abre a
   busca na data, anda o candidato a cada extremo novo e confirma com 20% no
   fechamento: US$ 10 mil em 30/11/2013 viram US$ 43,4 mi, contra US$ 4,8 mi do
-  calendário literal e US$ 537 mil segurando. São três ciclos, os dias foram
+  calendário literal e US$ 537 mil segurando. À tarde, a pedido ("EMA de 200, candle, variação %, replicável"), a venda passou a ser o primeiro entre −20% e o fechamento abaixo da EMA 200: US$ 47,8 mi; a EMA 200 sozinha faz US$ 0,9 mi e perde do segurar desde 2020, e na compra ela piora tudo. São três ciclos, os dias foram
   tirados deles, a publicada é a 4ª de 64 da grade, e fora da amostra há UMA
   venda. Juiz: o próximo ciclo (`docs/preregistro-ciclo.md`). `npm run
   medir-ciclo` e `npm run testar-ciclo`.

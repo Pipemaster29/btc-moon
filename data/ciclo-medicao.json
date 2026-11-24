@@ -1,5 +1,5 @@
 {
- "geradoEm": "2026-11-24T12:15:48.480Z",
+ "geradoEm": "2026-11-24T12:25:44.008Z",
  "fonte": "Bitstamp, fechamentos diários",
  "ate": 1795478400,
  "regras": {
@@ -8,7 +8,10 @@
   "antecedencia": 0,
   "subidaConfirma": 0.2,
   "quedaConfirma": 0.2,
-  "custo": 0.001
+  "custo": 0.001,
+  "emaDias": 200,
+  "compra": "subida",
+  "venda": "primeiro"
  },
  "semente": {
   "t": 1385769600,
@@ -16,7 +19,7 @@
  },
  "capital": 10000,
  "adaptativo": {
-  "final": 43395258.88619297,
+  "final": 47835456.26403789,
   "quedaMaxima": -0.6252734018856797,
   "marcas": [
    {
@@ -50,10 +53,22 @@
     "patrimonio": 8891769.620061921
    },
    {
-    "t": 1763337600,
+    "t": 1761091200,
     "tipo": "venda",
-    "preco": 92102,
-    "patrimonio": 43395258.88619297
+    "preco": 107595,
+    "patrimonio": 50695021.60495899
+   },
+   {
+    "t": 1761436800,
+    "tipo": "topo falso",
+    "preco": 114551,
+    "patrimonio": 50644326.583354026
+   },
+   {
+    "t": 1761782400,
+    "tipo": "venda",
+    "preco": 108306,
+    "patrimonio": 47835456.26403789
    }
   ],
   "extremos": [
@@ -101,7 +116,7 @@
     "tipo": "topo",
     "t": 1761523200,
     "preco": 116381,
-    "confirmadoEm": 1763337600,
+    "confirmadoEm": 1761782400,
     "dias": 1071,
     "previsto": 1760918400
    }
@@ -119,13 +134,18 @@
    },
    {
     "de": 1673481600,
-    "ate": 1763337600,
-    "retorno": 3.8803849785180073
+    "ate": 1761091200,
+    "retorno": 4.70134222670132
+   },
+   {
+    "de": 1761436800,
+    "ate": 1761782400,
+    "retorno": -0.05546268474304017
    }
   ]
  },
  "calendario": {
-  "final": 4810006.439009492,
+  "final": 4813336.119430535,
   "quedaMaxima": -0.6252734018856797,
   "marcas": [
    {
@@ -173,22 +193,159 @@
   ]
  },
  "segurar": {
-  "final": 536769.0392310991,
+  "final": 537140.6124053166,
   "quedaMaxima": -0.848579076156571
  },
+ "medias": [
+  {
+   "nome": "comprar e segurar",
+   "final": 537140.6124053166,
+   "queda": -0.848579076156571,
+   "operacoes": 1,
+   "antes2020": 6.412283835929685,
+   "desde2020": 8.385129299536962,
+   "publicada": false
+  },
+  {
+   "nome": "EMA 50 sozinha, sem calendário",
+   "final": 1287683.5242812857,
+   "queda": -0.6276340570092693,
+   "operacoes": 294,
+   "antes2020": 10.187992496483963,
+   "desde2020": 12.651879133429953,
+   "publicada": false
+  },
+  {
+   "nome": "EMA 100 sozinha, sem calendário",
+   "final": 1328617.3947187376,
+   "queda": -0.7359627093642795,
+   "operacoes": 188,
+   "antes2020": 9.82994476130652,
+   "desde2020": 13.529550514829467,
+   "publicada": false
+  },
+  {
+   "nome": "EMA 200 sozinha, sem calendário",
+   "final": 905647.3983714448,
+   "queda": -0.73277859046604,
+   "operacoes": 114,
+   "antes2020": 13.263473054286601,
+   "desde2020": 6.834966592937592,
+   "publicada": false
+  },
+  {
+   "nome": "calendário: compra +20%, venda −20%",
+   "final": 43395258.88619297,
+   "queda": -0.6252734018856797,
+   "operacoes": 6,
+   "antes2020": 129.90568050060523,
+   "desde2020": 33.40520500640523,
+   "publicada": false
+  },
+  {
+   "nome": "calendário: compra +20%, venda abaixo da EMA 200",
+   "final": 27103153.516585313,
+   "queda": -0.6252734018856798,
+   "operacoes": 8,
+   "antes2020": 73.60342884262025,
+   "desde2020": 36.82322134005143,
+   "publicada": false
+  },
+  {
+   "nome": "calendário: compra +20%, venda −20% ou abaixo da EMA 200",
+   "final": 47835456.26403789,
+   "queda": -0.6252734018856797,
+   "operacoes": 8,
+   "antes2020": 129.90568050060523,
+   "desde2020": 36.823221340051425,
+   "publicada": true
+  },
+  {
+   "nome": "calendário: compra e venda pela EMA 200",
+   "final": 14851783.310736628,
+   "queda": -0.6252734018856797,
+   "operacoes": 12,
+   "antes2020": 47.555715599145046,
+   "desde2020": 31.23028036403606,
+   "publicada": false
+  },
+  {
+   "nome": "calendário: compra pela EMA 200, venda −20% ou EMA",
+   "final": 26212515.47606692,
+   "queda": -0.6252734018856798,
+   "operacoes": 12,
+   "antes2020": 83.9330136345895,
+   "desde2020": 31.23028036403607,
+   "publicada": false
+  },
+  {
+   "nome": "calendário: compra +20% e acima da EMA, venda −20% ou EMA",
+   "final": 27499487.61068132,
+   "queda": -0.6252734018856798,
+   "operacoes": 8,
+   "antes2020": 83.9330136345895,
+   "desde2020": 32.76361281438434,
+   "publicada": false
+  },
+  {
+   "nome": "calendário: a publicada com EMA 50",
+   "final": 59257777.434153505,
+   "queda": -0.6252734018856797,
+   "operacoes": 8,
+   "antes2020": 129.90568050060523,
+   "desde2020": 45.61600170662084,
+   "publicada": false
+  },
+  {
+   "nome": "calendário: a publicada com EMA 100",
+   "final": 54569152.217485756,
+   "queda": -0.6252734018856797,
+   "operacoes": 8,
+   "antes2020": 129.90568050060523,
+   "desde2020": 42.00674828629339,
+   "publicada": false
+  },
+  {
+   "nome": "calendário: a publicada com EMA 150",
+   "final": 49948745.84566173,
+   "queda": -0.6252734018856797,
+   "operacoes": 8,
+   "antes2020": 129.90568050060523,
+   "desde2020": 38.45000900128383,
+   "publicada": false
+  },
+  {
+   "nome": "calendário: a publicada com EMA 250",
+   "final": 47807249.985303864,
+   "queda": -0.6252734018856797,
+   "operacoes": 6,
+   "antes2020": 129.90568050060523,
+   "desde2020": 36.80150844910983,
+   "publicada": false
+  },
+  {
+   "nome": "calendário: a publicada com EMA 300",
+   "final": 47807249.985303864,
+   "queda": -0.6252734018856797,
+   "operacoes": 6,
+   "antes2020": 129.90568050060523,
+   "desde2020": 36.80150844910983,
+   "publicada": false
+  }
+ ],
  "grade": {
   "variacoes": 64,
   "posicao": 4,
-  "mediana": 13664591.92315781,
-  "pior": 3262748.838540789,
-  "melhor": 58338626.92373458,
+  "mediana": 16631102.57808162,
+  "pior": 4085050.101327108,
+  "melhor": 58373046.715136044,
   "batemSegurar": 64,
   "celulas": [
    {
     "antecedencia": 0,
     "subida": 0.1,
     "queda": 0.1,
-    "final": 58089422.317328535,
+    "final": 58163930.643582195,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -197,7 +354,7 @@
     "antecedencia": 0,
     "subida": 0.1,
     "queda": 0.2,
-    "final": 43209887.73536422,
+    "final": 47664090.141180925,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -206,7 +363,7 @@
     "antecedencia": 0,
     "subida": 0.1,
     "queda": 0.3,
-    "final": 28055828.781252336,
+    "final": 38620109.81945055,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -215,7 +372,7 @@
     "antecedencia": 0,
     "subida": 0.1,
     "queda": 0.5,
-    "final": 10134919.600442586,
+    "final": 27495409.97342859,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -224,7 +381,7 @@
     "antecedencia": 0,
     "subida": 0.2,
     "queda": 0.1,
-    "final": 58338626.92373458,
+    "final": 58373046.715136044,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -233,7 +390,7 @@
     "antecedencia": 0,
     "subida": 0.2,
     "queda": 0.2,
-    "final": 43395258.88619297,
+    "final": 47835456.26403789,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": true
@@ -242,7 +399,7 @@
     "antecedencia": 0,
     "subida": 0.2,
     "queda": 0.3,
-    "final": 28176188.762293864,
+    "final": 38758960.22998952,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -251,7 +408,7 @@
     "antecedencia": 0,
     "subida": 0.2,
     "queda": 0.5,
-    "final": 9999159.184045957,
+    "final": 27594263.886081766,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -260,7 +417,7 @@
     "antecedencia": 0,
     "subida": 0.3,
     "queda": 0.1,
-    "final": 51680626.307827696,
+    "final": 51711117.8786927,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -269,7 +426,7 @@
     "antecedencia": 0,
     "subida": 0.3,
     "queda": 0.2,
-    "final": 38442696.996633574,
+    "final": 42376148.8709361,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -278,7 +435,7 @@
     "antecedencia": 0,
     "subida": 0.3,
     "queda": 0.3,
-    "final": 24960530.595047228,
+    "final": 34335524.25470445,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -287,7 +444,7 @@
     "antecedencia": 0,
     "subida": 0.3,
     "queda": 0.5,
-    "final": 8857987.176467495,
+    "final": 24445018.940889478,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -296,7 +453,7 @@
     "antecedencia": 0,
     "subida": 0.5,
     "queda": 0.1,
-    "final": 34710143.327212475,
+    "final": 34730622.312677786,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -305,7 +462,7 @@
     "antecedencia": 0,
     "subida": 0.5,
     "queda": 0.2,
-    "final": 25819182.505449764,
+    "final": 28460997.9802567,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -314,7 +471,7 @@
     "antecedencia": 0,
     "subida": 0.5,
     "queda": 0.3,
-    "final": 16764185.273546824,
+    "final": 23060691.273303326,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -323,7 +480,7 @@
     "antecedencia": 0,
     "subida": 0.5,
     "queda": 0.5,
-    "final": 5949270.093099236,
+    "final": 16417953.335565187,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -332,7 +489,7 @@
     "antecedencia": 30,
     "subida": 0.1,
     "queda": 0.1,
-    "final": 17874752.376605596,
+    "final": 17887126.00100175,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -341,7 +498,7 @@
     "antecedencia": 30,
     "subida": 0.1,
     "queda": 0.2,
-    "final": 21943846.72908571,
+    "final": 23470762.703696802,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -350,7 +507,7 @@
     "antecedencia": 30,
     "subida": 0.1,
     "queda": 0.3,
-    "final": 13664591.92315781,
+    "final": 17407114.307955604,
     "queda_max": -0.6252734018856796,
     "batesegurar": true,
     "publicada": false
@@ -359,7 +516,7 @@
     "antecedencia": 30,
     "subida": 0.1,
     "queda": 0.5,
-    "final": 5047509.206367558,
+    "final": 12392915.15713207,
     "queda_max": -0.6739636075809956,
     "batesegurar": true,
     "publicada": false
@@ -377,7 +534,7 @@
     "antecedencia": 30,
     "subida": 0.2,
     "queda": 0.2,
-    "final": 30486944.644058727,
+    "final": 32585756.770069633,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -386,7 +543,7 @@
     "antecedencia": 30,
     "subida": 0.2,
     "queda": 0.3,
-    "final": 18984440.72673859,
+    "final": 24167258.647223204,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -395,7 +552,7 @@
     "antecedencia": 30,
     "subida": 0.2,
     "queda": 0.5,
-    "final": 7012586.975506831,
+    "final": 17205768.899823982,
     "queda_max": -0.686259472915018,
     "batesegurar": true,
     "publicada": false
@@ -413,7 +570,7 @@
     "antecedencia": 30,
     "subida": 0.3,
     "queda": 0.2,
-    "final": 33735616.233634256,
+    "final": 36058076.593511626,
     "queda_max": -0.6252734018856796,
     "batesegurar": true,
     "publicada": false
@@ -422,7 +579,7 @@
     "antecedencia": 30,
     "subida": 0.3,
     "queda": 0.3,
-    "final": 21007412.00027863,
+    "final": 26742508.068960767,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -431,7 +588,7 @@
     "antecedencia": 30,
     "subida": 0.3,
     "queda": 0.5,
-    "final": 7759844.279993591,
+    "final": 19039205.908820983,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -449,7 +606,7 @@
     "antecedencia": 30,
     "subida": 0.5,
     "queda": 0.2,
-    "final": 30509413.795747478,
+    "final": 32609772.765122853,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -458,7 +615,7 @@
     "antecedencia": 30,
     "subida": 0.5,
     "queda": 0.3,
-    "final": 18998432.42985595,
+    "final": 24185070.133640926,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -467,7 +624,7 @@
     "antecedencia": 30,
     "subida": 0.5,
     "queda": 0.5,
-    "final": 7017755.315014868,
+    "final": 17218449.70584916,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -476,7 +633,7 @@
     "antecedencia": 60,
     "subida": 0.1,
     "queda": 0.1,
-    "final": 10789049.6892534,
+    "final": 10796518.30451774,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -485,7 +642,7 @@
     "antecedencia": 60,
     "subida": 0.1,
     "queda": 0.2,
-    "final": 17922208.48729531,
+    "final": 15772082.683383696,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -494,7 +651,7 @@
     "antecedencia": 60,
     "subida": 0.1,
     "queda": 0.3,
-    "final": 15271022.249249384,
+    "final": 16005944.372297306,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -503,7 +660,7 @@
     "antecedencia": 60,
     "subida": 0.1,
     "queda": 0.5,
-    "final": 5640902.1086900635,
+    "final": 11395358.650859157,
     "queda_max": -0.6739636075809957,
     "batesegurar": true,
     "publicada": false
@@ -521,7 +678,7 @@
     "antecedencia": 60,
     "subida": 0.2,
     "queda": 0.2,
-    "final": 18911416.27463786,
+    "final": 16631102.57808162,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -530,7 +687,7 @@
     "antecedencia": 60,
     "subida": 0.2,
     "queda": 0.3,
-    "final": 16113899.071062243,
+    "final": 16877701.446188208,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -539,7 +696,7 @@
     "antecedencia": 60,
     "subida": 0.2,
     "queda": 0.5,
-    "final": 5952249.022074584,
+    "final": 12016002.099464651,
     "queda_max": -0.686259472915018,
     "batesegurar": true,
     "publicada": false
@@ -557,7 +714,7 @@
     "antecedencia": 60,
     "subida": 0.3,
     "queda": 0.2,
-    "final": 18551046.252340276,
+    "final": 16314185.499008363,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -566,7 +723,7 @@
     "antecedencia": 60,
     "subida": 0.3,
     "queda": 0.3,
-    "final": 15806837.659943739,
+    "final": 16556085.256360495,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -575,7 +732,7 @@
     "antecedencia": 60,
     "subida": 0.3,
     "queda": 0.5,
-    "final": 5838824.829954057,
+    "final": 11787028.928887302,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -593,7 +750,7 @@
     "antecedencia": 60,
     "subida": 0.5,
     "queda": 0.2,
-    "final": 13769706.898448851,
+    "final": 12109373.754589746,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -602,7 +759,7 @@
     "antecedencia": 60,
     "subida": 0.5,
     "queda": 0.3,
-    "final": 11732789.547723249,
+    "final": 12288926.363765338,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -611,7 +768,7 @@
     "antecedencia": 60,
     "subida": 0.5,
     "queda": 0.5,
-    "final": 4333928.418172657,
+    "final": 8749044.735621884,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -620,7 +777,7 @@
     "antecedencia": 90,
     "subida": 0.1,
     "queda": 0.1,
-    "final": 4082224.221105185,
+    "final": 4085050.101327108,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -629,7 +786,7 @@
     "antecedencia": 90,
     "subida": 0.1,
     "queda": 0.2,
-    "final": 7588606.124656872,
+    "final": 8116643.16664969,
     "queda_max": -0.6269807694475096,
     "batesegurar": true,
     "publicada": false
@@ -638,8 +795,8 @@
     "antecedencia": 90,
     "subida": 0.1,
     "queda": 0.3,
-    "final": 8832897.495297872,
-    "queda_max": -0.6252734018856797,
+    "final": 8236993.276230442,
+    "queda_max": -0.6585645555174966,
     "batesegurar": true,
     "publicada": false
    },
@@ -647,7 +804,7 @@
     "antecedencia": 90,
     "subida": 0.1,
     "queda": 0.5,
-    "final": 3262748.838540789,
+    "final": 5864289.5666823555,
     "queda_max": -0.7302264343680838,
     "batesegurar": true,
     "publicada": false
@@ -665,7 +822,7 @@
     "antecedencia": 90,
     "subida": 0.2,
     "queda": 0.2,
-    "final": 10818974.833490761,
+    "final": 11563785.303567251,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -674,7 +831,7 @@
     "antecedencia": 90,
     "subida": 0.2,
     "queda": 0.3,
-    "final": 12592944.493182847,
+    "final": 11735248.160795096,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -683,7 +840,7 @@
     "antecedencia": 90,
     "subida": 0.2,
     "queda": 0.5,
-    "final": 4651657.628860022,
+    "final": 8354856.079629228,
     "queda_max": -0.686259472915018,
     "batesegurar": true,
     "publicada": false
@@ -701,7 +858,7 @@
     "antecedencia": 90,
     "subida": 0.3,
     "queda": 0.2,
-    "final": 13058574.066805014,
+    "final": 13957565.222521339,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -710,7 +867,7 @@
     "antecedencia": 90,
     "subida": 0.3,
     "queda": 0.3,
-    "final": 15199767.160409747,
+    "final": 14164522.023445273,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -719,8 +876,8 @@
     "antecedencia": 90,
     "subida": 0.3,
     "queda": 0.5,
-    "final": 5614581.475118192,
-    "queda_max": -0.6322648135509363,
+    "final": 10084366.459158523,
+    "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
    },
@@ -737,7 +894,7 @@
     "antecedencia": 90,
     "subida": 0.5,
     "queda": 0.2,
-    "final": 10079990.02236357,
+    "final": 10773926.575731127,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -746,7 +903,7 @@
     "antecedencia": 90,
     "subida": 0.5,
     "queda": 0.3,
-    "final": 11732789.547723249,
+    "final": 10933677.745935574,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -755,7 +912,7 @@
     "antecedencia": 90,
     "subida": 0.5,
     "queda": 0.5,
-    "final": 4333928.418172657,
+    "final": 7784181.700862086,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false

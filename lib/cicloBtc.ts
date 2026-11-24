@@ -73,13 +73,41 @@ export interface RegrasCiclo {
   quedaConfirma: number;
   /** Fração do valor negociado, por lado. */
   custo: number;
+  /** Dias da média exponencial dos fechamentos. */
+  emaDias: number;
+  /**
+   * O que confirma o fundo: o fechamento `subidaConfirma` acima dele
+   * ("subida"), o fechamento acima da EMA ("media") ou os dois juntos.
+   */
+  compra: "subida" | "media" | "ambos";
+  /**
+   * O que confirma o topo: a queda de `quedaConfirma` ("queda"), o fechamento
+   * abaixo da EMA ("media") ou o PRIMEIRO dos dois.
+   */
+  venda: "queda" | "media" | "primeiro";
 }
 
 /**
- * As regras publicadas. A data é a do post, sem antecedência, e os dois
- * gatilhos são o mesmo 20% — um número redondo, escolhido antes da grade de
- * `scripts/medir-ciclo.mts` e não por ela. A grade está na tela inteira, para
- * se ver que a escolha não é a melhor de 64.
+ * As regras publicadas.
+ *
+ * Até a tarde de 24/11 eram 20% nas duas pontas. O pedido seguinte foi "tem que
+ * pegar a EMA de 200, candle, variação %, para replicar no presente", e a
+ * medição (`npm run medir-ciclo`, seção das médias) deu isto, com US$ 10 mil
+ * em 30/11/2013:
+ *
+ *   compra 20%, venda 20%                          US$ 43,4 mi  (2013–19 130x, 2020–26 33x)
+ *   compra 20%, venda: 20% OU abaixo da EMA 200    US$ 50,7 mi  (130x, 39x)
+ *   EMA 200 nas duas pontas, dentro do calendário  US$ 15,2 mi  (48x, 32x), 12 operações
+ *   EMA 200 sozinha, sem calendário                US$ 0,9 mi   (13x, 7x — o segurar fez 8x)
+ *
+ * Entrou a segunda. A compra pela média reprova por um motivo visível: a EMA
+ * anda devagar, e quando a busca do fundo abre o preço costuma estar em cima
+ * dela — em out–nov/2026 foram três compras e três "fundos falsos" seguidos.
+ * Na venda é o contrário: o preço que despenca do topo cruza a média antes de
+ * cair 20%. TODO o ganho é UMA decisão, a venda de 2025 (US$ 107.595 em
+ * 22/10/2025 contra US$ 92.102 em 17/11/2025), e a regra foi escolhida
+ * depois de vê-la: essa venda deixa de ser fora da amostra. A média de 200 é
+ * a convenção de mercado, não a melhor da grade (a de 50 dá US$ 52 mi).
  */
 export const REGRAS_CICLO: RegrasCiclo = {
   diasAteFundo: 364,
@@ -88,7 +116,39 @@ export const REGRAS_CICLO: RegrasCiclo = {
   subidaConfirma: 0.2,
   quedaConfirma: 0.2,
   custo: 0.001,
+  emaDias: 200,
+  compra: "subida",
+  venda: "primeiro",
 };
+
+/**
+ * A média exponencial dos fechamentos, dia a dia, só com o passado: o valor do
+ * dia i usa os fechamentos até i. Semeada pela média simples dos primeiros
+ * `n`; antes disso, NaN — e NaN não confirma nada (a comparação dá falso).
+ */
+export function emaDiaria(dias: DiaBtc[], n: number): number[] {
+  const k = 2 / (n + 1);
+  const saida: number[] = new Array(dias.length).fill(NaN);
+  let e = NaN;
+  let soma = 0;
+  let validos = 0;
+  for (let i = 0; i < dias.length; i++) {
+    const f = dias[i].fecho;
+    if (!Number.isFinite(f) || f <= 0) {
+      saida[i] = e;
+      continue;
+    }
+    if (validos < n) {
+      soma += f;
+      validos++;
+      if (validos === n) e = soma / n;
+    } else {
+      e = f * k + e * (1 - k);
+    }
+    saida[i] = e;
+  }
+  return saida;
+}
 
 /**
  * A semente: o topo de 30/11/2013 (máxima diária de US$ 1.163 na Bitstamp).
@@ -142,6 +202,8 @@ export interface EstadoAtual {
   desfaz: number;
   /** A próxima data do calendário depois desta: venda estimada se procura fundo, etc. */
   depois: number;
+  /** A EMA do último dia, em dólares (NaN sem dias bastantes). */
+  ema: number;
 }
 
 export interface Resultado {
@@ -162,6 +224,7 @@ export function simularAdaptativo(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_C
   const marcas: Marca[] = [];
   const extremos: Extremo[] = [];
   const curva: Resultado["curva"] = [];
+  const ema = emaDiaria(dias, regras.emaDias);
 
   let procurando: "fundo" | "topo" = "fundo";
   let ancora = { t: semente.t, preco: semente.preco, tipo: "topo" as "fundo" | "topo" };
@@ -179,7 +242,8 @@ export function simularAdaptativo(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_C
     marcas.push({ t: d.t, tipo, preco: d.fecho, patrimonio: caixa + btc * d.fecho });
   };
 
-  for (const d of dias) {
+  for (let i = 0; i < dias.length; i++) {
+    const d = dias[i];
     if (d.t < semente.t || !Number.isFinite(d.fecho) || d.fecho <= 0) continue;
     const comprado = btc > 0;
 
@@ -205,7 +269,9 @@ export function simularAdaptativo(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_C
     } else if (d.t >= abre) {
       if (procurando === "fundo") {
         if (!candidato || d.baixa < candidato.preco) candidato = { t: d.t, preco: d.baixa };
-        if (d.fecho >= candidato.preco * (1 + regras.subidaConfirma)) {
+        const subiu = d.fecho >= candidato.preco * (1 + regras.subidaConfirma);
+        const acima = d.fecho > ema[i];
+        if (regras.compra === "subida" ? subiu : regras.compra === "media" ? acima : subiu && acima) {
           operar(d, "compra", true);
           extremos.push({
             tipo: "fundo",
@@ -222,7 +288,9 @@ export function simularAdaptativo(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_C
         }
       } else {
         if (!candidato || d.alta > candidato.preco) candidato = { t: d.t, preco: d.alta };
-        if (d.fecho <= candidato.preco * (1 - regras.quedaConfirma)) {
+        const caiu = d.fecho <= candidato.preco * (1 - regras.quedaConfirma);
+        const abaixo = d.fecho < ema[i];
+        if (regras.venda === "queda" ? caiu : regras.venda === "media" ? abaixo : caiu || abaixo) {
           if (btc > 0) operar(d, "venda", false);
           extremos.push({
             tipo: "topo",
@@ -244,13 +312,23 @@ export function simularAdaptativo(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_C
 
   const ultimo = dias.at(-1)!;
   const aberta = ultimo.t >= abre && candidato;
+  // O gatilho de hoje é o preço de fechamento que dispara a regra. Com a média
+  // na regra, ele vira o mais exigente (compra) ou o mais próximo (venda) dos dois.
+  const emaHoje = ema.at(-1) ?? NaN;
+  const porPreco = aberta && candidato ? candidato.preco * (procurando === "fundo" ? 1 + regras.subidaConfirma : 1 - regras.quedaConfirma) : null;
+  const gatilho =
+    porPreco === null
+      ? null
+      : procurando === "fundo"
+        ? regras.compra === "subida" ? porPreco : regras.compra === "media" ? emaHoje : Math.max(porPreco, emaHoje)
+        : regras.venda === "queda" ? porPreco : regras.venda === "media" ? emaHoje : Math.max(porPreco, emaHoje);
   const estado: EstadoAtual = {
     procurando,
     comprado: btc > 0,
     ancora,
     abre,
     candidato: aberta ? candidato : null,
-    gatilho: aberta && candidato ? candidato.preco * (procurando === "fundo" ? 1 + regras.subidaConfirma : 1 - regras.quedaConfirma) : null,
+    gatilho,
     desfaz: ancora.preco,
     // Procurando fundo, a venda seguinte é o fundo (ainda por vir) + 1.064; sem
     // fundo confirmado, a melhor estimativa é contar do candidato de hoje.
@@ -258,6 +336,7 @@ export function simularAdaptativo(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_C
       procurando === "fundo"
         ? (aberta && candidato ? candidato.t : abre) + regras.diasAteTopo * DIA
         : abre + regras.antecedencia * DIA + regras.diasAteFundo * DIA,
+    ema: emaHoje,
   };
   return { marcas, extremos, curva, estado, final: caixa + btc * ultimo.fecho };
 }
@@ -304,9 +383,40 @@ export function simularCalendario(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_C
       gatilho: null,
       desfaz: NaN,
       depois: proxima + (compra ? regras.diasAteTopo : regras.diasAteFundo) * DIA,
+      ema: NaN,
     },
     final: caixa + btc * ultimo.fecho,
   };
+}
+
+/**
+ * A média sozinha, sem calendário: comprado no fechamento acima da EMA,
+ * vendido no fechamento abaixo. É a régua do "não precisa do padrão, a EMA 200
+ * já faz isso" — e não faz: 114 operações desde 2013 e, de 2020 em diante,
+ * menos que segurar.
+ */
+export function simularMedia(dias: DiaBtc[], n = REGRAS_CICLO.emaDias, custo = REGRAS_CICLO.custo, semente = SEMENTE): Resultado["curva"] & { operacoes?: number } {
+  const ema = emaDiaria(dias, n);
+  let caixa = CAPITAL_INICIAL;
+  let btc = 0;
+  let operacoes = 0;
+  const curva: Resultado["curva"] = [];
+  for (let i = 0; i < dias.length; i++) {
+    const d = dias[i];
+    if (d.t < semente.t || !Number.isFinite(d.fecho) || d.fecho <= 0) continue;
+    if (Number.isFinite(ema[i]) && d.fecho > ema[i] !== btc > 0) {
+      if (btc > 0) {
+        caixa = btc * d.fecho * (1 - custo);
+        btc = 0;
+      } else {
+        btc = (caixa * (1 - custo)) / d.fecho;
+        caixa = 0;
+      }
+      operacoes++;
+    }
+    curva.push({ t: d.t, patrimonio: caixa + btc * d.fecho });
+  }
+  return Object.assign(curva, { operacoes });
 }
 
 /** Comprar na semente e não vender nunca: a régua que as duas precisam bater. */

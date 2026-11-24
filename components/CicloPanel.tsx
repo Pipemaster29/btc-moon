@@ -7,6 +7,7 @@ import CurvaCiclo, { type SerieCiclo } from "./CurvaCiclo";
 import type { Extremo, Marca, Resultado } from "@/lib/cicloBtc";
 
 export interface MedicaoCiclo {
+  medias?: { nome: string; final: number; queda: number; operacoes: number; antes2020: number; desde2020: number; publicada: boolean }[];
   grade: { variacoes: number; posicao: number; mediana: number; pior: number; melhor: number; batemSegurar: number };
 }
 
@@ -69,45 +70,61 @@ export default function CicloPanel({
           Um post anônimo de 12/12/2023: do fundo ao topo, 1.064 dias; do topo ao fundo, 364 — e o topo deste ciclo em 06/10/2025. O topo veio
           em 06/10/2025, a US$ 126.272. O fundo que o 364 marcava, 05/10/2026, não veio: o BTC fechou a US$ 85 mil e foi a US$ 55 mil em 21/11.
           Por isso existem duas versões: o <b>calendário</b>, ao pé da letra, e a que <b>se corrige pelo preço</b> — a data abre a busca, o fundo
-          anda para frente a cada mínima nova, e só vale quando o preço sobe 20% acima dele.
+          anda para frente a cada mínima nova, a compra é o fechamento 20% acima dele, e a venda é o primeiro de dois sinais: cair 20% da máxima ou
+          fechar abaixo da EMA 200 diária. Tudo com o fechamento do dia, que qualquer gráfico mostra.
         </p>
       </div>
 
-      {/* Agora: o que a regra está esperando. */}
-      <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.04] p-4 text-sm flex flex-col gap-2">
-        <p className="text-[10px] tracking-widest uppercase text-black/45 dark:text-white/45">Agora</p>
+      {/* Agora: o que a regra está esperando, como uma lista que se confere no gráfico diário. */}
+      <div className="rounded-lg bg-black/[0.03] dark:bg-white/[0.04] p-4 text-sm flex flex-col gap-3">
+        <p className="text-[10px] tracking-widest uppercase text-black/45 dark:text-white/45">Agora — para conferir no fechamento diário (00h UTC, 21h de Brasília)</p>
         {e.procurando === "fundo" ? (
-          <>
-            <p>
-              <b>Em caixa, procurando o fundo.</b> O topo confirmado é o de {data(e.ancora.t)} ({usd(e.ancora.preco)}); a busca abriu em{" "}
-              {data(e.abre)}, 364 dias depois.
-            </p>
-            {e.candidato && e.gatilho !== null ? (
-              <p>
-                Fundo candidato: <b>{data(e.candidato.t)}, a {usd(e.candidato.preco)}</b>. A compra é no fechamento acima de{" "}
-                <b>{usd(e.gatilho)}</b> — {precoAgora < e.gatilho ? `faltam ${pct(e.gatilho / precoAgora - 1)} do preço de agora` : "o preço de agora já passa: confirma no fechamento do dia"}
-                . Mínima nova abaixo de {usd(e.candidato.preco)} empurra o fundo — e a data — para frente.
-              </p>
-            ) : (
-              <p>A busca ainda não abriu.</p>
+          <ol className="flex flex-col gap-2 list-decimal pl-5">
+            <li>
+              <b>A busca do fundo abriu?</b> {e.candidato ? "Sim" : "Ainda não"}: o topo confirmado é o de {data(e.ancora.t)} ({usd(e.ancora.preco)}), e
+              364 dias depois dá {data(e.abre)}.
+            </li>
+            {e.candidato && e.gatilho !== null && (
+              <>
+                <li>
+                  <b>A menor mínima diária desde então:</b> {usd(e.candidato.preco)}, em {data(e.candidato.t)}. Se uma vela fizer mínima abaixo dela,
+                  ela passa a ser o fundo — e a data anda.
+                </li>
+                <li>
+                  <b>Compra quando um candle diário FECHAR acima de {usd(e.gatilho)}</b> ({usd(e.candidato.preco)} × 1,2).{" "}
+                  {precoAgora < e.gatilho ? `Faltam ${pct(e.gatilho / precoAgora - 1)} do preço de agora.` : "O preço de agora já passa: vale se o candle fechar assim."}
+                </li>
+                <li className="text-black/60 dark:text-white/60">
+                  Comprado, duas saídas. <b>Antes de {data(e.depois)}</b> (fundo + 1.064): só se um fechamento perder o fundo — o fundo era falso, vende e
+                  recomeça. <b>Depois</b>: vende no primeiro fechamento abaixo da EMA 200 diária (hoje em {usd(e.ema)}) ou 20% abaixo da máxima desde
+                  {" "}{data(e.depois)}.
+                </li>
+              </>
             )}
-            <p className="text-black/60 dark:text-white/60">
-              Se este fundo se confirmar, a busca do topo abre em <b>{data(e.depois)}</b> (fundo + 1.064 dias), e a venda é quando o preço cair 20%
-              da máxima depois disso. É uma data de calendário com três exemplos, não uma previsão.
-            </p>
-          </>
+          </ol>
         ) : (
-          <p>
-            <b>Comprado desde o fundo de {data(e.ancora.t)}</b> ({usd(e.ancora.preco)}). A busca do topo abre em {data(e.abre)}; abaixo de{" "}
-            {usd(e.desfaz)} o fundo era falso e a carteira vende.
-          </p>
+          <ol className="flex flex-col gap-2 list-decimal pl-5">
+            <li>
+              <b>Comprado desde o fundo de {data(e.ancora.t)}</b> ({usd(e.ancora.preco)}). Fechamento abaixo de {usd(e.desfaz)}: o fundo era falso, vende.
+            </li>
+            <li>
+              <b>A busca do topo {e.candidato ? "abriu" : "abre"} em {data(e.abre)}</b> (fundo + 1.064 dias).
+              {e.candidato && e.gatilho !== null && (
+                <>
+                  {" "}Máxima desde então: {usd(e.candidato.preco)}. Vende no fechamento abaixo de <b>{usd(e.gatilho)}</b> — o maior entre a EMA 200 (
+                  {usd(e.ema)}) e a máxima × 0,8.
+                </>
+              )}
+            </li>
+          </ol>
         )}
-        {calComprado && ultimaCal && (
-          <p className="text-black/60 dark:text-white/60">
-            O calendário literal comprou em {data(ultimaCal.t)} a {usd(ultimaCal.preco)} e está {pct(precoAgora / ultimaCal.preco - 1)} — o
-            “outubro não era o fundo” do pedido, em número.
-          </p>
-        )}
+        <p className="text-xs text-black/50 dark:text-white/50">
+          Três números e um calendário, nada que precise deste site: o fechamento diário, a menor mínima desde a data e a EMA 200 — a mesma de
+          qualquer gráfico. O painel refaz a conta a cada hora com as velas da Bitstamp.
+          {calComprado && ultimaCal
+            ? ` O calendário literal, sem os gatilhos, comprou em ${data(ultimaCal.t)} a ${usd(ultimaCal.preco)} e está ${pct(precoAgora / ultimaCal.preco - 1)}.`
+            : ""}
+        </p>
       </div>
 
       {/* A carteira. */}
@@ -159,6 +176,46 @@ export default function CicloPanel({
         </table>
       </div>
 
+      {medicao?.medias && (
+        <div className="flex flex-col gap-2">
+          <h3 className="font-semibold text-sm">E as médias? O que foi medido</h3>
+          <p className="text-xs text-black/55 dark:text-white/55 max-w-3xl">
+            US$ 10 mil em 30/11/2013, e cada metade de forma independente (até 2019 e de 2020 em diante). A EMA 200 sozinha não basta: são mais de
+            cem operações, e de 2020 em diante ela fica atrás do segurar. Dentro do calendário, ela ajuda na VENDA e atrapalha na COMPRA — anda
+            devagar, e quando a busca do fundo abre o preço costuma estar em cima dela (três “fundos falsos” seguidos em out–nov/2026).
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm whitespace-nowrap">
+              <thead>
+                <tr className="text-left text-xs text-black/45 dark:text-white/45">
+                  <th className="py-1.5 pr-3 font-normal">regra</th>
+                  <th className="py-1.5 pr-3 font-normal text-right">final</th>
+                  <th className="py-1.5 pr-3 font-normal text-right">queda máx</th>
+                  <th className="py-1.5 pr-3 font-normal text-right">operações</th>
+                  <th className="py-1.5 pr-3 font-normal text-right">2013–19</th>
+                  <th className="py-1.5 font-normal text-right">2020–26</th>
+                </tr>
+              </thead>
+              <tbody>
+                {medicao.medias.map((m) => (
+                  <tr key={m.nome} className={`border-t border-black/5 dark:border-white/10 ${m.publicada ? "font-semibold" : ""}`}>
+                    <td className="py-1.5 pr-3">
+                      {m.nome}
+                      {m.publicada ? " ← a do painel" : ""}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{usdCurto(m.final)}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{pct(m.queda)}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{m.operacoes}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{m.antes2020.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x</td>
+                    <td className="py-1.5 text-right tabular-nums">{m.desde2020.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Fica top? */}
       <div className="rounded-lg border border-black/10 dark:border-white/10 p-4 text-sm flex flex-col gap-2">
         <p className="font-semibold">Fica top? No papel, sim. Demonstrado, não.</p>
@@ -169,15 +226,15 @@ export default function CicloPanel({
           </li>
           {vendaFora && (
             <li>
-              <b>Fora da amostra há uma venda só</b>: a regra vendeu em {data(vendaFora.t)} a {usd(vendaFora.preco)},{" "}
-              {pct(vendaFora.preco / TOPO_2025 - 1)} do topo — a busca abriu em 20/10/2025, duas semanas depois do topo real, e o “topo” que ela
-              marcou é a máxima desde ali. Desde a venda o BTC fez {pct(precoAgora / vendaFora.preco - 1)}. Foi a decisão certa, e é uma.
+              <b>Não sobrou nada fora da amostra.</b> O post é de 12/2023 e a primeira venda depois dele foi em {data(vendaFora.t)}, a{" "}
+              {usd(vendaFora.preco)} ({pct(vendaFora.preco / TOPO_2025 - 1)} do topo). Era a única decisão que o padrão não tinha visto — e a venda pela
+              EMA 200 entrou depois de olhar para ela (com só os 20%, a venda foi em 17/11/2025, a US$ 92.102). O juiz é o ciclo que vem.
             </li>
           )}
           {medicao && (
             <li>
               <b>A regra publicada é a {medicao.grade.posicao}ª de {medicao.grade.variacoes}</b> na grade das peças que ela tem (abrir a busca 0, 30,
-              60 ou 90 dias antes; confirmar com 10%, 20%, 30% ou 50%). Escolhida antes da grade — a data do post e 20% —, mas perto do teto: a
+              60 ou 90 dias antes; confirmar com 10%, 20%, 30% ou 50%). A data do post e os 20% vieram antes da grade e a venda pela EMA veio depois; ainda assim, a publicada está perto do topo: a
               mediana das variações é {usdCurto(medicao.grade.mediana)}, a pior {usdCurto(medicao.grade.pior)}. As {medicao.grade.batemSegurar} batem
               o segurar, porque sair de três ursos de −75% a −85% bate o segurar com quase qualquer data.
             </li>

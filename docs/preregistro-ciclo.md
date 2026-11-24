@@ -51,3 +51,25 @@ o juiz é a volta inteira: compra → venda → recompra.
   novo.
 
 Um ciclo é um ponto. Mesmo passando, o que se ganha é "não foi desmentido".
+
+## Emenda 1 (24/11/2026, à tarde): a venda pela EMA 200
+
+O pedido: "tem que ser algo que daria para replicar na vida real [...] as EMAs
+de 200, candle, variação %". A regra já só usava fechamentos até o dia; o que
+mudou foi o gatilho da venda, depois de medir as médias (`npm run medir-ciclo`,
+seção "as médias", 15 linhas, que somam tentativas às 64 da grade):
+
+- a EMA 200 sozinha, sem calendário: US$ 0,91 mi, 114 operações, e de 2020 em
+  diante 6,8x contra 8,4x do segurar. Reprovada;
+- a EMA 200 também na compra: pior em toda combinação (três "fundos falsos" em
+  out–nov/2026, porque a média anda devagar e o preço está em cima dela quando
+  a busca abre);
+- a venda no PRIMEIRO entre −20% da máxima e o fechamento abaixo da EMA 200:
+  US$ 43,4 mi → US$ 47,8 mi, igual até 2019 e 33,4x → 36,8x de 2020 em diante.
+
+Entrou a terceira (`compra: "subida"`, `venda: "primeiro"`, `emaDias: 200`).
+O ganho inteiro é a venda de 2025 — 22/10/2025 a US$ 107.595, um topo falso
+em 26/10 e a venda de novo em 30/10 a US$ 108.306, contra US$ 92.102 em
+17/11 —, e a regra foi escolhida depois de vê-la. **Com isso não sobra decisão
+fora da amostra**: o juiz acima é o único. O estado de hoje não mudou (em
+caixa, compra no fechamento acima de US$ 66.098).

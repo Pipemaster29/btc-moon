@@ -24,6 +24,7 @@ import {
   quedaMaxima,
   simularAdaptativo,
   simularCalendario,
+  simularMedia,
   simularSegurar,
   type RegrasCiclo,
 } from "../lib/cicloBtc";
@@ -65,7 +66,8 @@ console.log(
     `busca abre ${data(e.abre)}; candidato ${e.candidato ? `${data(e.candidato.t)} a ${usd(e.candidato.preco)}` : "—"}; gatilho ${e.gatilho ? usd(e.gatilho) : "—"}; depois ${data(e.depois)}`,
 );
 
-// A grade: 4 antecedências × 4 subidas × 4 quedas = 64 variações.
+// A grade: 4 antecedências × 4 subidas × 4 quedas = 64 variações, com a venda
+// e a média da publicada (o −20% da grade é o da queda; a EMA vale junto).
 const ANTECEDENCIAS = [0, 30, 60, 90];
 const SUBIDAS = [0.1, 0.2, 0.3, 0.5];
 const QUEDAS = [0.1, 0.2, 0.3, 0.5];
@@ -99,6 +101,45 @@ for (const a of ANTECEDENCIAS) {
   console.log(`  ${String(a).padStart(3)} d  ${cel.join("")}`);
 }
 
+// As médias (pedido de 24/11, tarde: "pega a EMA de 200, candle, variação %").
+// Cada linha com as duas metades, cortadas em 01/01/2020, contra o segurar.
+const CORTE = Date.UTC(2020, 0, 1) / 1000;
+function metades(curva: { t: number; patrimonio: number }[]): [number, number] {
+  const i = curva.findIndex((p) => p.t >= CORTE);
+  return [curva[i].patrimonio / curva[0].patrimonio, curva.at(-1)!.patrimonio / curva[i].patrimonio];
+}
+const medias: { nome: string; final: number; queda: number; operacoes: number; antes2020: number; desde2020: number; publicada: boolean }[] = [];
+const linhaMedia = (nome: string, curva: { t: number; patrimonio: number }[], operacoes: number, publicada = false) => {
+  const [a, b] = metades(curva);
+  medias.push({ nome, final: curva.at(-1)!.patrimonio, queda: quedaMaxima(curva), operacoes, antes2020: a, desde2020: b, publicada });
+};
+linhaMedia("comprar e segurar", segurar, 1);
+for (const n of [50, 100, 200]) {
+  const c = simularMedia(dias, n);
+  linhaMedia(`EMA ${n} sozinha, sem calendário`, c, c.operacoes ?? 0);
+}
+const COMBOS: [RegrasCiclo["compra"], RegrasCiclo["venda"], string][] = [
+  ["subida", "queda", "compra +20%, venda −20%"],
+  ["subida", "media", "compra +20%, venda abaixo da EMA 200"],
+  ["subida", "primeiro", "compra +20%, venda −20% ou abaixo da EMA 200"],
+  ["media", "media", "compra e venda pela EMA 200"],
+  ["media", "primeiro", "compra pela EMA 200, venda −20% ou EMA"],
+  ["ambos", "primeiro", "compra +20% e acima da EMA, venda −20% ou EMA"],
+];
+for (const [compra, venda, nome] of COMBOS) {
+  const r = simularAdaptativo(dias, { ...REGRAS_CICLO, compra, venda });
+  linhaMedia(`calendário: ${nome}`, r.curva, r.marcas.length, compra === REGRAS_CICLO.compra && venda === REGRAS_CICLO.venda);
+}
+for (const n of [50, 100, 150, 250, 300]) {
+  const r = simularAdaptativo(dias, { ...REGRAS_CICLO, emaDias: n });
+  linhaMedia(`calendário: a publicada com EMA ${n}`, r.curva, r.marcas.length);
+}
+console.log("\nas médias (US$ 10 mil em 30/11/2013; metades cortadas em 01/01/2020)");
+for (const m of medias)
+  console.log(
+    `  ${(m.publicada ? "* " : "  ") + m.nome.padEnd(58)} ${usd(m.final).padStart(16)}  ${pct(m.queda).padStart(7)}  ${String(m.operacoes).padStart(4)} ops  ${m.antes2020.toFixed(1).padStart(6)}x  ${m.desde2020.toFixed(1).padStart(5)}x`,
+  );
+
 writeFileSync(
   "data/ciclo-medicao.json",
   JSON.stringify(
@@ -112,6 +153,7 @@ writeFileSync(
       adaptativo: { final: adapt.final, quedaMaxima: quedaMaxima(adapt.curva), marcas: adapt.marcas, extremos: adapt.extremos, pernas: pernas(adapt.marcas).map((p) => ({ de: p.de.t, ate: p.ate?.t ?? null, retorno: p.retorno })) },
       calendario: { final: cal.final, quedaMaxima: quedaMaxima(cal.curva), marcas: cal.marcas },
       segurar: { final: finalSegurar, quedaMaxima: quedaMaxima(segurar) },
+      medias,
       grade: { variacoes: grade.length, posicao, mediana, pior: finais[0], melhor: finais.at(-1), batemSegurar: bate, celulas: grade },
     },
     null,

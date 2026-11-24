@@ -9,7 +9,7 @@
  *
  * Rode com: npm run testar-ciclo
  */
-import { REGRAS_CICLO, quedaMaxima, simularAdaptativo, simularCalendario, type DiaBtc, type RegrasCiclo } from "../lib/cicloBtc";
+import { REGRAS_CICLO, emaDiaria, quedaMaxima, simularAdaptativo, simularCalendario, simularMedia, type DiaBtc, type RegrasCiclo } from "../lib/cicloBtc";
 
 let falhas = 0;
 function confere(nome: string, ok: boolean, obtido: string): void {
@@ -19,8 +19,8 @@ function confere(nome: string, ok: boolean, obtido: string): void {
 
 const DIA = 86_400;
 const T0 = Date.UTC(2020, 0, 1) / 1000;
-/** Regras pequenas para os testes caberem em poucos dias: fundo em 10, topo em 20. */
-const R: RegrasCiclo = { ...REGRAS_CICLO, diasAteFundo: 10, diasAteTopo: 20, custo: 0 };
+/** Regras pequenas para os testes caberem em poucos dias: fundo em 10, topo em 20, só pelos 20%. */
+const R: RegrasCiclo = { ...REGRAS_CICLO, diasAteFundo: 10, diasAteTopo: 20, custo: 0, compra: "subida", venda: "queda" };
 const SEM = { t: T0, preco: 100 };
 
 /** Uma série a partir de fechamentos; máxima e mínima iguais ao fechamento. */
@@ -85,6 +85,40 @@ console.log("\no calendário do post");
   const r = simularCalendario(s, R, SEM);
   const ds = r.marcas.map((m) => dia(m.t)).join(",");
   confere("compra +10, vende +20 depois, compra +10 depois", ds === "10,30,40,60,70", ds);
+}
+
+console.log("\na EMA");
+{
+  const e = emaDiaria(serie([1, 2, 3, 4, 5]), 3);
+  confere("NaN até ter n dias; semente é a média simples", Number.isNaN(e[1]) && e[2] === 2, e.map((v) => v.toFixed(2)).join(","));
+  confere("depois, k = 2/(n+1): 4·0,5 + 2·0,5 = 3", e[3] === 3 && e[4] === 4, `${e[3]}, ${e[4]}`);
+  const a = emaDiaria(serie([1, 2, 3, 4, 5, 999]), 3);
+  confere("o dia seguinte não muda a EMA de hoje", a[4] === e[4], String(a[4]));
+}
+
+console.log("\na venda pelo primeiro sinal");
+{
+  // EMA de 5 dias. Fundo 50 no dia 10, compra no 12 (61). Topo abre no 30, com o preço em 200 há dias;
+  // cai a 190 no 31: abaixo da EMA (~200) e longe dos 20% — a venda "primeiro" sai aqui, a "queda" não.
+  const f = [...new Array(10).fill(100), 50, 55, 61, ...new Array(18).fill(200), 190, 180, 150];
+  const primeiro = simularAdaptativo(serie(f), { ...R, emaDias: 5, venda: "primeiro" }, SEM);
+  const queda = simularAdaptativo(serie(f), { ...R, emaDias: 5, venda: "queda" }, SEM);
+  const vp = primeiro.marcas.find((m) => m.tipo === "venda");
+  const vq = queda.marcas.find((m) => m.tipo === "venda");
+  confere("\"primeiro\" vende no fechamento abaixo da EMA (dia 31)", vp !== undefined && dia(vp.t) === 31, vp ? `dia ${dia(vp.t)}` : "não vendeu");
+  confere("\"queda\" espera os 20% (160 → dia 33)", vq !== undefined && dia(vq.t) === 33, vq ? `dia ${dia(vq.t)}` : "não vendeu");
+  // A compra pela média: dentro da janela, o primeiro fechamento acima da EMA compra, mesmo sem os 20%.
+  const g = [...new Array(10).fill(100), 80, 70, 72, 80];
+  const m = simularAdaptativo(serie(g), { ...R, emaDias: 3, compra: "media" }, SEM);
+  confere("compra \"media\" no 1º fechamento acima da EMA", m.marcas[0]?.tipo === "compra" && dia(m.marcas[0].t) === 13, m.marcas[0] ? `dia ${dia(m.marcas[0].t)}` : "nenhuma");
+  const amb = simularAdaptativo(serie(g), { ...R, emaDias: 3, compra: "ambos" }, SEM);
+  confere("\"ambos\" ainda espera os 20% (80 < 84)", amb.marcas.length === 0, String(amb.marcas.length));
+}
+
+console.log("\na média sozinha");
+{
+  const c = simularMedia(serie([10, 10, 10, 12, 13, 9, 8, 11]), 3, 0, SEM);
+  confere("compra acima, vende abaixo, compra de novo: 3 operações", c.operacoes === 3, String(c.operacoes));
 }
 
 console.log("\nlixo e queda");
