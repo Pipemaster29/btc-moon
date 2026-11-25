@@ -163,6 +163,9 @@ console.log("\nas datas fixas");
   confere("vendido 1x com +105% contra: liquidado e fica zero", q.final === 0, String(q.final));
   const meio = simularExposicao(serie([100, 200]), [{ t: T0, alvo: 0.5 }], () => 0, 0, T0);
   confere("meio comprado de 100 a 200: +50%", meio.final === 15_000, String(meio.final));
+  const varias = simularExposicao(serie([100, 100, 120]), [{ t: T0 - 3 * DIA, alvo: 1 }, { t: T0 - 2 * DIA, alvo: -1 }, { t: T0 - DIA, alvo: 1 }], () => 0, 0.001, T0);
+  confere("três ordens vencidas no mesmo dia viram uma só, a última", varias.operacoes.length === 1 && varias.operacoes[0].alvo === 1, `${varias.operacoes.length} ordem(ns)`);
+  confere("e pagam uma taxa só", Math.abs(varias.operacoes[0].custo - 9.99) < 0.01, varias.operacoes[0].custo.toFixed(2));
   const ag = agendaDasDatas([{ tipo: "topo", t: T0, conhecidoEm: T0 }, { tipo: "fundo", t: T0 + 20 * DIA, conhecidoEm: T0 + 25 * DIA }], {
     ateFundo: 10,
     ateTopo: 3,

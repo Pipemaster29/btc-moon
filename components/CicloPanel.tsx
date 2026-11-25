@@ -4,7 +4,7 @@
  * página diz por quê antes de qualquer número grande.
  */
 import CurvaCiclo, { type SerieCiclo } from "./CurvaCiclo";
-import type { Extremo, Marca, PernaVendida, Resultado } from "@/lib/cicloBtc";
+import type { Extremo, Marca, Ordem, PernaVendida, Resultado } from "@/lib/cicloBtc";
 
 export interface LinhaVendida {
   nome: string;
@@ -82,6 +82,7 @@ export default function CicloPanel({
   precoAgora,
   medicao,
   altcoins,
+  ordens,
 }: {
   adaptativo: Resultado & { quedaMax: number };
   vendida: { final: number; quedaMax: number; pernas: PernaVendida[] };
@@ -91,6 +92,7 @@ export default function CicloPanel({
   precoAgora: number;
   medicao: MedicaoCiclo | null;
   altcoins: AltcoinsCiclo | null;
+  ordens: { aVista: Ordem[]; comVendida: Ordem[]; finalAVista: number; finalComVendida: number };
 }) {
   const ultimaData = medicao?.datas?.operacoes.at(-1);
   const e = adaptativo.estado;
@@ -227,6 +229,21 @@ export default function CicloPanel({
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* O livro de ordens: cada ordem como ela seria dada na corretora. */}
+      <div className="flex flex-col gap-2">
+        <h3 className="font-semibold text-sm">As ordens, uma a uma</h3>
+        <p className="text-xs text-black/55 dark:text-white/55 max-w-3xl">
+          A compra é <b>à vista, sem alavancagem</b>: compra-se BTC com todo o patrimônio. A vendida é <b>1x</b> no perpétuo: a margem é o
+          patrimônio inteiro e o tamanho vendido vale o mesmo que ele — nada de 2x ou 3x, que estão medidos acima e reprovam. Cada ordem sai no
+          fechamento diário (00h UTC, 21h de Brasília), no preço desse fechamento, com 0,1% de taxa e escorregada por lado. A versão à vista é a mesma
+          regra sem a vendida: entre a venda e a compra, o dinheiro fica parado em dólar. <b>O que não é realista é o tamanho</b>: a partir de 2021 a
+          carteira passa de US$ 10 milhões e as ordens de 2025 têm 1.300 BTC — uma ordem dessas de uma vez move o preço bem mais que 0,1%, e
+          teria de ser picada em dias. Com US$ 10 mil, as primeiras ordens são do tamanho de qualquer conta; os milhões do fim, não.
+        </p>
+        <LivroDeOrdens titulo="À vista, sem alavancagem (sem vendida)" ordens={ordens.aVista} agora={{ preco: precoAgora, patrimonio: ordens.finalAVista }} />
+        <LivroDeOrdens titulo="Com a vendida 1x no urso" ordens={ordens.comVendida} agora={{ preco: precoAgora, patrimonio: ordens.finalComVendida }} />
       </div>
 
       {/* A vendida: perna a perna e o que foi medido. */}
@@ -505,5 +522,84 @@ function AltcoinsDoCiclo({ a }: { a: AltcoinsCiclo }) {
         moeda não foi baixado. <code>npx tsx scripts/ciclo-altcoins.mts</code>.
       </p>
     </div>
+  );
+}
+
+/** Uma ordem em português, do jeito que se digita na corretora. */
+function textoDaOrdem(o: Ordem, unidade: string): string {
+  const q = (u: number) => `${u.toLocaleString("pt-BR", { maximumFractionDigits: u >= 100 ? 0 : u >= 1 ? 3 : 5 })} ${unidade}`;
+  const partes: string[] = [];
+  if (o.vendidoAntes > 0 && o.vendidoDepois === 0) partes.push(`fecha o vendido de ${q(o.vendidoAntes)}`);
+  if (o.compradoAntes > 0 && o.compradoDepois === 0) partes.push(`vende ${q(o.compradoAntes)} à vista`);
+  if (o.compradoDepois > 0 && o.compradoAntes === 0) partes.push(`compra ${q(o.compradoDepois)} à vista`);
+  if (o.vendidoDepois > 0 && o.vendidoAntes === 0) partes.push(`abre vendido de ${q(o.vendidoDepois)} (1x)`);
+  return partes.join(" e ") || "—";
+}
+
+export function LivroDeOrdens({
+  titulo,
+  ordens,
+  unidade = "BTC",
+  casasPreco = 0,
+  agora,
+}: {
+  titulo: string;
+  ordens: Ordem[];
+  unidade?: string;
+  casasPreco?: number;
+  /** O preço e o patrimônio de hoje, com a posição da última ordem marcada a eles. */
+  agora?: { preco: number; patrimonio: number };
+}) {
+  const ultima = ordens.at(-1);
+  const posicao = ultima
+    ? ultima.vendidoDepois > 0
+      ? `vendido de ${ultima.vendidoDepois.toLocaleString("pt-BR", { maximumFractionDigits: ultima.vendidoDepois >= 100 ? 0 : 3 })} ${unidade} desde ${data(ultima.t)}`
+      : ultima.compradoDepois > 0
+        ? `comprado em ${ultima.compradoDepois.toLocaleString("pt-BR", { maximumFractionDigits: ultima.compradoDepois >= 100 ? 0 : 3 })} ${unidade} desde ${data(ultima.t)}`
+        : `em dólar desde ${data(ultima.t)}`
+    : "";
+  return (
+    <details className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-2" open>
+      <summary className="cursor-pointer text-sm font-medium">
+        {titulo} — {ordens.length} ordens
+      </summary>
+      <div className="overflow-x-auto mt-2">
+        <table className="w-full min-w-[720px] text-sm whitespace-nowrap">
+          <thead>
+            <tr className="text-left text-xs text-black/45 dark:text-white/45">
+              <th className="py-1.5 pr-3 font-normal">data (fechamento)</th>
+              <th className="py-1.5 pr-3 font-normal">ordem</th>
+              <th className="py-1.5 pr-3 font-normal text-right">preço</th>
+              <th className="py-1.5 pr-3 font-normal text-right">taxa</th>
+              <th className="py-1.5 font-normal text-right">patrimônio depois</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ordens.map((o) => (
+              <tr key={o.t} className="border-t border-black/5 dark:border-white/10">
+                <td className="py-1.5 pr-3 tabular-nums">{data(o.t)}</td>
+                <td className="py-1.5 pr-3">{textoDaOrdem(o, unidade)}</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums">
+                  US$ {o.preco.toLocaleString("pt-BR", { minimumFractionDigits: casasPreco, maximumFractionDigits: casasPreco })}
+                </td>
+                <td className="py-1.5 pr-3 text-right tabular-nums">{usd(o.custo)}</td>
+                <td className="py-1.5 text-right tabular-nums font-medium">{usd(o.patrimonio)}</td>
+              </tr>
+            ))}
+            {agora && ultima && (
+              <tr className="border-t border-black/10 dark:border-white/15 text-black/60 dark:text-white/60">
+                <td className="py-1.5 pr-3">hoje</td>
+                <td className="py-1.5 pr-3">posição aberta: {posicao}</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums">
+                  US$ {agora.preco.toLocaleString("pt-BR", { minimumFractionDigits: casasPreco, maximumFractionDigits: casasPreco })}
+                </td>
+                <td className="py-1.5 pr-3 text-right">—</td>
+                <td className="py-1.5 text-right tabular-nums font-medium">{usd(agora.patrimonio)}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }

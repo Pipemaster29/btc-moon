@@ -619,14 +619,15 @@ export function simularExposicao(
   taxaDia: (t: number) => number = () => 0,
   custo = REGRAS_CICLO.custo,
   inicio = SEMENTE.t,
-): { curva: Resultado["curva"]; final: number; operacoes: { t: number; alvo: number; preco: number }[] } {
+): { curva: Resultado["curva"]; final: number; operacoes: Ordem[] } {
   const fila = [...agenda].sort((a, b) => a.t - b.t);
   let caixa = CAPITAL_INICIAL;
   let comprado = 0;
   let vendido = 0;
   let k = 0;
   const curva: Resultado["curva"] = [];
-  const operacoes: { t: number; alvo: number; preco: number }[] = [];
+  const operacoes: Ordem[] = [];
+  let alvoAtual = 0;
   for (const d of dias) {
     if (d.t < inicio || !Number.isFinite(d.fecho) || d.fecho <= 0) continue;
     const p = d.fecho;
@@ -640,25 +641,84 @@ export function simularExposicao(
         vendido = 0;
       }
     }
-    while (k < fila.length && fila[k].t <= d.t) {
-      const patrimonio = caixa + comprado * p - vendido * p;
-      if (patrimonio <= 0) {
-        k++;
-        continue;
-      }
-      const alvo = fila[k].alvo;
-      const novoComprado = (Math.max(0, alvo) * patrimonio) / p;
-      const novoVendido = (Math.max(0, -alvo) * patrimonio) / p;
+    // Várias datas vencidas no mesmo dia (a agenda começa antes da moeda existir,
+    // ou três parcelas que esperavam o extremo ser conhecido) valem como UMA
+    // ordem, a da última: ninguém compra, vende e recompra no mesmo fechamento.
+    let ultimaVencida = -1;
+    while (k < fila.length && fila[k].t <= d.t) ultimaVencida = k++;
+    const patrimonio = caixa + comprado * p - vendido * p;
+    // Conta liquidada (patrimônio zero) não opera mais: as ordens vencidas passam.
+    if (ultimaVencida >= 0 && patrimonio > 0) {
+      const alvo = fila[ultimaVencida].alvo;
+      // A taxa sai do patrimônio ANTES de dimensionar a ordem: sem isso, comprar
+      // "todo o patrimônio" deixava o caixa em −0,1% — alavancagem que ninguém
+      // escolheu, e que o motor da vendida não tem.
+      const liquido = patrimonio / (1 + custo * Math.abs(alvo - alvoAtual));
+      const novoComprado = (Math.max(0, alvo) * liquido) / p;
+      const novoVendido = (Math.max(0, -alvo) * liquido) / p;
       const giro = (Math.abs(novoComprado - comprado) + Math.abs(novoVendido - vendido)) * p;
       caixa += (comprado - novoComprado) * p - (vendido - novoVendido) * p - giro * custo;
+      if (alvo !== alvoAtual) {
+        operacoes.push({
+          t: d.t,
+          de: alvoAtual,
+          alvo,
+          preco: p,
+          compradoAntes: comprado,
+          compradoDepois: novoComprado,
+          vendidoAntes: vendido,
+          vendidoDepois: novoVendido,
+          custo: giro * custo,
+          patrimonio: caixa + novoComprado * p - novoVendido * p,
+        });
+      }
       comprado = novoComprado;
       vendido = novoVendido;
-      operacoes.push({ t: d.t, alvo, preco: p });
-      k++;
+      alvoAtual = alvo;
     }
     curva.push({ t: d.t, patrimonio: Math.max(0, caixa + comprado * p - vendido * p) });
   }
   return { curva, final: curva.at(-1)?.patrimonio ?? NaN, operacoes };
+}
+
+/**
+ * Uma ordem da carteira, para a tela mostrar como ela seria dada na corretora:
+ * a data e o preço do fechamento em que saiu, o que mudou nas unidades e o
+ * patrimônio depois. `de` e `alvo` em fração do PATRIMÔNIO (−1 a +1);
+ * quantidades em UNIDADES da moeda; `custo` e `patrimonio`, DÓLARES.
+ */
+export interface Ordem {
+  t: number;
+  de: number;
+  alvo: number;
+  preco: number;
+  compradoAntes: number;
+  compradoDepois: number;
+  vendidoAntes: number;
+  vendidoDepois: number;
+  custo: number;
+  patrimonio: number;
+}
+
+/**
+ * A exposição diária da publicada — +1 comprado à vista, −1 vendido 1x no
+ * perpétuo, 0 caixa —, como agenda para `simularExposicao`. É o que permite
+ * aplicar as datas do BTC a outra moeda, ou montar o livro de ordens: as
+ * mesmas decisões, contadas em unidades. `soComprada` troca a vendida por
+ * caixa (a carteira só à vista).
+ */
+export function agendaDaPublicada(r: ReturnType<typeof simularComVendida>, soComprada = false): { t: number; alvo: number }[] {
+  const ultimo = r.base.dias?.at(-1)?.t ?? -Infinity;
+  const vendidas = r.pernas.filter((p) => p.retorno !== 0 || p.ate === null);
+  const agenda: { t: number; alvo: number }[] = [];
+  let anterior = NaN;
+  for (const l of r.base.dias ?? []) {
+    const vendido = !soComprada && vendidas.some((p) => l.t >= p.de && l.t < (p.ate ?? ultimo + 1));
+    const alvo = l.comprado ? 1 : vendido ? -1 : 0;
+    if (alvo !== anterior) agenda.push({ t: l.t, alvo });
+    anterior = alvo;
+  }
+  return agenda;
 }
 
 /**

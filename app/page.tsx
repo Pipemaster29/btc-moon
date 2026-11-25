@@ -8,7 +8,8 @@ import type { MarcaCiclo } from "@/components/PriceChart";
 import type { PontoCiclo } from "@/components/CurvaCiclo";
 import { getBitcoinAnalysis } from "@/lib/bitcoin";
 import { getCandles } from "@/lib/bitstamp";
-import { diasDasVelas, quedaMaxima, simularCalendario, simularComVendida, simularSegurar } from "@/lib/cicloBtc";
+import { agendaDaPublicada, diasDasVelas, quedaMaxima, simularCalendario, simularComVendida, simularExposicao, simularSegurar } from "@/lib/cicloBtc";
+import EstudoMoedaPanel, { type EstudoMoeda } from "@/components/EstudoMoedaPanel";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getLiquidez } from "@/lib/liquidez";
@@ -80,6 +81,15 @@ async function getAltcoinsCiclo(): Promise<AltcoinsCiclo | null> {
   }
 }
 
+/** O estudo da HBAR, gerado à mão (`scripts/estudar-moeda.mts HBAR`) e guardado no `main`. */
+async function getEstudoHbar(): Promise<EstudoMoeda | null> {
+  try {
+    return JSON.parse(await readFile(path.join(process.cwd(), "data", "estudo-hbar.json"), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 /** Um ponto por semana, mais os dias de operação e o último: ~700 pontos por linha em vez de ~4.700. */
 function semanal(curva: { t: number; patrimonio: number }[], manter: Set<number>): PontoCiclo[] {
   return curva.filter((p, i) => i % 7 === 0 || i === curva.length - 1 || manter.has(p.t)).map((p) => ({ t: p.t, v: p.patrimonio }));
@@ -108,6 +118,12 @@ async function getCiclo() {
       marcas,
       adaptativo: { ...adaptativo, quedaMax: quedaMaxima(adaptativo.curva), curva: [], dias: [] },
       vendida: { final: vendida.final, quedaMax: quedaMaxima(vendida.curva), pernas: vendida.pernas },
+      // O livro de ordens: as mesmas decisões contadas em unidades, à vista e com a vendida.
+      ordens: (() => {
+        const aVista = simularExposicao(dias, agendaDaPublicada(vendida, true), taxa);
+        const comVendida = simularExposicao(dias, agendaDaPublicada(vendida), taxa);
+        return { aVista: aVista.operacoes, comVendida: comVendida.operacoes, finalAVista: aVista.final, finalComVendida: comVendida.final };
+      })(),
       calendario: { ...calendario, quedaMax: quedaMaxima(calendario.curva), curva: [] },
       segurar: { final: segurar.at(-1)?.patrimonio ?? NaN, quedaMax: quedaMaxima(segurar) },
       series: [
@@ -127,12 +143,13 @@ export default async function Home() {
   // O painel de liquidez lê o FRED e pode voltar nulo quando ele está fora; a
   // página inteira não pode depender disso, então as duas leituras correm em
   // paralelo e a de liquidez tem direito a falhar sozinha.
-  const [analysis, liquidez, ciclo, medicaoCiclo, altcoinsCiclo] = await Promise.all([
+  const [analysis, liquidez, ciclo, medicaoCiclo, altcoinsCiclo, estudoHbar] = await Promise.all([
     getBitcoinAnalysis(),
     getLiquidez(),
     getCiclo(),
     getMedicaoCiclo(),
     getAltcoinsCiclo(),
+    getEstudoHbar(),
   ]);
 
   const rsiSignal =
@@ -195,8 +212,11 @@ export default async function Home() {
               precoAgora={analysis.currentPrice}
               medicao={medicaoCiclo}
               altcoins={altcoinsCiclo}
+              ordens={ciclo.ordens}
             />
           )}
+
+          {estudoHbar && ciclo && <EstudoMoedaPanel e={estudoHbar} procurando={ciclo.adaptativo.estado.procurando} gatilho={ciclo.adaptativo.estado.gatilho} />}
 
           {liquidez && <LiquidityPanel dados={liquidez} />}
 
