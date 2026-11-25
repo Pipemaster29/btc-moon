@@ -121,3 +121,9 @@ scripts/ciclo-altcoins.mts` (29 moedas da Binance à vista, desde 08/2017).
   2022); nos topos não (2021: mediana −178 dias; 2025: −45). As datas do BTC,
   só compradas, batem o segurar a moeda em 29 de 29, mas só 4 de 29 ganham do
   próprio BTC no mesmo período, e a vendida liquida 5 de 29. Só moedas vivas.
+
+Adendo (26/11/2026): a HBAR entrou na lista das altcoins, a pedido (par USDT
+desde 09/2019). São 30 moedas: só compradas nas datas do BTC batem o segurar
+em 30 de 30, as mesmas 4 ganham do próprio BTC, e a HBAR faz 30,4x só comprada
+(o BTC, 32,8x no mesmo período), 91,5x com a vendida (o BTC, 74,3x) e 1,4x
+segurando. Não muda nenhuma regra.

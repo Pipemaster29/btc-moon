@@ -25,7 +25,7 @@ import { diasDasVelas, financiamentoDiario, quedaMaxima, simularComVendida, simu
 
 const MOEDAS = [
   "ETH", "BNB", "LTC", "XRP", "ADA", "TRX", "XLM", "LINK", "ETC", "NEO", "IOTA", "DASH", "ZEC", "QTUM", "BAT", "ICX", "ZRX", "ONT", "VET",
-  "DOGE", "ATOM", "ALGO", "XTZ", "SOL", "AVAX", "DOT", "UNI", "FIL", "AAVE",
+  "DOGE", "HBAR", "ATOM", "ALGO", "XTZ", "SOL", "AVAX", "DOT", "UNI", "FIL", "AAVE",
 ];
 const DIA = 86_400;
 const CACHE = ".cache/ciclo-alt";
