@@ -44,6 +44,26 @@ const MOON_COLOR = "#898781";
  */
 const MAX_VELAS_COM_LUA = 400;
 
+/**
+ * As marcas do padrão dos 1.064 / 364 dias (`lib/cicloBtc.ts`). A compra e a
+ * venda usam o verde e o vermelho das velas, com a seta e o texto carregando o
+ * sentido — sem depender da cor. O calendário literal fica em cinza, com o
+ * círculo: é a régua, não a carteira.
+ */
+export interface MarcaCiclo {
+  /** Segundos desde 1970, UTC. */
+  t: number;
+  tipo: "compra" | "venda" | "fundo falso" | "topo falso" | "cal-compra" | "cal-venda";
+}
+const TEXTO_CICLO: Record<MarcaCiclo["tipo"], string> = {
+  compra: "compra · fecha short",
+  venda: "venda · abre short",
+  "fundo falso": "fundo falso",
+  "topo falso": "topo falso",
+  "cal-compra": "364d",
+  "cal-venda": "1064d",
+};
+
 /** Referência estável para o estado vazio, para não refazer efeitos a cada render. */
 const EMPTY_CANDLES: Candle[] = [];
 
@@ -69,7 +89,7 @@ function useIsDark(): boolean {
   );
 }
 
-export default function PriceChart() {
+export default function PriceChart({ ciclo = [] }: { ciclo?: MarcaCiclo[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -80,6 +100,7 @@ export default function PriceChart() {
   const [logScale, setLogScale] = useState(true);
   const [showEvents, setShowEvents] = useState(true);
   const [showMoons, setShowMoons] = useState(false);
+  const [showCiclo, setShowCiclo] = useState(true);
 
   // Resultado e erro carregam junto o timeframe a que pertencem, de modo que
   // "carregando" seja estado derivado em vez de um setState dentro do efeito.
@@ -324,9 +345,29 @@ export default function PriceChart() {
           }))
         : [];
 
+      // O ciclo é diário: no 1H e no 4H a marca cai na vela que contém o dia,
+      // e só entra se essa vela estiver carregada (o 1H guarda 90 dias).
+      const passoCiclo = TIMEFRAME_SECONDS[timeframe];
+      const primeira = candles[0].time;
+      const cicloMarkers: SeriesMarker<Time>[] = showCiclo
+        ? ciclo
+            .filter((m) => m.t >= from - passoCiclo && m.t <= to && m.t >= primeira)
+            .map((m) => {
+              const sobe = m.tipo === "compra" || m.tipo === "topo falso" || m.tipo === "cal-compra";
+              const cal = m.tipo.startsWith("cal-");
+              return {
+                time: (Math.floor((m.t - primeira) / passoCiclo) * passoCiclo + primeira) as UTCTimestamp,
+                position: sobe ? ("belowBar" as const) : ("aboveBar" as const),
+                color: cal ? MOON_COLOR : sobe ? UP_COLOR : DOWN_COLOR,
+                shape: cal ? ("circle" as const) : sobe ? ("arrowUp" as const) : ("arrowDown" as const),
+                text: TEXTO_CICLO[m.tipo],
+              };
+            })
+        : [];
+
       // A biblioteca exige os marcadores em ordem cronológica.
       plugin.setMarkers(
-        [...eventMarkers, ...moonMarkers].sort(
+        [...eventMarkers, ...moonMarkers, ...cicloMarkers].sort(
           (a, b) => Number(a.time) - Number(b.time),
         ),
       );
@@ -336,7 +377,7 @@ export default function PriceChart() {
     const timeScale = chart.timeScale();
     timeScale.subscribeVisibleTimeRangeChange(render);
     return () => timeScale.unsubscribeVisibleTimeRangeChange(render);
-  }, [candles, showEvents, showMoons, timeframe]);
+  }, [candles, showEvents, showMoons, showCiclo, ciclo, timeframe]);
 
 
 
@@ -387,6 +428,21 @@ export default function PriceChart() {
           >
             ▲ Eventos
           </button>
+
+          {ciclo.length > 0 && (
+            <button
+              onClick={() => setShowCiclo((on) => !on)}
+              aria-pressed={showCiclo}
+              title="Compras e vendas do padrão dos 1.064 / 364 dias — o painel abaixo explica"
+              className={`px-2 py-1 text-xs rounded-md border transition-colors ${
+                showCiclo
+                  ? "border-current text-[#0a7d43] dark:text-[#0ECB81]"
+                  : "border-transparent opacity-40 hover:opacity-70"
+              }`}
+            >
+              ⇅ Ciclo 1064/364
+            </button>
+          )}
 
           <button
             onClick={() => setShowMoons((on) => !on)}

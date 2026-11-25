@@ -53,7 +53,9 @@
     "testar-insiders": "tsx scripts/testar-insiders.mts",
     "previsao": "tsx scripts/previsao.mts",
     "medir-previsao": "tsx scripts/medir-previsao.mts",
-    "testar-previsao": "tsx scripts/testar-previsao.mts"
+    "testar-previsao": "tsx scripts/testar-previsao.mts",
+    "medir-ciclo": "tsx scripts/medir-ciclo.mts",
+    "testar-ciclo": "tsx scripts/testar-ciclo.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

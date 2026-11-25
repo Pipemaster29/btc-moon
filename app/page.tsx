@@ -3,7 +3,14 @@ import LivePriceProvider from "@/components/LivePriceProvider";
 import LiquidityPanel from "@/components/LiquidityPanel";
 import PriceChart from "@/components/PriceChart";
 import { Pagina } from "@/components/Pagina";
+import CicloPanel, { type MedicaoCiclo } from "@/components/CicloPanel";
+import type { MarcaCiclo } from "@/components/PriceChart";
+import type { PontoCiclo } from "@/components/CurvaCiclo";
 import { getBitcoinAnalysis } from "@/lib/bitcoin";
+import { getCandles } from "@/lib/bitstamp";
+import { diasDasVelas, quedaMaxima, simularCalendario, simularComVendida, simularSegurar } from "@/lib/cicloBtc";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { getLiquidez } from "@/lib/liquidez";
 
 function formatUsd(value: number): string {
@@ -34,11 +41,84 @@ function StatCard({
   );
 }
 
+/**
+ * A grade do padrão dos 1.064 / 364 dias, gerada à mão (`npm run medir-ciclo`)
+ * e guardada no `main`: o disco do build basta, porque ela só muda quando a
+ * regra muda. Sem o arquivo, o painel mostra o resto e cala a grade.
+ */
+async function getMedicaoCiclo(): Promise<MedicaoCiclo | null> {
+  try {
+    return JSON.parse(await readFile(path.join(process.cwd(), "data", "ciclo-medicao.json"), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * O financiamento diário do BTCUSDT, gravado por `npm run medir-ciclo` no
+ * `main`. Os dias depois da gravação contam ZERO — o vendido recebeu de 2% a
+ * 30% ao ano em todos os anos medidos, então zero subestima a perna aberta, e
+ * nunca a favorece.
+ */
+async function getFinanciamento(): Promise<(t: number) => number> {
+  try {
+    const f = JSON.parse(await readFile(path.join(process.cwd(), "data", "btc-financiamento-diario.json"), "utf8")) as { antes: number; dias: [number, number][] };
+    const mapa = new Map(f.dias);
+    const inicio = (f.dias[0]?.[0] ?? Infinity) + 86_400;
+    return (t) => (t < inicio ? f.antes : mapa.get(Math.floor(t / 86_400) * 86_400) ?? 0);
+  } catch {
+    return () => 0;
+  }
+}
+
+/** Um ponto por semana, mais os dias de operação e o último: ~700 pontos por linha em vez de ~4.700. */
+function semanal(curva: { t: number; patrimonio: number }[], manter: Set<number>): PontoCiclo[] {
+  return curva.filter((p, i) => i % 7 === 0 || i === curva.length - 1 || manter.has(p.t)).map((p) => ({ t: p.t, v: p.patrimonio }));
+}
+
+/**
+ * O ciclo roda a cada montagem da página, sobre as mesmas velas diárias do
+ * gráfico (a Bitstamp, com cache de uma hora): são ~4.700 dias e um laço,
+ * milissegundos. Assim o "agora" do painel anda com o preço, e não com a
+ * última vez que alguém rodou a medição.
+ */
+async function getCiclo() {
+  try {
+    const [velas, taxa] = await Promise.all([getCandles("1d"), getFinanciamento()]);
+    const dias = diasDasVelas(velas);
+    const vendida = simularComVendida(dias, undefined, undefined, taxa);
+    const adaptativo = vendida.base;
+    const calendario = simularCalendario(dias);
+    const segurar = simularSegurar(dias);
+    const operacoes = new Set([...adaptativo.marcas, ...calendario.marcas].map((m) => m.t));
+    const marcas: MarcaCiclo[] = [
+      ...adaptativo.marcas.map((m) => ({ t: m.t, tipo: m.tipo })),
+      ...calendario.marcas.map((m) => ({ t: m.t, tipo: m.tipo === "compra" ? ("cal-compra" as const) : ("cal-venda" as const) })),
+    ];
+    return {
+      marcas,
+      adaptativo: { ...adaptativo, quedaMax: quedaMaxima(adaptativo.curva), curva: [], dias: [] },
+      vendida: { final: vendida.final, quedaMax: quedaMaxima(vendida.curva), pernas: vendida.pernas },
+      calendario: { ...calendario, quedaMax: quedaMaxima(calendario.curva), curva: [] },
+      segurar: { final: segurar.at(-1)?.patrimonio ?? NaN, quedaMax: quedaMaxima(segurar) },
+      series: [
+        { nome: "comprado + vendido 1x", cor: "ad" as const, pontos: semanal(vendida.curva, operacoes) },
+        { nome: "só comprado ou em caixa", cor: "sc" as const, pontos: semanal(adaptativo.curva, operacoes) },
+        { nome: "calendário do post", cor: "cal" as const, pontos: semanal(calendario.curva, operacoes) },
+        { nome: "comprar e segurar", cor: "seg" as const, pontos: semanal(segurar, operacoes) },
+      ],
+      precoAgora: dias.at(-1)!.fecho,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default async function Home() {
   // O painel de liquidez lê o FRED e pode voltar nulo quando ele está fora; a
   // página inteira não pode depender disso, então as duas leituras correm em
   // paralelo e a de liquidez tem direito a falhar sozinha.
-  const [analysis, liquidez] = await Promise.all([getBitcoinAnalysis(), getLiquidez()]);
+  const [analysis, liquidez, ciclo, medicaoCiclo] = await Promise.all([getBitcoinAnalysis(), getLiquidez(), getCiclo(), getMedicaoCiclo()]);
 
   const rsiSignal =
     analysis.rsi14 >= 70
@@ -62,7 +142,7 @@ export default async function Home() {
             <LivePrice referenceClose={analysis.previousClose} />
           </header>
 
-          <PriceChart />
+          <PriceChart ciclo={ciclo?.marcas ?? []} />
 
           <section className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <StatCard
@@ -89,6 +169,18 @@ export default async function Home() {
             </p>
             <p className="text-xl font-semibold mt-1">{trendSignal}</p>
           </section>
+
+          {ciclo && (
+            <CicloPanel
+              adaptativo={ciclo.adaptativo}
+              vendida={ciclo.vendida}
+              calendario={ciclo.calendario}
+              segurar={ciclo.segurar}
+              series={ciclo.series}
+              precoAgora={analysis.currentPrice}
+              medicao={medicaoCiclo}
+            />
+          )}
 
           {liquidez && <LiquidityPanel dados={liquidez} />}
 
