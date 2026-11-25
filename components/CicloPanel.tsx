@@ -18,7 +18,27 @@ export interface LinhaVendida {
   publicada: boolean;
 }
 
+export interface AltcoinsCiclo {
+  raio: number;
+  extremos: { tipo: "topo" | "fundo"; nome: string; t: number }[];
+  linhas: { moeda: string; desde: number; distancias: (number | null)[]; estrategia: number; soComprada: number; segurar: number; liquidada: boolean }[];
+  resumo: { nome: string; tipo: string; n: number; mediana: number | null; perto40: number }[];
+  soComprada: { batem: number; lucro: number; mediana: number; medianaSegurar: number };
+  comVendida: { batem: number; lucro: number; liquidadas: string[] };
+  btc: { estrategia: number; soComprada: number; segurar: number; desde: number };
+  ganhamDoBtc: string[];
+  geradoEm: string;
+}
+
 export interface MedicaoCiclo {
+  datas?: {
+    mediaFundo: number;
+    mediaTopo: number;
+    desce: number[];
+    sobe: number[];
+    linhas: { nome: string; grupo: string; final: number; antes2020: number; desde2020: number; publicada: boolean; liquidada: boolean }[];
+    operacoes: { t: number; alvo: number; preco: number }[];
+  };
   vendida?: { linhas: LinhaVendida[]; grade: { melhora: number; variacoes: number; pior: number; mediana: number; melhor: number; pernasPos: number; pernasTot: number; piorContra: number } };
   medias?: { nome: string; final: number; queda: number; operacoes: number; antes2020: number; desde2020: number; publicada: boolean }[];
   grade: { variacoes: number; posicao: number; mediana: number; pior: number; melhor: number; batemSegurar: number };
@@ -61,6 +81,7 @@ export default function CicloPanel({
   series,
   precoAgora,
   medicao,
+  altcoins,
 }: {
   adaptativo: Resultado & { quedaMax: number };
   vendida: { final: number; quedaMax: number; pernas: PernaVendida[] };
@@ -69,7 +90,9 @@ export default function CicloPanel({
   series: SerieCiclo[];
   precoAgora: number;
   medicao: MedicaoCiclo | null;
+  altcoins: AltcoinsCiclo | null;
 }) {
+  const ultimaData = medicao?.datas?.operacoes.at(-1);
   const e = adaptativo.estado;
   const extremoDe = (m: Marca): Extremo | undefined => adaptativo.extremos.find((x) => x.confirmadoEm === m.t);
   const ultimaCal = calendario.marcas.at(-1);
@@ -281,6 +304,60 @@ export default function CicloPanel({
         )}
       </div>
 
+      {/* As datas fixas pela média dos ciclos. */}
+      {medicao?.datas && (
+        <div className="flex flex-col gap-2">
+          <h3 className="font-semibold text-sm">E se comprar e vender NA DATA, pela média dos ciclos?</h3>
+          <p className="text-xs text-black/55 dark:text-white/55 max-w-3xl">
+            Do fundo ao topo foram {medicao.datas.sobe.join(", ")} dias (média {medicao.datas.mediaTopo}); do topo ao fundo,{" "}
+            {medicao.datas.desce.join(", ")} (média {medicao.datas.mediaFundo}) — o de agora, 411 até 21/11, ainda não fechou. Duas formas de
+            contar: o <b>calendário puro</b>, desde 2013, em que cada data prevista vira o ponto de partida da seguinte e o erro se acumula; e{" "}
+            <b>contando do último extremo confirmado</b> pelo preço, que é o que se sabe no dia — e a compra ou venda sai na data, sem esperar o
+            preço. As médias são dos mesmos ciclos que elas compram e vendem; o “deixa-um-fora” prevê cada ciclo com a média dos outros.
+          </p>
+          {ultimaData && (
+            <p className="text-sm rounded-lg bg-black/[0.03] dark:bg-white/[0.04] px-3 py-2">
+              <b>Hoje as duas regras discordam.</b> Pela média, a data de compra foi {data(ultimaData.t)} (topo confirmado + {medicao.datas.mediaFundo} dias):
+              ela fechou a vendida e comprou a {usd(ultimaData.preco)}, e está {pct(precoAgora / ultimaData.preco - 1)}. A do painel ainda está
+              vendida, esperando o preço confirmar. Quem estiver certa até o fim deste fundo é o teste ao vivo das duas ideias.
+            </p>
+          )}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm whitespace-nowrap">
+              <thead>
+                <tr className="text-left text-xs text-black/45 dark:text-white/45">
+                  <th className="py-1.5 pr-3 font-normal">regra</th>
+                  <th className="py-1.5 pr-3 font-normal text-right">final</th>
+                  <th className="py-1.5 pr-3 font-normal text-right">2013–19</th>
+                  <th className="py-1.5 font-normal text-right">2020–26</th>
+                </tr>
+              </thead>
+              <tbody>
+                {medicao.datas.linhas.map((x) => (
+                  <tr key={x.grupo + x.nome} className={`border-t border-black/5 dark:border-white/10 ${x.publicada ? "font-semibold" : ""}`}>
+                    <td className="py-1.5 pr-3">
+                      <span className="text-black/45 dark:text-white/45">{x.grupo}:</span> {x.nome}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{x.liquidada ? "liquidada" : usdCurto(x.final)}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{x.liquidada ? "—" : `${x.antes2020.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}x`}</td>
+                    <td className="py-1.5 text-right tabular-nums">{x.liquidada ? "—" : `${x.desde2020.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-black/55 dark:text-white/55 max-w-3xl">
+            O que isso diz: a data fixa só funciona contada do extremo confirmado — no calendário puro o erro de um ciclo passa para o seguinte e a
+            vendida numa data cega é liquidada (o calendário do post vendeu em 10/2017 a US$ 5,7 mil, dois meses antes de o BTC ir a US$ 19,7 mil).
+            Espalhar em três parcelas de ±20 ou ±40 dias rende MENOS em todas as versões: a parcela antecipada sai cedo demais da alta e a
+            atrasada entra tarde na queda. Pela média, em uma parcela e com vendida, empata com a do painel — e sem o próprio ciclo cai para perto
+            de três quartos dela.
+          </p>
+        </div>
+      )}
+
+      {altcoins && <AltcoinsDoCiclo a={altcoins} />}
+
       {medicao?.medias && (
         <div className="flex flex-col gap-2">
           <h3 className="font-semibold text-sm">E as médias? O que foi medido</h3>
@@ -360,5 +437,73 @@ export default function CicloPanel({
         </p>
       </div>
     </section>
+  );
+}
+
+/** As altcoins nas datas do BTC: o extremo delas perto do dele, e a carteira do BTC aplicada a elas. */
+function AltcoinsDoCiclo({ a }: { a: AltcoinsCiclo }) {
+  // As colunas com moeda o bastante para dizer algo: o topo de 2017 não tem nenhuma (o par USDT começa em 08/2017).
+  const colunas = a.extremos.map((e, i) => ({ ...e, i })).filter((e) => (a.resumo[e.i]?.n ?? 0) > 0);
+  const linhas = [...a.linhas].sort((x, y) => y.soComprada - x.soComprada);
+  const vezesCurto = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: v >= 10 ? 0 : v >= 1 ? 1 : 2 })}x`;
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="font-semibold text-sm">E as altcoins? Fazem topo e fundo perto do BTC?</h3>
+      <p className="text-xs text-black/55 dark:text-white/55 max-w-3xl">
+        {a.linhas.length} moedas da Binance à vista com pelo menos três anos de histórico (o par USDT começa em 08/2017). Para cada topo e fundo
+        do BTC, o extremo da moeda num raio de {a.raio} dias: negativo é antes do BTC. <b>Nos fundos, elas vêm junto</b> —{" "}
+        {a.resumo.filter((r) => r.tipo === "fundo" && r.n > 0).map((r) => `${r.nome}: ${r.perto40} de ${r.n} a até 40 dias`).join("; ")}.{" "}
+        <b>Nos topos, não</b> — {a.resumo.filter((r) => r.tipo === "topo" && r.n > 0).map((r) => `${r.nome}: mediana ${r.mediana} dias, ${r.perto40} de ${r.n} a até 40`).join("; ")}.
+        Em 2021 a maioria topou em maio, seis meses antes do BTC (o −180 é a borda do raio). O fundo de 2026 é o de até hoje.
+      </p>
+      <p className="text-xs text-black/55 dark:text-white/55 max-w-3xl">
+        A carteira do BTC aplicada a cada moeda: <b>só comprada, nas datas do BTC, ela bate o segurar a moeda em {a.soComprada.batem} de{" "}
+        {a.linhas.length}</b> (mediana {vezesCurto(a.soComprada.mediana)} contra {vezesCurto(a.soComprada.medianaSegurar)} segurando — a maioria destas
+        moedas vale menos hoje que em 2018). <b>Com a vendida, {a.comVendida.liquidadas.length} são liquidadas</b> ({a.comVendida.liquidadas.join(", ")}):
+        altcoin sobe 100% a 500% em pleno urso do BTC. E a mesma carteira no próprio BTC fez {vezesCurto(a.btc.estrategia)} desde 08/2017, e só
+        comprada {vezesCurto(a.btc.soComprada)}: <b>só {a.ganhamDoBtc.length} de {a.linhas.length} moedas ganharam do próprio BTC</b> nas mesmas
+        datas e no mesmo período ({a.ganhamDoBtc.join(", ")}) — e não havia como saber quais seriam. A
+        lista é só de moedas que existem hoje: as que morreram no caminho não estão aqui, e o segurar delas foi zero.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm whitespace-nowrap">
+          <thead>
+            <tr className="text-left text-xs text-black/45 dark:text-white/45">
+              <th className="py-1.5 pr-3 font-normal">moeda</th>
+              {colunas.map((c) => (
+                <th key={c.nome} className="py-1.5 pr-3 font-normal text-right">
+                  {c.nome.replace(" (até hoje)", "*")}
+                </th>
+              ))}
+              <th className="py-1.5 pr-3 font-normal text-right">só comprada</th>
+              <th className="py-1.5 pr-3 font-normal text-right">com vendida</th>
+              <th className="py-1.5 font-normal text-right">segurar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map((l) => (
+              <tr key={l.moeda} className="border-t border-black/5 dark:border-white/10">
+                <td className="py-1.5 pr-3 font-medium">{l.moeda}</td>
+                {colunas.map((c) => {
+                  const x = l.distancias[c.i];
+                  return (
+                    <td key={c.nome} className={`py-1.5 pr-3 text-right tabular-nums ${x !== null && Math.abs(x) <= 40 ? "font-semibold" : "text-black/50 dark:text-white/50"}`}>
+                      {x === null ? "—" : `${x > 0 ? "+" : ""}${x} d`}
+                    </td>
+                  );
+                })}
+                <td className="py-1.5 pr-3 text-right tabular-nums">{vezesCurto(l.soComprada)}</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums">{l.liquidada ? "liquidada" : vezesCurto(l.estrategia)}</td>
+                <td className="py-1.5 text-right tabular-nums">{vezesCurto(l.segurar)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-black/45 dark:text-white/45">
+        Em negrito, o extremo a até 40 dias do BTC. * o fundo de até hoje. O vendido nas moedas recebe o financiamento do BTCUSDT — o de cada
+        moeda não foi baixado. <code>npx tsx scripts/ciclo-altcoins.mts</code>.
+      </p>
+    </div>
   );
 }

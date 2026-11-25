@@ -3,7 +3,7 @@ import LivePriceProvider from "@/components/LivePriceProvider";
 import LiquidityPanel from "@/components/LiquidityPanel";
 import PriceChart from "@/components/PriceChart";
 import { Pagina } from "@/components/Pagina";
-import CicloPanel, { type MedicaoCiclo } from "@/components/CicloPanel";
+import CicloPanel, { type AltcoinsCiclo, type MedicaoCiclo } from "@/components/CicloPanel";
 import type { MarcaCiclo } from "@/components/PriceChart";
 import type { PontoCiclo } from "@/components/CurvaCiclo";
 import { getBitcoinAnalysis } from "@/lib/bitcoin";
@@ -71,6 +71,15 @@ async function getFinanciamento(): Promise<(t: number) => number> {
   }
 }
 
+/** As altcoins nas datas do BTC, geradas à mão (`scripts/ciclo-altcoins.mts`) e guardadas no `main`. */
+async function getAltcoinsCiclo(): Promise<AltcoinsCiclo | null> {
+  try {
+    return JSON.parse(await readFile(path.join(process.cwd(), "data", "ciclo-altcoins.json"), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 /** Um ponto por semana, mais os dias de operação e o último: ~700 pontos por linha em vez de ~4.700. */
 function semanal(curva: { t: number; patrimonio: number }[], manter: Set<number>): PontoCiclo[] {
   return curva.filter((p, i) => i % 7 === 0 || i === curva.length - 1 || manter.has(p.t)).map((p) => ({ t: p.t, v: p.patrimonio }));
@@ -118,7 +127,13 @@ export default async function Home() {
   // O painel de liquidez lê o FRED e pode voltar nulo quando ele está fora; a
   // página inteira não pode depender disso, então as duas leituras correm em
   // paralelo e a de liquidez tem direito a falhar sozinha.
-  const [analysis, liquidez, ciclo, medicaoCiclo] = await Promise.all([getBitcoinAnalysis(), getLiquidez(), getCiclo(), getMedicaoCiclo()]);
+  const [analysis, liquidez, ciclo, medicaoCiclo, altcoinsCiclo] = await Promise.all([
+    getBitcoinAnalysis(),
+    getLiquidez(),
+    getCiclo(),
+    getMedicaoCiclo(),
+    getAltcoinsCiclo(),
+  ]);
 
   const rsiSignal =
     analysis.rsi14 >= 70
@@ -179,6 +194,7 @@ export default async function Home() {
               series={ciclo.series}
               precoAgora={analysis.currentPrice}
               medicao={medicaoCiclo}
+              altcoins={altcoinsCiclo}
             />
           )}
 

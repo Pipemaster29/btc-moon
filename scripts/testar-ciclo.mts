@@ -9,7 +9,7 @@
  *
  * Rode com: npm run testar-ciclo
  */
-import { REGRAS_CICLO, REGRAS_VENDIDA, emaDiaria, financiamentoDiario, simularComVendida, quedaMaxima, simularAdaptativo, simularCalendario, simularMedia, type DiaBtc, type RegrasCiclo } from "../lib/cicloBtc";
+import { agendaDasDatas, simularExposicao, REGRAS_CICLO, REGRAS_VENDIDA, emaDiaria, financiamentoDiario, simularComVendida, quedaMaxima, simularAdaptativo, simularCalendario, simularMedia, type DiaBtc, type RegrasCiclo } from "../lib/cicloBtc";
 
 let falhas = 0;
 function confere(nome: string, ok: boolean, obtido: string): void {
@@ -150,6 +150,29 @@ console.log("\na vendida");
   const fd = financiamentoDiario([{ t: 86_400_000 * 10 + 1000, r: 0.0005 }, { t: 86_400_000 * 11 + 1000, r: 0.0001 }, { t: 86_400_000 * 11 + 9000, r: 0.0002 }], -0.0003);
   confere("financiamento: soma das cobranças do dia", Math.abs(fd(86_400 * 11) - 0.0003) < 1e-12, String(fd(86_400 * 11)));
   confere("antes do perpétuo e no 1º dia parcial: a suposição", fd(86_400 * 5) === -0.0003 && fd(86_400 * 10) === -0.0003, `${fd(86_400 * 5)}, ${fd(86_400 * 10)}`);
+}
+
+console.log("\nas datas fixas");
+{
+  const sobe = serie([100, 150, 200]);
+  const c = simularExposicao(sobe, [{ t: T0, alvo: 1 }], () => 0, 0, T0);
+  confere("comprado de 100 a 200: dobra", c.final === 20_000, String(c.final));
+  const v = simularExposicao(serie([100, 80, 50]), [{ t: T0, alvo: -1 }], () => 0, 0, T0);
+  confere("vendido 1x de 100 a 50: +50%", Math.abs(v.final - 15_000) < 1e-6, v.final.toFixed(2));
+  const q = simularExposicao(serie([100, 150, 205, 100]), [{ t: T0, alvo: -1 }], () => 0, 0, T0);
+  confere("vendido 1x com +105% contra: liquidado e fica zero", q.final === 0, String(q.final));
+  const meio = simularExposicao(serie([100, 200]), [{ t: T0, alvo: 0.5 }], () => 0, 0, T0);
+  confere("meio comprado de 100 a 200: +50%", meio.final === 15_000, String(meio.final));
+  const ag = agendaDasDatas([{ tipo: "topo", t: T0, conhecidoEm: T0 }, { tipo: "fundo", t: T0 + 20 * DIA, conhecidoEm: T0 + 25 * DIA }], {
+    ateFundo: 10,
+    ateTopo: 3,
+    faixa: 2,
+    parcelas: 3,
+    vendida: true,
+  });
+  const lido = ag.map((a) => `${dia(a.t)}:${a.alvo.toFixed(2)}`).join(" ");
+  confere("compra em 3 parcelas (8, 10, 12), a 1ª saindo do caixa", lido.startsWith("8:0.33 10:0.67 12:1.00"), lido);
+  confere("parcela antes de o fundo ser conhecido sai no dia em que é (25)", lido.endsWith("25:0.33 25:-0.33 25:-1.00"), lido);
 }
 
 console.log("\nlixo e queda");

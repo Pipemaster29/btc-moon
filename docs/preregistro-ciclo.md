@@ -99,3 +99,25 @@ linhas, mais 64 da grade):
 O juiz da emenda é o mesmo, a volta inteira do próximo ciclo, e a vendida
 aberta desde 30/10/2025 a US$ 108.306 é a primeira perna que conta: ela passa
 se fechar com lucro quando a compra disparar.
+
+## Emenda 3 (25/11/2026): as datas fixas e as altcoins
+
+O pedido: comprar e vender NA DATA, pela média dos topos e fundos, ± uma margem;
+e ver se as altcoins fazem topo e fundo perto do BTC. Medido em `npm run
+medir-ciclo` (seção "as datas fixas", 23 linhas) e `npx tsx
+scripts/ciclo-altcoins.mts` (29 moedas da Binance à vista, desde 08/2017).
+
+- Média fundo→topo 1.060 dias (1.068, 1.061, 1.050); topo→fundo 383 (410, 363,
+  376). Dentro da amostra por construção.
+- Calendário puro desde 2013: US$ 4,7 a 15,8 mi sem vendida; com vendida numa
+  data cega, LIQUIDADA (o post vendeu em 10/2017 a US$ 5,7 mil).
+- Contando do último extremo confirmado pelo preço, em uma parcela: US$ 46,6 mi
+  sem vendida, US$ 198,6 mi com vendida; deixa-um-fora, US$ 33,4 e 137,3 mi.
+  Três parcelas de ±20 ou ±40 dias rendem menos em todas as versões.
+- A regra do painel não muda. As duas discordam desde 14/11/2026: a das datas
+  comprou a US$ 64.114 (topo confirmado + 383) e a do painel segue vendida. O
+  fim deste fundo é o teste ao vivo das duas.
+- Altcoins: nos fundos vêm junto (10 de 13 a ±40 dias em 2018, 17 de 29 em
+  2022); nos topos não (2021: mediana −178 dias; 2025: −45). As datas do BTC,
+  só compradas, batem o segurar a moeda em 29 de 29, mas só 4 de 29 ganham do
+  próprio BTC no mesmo período, e a vendida liquida 5 de 29. Só moedas vivas.
