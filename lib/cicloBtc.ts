@@ -598,3 +598,97 @@ export function financiamentoDiario(cobrancas: { t: number; r: number }[], antes
   const inicio = cobrancas.length ? Math.floor(cobrancas[0].t / 1000 / DIA) * DIA + DIA : Infinity;
   return (t: number) => (t < inicio ? antes : porDia.get(Math.floor(t / DIA) * DIA) ?? 0);
 }
+
+/**
+ * DATAS FIXAS (25/11/2026), a pedido: "fazendo uma média ± dos topos e fundos,
+ * comprando perto do fundo e vendendo perto do topo, quanto daria?".
+ *
+ * Uma agenda de datas com a exposição desejada em cada uma — +1 todo em BTC, 0
+ * em caixa, −1 vendido 1x no perpétuo —, e a carteira se ajusta a ela no
+ * fechamento do primeiro dia na data ou depois dela. Entre duas datas as
+ * UNIDADES ficam paradas (nada de rebalancear todo dia, que ninguém faz): a
+ * conta é caixa + BTC × preço − vendido × preço, e o vendido recebe o
+ * financiamento `taxaDia` sobre o nocional. Liquida, como na vendida, quando o
+ * patrimônio não cobre 0,5% do nocional vendido.
+ *
+ * Unidades: `alvo` é fração do PATRIMÔNIO (−1 a +1); `t` em SEGUNDOS.
+ */
+export function simularExposicao(
+  dias: DiaBtc[],
+  agenda: { t: number; alvo: number }[],
+  taxaDia: (t: number) => number = () => 0,
+  custo = REGRAS_CICLO.custo,
+  inicio = SEMENTE.t,
+): { curva: Resultado["curva"]; final: number; operacoes: { t: number; alvo: number; preco: number }[] } {
+  const fila = [...agenda].sort((a, b) => a.t - b.t);
+  let caixa = CAPITAL_INICIAL;
+  let comprado = 0;
+  let vendido = 0;
+  let k = 0;
+  const curva: Resultado["curva"] = [];
+  const operacoes: { t: number; alvo: number; preco: number }[] = [];
+  for (const d of dias) {
+    if (d.t < inicio || !Number.isFinite(d.fecho) || d.fecho <= 0) continue;
+    const p = d.fecho;
+    if (vendido > 0) {
+      caixa += vendido * p * taxaDia(d.t);
+      // A liquidação pela máxima do dia, como em `simularComVendida`.
+      const pior = Math.max(p, d.alta);
+      if (caixa + comprado * pior - vendido * pior < 0.005 * vendido * pior) {
+        caixa = 0;
+        comprado = 0;
+        vendido = 0;
+      }
+    }
+    while (k < fila.length && fila[k].t <= d.t) {
+      const patrimonio = caixa + comprado * p - vendido * p;
+      if (patrimonio <= 0) {
+        k++;
+        continue;
+      }
+      const alvo = fila[k].alvo;
+      const novoComprado = (Math.max(0, alvo) * patrimonio) / p;
+      const novoVendido = (Math.max(0, -alvo) * patrimonio) / p;
+      const giro = (Math.abs(novoComprado - comprado) + Math.abs(novoVendido - vendido)) * p;
+      caixa += (comprado - novoComprado) * p - (vendido - novoVendido) * p - giro * custo;
+      comprado = novoComprado;
+      vendido = novoVendido;
+      operacoes.push({ t: d.t, alvo, preco: p });
+      k++;
+    }
+    curva.push({ t: d.t, patrimonio: Math.max(0, caixa + comprado * p - vendido * p) });
+  }
+  return { curva, final: curva.at(-1)?.patrimonio ?? NaN, operacoes };
+}
+
+/**
+ * A agenda das datas fixas. `ancoras` são os extremos de que cada contagem parte
+ * (com o dia em que ele PASSOU A SER CONHECIDO), e cada um marca o seguinte:
+ * topo + `ateFundo` dias é a data de compra, fundo + `ateTopo` a de venda. A
+ * troca é feita em `parcelas` iguais, espalhadas de −`faixa` a +`faixa` dias da
+ * data; parcela que cairia antes de o extremo ser conhecido sai no dia em que
+ * ele é conhecido. `vendida` leva a venda até −1 em vez de 0.
+ */
+export function agendaDasDatas(
+  ancoras: { tipo: "fundo" | "topo"; t: number; conhecidoEm: number }[],
+  o: { ateFundo: number | ((i: number) => number); ateTopo: number | ((i: number) => number); faixa: number; parcelas: number; vendida: boolean },
+): { t: number; alvo: number }[] {
+  const agenda: { t: number; alvo: number }[] = [];
+  let iFundo = 0;
+  let iTopo = 0;
+  for (const a of ancoras) {
+    const compra = a.tipo === "topo";
+    const dias = compra
+      ? typeof o.ateFundo === "number" ? o.ateFundo : o.ateFundo(iFundo++)
+      : typeof o.ateTopo === "number" ? o.ateTopo : o.ateTopo(iTopo++);
+    const centro = a.t + dias * DIA;
+    // A primeira compra sai do caixa: antes da primeira âncora não há vendida aberta.
+    const de = compra ? (o.vendida && agenda.length > 0 ? -1 : 0) : 1;
+    const ate = compra ? 1 : o.vendida ? -1 : 0;
+    for (let k = 1; k <= o.parcelas; k++) {
+      const desvio = o.parcelas === 1 ? 0 : -o.faixa + (2 * o.faixa * (k - 1)) / (o.parcelas - 1);
+      agenda.push({ t: Math.max(a.conhecidoEm, centro + desvio * DIA), alvo: de + ((ate - de) * k) / o.parcelas });
+    }
+  }
+  return agenda;
+}

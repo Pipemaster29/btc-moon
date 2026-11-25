@@ -26,6 +26,8 @@ import {
   simularCalendario,
   simularMedia,
   simularComVendida,
+  simularExposicao,
+  agendaDasDatas,
   financiamentoDiario,
   REGRAS_VENDIDA,
   type RegrasVendida,
@@ -226,6 +228,65 @@ console.log(
   `  na grade: a vendida 1x melhora ${melhora} de ${razoes.length}; multiplica o final por ${vendidaGrade.pior.toFixed(2)} a ${vendidaGrade.melhor.toFixed(2)} (mediana ${vendidaGrade.mediana.toFixed(2)}); pernas positivas ${pernasPos}/${pernasTot}; pior contra +${(piorContraGrade * 100).toFixed(0)}%`,
 );
 
+// AS DATAS FIXAS (25/11): comprar e vender NA DATA, pela média dos ciclos, sem
+// esperar o preço confirmar. As médias saem dos extremos reais da Bitstamp, e
+// por isso são dentro da amostra: o "deixa-um-fora" prevê cada ciclo com a
+// média dos OUTROS, que é o número honesto.
+const DESCE = [410, 363, 376]; // topo→fundo: 2013–15, 2017–18, 2021–22 (o de agora, 411+, não fechou)
+const SOBE = [1068, 1061, 1050]; // fundo→topo: 2015–17, 2018–21, 2022–25
+const media = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length;
+const deixaUmFora = (a: number[]) => (i: number) => (i < a.length ? media(a.filter((_, j) => j !== i)) : media(a));
+const MEDIA_FUNDO = Math.round(media(DESCE));
+const MEDIA_TOPO = Math.round(media(SOBE));
+const adaptPub = simularAdaptativo(dias);
+// A data conta do último extremo CONFIRMADO pelo preço: é o que dá para saber no dia.
+const confirmados = [{ tipo: "topo" as const, t: SEMENTE.t, conhecidoEm: SEMENTE.t }, ...adaptPub.extremos.map((e) => ({ tipo: e.tipo, t: e.t, conhecidoEm: e.confirmadoEm }))];
+// A cadeia pura: cada data prevista é a âncora da seguinte, sem olhar preço nunca.
+const cadeia = (fundo: number, topo: number) => {
+  const a: { tipo: "fundo" | "topo"; t: number; conhecidoEm: number }[] = [{ tipo: "topo", t: SEMENTE.t, conhecidoEm: SEMENTE.t }];
+  for (let t = SEMENTE.t, tipo: "fundo" | "topo" = "topo"; t < Date.UTC(2031, 0, 1) / 1000; ) {
+    t += (tipo === "topo" ? fundo : topo) * 86_400;
+    tipo = tipo === "topo" ? "fundo" : "topo";
+    a.push({ tipo, t, conhecidoEm: t });
+  }
+  return a;
+};
+const REAIS = [
+  ["fundo", "2015-01-14"], ["topo", "2017-12-17"], ["fundo", "2018-12-15"], ["topo", "2021-11-10"], ["fundo", "2022-11-21"], ["topo", "2025-10-06"],
+].map(([tipo, d]) => ({ tipo: tipo as "fundo" | "topo", t: Date.parse(d) / 1000 }));
+const datas: { nome: string; grupo: string; final: number; queda: number; antes2020: number; desde2020: number; publicada: boolean; liquidada: boolean }[] = [];
+const linhaData = (grupo: string, nome: string, r: { curva: { t: number; patrimonio: number }[]; final: number }, publicada = false) => {
+  const zerou = r.curva.some((p) => p.patrimonio === 0);
+  const [a, b] = zerou ? [0, 0] : metades(r.curva);
+  datas.push({ grupo, nome, final: r.final, queda: quedaMaxima(r.curva), antes2020: a, desde2020: b, publicada, liquidada: zerou });
+};
+for (const vendida of [false, true]) {
+  const v = vendida ? ", vendida 1x" : "";
+  linhaData("calendário puro desde 2013", `post 1.064/364${v}`, simularExposicao(dias, agendaDasDatas(cadeia(364, 1064), { ateFundo: 364, ateTopo: 1064, faixa: 0, parcelas: 1, vendida }), taxa));
+  linhaData("calendário puro desde 2013", `média ${MEDIA_TOPO}/${MEDIA_FUNDO}${v}`, simularExposicao(dias, agendaDasDatas(cadeia(MEDIA_FUNDO, MEDIA_TOPO), { ateFundo: MEDIA_FUNDO, ateTopo: MEDIA_TOPO, faixa: 0, parcelas: 1, vendida }), taxa));
+  linhaData("calendário puro desde 2013", `média, 3 parcelas ±40 d${v}`, simularExposicao(dias, agendaDasDatas(cadeia(MEDIA_FUNDO, MEDIA_TOPO), { ateFundo: MEDIA_FUNDO, ateTopo: MEDIA_TOPO, faixa: 40, parcelas: 3, vendida }), taxa));
+}
+for (const vendida of [false, true]) {
+  const v = vendida ? ", vendida 1x" : "";
+  for (const [n, f, tp] of [["post 1.064/364", 364, 1064], [`média ${MEDIA_TOPO}/${MEDIA_FUNDO}`, MEDIA_FUNDO, MEDIA_TOPO]] as const) {
+    linhaData("contando do extremo confirmado", `${n}${v}`, simularExposicao(dias, agendaDasDatas(confirmados, { ateFundo: f, ateTopo: tp, faixa: 0, parcelas: 1, vendida }), taxa));
+    for (const fx of [20, 40]) linhaData("contando do extremo confirmado", `${n}, 3 parcelas ±${fx} d${v}`, simularExposicao(dias, agendaDasDatas(confirmados, { ateFundo: f, ateTopo: tp, faixa: fx, parcelas: 3, vendida }), taxa));
+  }
+  linhaData("contando do extremo confirmado", `média sem o próprio ciclo (deixa-um-fora)${v}`, simularExposicao(dias, agendaDasDatas(confirmados, { ateFundo: deixaUmFora(DESCE), ateTopo: deixaUmFora(SOBE), faixa: 0, parcelas: 1, vendida }), taxa));
+}
+linhaData("referência", "a do painel: espera o preço, vendida 1x", publicada, true);
+linhaData("referência", "o teto: o dia exato de cada extremo real, sem vendida", simularExposicao(dias, REAIS.map((e) => ({ t: e.t, alvo: e.tipo === "fundo" ? 1 : 0 })), taxa));
+linhaData("referência", "o teto: o dia exato de cada extremo real, vendida 1x", simularExposicao(dias, REAIS.map((e) => ({ t: e.t, alvo: e.tipo === "fundo" ? 1 : -1 })), taxa));
+// O estado de hoje da melhor variação de datas, para a tela dizer onde ela está.
+const datasHoje = simularExposicao(dias, agendaDasDatas(confirmados, { ateFundo: MEDIA_FUNDO, ateTopo: MEDIA_TOPO, faixa: 0, parcelas: 1, vendida: true }), taxa);
+console.log(`\nas datas fixas (médias ${MEDIA_TOPO} e ${MEDIA_FUNDO} dias)`);
+for (const x of datas)
+  console.log(
+    `  ${(x.publicada ? "* " : "  ") + (x.grupo + ": " + x.nome).padEnd(84)} ${x.liquidada ? "LIQUIDADA".padStart(18) : usd(x.final).padStart(18)}  ${x.antes2020.toFixed(0).padStart(4)}x ${x.desde2020.toFixed(1).padStart(6)}x`,
+  );
+console.log("  a média em 1 parcela com vendida, operação a operação:");
+for (const o of datasHoje.operacoes) console.log(`    ${data(o.t)}  ${o.alvo > 0 ? "compra" : "vende e vende a descoberto"}  ${usd(o.preco)}`);
+
 writeFileSync(
   "data/ciclo-medicao.json",
   JSON.stringify(
@@ -240,6 +301,7 @@ writeFileSync(
       calendario: { final: cal.final, quedaMaxima: quedaMaxima(cal.curva), marcas: cal.marcas },
       segurar: { final: finalSegurar, quedaMaxima: quedaMaxima(segurar) },
       medias,
+      datas: { mediaFundo: MEDIA_FUNDO, mediaTopo: MEDIA_TOPO, desce: DESCE, sobe: SOBE, linhas: datas, operacoes: datasHoje.operacoes, final: datasHoje.final },
       vendida: { regras: REGRAS_VENDIDA, linhas: vendidas, pernas: publicada.pernas, grade: vendidaGrade, final: publicada.final },
       grade: { variacoes: grade.length, posicao, mediana, pior: finais[0], melhor: finais.at(-1), batemSegurar: bate, celulas: grade },
     },
