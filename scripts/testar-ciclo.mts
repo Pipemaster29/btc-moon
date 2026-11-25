@@ -9,7 +9,7 @@
  *
  * Rode com: npm run testar-ciclo
  */
-import { REGRAS_CICLO, emaDiaria, quedaMaxima, simularAdaptativo, simularCalendario, simularMedia, type DiaBtc, type RegrasCiclo } from "../lib/cicloBtc";
+import { REGRAS_CICLO, REGRAS_VENDIDA, emaDiaria, financiamentoDiario, simularComVendida, quedaMaxima, simularAdaptativo, simularCalendario, simularMedia, type DiaBtc, type RegrasCiclo } from "../lib/cicloBtc";
 
 let falhas = 0;
 function confere(nome: string, ok: boolean, obtido: string): void {
@@ -119,6 +119,37 @@ console.log("\na média sozinha");
 {
   const c = simularMedia(serie([10, 10, 10, 12, 13, 9, 8, 11]), 3, 0, SEM);
   confere("compra acima, vende abaixo, compra de novo: 3 operações", c.operacoes === 3, String(c.operacoes));
+}
+
+console.log("\na vendida");
+{
+  // Fundo 50 no dia 10, compra no 12, topo 200 no 31, vende a 160 no 33 (−20%). Daí cai a 80 e fica.
+  const f = [...new Array(10).fill(100), 50, 55, 61, ...new Array(18).fill(100), 200, 180, 160, 120, 100, 80, 80, 80];
+  const V = { ...REGRAS_VENDIDA, custoLado: 0 };
+  const sem = simularComVendida(serie(f), R, { ...V, alavancagem: 0 }, () => 0, SEM);
+  const com = simularComVendida(serie(f), R, V, () => 0, SEM);
+  const p = com.pernas[0];
+  confere("abre no fechamento da venda (dia 33, a 160)", p !== undefined && dia(p.de) === 33 && p.entrada === 160, p ? `dia ${dia(p.de)} a ${p.entrada}` : "nenhuma");
+  confere("1x de 160 a 80 = +50% do patrimônio", Math.abs(com.final / sem.final - 1.5) < 1e-9, (com.final / sem.final).toFixed(4));
+  const recebe = simularComVendida(serie(f), R, V, () => 0.001, SEM);
+  confere("financiamento positivo: o vendido recebe", recebe.final > com.final, `${(recebe.final / com.final).toFixed(4)}`);
+  const doisx = simularComVendida(serie(f), R, { ...V, alavancagem: 2 }, () => 0, SEM);
+  confere("2x de 160 a 80 = +100%", Math.abs(doisx.final / sem.final - 2) < 1e-9, (doisx.final / sem.final).toFixed(4));
+  // Liquidação: 3x vendido a 160 e o preço vai a 220 (+37,5%): a margem acaba antes.
+  const g = [...new Array(10).fill(100), 50, 55, 61, ...new Array(18).fill(100), 200, 180, 160, 190, 220, 100];
+  const liq = simularComVendida(serie(g), R, { ...V, alavancagem: 3 }, () => 0, SEM);
+  confere("3x com +37,5% contra é liquidado", liq.pernas[0]?.liquidada === true, String(liq.pernas[0]?.liquidada));
+  confere("liquidado é patrimônio zero, e não reabre", liq.final === 0 && liq.pernas.length === 1, `${liq.final}, ${liq.pernas.length} perna(s)`);
+  const umx = simularComVendida(serie(g), R, V, () => 0, SEM);
+  confere("o mesmo caminho a 1x não liquida", umx.pernas.every((x) => !x.liquidada) && umx.final > 0, umx.final.toFixed(0));
+  // A compra fecha a vendida: fundo 80 e repique de 20% (dia 41+).
+  const h = [...f, 80, 80, 80, 80, 97];
+  const fecha = simularComVendida(serie(h), R, V, () => 0, SEM);
+  confere("a compra do fundo fecha a vendida no mesmo fechamento", fecha.pernas[0]?.ate !== null && fecha.pernas[0].saida === 97, `saída ${fecha.pernas[0]?.saida}`);
+  // O primeiro dia das cobranças é parcial (a Binance começa às 08h de 10/09/2019) e fica com a suposição.
+  const fd = financiamentoDiario([{ t: 86_400_000 * 10 + 1000, r: 0.0005 }, { t: 86_400_000 * 11 + 1000, r: 0.0001 }, { t: 86_400_000 * 11 + 9000, r: 0.0002 }], -0.0003);
+  confere("financiamento: soma das cobranças do dia", Math.abs(fd(86_400 * 11) - 0.0003) < 1e-12, String(fd(86_400 * 11)));
+  confere("antes do perpétuo e no 1º dia parcial: a suposição", fd(86_400 * 5) === -0.0003 && fd(86_400 * 10) === -0.0003, `${fd(86_400 * 5)}, ${fd(86_400 * 10)}`);
 }
 
 console.log("\nlixo e queda");

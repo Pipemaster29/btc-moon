@@ -4,9 +4,22 @@
  * página diz por quê antes de qualquer número grande.
  */
 import CurvaCiclo, { type SerieCiclo } from "./CurvaCiclo";
-import type { Extremo, Marca, Resultado } from "@/lib/cicloBtc";
+import type { Extremo, Marca, PernaVendida, Resultado } from "@/lib/cicloBtc";
+
+export interface LinhaVendida {
+  nome: string;
+  final: number;
+  queda17: number;
+  antes2020: number;
+  desde2020: number;
+  pernas: number;
+  positivas: number;
+  piorContra: number;
+  publicada: boolean;
+}
 
 export interface MedicaoCiclo {
+  vendida?: { linhas: LinhaVendida[]; grade: { melhora: number; variacoes: number; pior: number; mediana: number; melhor: number; pernasPos: number; pernasTot: number; piorContra: number } };
   medias?: { nome: string; final: number; queda: number; operacoes: number; antes2020: number; desde2020: number; publicada: boolean }[];
   grade: { variacoes: number; posicao: number; mediana: number; pior: number; melhor: number; batemSegurar: number };
 }
@@ -42,6 +55,7 @@ function Tile({ titulo, valor, linha, destaque }: { titulo: string; valor: strin
 
 export default function CicloPanel({
   adaptativo,
+  vendida,
   calendario,
   segurar,
   series,
@@ -49,6 +63,7 @@ export default function CicloPanel({
   medicao,
 }: {
   adaptativo: Resultado & { quedaMax: number };
+  vendida: { final: number; quedaMax: number; pernas: PernaVendida[] };
   calendario: Resultado & { quedaMax: number };
   segurar: { final: number; quedaMax: number };
   series: SerieCiclo[];
@@ -61,6 +76,7 @@ export default function CicloPanel({
   const calComprado = calendario.estado.comprado && ultimaCal;
   // O post é de 12/12/2023: a primeira venda depois dele é a única decisão que ele não viu.
   const vendaFora = adaptativo.marcas.find((m) => m.t > POST && m.tipo === "venda");
+  const vendidaAberta = vendida.pernas.find((p) => p.ate === null);
 
   return (
     <section className="rounded-xl border border-black/10 dark:border-white/10 p-5 flex flex-col gap-5">
@@ -71,7 +87,8 @@ export default function CicloPanel({
           em 06/10/2025, a US$ 126.272. O fundo que o 364 marcava, 05/10/2026, não veio: o BTC fechou a US$ 85 mil e foi a US$ 55 mil em 21/11.
           Por isso existem duas versões: o <b>calendário</b>, ao pé da letra, e a que <b>se corrige pelo preço</b> — a data abre a busca, o fundo
           anda para frente a cada mínima nova, a compra é o fechamento 20% acima dele, e a venda é o primeiro de dois sinais: cair 20% da máxima ou
-          fechar abaixo da EMA 200 diária. Tudo com o fechamento do dia, que qualquer gráfico mostra.
+          fechar abaixo da EMA 200 diária. E entre a venda e a compra, em vez de ficar parada, a carteira fica <b>vendida 1x no perpétuo</b> — é
+          o que pega a queda em linha reta sem precisar acertar topo nem fundo. Tudo com o fechamento do dia, que qualquer gráfico mostra.
         </p>
       </div>
 
@@ -80,6 +97,12 @@ export default function CicloPanel({
         <p className="text-[10px] tracking-widest uppercase text-black/45 dark:text-white/45">Agora — para conferir no fechamento diário (00h UTC, 21h de Brasília)</p>
         {e.procurando === "fundo" ? (
           <ol className="flex flex-col gap-2 list-decimal pl-5">
+            {vendidaAberta && (
+              <li>
+                <b>Vendido 1x desde {data(vendidaAberta.de)}, a {usd(vendidaAberta.entrada)}</b>: {pct(1 - precoAgora / vendidaAberta.entrada)} de
+                preço a favor, mais o financiamento recebido. A vendida fecha no mesmo fechamento em que a compra abaixo dispara.
+              </li>
+            )}
             <li>
               <b>A busca do fundo abriu?</b> {e.candidato ? "Sim" : "Ainda não"}: o topo confirmado é o de {data(e.ancora.t)} ({usd(e.ancora.preco)}), e
               364 dias depois dá {data(e.abre)}.
@@ -91,13 +114,13 @@ export default function CicloPanel({
                   ela passa a ser o fundo — e a data anda.
                 </li>
                 <li>
-                  <b>Compra quando um candle diário FECHAR acima de {usd(e.gatilho)}</b> ({usd(e.candidato.preco)} × 1,2).{" "}
+                  <b>Fecha a vendida e compra quando um candle diário FECHAR acima de {usd(e.gatilho)}</b> ({usd(e.candidato.preco)} × 1,2).{" "}
                   {precoAgora < e.gatilho ? `Faltam ${pct(e.gatilho / precoAgora - 1)} do preço de agora.` : "O preço de agora já passa: vale se o candle fechar assim."}
                 </li>
                 <li className="text-black/60 dark:text-white/60">
                   Comprado, duas saídas. <b>Antes de {data(e.depois)}</b> (fundo + 1.064): só se um fechamento perder o fundo — o fundo era falso, vende e
                   recomeça. <b>Depois</b>: vende no primeiro fechamento abaixo da EMA 200 diária (hoje em {usd(e.ema)}) ou 20% abaixo da máxima desde
-                  {" "}{data(e.depois)}.
+                  {" "}{data(e.depois)} — e, no mesmo fechamento, abre a vendida 1x do urso seguinte.
                 </li>
               </>
             )}
@@ -128,10 +151,15 @@ export default function CicloPanel({
       </div>
 
       {/* A carteira. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Tile
           destaque
-          titulo="Se corrige pelo preço"
+          titulo="Comprado + vendido 1x"
+          valor={usdCurto(vendida.final)}
+          linha={`${vezes(vendida.final)} · queda máxima ${pct(vendida.quedaMax)} · ${vendida.pernas.filter((p) => p.retorno !== 0).length} vendidas`}
+        />
+        <Tile
+          titulo="Só comprado ou em caixa"
           valor={usdCurto(adaptativo.final)}
           linha={`${vezes(adaptativo.final)} · queda máxima ${pct(adaptativo.quedaMax)} · ${adaptativo.marcas.length} operações`}
         />
@@ -140,7 +168,9 @@ export default function CicloPanel({
       </div>
       <p className="text-xs text-black/45 dark:text-white/45 -mt-3">
         US$ 10.000 em 30/11/2013, o topo daquele ciclo — a única data escolhida à mão; daí em diante cada data sai da regra. Opera no fechamento
-        do dia, com 0,1% por lado; em caixa, rende zero.
+        do dia, com 0,1% por lado; em caixa, rende zero. A vendida é perpétuo de margem isolada, com o financiamento real do BTCUSDT da Binance desde
+        09/2019 — o vendido recebeu em todos os anos, de +3% a +31% — e, antes, a suposição de pior caso: pagando 0,01% a cada 8 h. A queda máxima
+        é a de 2014, antes de qualquer vendida; desde 2017 ela é a mesma −63% com e sem a vendida, porque vem da perna comprada.
       </p>
 
       <CurvaCiclo series={series} capital={10_000} />
@@ -174,6 +204,81 @@ export default function CicloPanel({
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* A vendida: perna a perna e o que foi medido. */}
+      <div className="flex flex-col gap-2">
+        <h3 className="font-semibold text-sm">A vendida, perna a perna</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm whitespace-nowrap">
+            <thead>
+              <tr className="text-left text-xs text-black/45 dark:text-white/45">
+                <th className="py-1.5 pr-3 font-normal">de → até</th>
+                <th className="py-1.5 pr-3 font-normal text-right">preço</th>
+                <th className="py-1.5 pr-3 font-normal text-right">no patrimônio</th>
+                <th className="py-1.5 pr-3 font-normal text-right">pior contra</th>
+                <th className="py-1.5 font-normal text-right">financiamento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vendida.pernas.map((p) => (
+                <tr key={p.de} className="border-t border-black/5 dark:border-white/10">
+                  <td className="py-1.5 pr-3 tabular-nums">
+                    {data(p.de)} → {p.ate ? data(p.ate) : "aberta"}
+                  </td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">
+                    {usd(p.entrada)} → {usd(p.ate ? p.saida : precoAgora)}
+                  </td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums font-medium">{pct(p.ate ? p.retorno : 1 - precoAgora / p.entrada + p.financiamento)}</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">+{(p.piorContra * 100).toFixed(0)}%</td>
+                  <td className="py-1.5 text-right tabular-nums">{pct(p.financiamento)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {medicao?.vendida && (
+          <>
+            <p className="text-xs text-black/55 dark:text-white/55 max-w-3xl mt-2">
+              O que foi medido antes de escolher. Vender só na reta final (do dia 200, 250, 300 ou 340 do urso) rende MENOS que o urso inteiro: a
+              última perna começou no dia 261 em 2018 e no 350 em 2026, e uma janela fixa perde metade dela. Filtrar pela EMA 200 vira uma
+              sequência de stops nos repiques. E a alavancagem é onde o “maximizar” encontra o “realista”: na grade das{" "}
+              {medicao.vendida.grade.variacoes} variações a vendida melhora {medicao.vendida.grade.melhora}, mas só{" "}
+              {medicao.vendida.grade.pernasPos} de {medicao.vendida.grade.pernasTot} pernas dão lucro e o pior repique contra foi de +
+              {(medicao.vendida.grade.piorContra * 100).toFixed(0)}% — a 3x isso liquida a conta, a 2x leva três quartos da margem. A 1x, nada
+              liquida.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="text-left text-xs text-black/45 dark:text-white/45">
+                    <th className="py-1.5 pr-3 font-normal">regra</th>
+                    <th className="py-1.5 pr-3 font-normal text-right">final</th>
+                    <th className="py-1.5 pr-3 font-normal text-right">2013–19</th>
+                    <th className="py-1.5 pr-3 font-normal text-right">2020–26</th>
+                    <th className="py-1.5 pr-3 font-normal text-right">vendidas com lucro</th>
+                    <th className="py-1.5 font-normal text-right">pior contra</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {medicao.vendida.linhas.map((v) => (
+                    <tr key={v.nome} className={`border-t border-black/5 dark:border-white/10 ${v.publicada ? "font-semibold" : ""}`}>
+                      <td className="py-1.5 pr-3">
+                        {v.nome}
+                        {v.publicada ? " ← a do painel" : ""}
+                      </td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums">{usdCurto(v.final)}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums">{v.antes2020.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}x</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums">{v.desde2020.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}x</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums">{v.nome === "sem vendida" ? "—" : `${v.positivas} de ${v.pernas}`}</td>
+                      <td className="py-1.5 text-right tabular-nums">{v.nome === "sem vendida" ? "—" : `+${(v.piorContra * 100).toFixed(0)}%`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {medicao?.medias && (
@@ -218,7 +323,7 @@ export default function CicloPanel({
 
       {/* Fica top? */}
       <div className="rounded-lg border border-black/10 dark:border-white/10 p-4 text-sm flex flex-col gap-2">
-        <p className="font-semibold">Fica top? No papel, sim. Demonstrado, não.</p>
+        <p className="font-semibold">Fica top? No papel, muito. Demonstrado, não.</p>
         <ul className="list-disc pl-5 flex flex-col gap-1.5 text-black/70 dark:text-white/70">
           <li>
             <b>São três ciclos.</b> Três compras e três vendas. E os 1.064 e 364 dias foram tirados de 2015–2022 — as duas primeiras voltas da
@@ -239,6 +344,11 @@ export default function CicloPanel({
               o segurar, porque sair de três ursos de −75% a −85% bate o segurar com quase qualquer data.
             </li>
           )}
+          <li>
+            <b>A vendida são três ursos.</b> +68% em 2018 (sem perpétuo na Binance: hipotético, com o pior financiamento), +65% em 2022 e a de
+            agora aberta. Ela rende porque abre DEPOIS de o topo confirmar, já 14% a 29% abaixo dele, e o urso nunca voltou ao preço de entrada
+            mais que 10%. Um urso que volte — ou um ciclo que não repita — e a vendida perde junto com a data.
+          </li>
           <li>
             O ciclo de 2011–2013 não cabe no padrão (~740 dias de fundo a topo), e é por isso que o post começa em 2015. Ciclo de quatro anos é
             leitura de três halvings; o quarto pode simplesmente não repetir.

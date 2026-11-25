@@ -73,3 +73,29 @@ em 26/10 e a venda de novo em 30/10 a US$ 108.306, contra US$ 92.102 em
 17/11 —, e a regra foi escolhida depois de vê-la. **Com isso não sobra decisão
 fora da amostra**: o juiz acima é o único. O estado de hoje não mudou (em
 caixa, compra no fechamento acima de US$ 66.098).
+
+## Emenda 2 (25/11/2026): a vendida 1x no urso
+
+O pedido: "pegar uma queda bruta seguida, tipo de 85 mil para 55 mil [...] não
+precisa acertar topo ou fundo, e sim preços bons e maximizar o lucro. Mas de
+forma realista". Entre a venda (topo confirmado) e a compra (fundo confirmado),
+a carteira fica vendida 1x no perpétuo, com o financiamento real do BTCUSDT
+desde 09/2019 e, antes, o vendido pagando 0,01% a cada 8 h (`REGRAS_VENDIDA`,
+`simularComVendida`). Medido em `npm run medir-ciclo`, seção "a vendida" (10
+linhas, mais 64 da grade):
+
+- vendido 1x no urso inteiro: US$ 47,8 mi → US$ 183,7 mi; pernas +68% (2018,
+  hipotética: não havia perpétuo na Binance), +65% (2022), −7% (o topo falso de
+  10/2025) e a de agora aberta; o pior repique contra a entrada, +10%;
+- só na reta final (do dia 200, 250, 300 ou 340 do urso): US$ 66 a 112 mi —
+  a última perna começou no dia 261 em 2018 e no 350 em 2026;
+- só abaixo da EMA 200: US$ 93 mi, 6 de 18 pernas com lucro;
+- 2x e 3x: US$ 443 e 843 mi na regra publicada, mas na grade o pior repique
+  contra foi de +38%: liquida a 3x e leva 76% da margem a 2x. Fica 1x;
+- com a venda antiga (só −20%): US$ 167 mi — a vendida não depende da EMA;
+- na grade: melhora 59 de 64 variações (mediana ×2,44), mas só 212 de 401
+  pernas dão lucro.
+
+O juiz da emenda é o mesmo, a volta inteira do próximo ciclo, e a vendida
+aberta desde 30/10/2025 a US$ 108.306 é a primeira perna que conta: ela passa
+se fechar com lucro quando a compra disparar.

@@ -260,7 +260,7 @@ no código, com número:
   US$ 55 mil, 411 dias). A versão que se corrige (`lib/cicloBtc.ts`) abre a
   busca na data, anda o candidato a cada extremo novo e confirma com 20% no
   fechamento: US$ 10 mil em 30/11/2013 viram US$ 43,4 mi, contra US$ 4,8 mi do
-  calendário literal e US$ 537 mil segurando. À tarde, a pedido ("EMA de 200, candle, variação %, replicável"), a venda passou a ser o primeiro entre −20% e o fechamento abaixo da EMA 200: US$ 47,8 mi; a EMA 200 sozinha faz US$ 0,9 mi e perde do segurar desde 2020, e na compra ela piora tudo. São três ciclos, os dias foram
+  calendário literal e US$ 537 mil segurando. À tarde, a pedido ("EMA de 200, candle, variação %, replicável"), a venda passou a ser o primeiro entre −20% e o fechamento abaixo da EMA 200: US$ 47,8 mi; a EMA 200 sozinha faz US$ 0,9 mi e perde do segurar desde 2020, e na compra ela piora tudo. Em 25/11, a pedido ("pegar a queda bruta [...] realista"), a carteira fica vendida 1x no perpétuo entre a venda e a compra, com o financiamento real da Binance: US$ 183,7 mi; vender só na reta final do urso rende menos (a última perna começou no dia 261 em 2018 e no 350 em 2026), e 2x/3x reprovam porque o pior repique da grade foi +38%. São três ciclos, os dias foram
   tirados deles, a publicada é a 4ª de 64 da grade, e fora da amostra há UMA
   venda. Juiz: o próximo ciclo (`docs/preregistro-ciclo.md`). `npm run
   medir-ciclo` e `npm run testar-ciclo`.
@@ -552,6 +552,7 @@ vesting, estudos) ficam no `main`: a página os lê do disco do build.
 | `data/corretoras-rotuladas.json` | 26.667 endereços de 53 corretoras com etiqueta pública de custódia (carteiras quentes, frias e de depósito). Rótulo de terceiro. Fica no `main` | `npx tsx scripts/corretoras-rotuladas.mts <accounts.csv> <commit>` |
 | `data/previsao.json` | **do robô, na branch `dados`**: a nota de hoje de cada moeda do universo, com as entradas e a contribuição de cada uma, e a leitura do BTC | `npm run previsao` |
 | `data/previsao-medicao.json` | os pesos, as janelas, os décimos, o diagnóstico, a parte 3 e o teste do BTC — e o modelo do BTC que o ao vivo usa. Fica no `main`, gerada à mão | `npm run medir-previsao` |
+| `data/btc-financiamento-diario.json` | o financiamento do BTCUSDT somado por dia, desde 09/2019, e a suposição de antes (`antes`): é o que a vendida do ciclo cobra na página. Dia depois da gravação conta zero, que nunca favorece a vendida. Fica no `main` | `npm run medir-ciclo` |
 | `data/garimpo.json` | o que o universo da Binance devolveu | `npm run garimpar` |
 | `data/fluxo-binance-AAAA-MM.jsonl` | o que entrou e saiu da carteira quente da Binance, por moeda com perpétuo, **em duas portas**: `cmp`/`vnd` pelo executor de swap (varejo comprando/vendendo na DEX) e `dep`/`saq` direto (depósito/saque). Janelas cortadas na meia-noite UTC, cada uma com falhas, lacuna e a contraparte dominante. **Só existe para frente**: o nó guarda ~100 h | `npm run fluxo-binance` |
 | `data/fluxo-binance.json` | o último bloco lido, a identificação de cada token (perpétuo e preço conferidos, última passagem) e a memória das em vista já anunciadas. **É daqui que sai o conjunto em vista** | idem |

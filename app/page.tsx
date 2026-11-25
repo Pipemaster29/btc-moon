@@ -8,7 +8,7 @@ import type { MarcaCiclo } from "@/components/PriceChart";
 import type { PontoCiclo } from "@/components/CurvaCiclo";
 import { getBitcoinAnalysis } from "@/lib/bitcoin";
 import { getCandles } from "@/lib/bitstamp";
-import { diasDasVelas, quedaMaxima, simularAdaptativo, simularCalendario, simularSegurar } from "@/lib/cicloBtc";
+import { diasDasVelas, quedaMaxima, simularCalendario, simularComVendida, simularSegurar } from "@/lib/cicloBtc";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getLiquidez } from "@/lib/liquidez";
@@ -54,6 +54,23 @@ async function getMedicaoCiclo(): Promise<MedicaoCiclo | null> {
   }
 }
 
+/**
+ * O financiamento diário do BTCUSDT, gravado por `npm run medir-ciclo` no
+ * `main`. Os dias depois da gravação contam ZERO — o vendido recebeu de 2% a
+ * 30% ao ano em todos os anos medidos, então zero subestima a perna aberta, e
+ * nunca a favorece.
+ */
+async function getFinanciamento(): Promise<(t: number) => number> {
+  try {
+    const f = JSON.parse(await readFile(path.join(process.cwd(), "data", "btc-financiamento-diario.json"), "utf8")) as { antes: number; dias: [number, number][] };
+    const mapa = new Map(f.dias);
+    const inicio = (f.dias[0]?.[0] ?? Infinity) + 86_400;
+    return (t) => (t < inicio ? f.antes : mapa.get(Math.floor(t / 86_400) * 86_400) ?? 0);
+  } catch {
+    return () => 0;
+  }
+}
+
 /** Um ponto por semana, mais os dias de operação e o último: ~700 pontos por linha em vez de ~4.700. */
 function semanal(curva: { t: number; patrimonio: number }[], manter: Set<number>): PontoCiclo[] {
   return curva.filter((p, i) => i % 7 === 0 || i === curva.length - 1 || manter.has(p.t)).map((p) => ({ t: p.t, v: p.patrimonio }));
@@ -67,8 +84,10 @@ function semanal(curva: { t: number; patrimonio: number }[], manter: Set<number>
  */
 async function getCiclo() {
   try {
-    const dias = diasDasVelas(await getCandles("1d"));
-    const adaptativo = simularAdaptativo(dias);
+    const [velas, taxa] = await Promise.all([getCandles("1d"), getFinanciamento()]);
+    const dias = diasDasVelas(velas);
+    const vendida = simularComVendida(dias, undefined, undefined, taxa);
+    const adaptativo = vendida.base;
     const calendario = simularCalendario(dias);
     const segurar = simularSegurar(dias);
     const operacoes = new Set([...adaptativo.marcas, ...calendario.marcas].map((m) => m.t));
@@ -78,11 +97,13 @@ async function getCiclo() {
     ];
     return {
       marcas,
-      adaptativo: { ...adaptativo, quedaMax: quedaMaxima(adaptativo.curva), curva: [] },
+      adaptativo: { ...adaptativo, quedaMax: quedaMaxima(adaptativo.curva), curva: [], dias: [] },
+      vendida: { final: vendida.final, quedaMax: quedaMaxima(vendida.curva), pernas: vendida.pernas },
       calendario: { ...calendario, quedaMax: quedaMaxima(calendario.curva), curva: [] },
       segurar: { final: segurar.at(-1)?.patrimonio ?? NaN, quedaMax: quedaMaxima(segurar) },
       series: [
-        { nome: "se corrige pelo preço", cor: "ad" as const, pontos: semanal(adaptativo.curva, operacoes) },
+        { nome: "comprado + vendido 1x", cor: "ad" as const, pontos: semanal(vendida.curva, operacoes) },
+        { nome: "só comprado ou em caixa", cor: "sc" as const, pontos: semanal(adaptativo.curva, operacoes) },
         { nome: "calendário do post", cor: "cal" as const, pontos: semanal(calendario.curva, operacoes) },
         { nome: "comprar e segurar", cor: "seg" as const, pontos: semanal(segurar, operacoes) },
       ],
@@ -152,6 +173,7 @@ export default async function Home() {
           {ciclo && (
             <CicloPanel
               adaptativo={ciclo.adaptativo}
+              vendida={ciclo.vendida}
               calendario={ciclo.calendario}
               segurar={ciclo.segurar}
               series={ciclo.series}

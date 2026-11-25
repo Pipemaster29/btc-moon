@@ -212,6 +212,12 @@ export interface Resultado {
   curva: { t: number; patrimonio: number }[];
   estado: EstadoAtual;
   final: number;
+  /**
+   * O estado no fim de cada dia (o mesmo índice de `curva`): comprado, e — fora
+   * dele — o topo CONFIRMADO de que a busca do fundo conta (nulo antes do
+   * primeiro topo confirmado, quando a âncora ainda é a semente escolhida à mão).
+   */
+  dias?: { t: number; fecho: number; comprado: boolean; topo: number | null }[];
 }
 
 /**
@@ -225,6 +231,7 @@ export function simularAdaptativo(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_C
   const extremos: Extremo[] = [];
   const curva: Resultado["curva"] = [];
   const ema = emaDiaria(dias, regras.emaDias);
+  const linha: NonNullable<Resultado["dias"]> = [];
 
   let procurando: "fundo" | "topo" = "fundo";
   let ancora = { t: semente.t, preco: semente.preco, tipo: "topo" as "fundo" | "topo" };
@@ -308,6 +315,7 @@ export function simularAdaptativo(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_C
       }
     }
     curva.push({ t: d.t, patrimonio: caixa + btc * d.fecho });
+    linha.push({ t: d.t, fecho: d.fecho, comprado: btc > 0, topo: !(btc > 0) && procurando === "fundo" && ancora.tipo === "topo" && extremos.length > 0 ? ancora.t : null });
   }
 
   const ultimo = dias.at(-1)!;
@@ -338,7 +346,7 @@ export function simularAdaptativo(dias: DiaBtc[], regras: RegrasCiclo = REGRAS_C
         : abre + regras.antecedencia * DIA + regras.diasAteFundo * DIA,
     ema: emaHoje,
   };
-  return { marcas, extremos, curva, estado, final: caixa + btc * ultimo.fecho };
+  return { marcas, extremos, curva, estado, final: caixa + btc * ultimo.fecho, dias: linha };
 }
 
 /**
@@ -454,4 +462,139 @@ export function pernas(marcas: Marca[]): { de: Marca; ate: Marca | null; retorno
     saida.push({ de: m, ate, retorno: ate ? ate.patrimonio / m.patrimonio - 1 : NaN });
   }
   return saida;
+}
+
+/**
+ * A PERNA VENDIDA (25/11/2026), a pedido: "pegar uma queda bruta seguida, tipo
+ * de 85 mil para 55 mil praticamente em linha reta [...] não precisa acertar
+ * topo ou fundo, e sim preços bons e maximizar o lucro. Mas de forma realista".
+ *
+ * Por cima da versão que se corrige: onde ela está em CAIXA depois de um topo
+ * confirmado, a carteira fica VENDIDA no perpétuo. "urso" vende desde a venda do
+ * topo; "capitulação" só a partir de `inicioDias` depois do topo, que é onde a
+ * pergunta do pedido mora — a última perna, perto da data dos 364. A vendida
+ * fecha quando a regra compra (fundo confirmado) ou recompra (topo falso).
+ *
+ * O que é realista aqui, e o que é suposição:
+ * - perpétuo com margem isolada de todo o patrimônio e `alavancagem` sobre
+ *   ela; liquida quando a margem que sobra não cobre a manutenção de 0,5% do
+ *   nocional, e liquidado é patrimônio ZERO, não um número negativo;
+ * - `custoLado` sobre o nocional na entrada e na saída (taxa + escorregada);
+ * - o financiamento REAL do BTCUSDT da Binance desde 10/09/2019, em `taxaDia`
+ *   (positivo = o vendido recebe). ANTES disso não havia perpétuo de BTC na
+ *   Binance, e os ursos de 2014 e 2018 recebem a suposição do pior caso que a
+ *   chamada passar — a medição usa o vendido PAGANDO 0,01% a cada 8 h;
+ * - opera no fechamento do dia, como a comprada.
+ *
+ * Unidades: `inicioDias` em DIAS desde o topo confirmado; `custoLado`, fração
+ * do NOCIONAL; `taxaDia(t)`, fração do nocional por DIA, `t` em SEGUNDOS.
+ */
+export interface RegrasVendida {
+  modo: "urso" | "capitulacao";
+  inicioDias: number;
+  /** Só vende se o fechamento estiver abaixo da EMA da regra (não vende repique). */
+  soAbaixoDaEma: boolean;
+  alavancagem: number;
+  custoLado: number;
+}
+
+export const REGRAS_VENDIDA: RegrasVendida = { modo: "urso", inicioDias: 0, soAbaixoDaEma: false, alavancagem: 1, custoLado: 0.001 };
+
+export interface PernaVendida {
+  de: number;
+  ate: number | null;
+  entrada: number;
+  saida: number;
+  /** Fração do patrimônio ganha (negativa = perdida) na perna. */
+  retorno: number;
+  /** O pior momento: quanto o preço chegou ACIMA da entrada, em fração do preço. */
+  piorContra: number;
+  financiamento: number;
+  liquidada: boolean;
+}
+
+export function simularComVendida(
+  dias: DiaBtc[],
+  regras: RegrasCiclo = REGRAS_CICLO,
+  vendida: RegrasVendida = REGRAS_VENDIDA,
+  taxaDia: (t: number) => number = () => 0,
+  semente = SEMENTE,
+): { curva: Resultado["curva"]; pernas: PernaVendida[]; final: number; base: Resultado } {
+  const base = simularAdaptativo(dias, regras, semente);
+  const linha = base.dias ?? [];
+  const ema = emaDiaria(dias, regras.emaDias);
+  const emaDe = new Map(dias.map((d, i) => [d.t, ema[i]]));
+  const porT = new Map(dias.map((d) => [d.t, d]));
+  const MANUTENCAO = 0.005;
+
+  // A comprada vale o que ela vale na curva da base; a vendida é escalada sobre
+  // ela: o patrimônio é a base × o quanto as vendidas multiplicaram até ali.
+  let fator = 1;
+  const curva: Resultado["curva"] = [];
+  const pernas: PernaVendida[] = [];
+  let aberta: { de: number; entrada: number; margem: number; qtd: number; fin: number; pior: number } | null = null;
+
+  const fechar = (t: number, preco: number, liquidada: boolean) => {
+    const a = aberta!;
+    const nocional = a.qtd * preco;
+    const sobra = liquidada ? 0 : Math.max(0, a.margem + a.qtd * (a.entrada - preco) + a.fin - nocional * vendida.custoLado);
+    const retorno = sobra - 1; // a margem inicial é 1 (o patrimônio todo)
+    fator *= 1 + retorno;
+    pernas.push({ de: a.de, ate: t, entrada: a.entrada, saida: preco, retorno, piorContra: a.pior / a.entrada - 1, financiamento: a.fin, liquidada });
+    aberta = null;
+  };
+
+  for (let i = 0; i < linha.length; i++) {
+    const l = linha[i];
+    const d = porT.get(l.t);
+    // O dia de ontem para hoje: a vendida aberta anda com o preço e o financiamento.
+    if (aberta) {
+      const a: NonNullable<typeof aberta> = aberta;
+      a.fin += a.qtd * l.fecho * taxaDia(l.t);
+      a.pior = Math.max(a.pior, d?.alta ?? l.fecho);
+      const nocionalPior = a.qtd * a.pior;
+      // Liquidação pela máxima do dia: a margem que sobraria no pior preço do dia.
+      if (a.margem + a.qtd * (a.entrada - (d?.alta ?? l.fecho)) + a.fin < MANUTENCAO * nocionalPior) {
+        fechar(l.t, d?.alta ?? l.fecho, true);
+      }
+    }
+    const querVendida =
+      !l.comprado &&
+      l.topo !== null &&
+      (vendida.modo === "urso" || l.t >= l.topo + vendida.inicioDias * DIA) &&
+      (!vendida.soAbaixoDaEma || l.fecho < (emaDe.get(l.t) ?? NaN));
+    if (aberta && !querVendida) fechar(l.t, l.fecho, false);
+    else if (!aberta && querVendida && fator > 0) {
+      const nocional = vendida.alavancagem; // sobre a margem 1
+      aberta = { de: l.t, entrada: l.fecho, margem: 1 - nocional * vendida.custoLado, qtd: nocional / l.fecho, fin: 0, pior: l.fecho };
+    }
+    // O patrimônio do dia: a base escalada pelo que as vendidas fizeram, mais a aberta marcada.
+    let marcaAberta = 1;
+    if (aberta) {
+      const a: NonNullable<typeof aberta> = aberta;
+      marcaAberta = Math.max(0, a.margem + a.qtd * (a.entrada - l.fecho) + a.fin);
+    }
+    curva.push({ t: l.t, patrimonio: base.curva[i].patrimonio * fator * marcaAberta });
+  }
+  if (aberta) {
+    const a: NonNullable<typeof aberta> = aberta;
+    const u = linha.at(-1)!;
+    pernas.push({ de: a.de, ate: null, entrada: a.entrada, saida: u.fecho, retorno: a.margem + a.qtd * (a.entrada - u.fecho) + a.fin - 1, piorContra: a.pior / a.entrada - 1, financiamento: a.fin, liquidada: false });
+  }
+  return { curva, pernas, final: curva.at(-1)?.patrimonio ?? NaN, base };
+}
+
+/**
+ * O financiamento por dia, de uma lista de cobranças `{t (ms), r}` da Binance,
+ * com a suposição `antes` (fração por dia) para os dias sem perpétuo. Positivo =
+ * o vendido recebe.
+ */
+export function financiamentoDiario(cobrancas: { t: number; r: number }[], antes: number): (t: number) => number {
+  const porDia = new Map<number, number>();
+  for (const c of cobrancas) {
+    const dia = Math.floor(c.t / 1000 / DIA) * DIA;
+    porDia.set(dia, (porDia.get(dia) ?? 0) + c.r);
+  }
+  const inicio = cobrancas.length ? Math.floor(cobrancas[0].t / 1000 / DIA) * DIA + DIA : Infinity;
+  return (t: number) => (t < inicio ? antes : porDia.get(Math.floor(t / DIA) * DIA) ?? 0);
 }

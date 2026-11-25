@@ -1,7 +1,7 @@
 {
- "geradoEm": "2026-11-24T12:25:44.008Z",
+ "geradoEm": "2026-11-25T02:15:02.951Z",
  "fonte": "Bitstamp, fechamentos diários",
- "ate": 1795478400,
+ "ate": 1795564800,
  "regras": {
   "diasAteFundo": 364,
   "diasAteTopo": 1064,
@@ -145,7 +145,7 @@
   ]
  },
  "calendario": {
-  "final": 4813336.119430535,
+  "final": 4726652.479573986,
   "quedaMaxima": -0.6252734018856797,
   "marcas": [
    {
@@ -193,17 +193,17 @@
   ]
  },
  "segurar": {
-  "final": 537140.6124053166,
+  "final": 527467.2170215807,
   "quedaMaxima": -0.848579076156571
  },
  "medias": [
   {
    "nome": "comprar e segurar",
-   "final": 537140.6124053166,
+   "final": 527467.2170215807,
    "queda": -0.848579076156571,
    "operacoes": 1,
    "antes2020": 6.412283835929685,
-   "desde2020": 8.385129299536962,
+   "desde2020": 8.234121036179353,
    "publicada": false
   },
   {
@@ -333,11 +333,185 @@
    "publicada": false
   }
  ],
+ "vendida": {
+  "regras": {
+   "modo": "urso",
+   "inicioDias": 0,
+   "soAbaixoDaEma": false,
+   "alavancagem": 1,
+   "custoLado": 0.001
+  },
+  "linhas": [
+   {
+    "nome": "sem vendida",
+    "final": 47835456.26403789,
+    "queda17": -0.6252734018856797,
+    "antes2020": 129.90568050060523,
+    "desde2020": 36.823221340051425,
+    "pernas": 4,
+    "positivas": 0,
+    "piorContra": 0.10480634307285719,
+    "publicada": false
+   },
+   {
+    "nome": "vendido 1x no urso inteiro",
+    "final": 183731090.75241426,
+    "queda17": -0.6252734018856797,
+    "antes2020": 218.6126525214989,
+    "desde2020": 84.04412490916815,
+    "pernas": 4,
+    "positivas": 3,
+    "piorContra": 0.10480634307285719,
+    "publicada": true
+   },
+   {
+    "nome": "vendido 1x, só abaixo da EMA 200",
+    "final": 93480496.8390806,
+    "queda17": -0.6252734018856797,
+    "antes2020": 115.65610682016462,
+    "desde2020": 80.82625242127058,
+    "pernas": 18,
+    "positivas": 6,
+    "piorContra": 0.1209524820384813,
+    "publicada": false
+   },
+   {
+    "nome": "vendido 2x no urso inteiro",
+    "final": 443192289.0445964,
+    "queda17": -0.6252734018856798,
+    "antes2020": 307.3196245423925,
+    "desde2020": 144.2121666341751,
+    "pernas": 4,
+    "positivas": 3,
+    "piorContra": 0.10480634307285719,
+    "publicada": false
+   },
+   {
+    "nome": "vendido 3x no urso inteiro",
+    "final": 842535506.1572399,
+    "queda17": -0.6252734018856798,
+    "antes2020": 396.02659656328615,
+    "desde2020": 212.74720270526083,
+    "pernas": 4,
+    "positivas": 3,
+    "piorContra": 0.10480634307285719,
+    "publicada": false
+   },
+   {
+    "nome": "vendido 1x só do dia 200 do urso em diante",
+    "final": 111966382.05681117,
+    "queda17": -0.6252734018856797,
+    "antes2020": 172.49964569783256,
+    "desde2020": 64.9081808857408,
+    "pernas": 3,
+    "positivas": 3,
+    "piorContra": 0.30048410622481314,
+    "publicada": false
+   },
+   {
+    "nome": "vendido 1x só do dia 250 do urso em diante",
+    "final": 83168962.46028109,
+    "queda17": -0.6252734018856797,
+    "antes2020": 176.593383637185,
+    "desde2020": 47.09630720432513,
+    "pernas": 3,
+    "positivas": 3,
+    "piorContra": 0.3849885981367076,
+    "publicada": false
+   },
+   {
+    "nome": "vendido 1x só do dia 300 do urso em diante",
+    "final": 90901508.4785521,
+    "queda17": -0.6252734018856798,
+    "antes2020": 172.05739719219866,
+    "desde2020": 52.83208392197724,
+    "pernas": 3,
+    "positivas": 3,
+    "piorContra": 0.12426141791290601,
+    "publicada": false
+   },
+   {
+    "nome": "vendido 1x só do dia 340 do urso em diante",
+    "final": 66113667.70243888,
+    "queda17": -0.6252734018856797,
+    "antes2020": 134.83164056324364,
+    "desde2020": 49.03423812560365,
+    "pernas": 3,
+    "positivas": 3,
+    "piorContra": 0.12042786329246025,
+    "publicada": false
+   },
+   {
+    "nome": "vendido 1x, com a venda antiga (só −20%)",
+    "final": 167082035.75531593,
+    "queda17": -0.6252734018856797,
+    "antes2020": 218.6126525214989,
+    "desde2020": 76.42834658844126,
+    "pernas": 3,
+    "positivas": 3,
+    "piorContra": 0.10480634307285719,
+    "publicada": false
+   }
+  ],
+  "pernas": [
+   {
+    "de": 1513814400,
+    "ate": 1545264000,
+    "entrada": 15600.01,
+    "saida": 4073.77,
+    "retorno": 0.682856759450795,
+    "piorContra": 0.10480634307285719,
+    "financiamento": -0.054743166446688175,
+    "liquidada": false
+   },
+   {
+    "de": 1638576000,
+    "ate": 1673481600,
+    "entrada": 49234.97,
+    "saida": 18853,
+    "retorno": 0.6496419600525662,
+    "piorContra": 0.05816252147609702,
+    "financiamento": 0.03394376769051137,
+    "liquidada": false
+   },
+   {
+    "de": 1761091200,
+    "ate": 1761436800,
+    "entrada": 107595,
+    "saida": 114551,
+    "retorno": -0.06624425737413453,
+    "piorContra": 0.0729773688368418,
+    "financiamento": 0.00047023679381012133,
+    "liquidada": false
+   },
+   {
+    "de": 1761782400,
+    "ate": null,
+    "entrada": 108306,
+    "saida": 59110.12,
+    "retorno": 0.4817079143915812,
+    "piorContra": 0.02606503794803605,
+    "financiamento": 0.02847749317761343,
+    "liquidada": false
+   }
+  ],
+  "grade": {
+   "melhora": 59,
+   "variacoes": 64,
+   "pior": 0.46147210588213017,
+   "mediana": 2.440683013399991,
+   "melhor": 4.097394895364269,
+   "pernasPos": 212,
+   "pernasTot": 401,
+   "piorContra": 0.3776559228804999
+  },
+  "final": 183731090.75241426
+ },
  "grade": {
   "variacoes": 64,
   "posicao": 4,
   "mediana": 16631102.57808162,
-  "pior": 4085050.101327108,
+  "pior": 4011482.2051750124,
   "melhor": 58373046.715136044,
   "batemSegurar": 64,
   "celulas": [
@@ -345,7 +519,7 @@
     "antecedencia": 0,
     "subida": 0.1,
     "queda": 0.1,
-    "final": 58163930.643582195,
+    "final": 57116453.157811664,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -354,7 +528,7 @@
     "antecedencia": 0,
     "subida": 0.1,
     "queda": 0.2,
-    "final": 47664090.141180925,
+    "final": 46805704.871303484,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -363,7 +537,7 @@
     "antecedencia": 0,
     "subida": 0.1,
     "queda": 0.3,
-    "final": 38620109.81945055,
+    "final": 37924598.09790353,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -372,7 +546,7 @@
     "antecedencia": 0,
     "subida": 0.1,
     "queda": 0.5,
-    "final": 27495409.97342859,
+    "final": 27000243.59470355,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -489,7 +663,7 @@
     "antecedencia": 30,
     "subida": 0.1,
     "queda": 0.1,
-    "final": 17887126.00100175,
+    "final": 17564995.746669337,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -498,7 +672,7 @@
     "antecedencia": 30,
     "subida": 0.1,
     "queda": 0.2,
-    "final": 23470762.703696802,
+    "final": 23048076.423145406,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -507,7 +681,7 @@
     "antecedencia": 30,
     "subida": 0.1,
     "queda": 0.3,
-    "final": 17407114.307955604,
+    "final": 17093628.61109737,
     "queda_max": -0.6252734018856796,
     "batesegurar": true,
     "publicada": false
@@ -516,7 +690,7 @@
     "antecedencia": 30,
     "subida": 0.1,
     "queda": 0.5,
-    "final": 12392915.15713207,
+    "final": 12169730.453716699,
     "queda_max": -0.6739636075809956,
     "batesegurar": true,
     "publicada": false
@@ -633,7 +807,7 @@
     "antecedencia": 60,
     "subida": 0.1,
     "queda": 0.1,
-    "final": 10796518.30451774,
+    "final": 10602083.201464064,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -642,7 +816,7 @@
     "antecedencia": 60,
     "subida": 0.1,
     "queda": 0.2,
-    "final": 15772082.683383696,
+    "final": 15488042.362659968,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -651,7 +825,7 @@
     "antecedencia": 60,
     "subida": 0.1,
     "queda": 0.3,
-    "final": 16005944.372297306,
+    "final": 15717692.423315126,
     "queda_max": -0.6252734018856797,
     "batesegurar": true,
     "publicada": false
@@ -660,7 +834,7 @@
     "antecedencia": 60,
     "subida": 0.1,
     "queda": 0.5,
-    "final": 11395358.650859157,
+    "final": 11190138.998456376,
     "queda_max": -0.6739636075809957,
     "batesegurar": true,
     "publicada": false
@@ -777,7 +951,7 @@
     "antecedencia": 90,
     "subida": 0.1,
     "queda": 0.1,
-    "final": 4085050.101327108,
+    "final": 4011482.2051750124,
     "queda_max": -0.6252734018856798,
     "batesegurar": true,
     "publicada": false
@@ -786,7 +960,7 @@
     "antecedencia": 90,
     "subida": 0.1,
     "queda": 0.2,
-    "final": 8116643.16664969,
+    "final": 7970470.085101996,
     "queda_max": -0.6269807694475096,
     "batesegurar": true,
     "publicada": false
@@ -795,7 +969,7 @@
     "antecedencia": 90,
     "subida": 0.1,
     "queda": 0.3,
-    "final": 8236993.276230442,
+    "final": 8088652.8028163295,
     "queda_max": -0.6585645555174966,
     "batesegurar": true,
     "publicada": false
@@ -804,7 +978,7 @@
     "antecedencia": 90,
     "subida": 0.1,
     "queda": 0.5,
-    "final": 5864289.5666823555,
+    "final": 5758679.2473114,
     "queda_max": -0.7302264343680838,
     "batesegurar": true,
     "publicada": false

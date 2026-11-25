@@ -8,8 +8,12 @@
  * linear tudo antes de 2021 vira uma reta no chão, e é justamente lá que estão
  * duas das três vendas. Na log, a mesma inclinação é o mesmo retorno.
  *
- * Duas cores e um cinza: o azul (slot 1) e o laranja (slot 2) são as duas
- * leituras do padrão; o "comprar e segurar" é a régua, e régua é contexto, não
+ * Três cores e um cinza: o azul (slot 1) é a publicada, comprada e vendida; o
+ * aqua (slot 3), a mesma só comprada ou em caixa; o laranja (slot 2), o
+ * calendário literal. O aqua fica a 2,74:1 da superfície clara (o validador
+ * avisa, não reprova) e por isso tem rótulo na ponta, legenda e tooltip;
+ * separação de daltonismo das três, todos os pares: ΔE 9,2 no claro, 9,4 no
+ * escuro. o "comprar e segurar" é a régua, e régua é contexto, não
  * série a identificar — o mesmo raciocínio de `CurvaCarteira`. As cores são as
  * da curva dos robôs, validadas no claro (ΔE de daltonismo 24,7) e no escuro
  * (26,8). A identidade não depende delas: legenda em cima e rótulo na ponta.
@@ -17,13 +21,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const TEMA = "[--c-ad:#2a78d6] dark:[--c-ad:#3987e5] [--c-cal:#eb6834] dark:[--c-cal:#d95926] [--c-seg:#898781] dark:[--c-seg:#8f8e88]";
+const TEMA = "[--c-ad:#2a78d6] dark:[--c-ad:#3987e5] [--c-sc:#1baf7a] dark:[--c-sc:#199e70] [--c-cal:#eb6834] dark:[--c-cal:#d95926] [--c-seg:#898781] dark:[--c-seg:#8f8e88]";
 const G = { esq: 64, dir: 96, topo: 14, base: 26 };
 
 export type PontoCiclo = { t: number; v: number };
 export interface SerieCiclo {
   nome: string;
-  cor: "ad" | "cal" | "seg";
+  cor: "ad" | "sc" | "cal" | "seg";
   pontos: PontoCiclo[];
 }
 

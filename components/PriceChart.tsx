@@ -56,8 +56,8 @@ export interface MarcaCiclo {
   tipo: "compra" | "venda" | "fundo falso" | "topo falso" | "cal-compra" | "cal-venda";
 }
 const TEXTO_CICLO: Record<MarcaCiclo["tipo"], string> = {
-  compra: "compra",
-  venda: "venda",
+  compra: "compra · fecha short",
+  venda: "venda · abre short",
   "fundo falso": "fundo falso",
   "topo falso": "topo falso",
   "cal-compra": "364d",

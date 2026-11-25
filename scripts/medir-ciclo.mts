@@ -25,6 +25,10 @@ import {
   simularAdaptativo,
   simularCalendario,
   simularMedia,
+  simularComVendida,
+  financiamentoDiario,
+  REGRAS_VENDIDA,
+  type RegrasVendida,
   simularSegurar,
   type RegrasCiclo,
 } from "../lib/cicloBtc";
@@ -140,6 +144,88 @@ for (const m of medias)
     `  ${(m.publicada ? "* " : "  ") + m.nome.padEnd(58)} ${usd(m.final).padStart(16)}  ${pct(m.queda).padStart(7)}  ${String(m.operacoes).padStart(4)} ops  ${m.antes2020.toFixed(1).padStart(6)}x  ${m.desde2020.toFixed(1).padStart(5)}x`,
   );
 
+// A VENDIDA (25/11): ganhar na queda, e não só ficar fora dela. O financiamento
+// real do BTCUSDT vem da Binance (sem chave), desde 10/09/2019; antes disso não
+// havia perpétuo, e o vendido PAGA 0,01% a cada 8 h — o pior caso.
+const cobrancas: { t: number; r: number }[] = [];
+for (let inicio = Date.UTC(2019, 8, 1), i = 0; i < 30; i++) {
+  const res = await fetch(`https://www.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1000&startTime=${inicio}`);
+  if (!res.ok) throw new Error(`financiamento: a Binance respondeu ${res.status} — sem ele a vendida não é medida`);
+  const lote = (await res.json()) as { fundingTime: number; fundingRate: string }[];
+  for (const c of lote) cobrancas.push({ t: c.fundingTime, r: Number(c.fundingRate) });
+  if (lote.length < 1000) break;
+  inicio = lote.at(-1)!.fundingTime + 1;
+}
+const ANTES_DO_PERPETUO = -0.0003;
+const taxa = financiamentoDiario(cobrancas, ANTES_DO_PERPETUO);
+const porDia = new Map<number, number>();
+for (const c of cobrancas) {
+  const dia = Math.floor(c.t / 1000 / 86_400) * 86_400;
+  porDia.set(dia, (porDia.get(dia) ?? 0) + c.r);
+}
+writeFileSync("data/btc-financiamento-diario.json", JSON.stringify({ fonte: "Binance BTCUSDT /fapi/v1/fundingRate", antes: ANTES_DO_PERPETUO, dias: [...porDia].map(([t, r]) => [t, Number(r.toFixed(7))]) }));
+
+const D17 = Date.UTC(2017, 0, 1) / 1000;
+const vendidas: { nome: string; final: number; queda17: number; antes2020: number; desde2020: number; pernas: number; positivas: number; piorContra: number; publicada: boolean }[] = [];
+const linhaVendida = (nome: string, v: Partial<RegrasVendida>, regras: RegrasCiclo = REGRAS_CICLO) => {
+  const r = simularComVendida(dias, regras, { ...REGRAS_VENDIDA, ...v }, taxa);
+  const [a, b] = metades(r.curva);
+  const publicada = regras === REGRAS_CICLO && Object.entries(v).every(([k, x]) => (REGRAS_VENDIDA as unknown as Record<string, unknown>)[k] === x);
+  vendidas.push({
+    nome,
+    final: r.final,
+    queda17: quedaMaxima(r.curva.filter((p) => p.t >= D17)),
+    antes2020: a,
+    desde2020: b,
+    pernas: r.pernas.length,
+    positivas: r.pernas.filter((p) => p.retorno > 0).length,
+    piorContra: Math.max(0, ...r.pernas.map((p) => p.piorContra)),
+    publicada,
+  });
+  return r;
+};
+linhaVendida("sem vendida", { alavancagem: 0 });
+const publicada = linhaVendida("vendido 1x no urso inteiro", { modo: "urso", alavancagem: 1 });
+linhaVendida("vendido 1x, só abaixo da EMA 200", { alavancagem: 1, soAbaixoDaEma: true });
+linhaVendida("vendido 2x no urso inteiro", { alavancagem: 2 });
+linhaVendida("vendido 3x no urso inteiro", { alavancagem: 3 });
+for (const i of [200, 250, 300, 340]) linhaVendida(`vendido 1x só do dia ${i} do urso em diante`, { modo: "capitulacao", inicioDias: i, alavancagem: 1 });
+linhaVendida("vendido 1x, com a venda antiga (só −20%)", { alavancagem: 1 }, { ...REGRAS_CICLO, venda: "queda" });
+console.log("\na vendida (financiamento real desde 09/2019; antes, o vendido paga 0,01%/8 h)");
+for (const v of vendidas)
+  console.log(
+    `  ${(v.publicada ? "* " : "  ") + v.nome.padEnd(44)} ${usd(v.final).padStart(18)}  queda desde 2017 ${pct(v.queda17).padStart(7)}  ${v.antes2020.toFixed(0).padStart(4)}x ${v.desde2020.toFixed(1).padStart(6)}x  pernas ${v.positivas}/${v.pernas}  pior contra +${(v.piorContra * 100).toFixed(0)}%`,
+  );
+console.log("  as pernas da publicada:");
+for (const p of publicada.pernas)
+  console.log(`    ${data(p.de)} → ${p.ate ? data(p.ate) : "aberta"}  ${usd(p.entrada)} → ${usd(p.saida)}  ${pct(p.retorno)}  pior contra +${(p.piorContra * 100).toFixed(0)}%  financiamento ${pct(p.financiamento)}`);
+
+// A vendida na grade: ela melhora QUALQUER variação, ou só a escolhida?
+let melhora = 0;
+let pernasPos = 0;
+let pernasTot = 0;
+let piorContraGrade = 0;
+const razoes: number[] = [];
+for (const antecedencia of ANTECEDENCIAS)
+  for (const subida of SUBIDAS)
+    for (const queda of QUEDAS) {
+      const r: RegrasCiclo = { ...REGRAS_CICLO, antecedencia, subidaConfirma: subida, quedaConfirma: queda };
+      const sem = simularAdaptativo(dias, r).final;
+      const com = simularComVendida(dias, r, REGRAS_VENDIDA, taxa);
+      if (com.final > sem) melhora++;
+      razoes.push(com.final / sem);
+      for (const p of com.pernas) {
+        pernasTot++;
+        if (p.retorno > 0) pernasPos++;
+        piorContraGrade = Math.max(piorContraGrade, p.piorContra);
+      }
+    }
+razoes.sort((a, b) => a - b);
+const vendidaGrade = { melhora, variacoes: razoes.length, pior: razoes[0], mediana: razoes[Math.floor(razoes.length / 2)], melhor: razoes.at(-1)!, pernasPos, pernasTot, piorContra: piorContraGrade };
+console.log(
+  `  na grade: a vendida 1x melhora ${melhora} de ${razoes.length}; multiplica o final por ${vendidaGrade.pior.toFixed(2)} a ${vendidaGrade.melhor.toFixed(2)} (mediana ${vendidaGrade.mediana.toFixed(2)}); pernas positivas ${pernasPos}/${pernasTot}; pior contra +${(piorContraGrade * 100).toFixed(0)}%`,
+);
+
 writeFileSync(
   "data/ciclo-medicao.json",
   JSON.stringify(
@@ -154,6 +240,7 @@ writeFileSync(
       calendario: { final: cal.final, quedaMaxima: quedaMaxima(cal.curva), marcas: cal.marcas },
       segurar: { final: finalSegurar, quedaMaxima: quedaMaxima(segurar) },
       medias,
+      vendida: { regras: REGRAS_VENDIDA, linhas: vendidas, pernas: publicada.pernas, grade: vendidaGrade, final: publicada.final },
       grade: { variacoes: grade.length, posicao, mediana, pior: finais[0], melhor: finais.at(-1), batemSegurar: bate, celulas: grade },
     },
     null,
