@@ -127,3 +127,24 @@ desde 09/2019). São 30 moedas: só compradas nas datas do BTC batem o segurar
 em 30 de 30, as mesmas 4 ganham do próprio BTC, e a HBAR faz 30,4x só comprada
 (o BTC, 32,8x no mesmo período), 91,5x com a vendida (o BTC, 74,3x) e 1,4x
 segurando. Não muda nenhuma regra.
+
+## Emenda 4 (26/11/2026): o livro de ordens, uma correção e a HBAR
+
+- **Correção.** `simularExposicao` comprava com o patrimônio cheio e pagava a
+  taxa em cima, ficando 0,1% alavancada sem querer, e executava em sequência
+  as ordens vencidas no mesmo dia (três taxas na HBAR em 29/09/2019). Agora a
+  taxa sai antes de dimensionar a ordem e só a última ordem vencida vale. As
+  datas fixas com vendida, em uma parcela: US$ 198,6 → 194,5 mi; o
+  deixa-um-fora, 137,3 → 134,4 mi. O livro de ordens à vista bate com
+  `simularAdaptativo` até o dólar (US$ 47.835.456 contra 47.835.648).
+- **A alavancagem, dita na tela:** a compra é à vista, sem alavancagem; a
+  vendida é 1x. Cada ordem com data, preço, quantidade, taxa e patrimônio, e o
+  limite do realismo escrito: de 2021 em diante as ordens têm milhões de
+  dólares e 0,1% não as cobre.
+- **A HBAR em pancadas** (`lib/pancadas.ts`, definição antes da medição: +50%
+  em 7 dias). A forma se confirma — 2 por ano, 2ª de 30; outra em 60 dias em
+  57% das vezes contra 19% de base; fora das 14 semanas de pancada, US$ 1 vira
+  US$ 0,001. Comprar depois da pancada, nas 30 moedas (280 eventos): mediana
+  ~0% em 30 dias, 50% positivas; a média de +24% cai para +4,6% por mês (t
+  0,93) contra +5,1% de um dia qualquer, e de 2022 em diante a mediana é
+  −11%. Reprovada; nenhuma regra nova.
